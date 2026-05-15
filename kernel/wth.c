@@ -1,5 +1,44 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+/*
+ * Worker threads ("wth"): bottom-half processing for the kernel.
+ *
+ * A worker thread is a long-lived kernel thread that consumes a queue
+ * of {func, arg} jobs and goes back to sleep when the queue drains.
+ * They exist so that IRQ handlers — which must stay short and can't
+ * sleep — can defer the real work by enqueueing a job via
+ * wth_enqueue_on() / wth_enqueue_anywhere(). The IRQ returns
+ * immediately; the matching worker picks the job up later in task
+ * context, where preemption is enabled and the full kernel API is
+ * available.
+ *
+ * Worker threads are a *separate* kind of schedulable entity from
+ * ordinary tasks. In particular:
+ *
+ *   - They live in worker_threads[] (sorted by priority), NOT in the
+ *     scheduler's runnable_tasks_list. The scheduler picks them via
+ *     a dedicated pass (wth_get_runnable_thread() in do_schedule)
+ *     that runs BEFORE the regular runnable-list lookup, so a
+ *     runnable worker always wins against a runnable non-worker.
+ *
+ *   - They have no timeslice: sched_account_ticks() never sets
+ *     need_resched for a running worker. A worker yields voluntarily
+ *     when its queue drains, or gets preempted only by a
+ *     higher-priority worker waking up.
+ *
+ *   - They are intentionally invisible to runnable_tasks_count, so
+ *     code that polls it — yield_until_last(), idle's halt-loop
+ *     check, sched_account_ticks()'s vruntime weighting — is
+ *     worker-blind by design. Workers are bottom halves, not tasks
+ *     competing for fairness.
+ *
+ * Convention: worker_threads[0] is the singleton "generic" worker
+ * created at boot by init_worker_threads() at WTH_PRIO_HIGHEST.
+ * Subsystems (acpi, e1000, serial, kb, ...) register their own
+ * dedicated worker via wth_create_thread() at a strictly lower
+ * priority — see the assert in wth_create_thread().
+ */
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 

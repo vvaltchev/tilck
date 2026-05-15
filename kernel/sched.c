@@ -395,13 +395,22 @@ void yield_until_last(void)
    ASSERT(is_preemption_enabled());
 
    /*
+    * Wait until every other *non-worker* task has reached a stopping
+    * point — SLEEPING via a wait primitive, or ZOMBIE via
+    * kthread_exit — so a caller that inspects shared state next sees
+    * the result of all in-flight work from ordinary tasks.
+    *
+    * Worker threads are a separate schedulable class for bottom-half
+    * processing (see wth.c); they live in worker_threads[], not in
+    * runnable_tasks_list, and are therefore INVISIBLE to this
+    * function. A worker chewing through queued jobs will NOT delay
+    * our return. Callers that need worker quiescence too should
+    * additionally call wth_wait_for_completion() on each worker they
+    * care about.
+    *
     * Idle is always RUNNABLE while curr is RUNNING (it never blocks,
-    * just halt()s in a loop), so runnable_tasks_count >= 1. Therefore
-    * count > 1 means at least one non-idle task is RUNNABLE — which
-    * includes a task that was just preempted mid-work. Keep yielding
-    * until every other task has reached a stopping point (SLEEPING via
-    * a wait primitive, or ZOMBIE via kthread_exit), so a caller that
-    * inspects shared state next sees the result of all in-flight work.
+    * just halt()s in a loop), so runnable_tasks_count >= 1; count > 1
+    * means at least one non-idle, non-worker task is RUNNABLE.
     */
    while (get_runnable_tasks_count() > 1)
       kernel_yield();
@@ -480,6 +489,13 @@ void set_current_task_in_kernel(void)
 
 static void task_add_to_state_list(struct task *ti)
 {
+   /*
+    * Worker threads are a separate schedulable class for bottom-half
+    * processing (see wth.c). They're tracked in worker_threads[] and
+    * picked by wth_get_runnable_thread() — never via this list — so
+    * they intentionally don't show up in runnable_tasks_count
+    * either.
+    */
    if (is_worker_thread(ti))
       return;
 
@@ -509,6 +525,7 @@ static void task_add_to_state_list(struct task *ti)
 
 static void task_remove_from_state_list(struct task *ti)
 {
+   /* Workers don't live in this list — see task_add_to_state_list(). */
    if (is_worker_thread(ti))
       return;
 
@@ -774,7 +791,12 @@ void do_schedule(void)
    if (sched_should_return_immediately(curr, curr_state))
       return;
 
-   /* Check for worker threads ready to run */
+   /*
+    * Workers are picked here, BEFORE the regular runnable-list lookup
+    * below. They're a separate schedulable class for bottom-half
+    * processing (see wth.c), and a runnable worker always wins
+    * against a runnable non-worker.
+    */
    selected = wth_get_runnable_thread();
 
    /* Check for regular runnable tasks */
