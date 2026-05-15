@@ -156,6 +156,7 @@ void init_sched(void);
 struct task *get_task(int tid);
 struct process *get_process(int pid);
 void task_change_state(struct task *ti, enum task_state new_state);
+void task_change_state_unsafe(struct task *ti, enum task_state new_state);
 void task_change_state_idempotent(struct task *ti, enum task_state new_state);
 bool save_regs_and_schedule(bool skip_disable_preempt);
 

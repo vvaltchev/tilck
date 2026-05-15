@@ -173,7 +173,7 @@ void wth_run(void *arg)
       disable_interrupts_forced();
       {
          if (safe_ringbuf_is_empty(&t->rb)) {
-            t->task->state = TASK_STATE_SLEEPING;
+            task_change_state_unsafe(t->task, TASK_STATE_SLEEPING);
             t->waiting_for_jobs = true;
 
             /*

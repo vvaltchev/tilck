@@ -532,17 +532,29 @@ static void task_remove_from_state_list(struct task *ti)
    }
 }
 
-void task_change_state(struct task *ti, enum task_state new_state)
+/*
+ * Variant of task_change_state() for callers that already run with
+ * interrupts disabled. Skips the EFLAGS save/restore — useful inside an
+ * existing disable_interrupts_forced() region (e.g. wth_run()'s sleep
+ * prep) — but still enforces the same invariants the safe wrapper does.
+ */
+void task_change_state_unsafe(struct task *ti, enum task_state new_state)
 {
-   ulong var;
+   ASSERT(!are_interrupts_enabled());
    ASSERT(ti->state != new_state);
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
 
+   task_remove_from_state_list(ti);
+   atomic_store_explicit(&ti->state, new_state, mo_relaxed);
+   task_add_to_state_list(ti);
+}
+
+void task_change_state(struct task *ti, enum task_state new_state)
+{
+   ulong var;
    disable_interrupts(&var);
    {
-      task_remove_from_state_list(ti);
-      atomic_store_explicit(&ti->state, new_state, mo_relaxed);
-      task_add_to_state_list(ti);
+      task_change_state_unsafe(ti, new_state);
    }
    enable_interrupts(&var);
 }
@@ -552,9 +564,8 @@ void task_change_state_idempotent(struct task *ti, enum task_state new_state)
    ulong var;
    disable_interrupts(&var);
    {
-      if (atomic_load_explicit(&ti->state, mo_relaxed) != new_state) {
-         task_change_state(ti, new_state);
-      }
+      if (atomic_load_explicit(&ti->state, mo_relaxed) != new_state)
+         task_change_state_unsafe(ti, new_state);
    }
    enable_interrupts(&var);
 }
