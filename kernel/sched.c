@@ -641,19 +641,27 @@ void sched_account_ticks(void)
    if (curr != idle_task) {
 
       /*
-       * The more currently runnable tasks are, the higher vruntime has to
-       * grow: if case of just 1 runnable task (+1 for idle ignored), vruntime
-       * will increase by just +1. In case of 15 runnable tasks, vruntime will
-       * increase by +15. The logic behind is the following: supposing all the
-       * 15 tasks are runnable and they all start with vruntime = 0, after the
-       * first has run, it will have vruntime = 15 * TIME_SLICE_TICKS and will
-       * have to wait until all the other 14 tasks ran until it can be picked
-       * again.
+       * Grow vruntime by the number of *other* non-idle tasks waiting
+       * for the CPU — i.e. how much this tick costs us in fairness
+       * terms relative to the contenders.
        *
-       * Now, picking the task with the lowest vruntime will be more fair than
-       * picking the task with the lowest `total` number of ticks, because
-       * tasks that that consumed 100% of the CPU when no other task was
-       * runnable won't be so much penalized.
+       * runnable_tasks_count tallies what's in runnable_tasks_list:
+       * RUNNABLE non-idle tasks (curr is RUNNING, not in the list)
+       * plus idle (always RUNNABLE when not curr). The `- 1` backs
+       * out idle, leaving "number of other non-idle tasks waiting".
+       *
+       * The N=1 corner — curr is the only non-idle task — yields +0,
+       * which is load-bearing: a task forked later also starts at
+       * vruntime 0 (allocate_new_thread() kzallocs), so keeping a
+       * long-running solo task at 0 too prevents the newcomer from
+       * leapfrogging an accumulated debt and starving us until it
+       * catches up. Tilck has no min_vruntime hand-off like Linux
+       * CFS; the `- 1` is what stands in for it.
+       *
+       * Picking the task with the lowest vruntime is fairer than
+       * picking the lowest `total` ticks, because tasks that
+       * monopolized the CPU while nothing else wanted it aren't
+       * penalized for it later.
        */
       t->vruntime += (u64)(get_runnable_tasks_count() - 1);
    }
