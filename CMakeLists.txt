@@ -917,6 +917,21 @@ set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
    set(GCC_TC_SYSROOT         ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME})
    set(GCC_TC_ISYSTEM         ${GCC_TC_SYSROOT}/usr/include)
 
+   if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+
+      #
+      # The darwin-packaged musl toolchain installs the target's
+      # system headers directly under <sysroot>/include, not under
+      # <sysroot>/usr/include. Override GCC_TC_ISYSTEM here so the
+      # single existing consumer in kernel/arch/CMakeLists.txt
+      # (which translates to -isystem) resolves the correct path
+      # on this host. The Linux toolchain keeps the /usr/include
+      # layout — leave the default in place for it.
+      #
+      set(GCC_TC_ISYSTEM      ${GCC_TC_SYSROOT}/include)
+
+   endif()
+
 # END [ARCH-dependent paths]
 
 if (BOARD)
