@@ -13,43 +13,74 @@ void wait_obj_set(struct wait_obj *wo,
                   u32 extra,
                   struct list *wait_list)
 {
-   atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
+   STATIC_ASSERT(sizeof(wo->type) == sizeof(u32));
+   ASSERT(type != WOBJ_NONE);
 
    disable_preemption();
    {
+      /*
+       * Caller must hand us a reset wobj. Checking via `type` works for
+       * every wo_type, including those whose `ptr` may legitimately be
+       * NULL (e.g. WOBJ_TASK with tid==0).
+       */
+      ASSERT(wo->type == WOBJ_NONE);
       ASSERT(list_node_is_null(&wo->wait_list_node) ||
              list_node_is_empty(&wo->wait_list_node));
 
-      wo->type = type;
+      atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
       wo->extra = extra;
       list_node_init(&wo->wait_list_node);
 
       if (wait_list)
          list_add_tail(wait_list, &wo->wait_list_node);
+
+      /*
+       * Publish: this store makes the wobj "live". A signaler walking
+       * a wait_list and reading wo->type must see a fully initialized
+       * wobj, so the type write goes last. Cast through ATOMIC(u32) *
+       * to use atomic ops on a plain-enum field — same trick as in
+       * get_curr_task_state().
+       */
+      atomic_store_explicit(
+         (ATOMIC(u32) *)&wo->type, (u32)type, mo_relaxed
+      );
    }
    enable_preemption();
 }
 
 void *wait_obj_reset(struct wait_obj *wo)
 {
-   void *oldp = atomic_exchange_explicit(&wo->__ptr, NULL, mo_relaxed);
+   enum wo_type old_type;
+   void *oldp = NULL;
+
+   STATIC_ASSERT(sizeof(wo->type) == sizeof(u32));
+
    disable_preemption();
    {
-      if (oldp) {
+      /*
+       * Atomic-exchange `type` to claim the cleanup: whoever swaps a
+       * non-NONE value out is the one who tears the wobj down. The
+       * exchange runs inside the preempt-disabled section so a
+       * concurrent signaler iterating a wait_list never observes the
+       * intermediate state (type==WOBJ_NONE while the node is still
+       * linked) — which would corrupt the dispatch in kcond_signal_int.
+       */
+      old_type = (enum wo_type) atomic_exchange_explicit(
+         (ATOMIC(u32) *)&wo->type, (u32)WOBJ_NONE, mo_relaxed
+      );
 
-         wo->type = WOBJ_NONE;
+      if (old_type != WOBJ_NONE) {
+
+         oldp = atomic_exchange_explicit(&wo->__ptr, NULL, mo_relaxed);
 
          if (list_is_node_in_list(&wo->wait_list_node))
             list_remove(&wo->wait_list_node);
 
          list_node_init(&wo->wait_list_node);
-
-      } else {
-
-         ASSERT(wo->type == WOBJ_NONE);
       }
    }
    enable_preemption();
+
    return oldp;
 }
 
@@ -111,6 +142,16 @@ struct multi_obj_waiter *allocate_mobj_waiter(int elems)
 
    bzero(w, s);
    w->count = elems;
+   list_init(&w->signaled_list);
+
+   /*
+    * Put every elem's signaled_node in the "empty" state so cleanup paths
+    * (e.g. free_mobj_waiter on a partially-initialized waiter) can safely
+    * call list_is_node_in_list() on it without dereferencing NULL.
+    */
+   for (int i = 0; i < elems; i++)
+      list_node_init(&w->elems[i].signaled_node);
+
    return w;
 }
 
@@ -140,15 +181,39 @@ mobj_waiter_set(struct multi_obj_waiter *w,
    ASSERT(type != WOBJ_MWO_WAITER && type != WOBJ_MWO_ELEM);
 
    struct mwobj_elem *e = &w->elems[index];
-   wait_obj_set(&e->wobj, WOBJ_MWO_ELEM, ptr, NO_EXTRA, wait_list);
+
+   /*
+    * Populate the elem's state BEFORE wait_obj_set() links it into the
+    * kcond wait_list: once linked, a signaler can find us at any moment
+    * and will dereference e->waiter (to reach signaled_list) and read
+    * e->saved_*. Setting these last would race with the first signal.
+    */
+   e->waiter = w;
+   e->saved_ptr = ptr;
+   e->saved_wait_list = wait_list;
    e->ti = get_curr_task();
    e->type = type;
+
+   wait_obj_set(&e->wobj, WOBJ_MWO_ELEM, ptr, NO_EXTRA, wait_list);
 }
 
 void mobj_waiter_reset(struct mwobj_elem *e)
 {
    wait_obj_reset(&e->wobj);
+
+   /*
+    * The elem may also be linked in waiter->signaled_list if a signal fired
+    * since the last set/rearm. Unlink it here so this routine leaves the
+    * elem in a fully clean state regardless of which "side" had it.
+    */
+   if (list_is_node_in_list(&e->signaled_node))
+      list_remove(&e->signaled_node);
+   list_node_init(&e->signaled_node);
+
    e->ti = NULL;
+   e->waiter = NULL;
+   e->saved_ptr = NULL;
+   e->saved_wait_list = NULL;
    e->type = WOBJ_NONE;
 }
 
@@ -156,6 +221,33 @@ void mobj_waiter_reset2(struct multi_obj_waiter *w, int index)
 {
    struct mwobj_elem *e = &w->elems[index];
    mobj_waiter_reset(e);
+}
+
+/*
+ * Re-attach every signaled elem to its original kcond wait_list.
+ *
+ * Used by poll()/select() when they wake up but the predicate re-check
+ * finds nothing actually ready (e.g. a faster reader drained the data
+ * between wake and check). Without this, the consumed elems would stay
+ * deregistered and future signals on those kconds would miss us — the
+ * poll/select would only wake again on the timer or on a *different*
+ * kcond, even though the original one keeps firing.
+ *
+ * Caller must hold preemption disabled.
+ */
+void mobj_waiter_rearm_signaled(struct multi_obj_waiter *w)
+{
+   struct mwobj_elem *e, *temp;
+   ASSERT(!is_preemption_enabled());
+
+   list_for_each(e, temp, &w->signaled_list, signaled_node) {
+
+      list_remove(&e->signaled_node);
+      list_node_init(&e->signaled_node);
+
+      wait_obj_set(&e->wobj, WOBJ_MWO_ELEM,
+                   e->saved_ptr, NO_EXTRA, e->saved_wait_list);
+   }
 }
 
 void prepare_to_wait_on_multi_obj(struct multi_obj_waiter *w)

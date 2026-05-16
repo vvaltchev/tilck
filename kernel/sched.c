@@ -26,10 +26,15 @@ struct list runnable_tasks_list;
 /* Static variables */
 static struct task *tree_by_tid_root;
 static u64 idle_ticks;
-static volatile int runnable_tasks_count;
+static ATOMIC(int) runnable_tasks_count;     /* see docs/atomics.md */
 static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 struct task *idle_task;
+
+static ALWAYS_INLINE int get_runnable_tasks_count(void)
+{
+   return atomic_load_explicit(&runnable_tasks_count, mo_relaxed);
+}
 
 const char *const task_state_str[5] = {
    [TASK_STATE_INVALID]  = "invalid",
@@ -380,7 +385,7 @@ static void idle(void *unused)
       idle_ticks++;
       halt();
 
-      if (need_reschedule() || runnable_tasks_count > 1)
+      if (need_reschedule() || get_runnable_tasks_count() > 1)
          schedule();
    }
 }
@@ -390,15 +395,24 @@ void yield_until_last(void)
    ASSERT(is_preemption_enabled());
 
    /*
+    * Wait until every other *non-worker* task has reached a stopping
+    * point — SLEEPING via a wait primitive, or ZOMBIE via
+    * kthread_exit — so a caller that inspects shared state next sees
+    * the result of all in-flight work from ordinary tasks.
+    *
+    * Worker threads are a separate schedulable class for bottom-half
+    * processing (see wth.c); they live in worker_threads[], not in
+    * runnable_tasks_list, and are therefore INVISIBLE to this
+    * function. A worker chewing through queued jobs will NOT delay
+    * our return. Callers that need worker quiescence too should
+    * additionally call wth_wait_for_completion() on each worker they
+    * care about.
+    *
     * Idle is always RUNNABLE while curr is RUNNING (it never blocks,
-    * just halt()s in a loop), so runnable_tasks_count >= 1. Therefore
-    * count > 1 means at least one non-idle task is RUNNABLE — which
-    * includes a task that was just preempted mid-work. Keep yielding
-    * until every other task has reached a stopping point (SLEEPING via
-    * a wait primitive, or ZOMBIE via kthread_exit), so a caller that
-    * inspects shared state next sees the result of all in-flight work.
+    * just halt()s in a loop), so runnable_tasks_count >= 1; count > 1
+    * means at least one non-idle, non-worker task is RUNNABLE.
     */
-   while (runnable_tasks_count > 1)
+   while (get_runnable_tasks_count() > 1)
       kernel_yield();
 }
 
@@ -475,6 +489,13 @@ void set_current_task_in_kernel(void)
 
 static void task_add_to_state_list(struct task *ti)
 {
+   /*
+    * Worker threads are a separate schedulable class for bottom-half
+    * processing (see wth.c). They're tracked in worker_threads[] and
+    * picked by wth_get_runnable_thread() — never via this list — so
+    * they intentionally don't show up in runnable_tasks_count
+    * either.
+    */
    if (is_worker_thread(ti))
       return;
 
@@ -482,7 +503,7 @@ static void task_add_to_state_list(struct task *ti)
 
       case TASK_STATE_RUNNABLE:
          list_add_tail(&runnable_tasks_list, &ti->runnable_node);
-         runnable_tasks_count++;
+         atomic_fetch_add_explicit(&runnable_tasks_count, 1, mo_relaxed);
          break;
 
       case TASK_STATE_SLEEPING:
@@ -504,16 +525,29 @@ static void task_add_to_state_list(struct task *ti)
 
 static void task_remove_from_state_list(struct task *ti)
 {
+   /* Workers don't live in this list — see task_add_to_state_list(). */
    if (is_worker_thread(ti))
       return;
 
    switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
 
-      case TASK_STATE_RUNNABLE:
+      case TASK_STATE_RUNNABLE: {
+         /*
+          * prev is debug-only so it doesn't trip
+          * -Werror=unused-but-set-variable in release builds, where
+          * ASSERT() expands to do {} while (0) and never reads it.
+          * DEBUG_ONLY_UNSAFE() expands to nothing in release, so the
+          * partial-wrap on the assignment leaves the atomic_fetch_sub
+          * unconditional while only capturing its return into `prev`
+          * in debug.
+          */
+         DEBUG_ONLY(int prev);
          list_remove(&ti->runnable_node);
-         runnable_tasks_count--;
-         ASSERT(runnable_tasks_count >= 0);
+         DEBUG_ONLY_UNSAFE(prev =)
+            atomic_fetch_sub_explicit(&runnable_tasks_count, 1, mo_relaxed);
+         ASSERT(prev >= 1);
          break;
+      }
 
       case TASK_STATE_SLEEPING:
          /* no dedicated list */
@@ -532,17 +566,29 @@ static void task_remove_from_state_list(struct task *ti)
    }
 }
 
-void task_change_state(struct task *ti, enum task_state new_state)
+/*
+ * Variant of task_change_state() for callers that already run with
+ * interrupts disabled. Skips the EFLAGS save/restore — useful inside an
+ * existing disable_interrupts_forced() region (e.g. wth_run()'s sleep
+ * prep) — but still enforces the same invariants the safe wrapper does.
+ */
+void task_change_state_unsafe(struct task *ti, enum task_state new_state)
 {
-   ulong var;
+   ASSERT(!are_interrupts_enabled());
    ASSERT(ti->state != new_state);
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
 
+   task_remove_from_state_list(ti);
+   atomic_store_explicit(&ti->state, new_state, mo_relaxed);
+   task_add_to_state_list(ti);
+}
+
+void task_change_state(struct task *ti, enum task_state new_state)
+{
+   ulong var;
    disable_interrupts(&var);
    {
-      task_remove_from_state_list(ti);
-      atomic_store_explicit(&ti->state, new_state, mo_relaxed);
-      task_add_to_state_list(ti);
+      task_change_state_unsafe(ti, new_state);
    }
    enable_interrupts(&var);
 }
@@ -552,9 +598,8 @@ void task_change_state_idempotent(struct task *ti, enum task_state new_state)
    ulong var;
    disable_interrupts(&var);
    {
-      if (atomic_load_explicit(&ti->state, mo_relaxed) != new_state) {
-         task_change_state(ti, new_state);
-      }
+      if (atomic_load_explicit(&ti->state, mo_relaxed) != new_state)
+         task_change_state_unsafe(ti, new_state);
    }
    enable_interrupts(&var);
 }
@@ -613,21 +658,29 @@ void sched_account_ticks(void)
    if (curr != idle_task) {
 
       /*
-       * The more currently runnable tasks are, the higher vruntime has to
-       * grow: if case of just 1 runnable task (+1 for idle ignored), vruntime
-       * will increase by just +1. In case of 15 runnable tasks, vruntime will
-       * increase by +15. The logic behind is the following: supposing all the
-       * 15 tasks are runnable and they all start with vruntime = 0, after the
-       * first has run, it will have vruntime = 15 * TIME_SLICE_TICKS and will
-       * have to wait until all the other 14 tasks ran until it can be picked
-       * again.
+       * Grow vruntime by the number of *other* non-idle tasks waiting
+       * for the CPU — i.e. how much this tick costs us in fairness
+       * terms relative to the contenders.
        *
-       * Now, picking the task with the lowest vruntime will be more fair than
-       * picking the task with the lowest `total` number of ticks, because
-       * tasks that that consumed 100% of the CPU when no other task was
-       * runnable won't be so much penalized.
+       * runnable_tasks_count tallies what's in runnable_tasks_list:
+       * RUNNABLE non-idle tasks (curr is RUNNING, not in the list)
+       * plus idle (always RUNNABLE when not curr). The `- 1` backs
+       * out idle, leaving "number of other non-idle tasks waiting".
+       *
+       * The N=1 corner — curr is the only non-idle task — yields +0,
+       * which is load-bearing: a task forked later also starts at
+       * vruntime 0 (allocate_new_thread() kzallocs), so keeping a
+       * long-running solo task at 0 too prevents the newcomer from
+       * leapfrogging an accumulated debt and starving us until it
+       * catches up. Tilck has no min_vruntime hand-off like Linux
+       * CFS; the `- 1` is what stands in for it.
+       *
+       * Picking the task with the lowest vruntime is fairer than
+       * picking the lowest `total` ticks, because tasks that
+       * monopolized the CPU while nothing else wanted it aren't
+       * penalized for it later.
        */
-      t->vruntime += (u64)(runnable_tasks_count - 1);
+      t->vruntime += (u64)(get_runnable_tasks_count() - 1);
    }
 
    /*
@@ -738,7 +791,12 @@ void do_schedule(void)
    if (sched_should_return_immediately(curr, curr_state))
       return;
 
-   /* Check for worker threads ready to run */
+   /*
+    * Workers are picked here, BEFORE the regular runnable-list lookup
+    * below. They're a separate schedulable class for bottom-half
+    * processing (see wth.c), and a runnable worker always wins
+    * against a runnable non-worker.
+    */
    selected = wth_get_runnable_thread();
 
    /* Check for regular runnable tasks */

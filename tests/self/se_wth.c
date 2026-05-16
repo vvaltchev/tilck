@@ -211,19 +211,41 @@ void selftest_wth_perf(void)
    u32 n = 0;
    u64 start, elapsed;
 
-   start = RDTSC();
+   /*
+    * Suppress the producer/worker race for the duration of the
+    * measurement by holding preemption disabled across the loop. The
+    * first wth_enqueue_on() triggers wth_wakeup(), which sets
+    * need_resched; with preemption disabled here, the matching
+    * enable_preemption() inside wth_enqueue_on() can't yield to the
+    * worker (we're nested), so the queue actually fills to its
+    * capacity and the loop terminates deterministically on the first
+    * `!added`. Without this scaffolding, the test relied on the
+    * producer happening to out-pace the worker — a timing-dependent
+    * assumption that doesn't hold when the worker drains as fast as
+    * the producer enqueues (the queue stays at 0–1 items forever).
+    *
+    * What we end up measuring is the raw cost of a successful
+    * wth_enqueue_on() call when the queue has room — which is what
+    * "enqueue cycles" should mean here. enable_preemption() at the
+    * end honors the pending need_resched and finally yields to the
+    * worker to drain.
+    */
+   disable_preemption();
+   {
+      start = RDTSC();
 
-   while (true) {
+      do {
 
-      added = wth_enqueue_on(wth, &test_wth_func, NULL);
+         added = wth_enqueue_on(wth, &test_wth_func, NULL);
 
-      if (!added)
-         break;
+         if (added)
+            n++;
 
-      n++;
+      } while (added);
+
+      elapsed = RDTSC() - start;
    }
-
-   elapsed = RDTSC() - start;
+   enable_preemption();
 
    ASSERT(n > 0); // SA: avoid division by zero warning
    printk("Avg. job enqueue cycles: %" PRIu64 " [%i jobs]\n", elapsed/n, n);

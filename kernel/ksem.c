@@ -60,6 +60,17 @@ ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
 
    if (timeout_ticks > 0)
       task_cancel_wakeup_timer(curr);
+
+   /*
+    * The timer-wakeup path (tick_all_timers) leaves curr->wobj untouched:
+    * it just flips state SLEEPING -> RUNNABLE. If we exit the loop via the
+    * timeout break (or while-condition after a timer wakeup), the wobj is
+    * still pointing at `s` and the node is still linked in s->wait_list.
+    * Leaving it there would assert on the next wait_obj_set, corrupt
+    * s->wait_list in release, or trip ksem_destroy's empty-list assert.
+    * Reset is idempotent — no-op when the signaler already cleared it.
+    */
+   wait_obj_reset(&curr->wobj);
 }
 
 int ksem_wait(struct ksem *s, int units, int timeout_ticks)

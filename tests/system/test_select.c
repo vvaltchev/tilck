@@ -15,6 +15,7 @@
 #include "devshell.h"
 
 void regular_poll_or_select_on_pipe_child(int rfd, int wfd);
+void rearm_poll_or_select_on_pipe_child(int rfd, int wfd);
 
 
 /* Regular comunication with child via pipe, before poll timeout */
@@ -353,5 +354,70 @@ again:
       goto again;
    }
 
+   return 0;
+}
+
+/*
+ * Sibling of cmd_poll4: same child dance (write, drain, yield, write),
+ * but the parent waits via select() instead of poll(). The underlying
+ * multi-obj waiter / signaled_list machinery is shared between the two
+ * syscalls, so we want both exercised. See cmd_poll4 in test_poll.c for
+ * the full scenario description.
+ */
+int cmd_select5(int argc, char **argv)
+{
+   struct timeval tv;
+   fd_set readfds;
+   int pipefd[2];
+   int wstatus;
+   int rc;
+   pid_t childpid;
+
+   printf(STR_PARENT "Calling pipe()\n");
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf(STR_PARENT "pipe() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf(STR_PARENT "fork()..\n");
+   childpid = fork();
+   DEVSHELL_CMD_ASSERT(childpid >= 0);
+
+   if (!childpid)
+      rearm_poll_or_select_on_pipe_child(pipefd[0], pipefd[1]);
+
+   FD_ZERO(&readfds);
+   FD_SET(pipefd[0], &readfds);
+   tv.tv_sec = 2;
+   tv.tv_usec = 0;
+
+   printf(STR_PARENT "select(rfd, 2s)..\n");
+
+   do {
+      rc = select(pipefd[0] + 1, &readfds, NULL, NULL, &tv);
+   } while (rc < 0 && errno == EINTR);
+
+   waitpid(childpid, &wstatus, 0);
+   close(pipefd[0]);
+   close(pipefd[1]);
+
+   if (rc < 0) {
+      printf(STR_PARENT "ERROR: select() failed with: %s\n", strerror(errno));
+      return 1;
+   }
+
+   if (rc == 0) {
+      printf(STR_PARENT "FAIL: select() timed out — 2nd write was lost\n");
+      return 1;
+   }
+
+   if (!FD_ISSET(pipefd[0], &readfds)) {
+      printf(STR_PARENT "FAIL: select() returned %d but rfd not set\n", rc);
+      return 1;
+   }
+
+   printf(STR_PARENT "select() correctly woke on the 2nd write\n");
    return 0;
 }

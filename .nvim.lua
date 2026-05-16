@@ -7,7 +7,7 @@ end
 
 local function clangd_cmd(bufnr)
   local root = project_root(bufnr)
-  local toolchain_glob = root .. "/toolchain3/syscc/host_x86_64/**/bin/*"
+  local toolchain_glob = root .. "/toolchain4/**/bin/*-linux-*"
   return {
     "clangd",
     "--background-index",

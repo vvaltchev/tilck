@@ -1,5 +1,44 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+/*
+ * Worker threads ("wth"): bottom-half processing for the kernel.
+ *
+ * A worker thread is a long-lived kernel thread that consumes a queue
+ * of {func, arg} jobs and goes back to sleep when the queue drains.
+ * They exist so that IRQ handlers — which must stay short and can't
+ * sleep — can defer the real work by enqueueing a job via
+ * wth_enqueue_on() / wth_enqueue_anywhere(). The IRQ returns
+ * immediately; the matching worker picks the job up later in task
+ * context, where preemption is enabled and the full kernel API is
+ * available.
+ *
+ * Worker threads are a *separate* kind of schedulable entity from
+ * ordinary tasks. In particular:
+ *
+ *   - They live in worker_threads[] (sorted by priority), NOT in the
+ *     scheduler's runnable_tasks_list. The scheduler picks them via
+ *     a dedicated pass (wth_get_runnable_thread() in do_schedule)
+ *     that runs BEFORE the regular runnable-list lookup, so a
+ *     runnable worker always wins against a runnable non-worker.
+ *
+ *   - They have no timeslice: sched_account_ticks() never sets
+ *     need_resched for a running worker. A worker yields voluntarily
+ *     when its queue drains, or gets preempted only by a
+ *     higher-priority worker waking up.
+ *
+ *   - They are intentionally invisible to runnable_tasks_count, so
+ *     code that polls it — yield_until_last(), idle's halt-loop
+ *     check, sched_account_ticks()'s vruntime weighting — is
+ *     worker-blind by design. Workers are bottom halves, not tasks
+ *     competing for fairness.
+ *
+ * Convention: worker_threads[0] is the singleton "generic" worker
+ * created at boot by init_worker_threads() at WTH_PRIO_HIGHEST.
+ * Subsystems (acpi, e1000, serial, kb, ...) register their own
+ * dedicated worker via wth_create_thread() at a strictly lower
+ * priority — see the assert in wth_create_thread().
+ */
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 
@@ -94,7 +133,7 @@ wth_enqueue_anywhere(int lowest_prio, void (*func)(void *), void *arg)
 {
    struct worker_thread *wth;
 
-   if (lowest_prio == 0) /* optimization for highest prio case */
+   if (lowest_prio == WTH_PRIO_HIGHEST) /* shortcut: take the init worker */
       return wth_enqueue_on(worker_threads[0], func, arg);
 
    for (int i = worker_threads_cnt-1; i >= 0; i--) {
@@ -119,7 +158,7 @@ wth_find_worker(int lowest_prio)
 {
    struct worker_thread *wth;
 
-   if (lowest_prio == 0) /* optimization for highest prio case */
+   if (lowest_prio == WTH_PRIO_HIGHEST) /* shortcut: take the init worker */
       return worker_threads[0];
 
    for (int i = worker_threads_cnt-1; i >= 0; i--) {
@@ -173,15 +212,46 @@ void wth_run(void *arg)
       disable_interrupts_forced();
       {
          if (safe_ringbuf_is_empty(&t->rb)) {
-            t->task->state = TASK_STATE_SLEEPING;
+            task_change_state_unsafe(t->task, TASK_STATE_SLEEPING);
             t->waiting_for_jobs = true;
+
+            /*
+             * Signal completion waiters from inside the IRQ-disabled
+             * region. Doing this after enable_interrupts_forced() races
+             * with an IRQ-driven wth_wakeup() that would clear
+             * waiting_for_jobs in the same window — the signal would
+             * then be skipped and wth_wait_for_completion() would have
+             * to ride out its kcond_wait() timeout instead.
+             */
+            kcond_signal_all(&t->completion);
          }
       }
       enable_interrupts_forced();
 
       if (t->waiting_for_jobs) {
-         kcond_signal_all(&t->completion);
          schedule();
+      } else if (t->task->state == TASK_STATE_RUNNABLE) {
+         /*
+          * Race wakeup: an IRQ-driven wth_wakeup() between the
+          * IRQ-disabled region above and here cleared
+          * waiting_for_jobs and CASed our state SLEEPING -> RUNNABLE.
+          * Normalize back to RUNNING before we loop to drain — the
+          * scheduler's "curr is RUNNING" invariant is otherwise
+          * violated, and sched_account_ticks() would keep setting
+          * need_resched on every timer tick until the next
+          * do_schedule() fixed it via the selected==curr branch.
+          *
+          * Note: doing the SLEEPING -> RUNNING transition in
+          * wth_wakeup() instead — i.e. CASing to RUNNING when the
+          * wakeup catches the worker as curr — would race with
+          * do_schedule(), which has already captured curr_state into
+          * a local: it would skip the RUNNING -> RUNNABLE downgrade
+          * and switch_to_task() would assert curr->state != RUNNING.
+          * Handling it here, in the worker, sidesteps that.
+          */
+         disable_interrupts_forced();
+         task_change_state_unsafe(t->task, TASK_STATE_RUNNING);
+         enable_interrupts_forced();
       }
    }
 }
@@ -211,6 +281,17 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
 
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
+
+   ASSERT(priority >= WTH_PRIO_HIGHEST && priority <= WTH_PRIO_LOWEST);
+
+   /*
+    * Only the singleton init-time worker (the first to call this) may
+    * occupy WTH_PRIO_HIGHEST. Every later caller must pass a strictly
+    * lower priority (= numerically higher), so worker_threads[0] stays
+    * the init worker — the fast paths of wth_enqueue_anywhere() and
+    * wth_find_worker() rely on this.
+    */
+   ASSERT(worker_threads_cnt == 0 || priority > WTH_PRIO_HIGHEST);
 
    if (worker_threads_cnt >= ARRAY_SIZE(worker_threads))
       return NULL; /* too many worker threads */
@@ -271,5 +352,5 @@ init_wth_create_worker_or_die(int prio, u16 queue_size)
 void init_worker_threads(void)
 {
    worker_threads_cnt = 0;
-   init_wth_create_worker_or_die(0, WTH_MAX_PRIO_QUEUE_SIZE);
+   init_wth_create_worker_or_die(WTH_PRIO_HIGHEST, WTH_MAX_PRIO_QUEUE_SIZE);
 }

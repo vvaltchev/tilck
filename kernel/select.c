@@ -298,8 +298,17 @@ select_wait_on_cond(struct select_ctx *c)
              */
 
             disable_preemption();
-            if (!count_ready_streams(c->nfds, c->sets))
-               continue; /* No ready streams, wait again (preempt disabled). */
+            if (!count_ready_streams(c->nfds, c->sets)) {
+               /*
+                * Signal woke us but nothing is ready (a faster reader drained
+                * the data between wake and check). The fired elem was removed
+                * from its kcond wait_list and parked in waiter->signaled_list;
+                * re-arm it before sleeping again, otherwise the next signal
+                * on that same kcond would miss us entirely.
+                */
+               mobj_waiter_rearm_signaled(waiter);
+               continue; /* preempt still disabled */
+            }
 
             u32 rem = task_cancel_wakeup_timer(curr);
             c->tv->tv_sec = rem / KRN_TIMER_HZ;
@@ -312,8 +321,11 @@ select_wait_on_cond(struct select_ctx *c)
          /* No timeout: we woke-up because of a kcond was signaled */
 
          disable_preemption();
-         if (!count_ready_streams(c->nfds, c->sets))
-            continue; /* No ready streams, wait again (preempt disabled). */
+         if (!count_ready_streams(c->nfds, c->sets)) {
+            /* See the matching comment above. */
+            mobj_waiter_rearm_signaled(waiter);
+            continue; /* preempt still disabled */
+         }
          enable_preemption();
       }
 

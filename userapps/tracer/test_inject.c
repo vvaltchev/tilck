@@ -146,19 +146,47 @@ slot_offset(unsigned sys_n, int param_idx)
 }
 
 /*
- * Push `e` into the ring, read events back until we hit one with a
- * test-sentinel tid (INJ_TID / INJ_TID2), copy it into `out`. Returns
- * 0 on success, -1 on failure (the caller already called test_fail
- * in that case).
+ * Read events back, skipping stray kernel-side ones, until one with a
+ * test-sentinel tid (INJ_TID / INJ_TID2) lands in `out`. Returns 0 on
+ * success, -1 on read error.
  *
  * Why the loop: cmd_set_enabled is OFF during Tier 2, so the global
  * syscall-trace gate doesn't produce events. trace_printk(), however,
  * is gated only by __tracing_printk_lvl (default 10) — not by the
  * global enabled flag — so a kernel printk from e.g. clock_drift_adj
- * can race in between drain_ring() and our read() and end up in the
- * ring ahead of our injected event. Skip past anything whose tid
+ * or signal-handler setup can race into the ring between our
+ * drain_ring()/injects and our read()s. Skip past anything whose tid
  * isn't one of our sentinels (90001/90002, well outside real task
  * and worker-thread tid ranges).
+ */
+static int
+read_skip_strays(const char *name, struct dp_trace_event *out)
+{
+   char r[80];
+
+   for (;;) {
+
+      ssize_t n = read(events_fd, out, sizeof(*out));
+
+      if (n != (ssize_t)sizeof(*out)) {
+         snprintf(r, sizeof(r),
+                  "read failed (n=%ld, errno=%d)", (long)n, errno);
+         n_failed++;
+         printf("  [FAIL] %s: %s\n", name, r);
+         return -1;
+      }
+
+      if (out->tid == INJ_TID || out->tid == INJ_TID2)
+         return 0;
+
+      /* Kernel-side event raced in — skip and keep reading. */
+   }
+}
+
+/*
+ * Push `e` into the ring, then read back the matching sentinel event
+ * into `out`. Returns 0 on success, -1 on failure (the helper already
+ * called test_fail in that case).
  */
 static int
 inject_and_read(const char *name,
@@ -171,31 +199,12 @@ inject_and_read(const char *name,
 
    if (cmd_inject_event(e) < 0) {
       snprintf(r, sizeof(r), "cmd_inject_event failed (errno=%d)", errno);
-      goto fail;
+      n_failed++;
+      printf("  [FAIL] %s: %s\n", name, r);
+      return -1;
    }
 
-   for (;;) {
-
-      ssize_t n = read(events_fd, out, sizeof(*out));
-
-      if (n != (ssize_t)sizeof(*out)) {
-         snprintf(r, sizeof(r),
-                  "read after inject failed (n=%ld, errno=%d)",
-                  (long)n, errno);
-         goto fail;
-      }
-
-      if (out->tid == INJ_TID || out->tid == INJ_TID2)
-         return 0;
-
-      /* Kernel-side event raced in — skip and keep reading. */
-   }
-
-fail:
-   n_failed++;
-   /* test_fail clones the reason buffer; we re-emit it here. */
-   printf("  [FAIL] %s: %s\n", name, r);
-   return -1;
+   return read_skip_strays(name, out);
 }
 
 static bool
@@ -784,6 +793,7 @@ test_inj_tid_roundtrip(void)
 {
    const char *name = "inj_tid_roundtrip";
    struct dp_trace_event ev_a, ev_b, back_a, back_b;
+   char r[80];
 
    mkev(&ev_a, dp_te_sys_enter, INJ_TID);
    ev_a.sys_ev.sys = SYS_getpid;
@@ -798,15 +808,23 @@ test_inj_tid_roundtrip(void)
       return;
    }
 
-   if (read(events_fd, &back_a, sizeof(back_a)) != (ssize_t)sizeof(back_a) ||
-       read(events_fd, &back_b, sizeof(back_b)) != (ssize_t)sizeof(back_b))
-   {
-      test_fail(name, "read failed");
-      return;
-   }
+   /*
+    * Use read_skip_strays() rather than bare read(): a trace_printk()
+    * from a kernel thread (clock_drift_adj, signal-handler setup, ...)
+    * can race into the ring between our drain_ring()/injects and
+    * these reads, and a bare read would return that stray event as
+    * back_a — causing a false "tid round-trip mismatch". Same hazard
+    * inject_and_read() exists to paper over.
+    */
+   if (read_skip_strays(name, &back_a) < 0 ||
+       read_skip_strays(name, &back_b) < 0)
+      return;   /* read_skip_strays already called test_fail */
 
    if (back_a.tid != INJ_TID || back_b.tid != INJ_TID2) {
-      test_fail(name, "tid round-trip mismatch");
+      snprintf(r, sizeof(r),
+               "tid round-trip mismatch (got %d, %d; want %d, %d)",
+               back_a.tid, back_b.tid, INJ_TID, INJ_TID2);
+      test_fail(name, r);
       return;
    }
 
