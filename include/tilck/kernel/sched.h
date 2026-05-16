@@ -101,7 +101,22 @@ struct task {
     */
    bool stop_reported;
 
-   volatile ATOMIC(enum task_state) state;   /* see docs/atomics.md */
+   /*
+    * Both `volatile` and `_Atomic` are load-bearing here, for two
+    * separate reasons:
+    *
+    *   - _Atomic: the field is updated from interrupt context (see
+    *     wth.c) and from regular code, so the load/store must be
+    *     indivisible on architectures where a single MOV is not
+    *     enough (e.g. riscv64).
+    *
+    *   - volatile: even with _Atomic, C11 lets the compiler combine
+    *     or hoist `mo_relaxed` loads when no sequenced-before /
+    *     synchronizes-with relationship demands otherwise. volatile
+    *     is what forces every access to be a real load/store. See
+    *     docs/atomics.md for the full rationale.
+    */
+   volatile ATOMIC(enum task_state) state;
 
    regs_t *state_regs;
    regs_t *fault_resume_regs;

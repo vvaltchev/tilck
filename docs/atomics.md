@@ -53,3 +53,50 @@ it also needs to be *volatile* because it is read in loops (see `sys_waitpid`)
 waiting for it to change. Theoretically, in case of consecutive atomic loads,
 the compiler is *not* obliged to perform every time an actual read and it might
 cache the value in a register, according to the C11 atomics model.
+
+### Why `_Atomic` alone isn't enough: the C11 relaxed-atomics gap
+
+The reason atomic-without-volatile is not a substitute for volatile-atomic
+goes deeper than the example above. Per the C11/C17 memory model, two
+adjacent `atomic_load_explicit(&x, memory_order_relaxed)` calls have *no*
+sequenced-before or synchronizes-with relationship between them, so the
+compiler is permitted to combine them into a single load. The same applies
+to a load that no other observable behavior depends on — it can be hoisted
+out of a loop. GCC and Clang in their current versions don't do this
+aggressively for atomic operations, but that's an implementation choice,
+not a language guarantee, and it can change between releases or under LTO.
+
+`volatile` is the standard's mechanism for "every access is an observable
+side effect; emit a real load/store every time." Tagging the field
+`volatile` (Tilck's approach) and casting to volatile at each access site
+(Linux's `READ_ONCE` / `WRITE_ONCE`) are two ways to spell the same
+defensive guarantee. Either way, the compiler is forced to honor each
+access.
+
+### A note on the `sys_waitpid` example
+
+The cited wait loop in `kernel/waitpid.c` is *currently* safe even without
+volatile, but for a reason that doesn't generalize: the loop body calls
+out-of-TU functions (`disable_preemption`, `prepare_to_wait_on`,
+`enter_sleep_wait_state`, ...) and the compiler can't carry a cached
+register value of `ti->state` across them — they're opaque and could
+modify any memory. That's a *coincidental* protection, not a designed one.
+
+Two ways that protection can disappear:
+
+1. **Inlining changes.** A `static inline` annotation, LTO, or a refactor
+   that brings the helpers into the same TU lets the compiler see they
+   don't touch `ti->state` and hoist the load.
+
+2. **Similar patterns elsewhere.** A future poll loop somewhere else in
+   the kernel that does
+   `while (atomic_load_explicit(&ti->state, mo_relaxed) != X) { ... }`
+   without function-call barriers in the body has no such backstop and
+   would silently break under `-O2`.
+
+So `volatile` on `state` is the actual defense, doing real work even
+where the current code happens to be safe for other reasons. The general
+rule: **for any variable read by code that depends on observing a change
+written elsewhere (an ISR, another task), prefer volatile-atomic over
+plain atomic**, regardless of whether today's call graph happens to
+serialize the accesses.
