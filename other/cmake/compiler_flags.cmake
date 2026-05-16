@@ -34,8 +34,21 @@ if (TEST_GCOV OR KERNEL_GCOV)
 endif()
 
 if (TEST_GCOV)
-   set(GCOV_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
-   set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
+   #
+   # --coverage is the documented "do coverage" flag understood by
+   # both gcc and clang. At compile time it implies
+   # `-fprofile-arcs -ftest-coverage`; at link time it implies the
+   # right runtime library for the compiler driver in use -- gcc
+   # pulls in libgcov.a, darwin clang pulls in
+   # libclang_rt.profile_osx.a, linux clang pulls in the
+   # equivalent compiler-rt library. The previous hardcoded
+   # `-lgcov` only worked when libgcov happened to be on the link
+   # search path (e.g. Linux hosts with a system gcc) and broke on
+   # darwin clang, which doesn't ship a library named "gcov" at
+   # all.
+   #
+   set(GCOV_COMPILE_FLAGS "--coverage")
+   set(GCOV_LINK_FLAGS "--coverage")
 endif()
 
 set(
