@@ -46,8 +46,18 @@
 #define atomic_store_explicit(ptr, newval, mo) \
    (void)atomic_exchange_explicit(ptr, newval, mo)
 
+/*
+ * Cast the literal 0 to typeof(*ptr) so that __sync_fetch_and_add's
+ * second parameter matches its first when *ptr is an enum or a
+ * narrower integer type. C is happy to convert int -> enum
+ * implicitly, but C++ refuses ("cannot initialize a parameter of
+ * type 'enum X' with an rvalue of type 'int'"). The cast keeps
+ * the static-analysis C++ build (clang_tc_isystem) compiling once
+ * any C-header function (e.g. is_task_stopped in sched.h) does an
+ * atomic load on an enum field.
+ */
 #define atomic_load_explicit(ptr, mo) \
-   __sync_fetch_and_add(ptr, 0)
+   __sync_fetch_and_add(ptr, (typeof(*(ptr)))0)
 
 #define atomic_fetch_add_explicit(ptr, val, mo) \
    __sync_fetch_and_add(ptr, val)
