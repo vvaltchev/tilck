@@ -271,10 +271,28 @@ stop_all_user_tasks(void *task, void *unused)
 {
    struct task *ti = task;
 
-   if (!is_kernel_thread(ti) && ti != get_curr_task()) {
-      printk("Stopping TID %d\n", ti->tid);
-      ti->stopped = true;
-   }
+   if (is_kernel_thread(ti) || ti == get_curr_task())
+      return 0;
+
+   printk("Stopping TID %d\n", ti->tid);
+
+   /*
+    * Apply the freeze per state so the scheduler honors it:
+    *
+    *   - RUNNABLE: transition straight to STOPPED.
+    *   - SLEEPING: arm stop_pending so the next wake routes to
+    *     STOPPED (see kernel/wobj.c).
+    *
+    * Preemption is off in the caller but interrupts may be on, so
+    * use the safe wrapper.
+    */
+   const enum task_state s =
+      atomic_load_explicit(&ti->state, mo_relaxed);
+
+   if (s == TASK_STATE_RUNNABLE)
+      task_change_state(ti, TASK_STATE_STOPPED);
+   else if (s == TASK_STATE_SLEEPING)
+      ti->stop_pending = true;
 
    return 0;
 }

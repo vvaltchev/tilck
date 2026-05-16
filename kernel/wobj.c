@@ -121,7 +121,25 @@ void *wake_up(struct task *ti)
           * function that does NOT "downgrade" a task from RUNNING to RUNNABLE.
           * Until then, checking that ti != current is enough.
           */
-         task_change_state_idempotent(ti, TASK_STATE_RUNNABLE);
+
+         /*
+          * Stop-on-wake: if a SIGSTOP-class signal arrived while
+          * the task was SLEEPING, action_stop() set ti->stop_pending
+          * but left the state SLEEPING (the wait_obj was untouched
+          * on purpose). Honor that pending stop now by routing the
+          * transition to STOPPED instead of RUNNABLE — the task
+          * stays out of the runnable list/tree until SIGCONT. The
+          * flag has done its job; consume it so the invariant
+          * "stopped flag set => state == SLEEPING" is preserved.
+          */
+         enum task_state next = TASK_STATE_RUNNABLE;
+
+         if (UNLIKELY(ti->stop_pending)) {
+            next = TASK_STATE_STOPPED;
+            ti->stop_pending = false;
+         }
+
+         task_change_state_idempotent(ti, next);
       }
    }
    enable_preemption();

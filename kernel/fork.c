@@ -121,8 +121,15 @@ int do_fork(regs_t *user_regs, bool vfork)
 
    if (vfork) {
 
-      curr->stopped = true;
+      /*
+       * Park the parent in TASK_STATE_STOPPED until the child execs
+       * or dies. vfork_stopped distinguishes "stopped because of
+       * vfork" from a SIGSTOP, which matters for
+       * signal_wakeup_task() (which won't wake a vfork-stopped
+       * task for a killing signal — see signal.c).
+       */
       curr->vfork_stopped = true;
+      task_change_state(curr, TASK_STATE_STOPPED);
 
    } else {
 
@@ -146,8 +153,11 @@ int do_fork(regs_t *user_regs, bool vfork)
        */
       schedule();
 
-      /* Make absolutely sure that we're running because we're not stopped */
-      ASSERT(!curr->stopped);
+      /*
+       * If we're past schedule() then the vfork-completion code in
+       * process.c transitioned us back to RUNNABLE (and the
+       * scheduler now to RUNNING) and cleared vfork_stopped.
+       */
       ASSERT(!curr->vfork_stopped);
 
       /* Check that the child died or called execve() */

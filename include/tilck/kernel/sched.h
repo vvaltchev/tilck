@@ -20,7 +20,19 @@ enum task_state {
    TASK_STATE_RUNNABLE  = 1,
    TASK_STATE_RUNNING   = 2,
    TASK_STATE_SLEEPING  = 3,
-   TASK_STATE_ZOMBIE    = 4
+   TASK_STATE_ZOMBIE    = 4,
+
+   /*
+    * STOPPED is a real scheduler state: the task is not in the
+    * runnable list/tree and won't be picked until SIGCONT brings it
+    * back to RUNNABLE. See action_stop()/action_continue() in
+    * kernel/signal.c. A SIGSTOP delivered while the task is SLEEPING
+    * doesn't change state immediately — it sets ti->stop_pending and
+    * the wake-up path (wake_up() in kernel/wobj.c, tick_all_timers()
+    * in kernel/timer.c) redirects the eventual SLEEPING -> RUNNABLE
+    * transition into SLEEPING -> STOPPED.
+    */
+   TASK_STATE_STOPPED   = 5,
 };
 
 enum wakeup_reason {
@@ -66,7 +78,18 @@ struct task {
 
    u32 running_in_kernel;
    bool is_main_thread;                      /* value of `tid == pi->pid` */
-   bool stopped;
+
+   /*
+    * "SIGSTOP pending on a sleeping task" — narrow stop-on-wake
+    * marker. action_stop() sets it only when state == SLEEPING; the
+    * wake paths (wake_up in kernel/wobj.c, tick_all_timers in
+    * kernel/timer.c) read it to route the SLEEPING -> RUNNABLE
+    * transition to SLEEPING -> STOPPED instead, and clear it.
+    * Invariant: stop_pending => state == SLEEPING. For
+    * RUNNING/RUNNABLE tasks the stop is applied directly via
+    * task_change_state(ti, TASK_STATE_STOPPED).
+    */
+   bool stop_pending;
    bool was_stopped;
 
    volatile ATOMIC(enum task_state) state;   /* see docs/atomics.md */
@@ -142,7 +165,32 @@ extern struct process *kernel_process_pi;
 extern struct task *idle_task;
 
 extern struct list runnable_tasks_list;
-extern const char *const task_state_str[5];
+extern const char *const task_state_str[6];
+
+/*
+ * "Is this task semantically stopped from the user POV?"
+ *
+ * Returns true for either an explicitly STOPPED task or a task
+ * still SLEEPING with a SIGSTOP pending (the actual SLEEPING ->
+ * STOPPED transition happens at the next wake — see
+ * kernel/wobj.c and kernel/timer.c). Used by waitpid() and the
+ * debugpanel task dump where the user-facing notion of "stopped"
+ * should include both flavors.
+ */
+static ALWAYS_INLINE bool is_task_stopped(struct task *ti)
+{
+   /*
+    * Explicit cast: atomic_load_explicit on a _Atomic enum returns
+    * the underlying integer type when this header is included from
+    * C++ (gtests), and C++ won't implicitly narrow int back to the
+    * enum. The cast keeps both C and C++ compilations happy.
+    */
+   const enum task_state s = (enum task_state)
+      atomic_load_explicit(&ti->state, mo_relaxed);
+
+   return s == TASK_STATE_STOPPED
+      || (s == TASK_STATE_SLEEPING && ti->stop_pending);
+}
 
 #define KTH_ALLOC_BUFS                       (1 << 0)
 #define KTH_WORKER_THREAD                    (1 << 1)

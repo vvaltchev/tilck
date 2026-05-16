@@ -36,12 +36,13 @@ static ALWAYS_INLINE int get_runnable_tasks_count(void)
    return atomic_load_explicit(&runnable_tasks_count, mo_relaxed);
 }
 
-const char *const task_state_str[5] = {
+const char *const task_state_str[6] = {
    [TASK_STATE_INVALID]  = "invalid",
    [TASK_STATE_RUNNABLE] = "runnable",
    [TASK_STATE_RUNNING]  = "running",
    [TASK_STATE_SLEEPING] = "sleeping",
    [TASK_STATE_ZOMBIE]   = "zombie",
+   [TASK_STATE_STOPPED]  = "stopped",
 };
 
 void enable_preemption(void)
@@ -518,6 +519,17 @@ static void task_add_to_state_list(struct task *ti)
          /* no dedicated list */
          break;
 
+      case TASK_STATE_STOPPED:
+         /*
+          * Stopped tasks live outside the runnable list/tree on
+          * purpose — that's the whole point of having STOPPED be a
+          * real state rather than a flag overlaid on RUNNABLE. They
+          * become reachable again only via task_change_state(...,
+          * RUNNABLE) when SIGCONT arrives (see action_continue() in
+          * kernel/signal.c).
+          */
+         break;
+
       default:
          NOT_REACHED();
    }
@@ -559,6 +571,17 @@ static void task_remove_from_state_list(struct task *ti)
 
       case TASK_STATE_ZOMBIE:
          /* no dedicated list */
+         break;
+
+      case TASK_STATE_STOPPED:
+         /*
+          * STOPPED tasks live outside the runnable list/tree —
+          * mirror image of the STOPPED case in
+          * task_add_to_state_list(). Removing such a task is a
+          * no-op, but we still hit this path when the state
+          * machine transitions STOPPED -> RUNNABLE on SIGCONT or
+          * on a killing signal (via signal_wakeup_task).
+          */
          break;
 
       default:
@@ -690,7 +713,12 @@ void sched_account_ticks(void)
     */
    const bool timeout = !is_worker && t->timeslice >= TIME_SLICE_TICKS;
 
-   if (curr->stopped || !is_running || timeout)
+   /*
+    * !is_running covers all the cases where curr can't keep running
+    * (SLEEPING, ZOMBIE, STOPPED) — including SIGSTOP, which transitions
+    * the task to TASK_STATE_STOPPED. No separate `stopped` check needed.
+    */
+   if (!is_running || timeout)
       sched_set_need_resched();
 }
 
@@ -740,7 +768,13 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 
       ASSERT_TASK_STATE(pos->state, TASK_STATE_RUNNABLE);
 
-      if (pos->stopped || pos == idle_task)
+      /*
+       * STOPPED tasks aren't in this list (they live outside it on
+       * purpose — see task_add_to_state_list and action_stop in
+       * kernel/signal.c), so the only thing we still need to skip
+       * here is the idle task itself.
+       */
+      if (pos == idle_task)
          continue;
 
       if (pos->timer_ready) {
@@ -755,7 +789,7 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
    /* If there is still no selected task, check for current task */
    if (!selected) {
 
-      if (curr_state == TASK_STATE_RUNNING && !curr->stopped)
+      if (curr_state == TASK_STATE_RUNNING)
          selected = curr;
    }
 
@@ -767,7 +801,7 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
        * yield to any other task.
        */
 
-      if (curr_state == TASK_STATE_RUNNING && !curr->stopped)
+      if (curr_state == TASK_STATE_RUNNING)
          if (curr->ticks.vruntime < selected->ticks.vruntime)
             selected = curr;
    }
@@ -809,9 +843,6 @@ void do_schedule(void)
    }
 
    if (selected != curr) {
-
-      /* Sanity check */
-      ASSERT(!selected->stopped);
 
       /* If we preempted the process, it is still `running` */
       if (curr_state == TASK_STATE_RUNNING)

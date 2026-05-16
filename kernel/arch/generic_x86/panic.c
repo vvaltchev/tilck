@@ -98,9 +98,31 @@ stop_all_other_tasks(void *task, void *unused)
 {
    struct task *ti = task;
 
-   if (ti != get_curr_task()) {
-      ti->stopped = true;
-   }
+   if (ti == get_curr_task())
+      return 0;
+
+   /*
+    * Defensive freeze used in the kopt_panic_kb branch: re-enabling
+    * interrupts to keep the keyboard alive could wake a sleeping
+    * task or let the scheduler pick a runnable one. Apply the
+    * correct freeze action per state:
+    *
+    *   - RUNNABLE: transition straight to STOPPED (out of the
+    *     runnable list/tree).
+    *   - SLEEPING: arm stop_pending so the eventual wake routes
+    *     to STOPPED instead of RUNNABLE (see kernel/wobj.c).
+    *
+    * Interrupts are forced off in the caller, so we can use the
+    * unsafe variant. Worker threads (managed separately) and the
+    * other already-not-runnable states are left as-is.
+    */
+   const enum task_state s =
+      atomic_load_explicit(&ti->state, mo_relaxed);
+
+   if (s == TASK_STATE_RUNNABLE)
+      task_change_state_unsafe(ti, TASK_STATE_STOPPED);
+   else if (s == TASK_STATE_SLEEPING)
+      ti->stop_pending = true;
 
    return 0;
 }

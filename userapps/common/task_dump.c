@@ -48,10 +48,18 @@ void state_to_str(char *out, unsigned char state, bool stopped, bool traced)
       case TS_RUNNING:   *p++ = 'R'; break;
       case TS_SLEEPING:  *p++ = 's'; break;
       case TS_ZOMBIE:    *p++ = 'Z'; break;
+      case TS_STOPPED:   *p++ = 'T'; break;
       default:           *p++ = '?'; break;
    }
 
-   if (stopped) *p++ = 'S';
+   /*
+    * 'T' from TS_STOPPED above already conveys "user-visibly
+    * stopped" — don't append a second 'S' that would mean nothing
+    * extra. The 'S' suffix only applies to a SLEEPING task that
+    * has a SIGSTOP pending, where is_task_stopped() is true but
+    * state is still SLEEPING (see kernel/wobj.c "stop-on-wake").
+    */
+   if (stopped && state != TS_STOPPED) *p++ = 'S';
    if (traced)  *p++ = 't';
    *p = 0;
 }

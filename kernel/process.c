@@ -547,11 +547,11 @@ unblock_parent_of_vforked_child(struct process *pi)
    parent = get_task(pi->parent_pid);
 
    ASSERT(parent != NULL);
-   ASSERT(parent->stopped);
+   ASSERT(parent->state == TASK_STATE_STOPPED);
    ASSERT(parent->vfork_stopped);
 
-   parent->stopped = false;
    parent->vfork_stopped = false;
+   task_change_state(parent, TASK_STATE_RUNNABLE);
 }
 
 void

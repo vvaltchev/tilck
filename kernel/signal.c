@@ -256,25 +256,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
 
 static void signal_wakeup_task(struct task *ti)
 {
-   if (!ti->vfork_stopped) {
-
-      if (ti->state == TASK_STATE_SLEEPING) {
-
-         /*
-          * We must NOT wake up tasks waiting on a mutex or on a semaphore:
-          * supporting spurious wake-ups there, is just a waste of resources.
-          * On the contrary, if a task is waiting on a condition or sleeping
-          * in kernel_sleep(), we HAVE to wake it up.
-          */
-
-         if (ti->wobj.type != WOBJ_KMUTEX && ti->wobj.type != WOBJ_SEM)
-            wake_up(ti);
-      }
-
-
-      ti->stopped = false;
-
-   } else {
+   if (ti->vfork_stopped) {
 
       /*
        * The task is vfork_stopped: we cannot make it runnable, nor kill it
@@ -285,6 +267,38 @@ static void signal_wakeup_task(struct task *ti)
        *
        * TODO: consider supporting killing of vforked process.
        */
+      return;
+   }
+
+   /*
+    * A killing signal overrides any stop-pending state: clear the
+    * flag (set by action_stop on a SLEEPING task) so the wake path
+    * below transitions to RUNNABLE — not STOPPED — and the task
+    * actually runs and dies.
+    */
+   ti->stop_pending = false;
+
+   if (ti->state == TASK_STATE_SLEEPING) {
+
+      /*
+       * We must NOT wake up tasks waiting on a mutex or on a semaphore:
+       * supporting spurious wake-ups there, is just a waste of resources.
+       * On the contrary, if a task is waiting on a condition or sleeping
+       * in kernel_sleep(), we HAVE to wake it up.
+       */
+
+      if (ti->wobj.type != WOBJ_KMUTEX && ti->wobj.type != WOBJ_SEM)
+         wake_up(ti);
+
+   } else if (ti->state == TASK_STATE_STOPPED) {
+
+      /*
+       * The task was explicitly stopped (SIGSTOP-class signal) and
+       * is therefore outside the runnable list/tree. A killing
+       * signal needs the task to actually run to handle the death,
+       * so transition it back to RUNNABLE here.
+       */
+      task_change_state(ti, TASK_STATE_RUNNABLE);
    }
 }
 
@@ -315,9 +329,34 @@ static void action_stop(struct task *ti, int signum, int fl)
    ASSERT(!is_kernel_thread(ti));
 
    trace_signal_delivered(ti->tid, signum);
-   ti->stopped = true;
    ti->wstatus = STOPCODE(signum);
    wake_up_tasks_waiting_on(ti, task_stopped);
+
+   /*
+    * Branch on current state:
+    *
+    *  - RUNNING or RUNNABLE: transition into TASK_STATE_STOPPED.
+    *    The task is yanked out of the runnable list/tree and the
+    *    scheduler won't see it until SIGCONT brings it back via
+    *    action_continue().
+    *
+    *  - SLEEPING: don't disturb the wait. Just set the stopped
+    *    flag; when the wait_obj eventually fires, wake_up() (or
+    *    tick_all_timers()) sees the flag and routes the wake to
+    *    STOPPED instead of RUNNABLE. This is the "stop-on-wake"
+    *    pattern that keeps the flag's role narrow.
+    *
+    *  - STOPPED: already stopped, nothing to do.
+    *  - ZOMBIE: dying, nothing to do.
+    */
+   const enum task_state s =
+      atomic_load_explicit(&ti->state, mo_relaxed);
+
+   if (s == TASK_STATE_SLEEPING) {
+      ti->stop_pending = true;
+   } else if (s == TASK_STATE_RUNNING || s == TASK_STATE_RUNNABLE) {
+      task_change_state(ti, TASK_STATE_STOPPED);
+   }
 
    if (ti == get_curr_task())
       schedule_preempt_disabled();
@@ -331,9 +370,29 @@ static void action_continue(struct task *ti, int signum, int fl)
       return;
 
    trace_signal_delivered(ti->tid, signum);
-   ti->stopped = false;
    ti->wstatus = CONTINUED;
    wake_up_tasks_waiting_on(ti, task_continued);
+
+   /*
+    * Inverse of action_stop's state branching:
+    *
+    *  - STOPPED: bring the task back into the runnable list/tree.
+    *  - SLEEPING with the stopped flag set: a SIGSTOP was pending
+    *    on this sleeping task. Cancel it by clearing the flag;
+    *    when the wait fires, the wake-up routes to RUNNABLE.
+    *
+    * Other states get no state change (SIGCONT to a non-stopped
+    * task is a no-op state-wise; the wstatus + waitpid wakeup
+    * above is the visible side-effect).
+    */
+   const enum task_state s =
+      atomic_load_explicit(&ti->state, mo_relaxed);
+
+   if (s == TASK_STATE_STOPPED) {
+      task_change_state(ti, TASK_STATE_RUNNABLE);
+   } else if (s == TASK_STATE_SLEEPING && ti->stop_pending) {
+      ti->stop_pending = false;
+   }
 }
 
 static const action_type signal_default_actions[_NSIG] =

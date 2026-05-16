@@ -86,7 +86,7 @@ static void dp_fill_task_info(struct task *ti, struct dp_task_info *out)
       .parent_pid   = pi->parent_pid,
       .tty          = tty_get_num(pi->proc_tty),
       .state        = (u8)ti->state,
-      .stopped      = ti->stopped ? 1 : 0,
+      .stopped      = is_task_stopped(ti) ? 1 : 0,
       .traced       = ti->traced ? 1 : 0,
       .is_kthread   = is_kernel_thread(ti) ? 1 : 0,
       .is_worker    = (is_kernel_thread(ti) && is_worker_thread(ti))

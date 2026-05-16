@@ -65,12 +65,20 @@ get_task_if_changed(struct task *ti, int opts)
    if (s == TASK_STATE_ZOMBIE)
       return ti;
 
-   if (ti->stopped && !ti->was_stopped && (opts & WUNTRACED)) {
+   /*
+    * is_task_stopped() captures both flavors of "stopped" the user
+    * cares about: explicitly STOPPED, or SLEEPING with a SIGSTOP
+    * pending that hasn't been honored yet by a wake. See
+    * include/tilck/kernel/sched.h.
+    */
+   const bool stopped = is_task_stopped(ti);
+
+   if (stopped && !ti->was_stopped && (opts & WUNTRACED)) {
       ti->was_stopped = true;
       return ti;
    }
 
-   if (!ti->stopped && ti->was_stopped && (opts & WCONTINUED)) {
+   if (!stopped && ti->was_stopped && (opts & WCONTINUED)) {
       ti->was_stopped = false;
       return ti;
    }

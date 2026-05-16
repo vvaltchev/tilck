@@ -162,7 +162,22 @@ static void tick_all_timers(void)
          list_remove(&pos->wakeup_timer_node);
 
          if (pos->state == TASK_STATE_SLEEPING) {
-            task_change_state(pos, TASK_STATE_RUNNABLE);
+
+            /*
+             * Stop-on-wake: see the matching comment in wake_up()
+             * (kernel/wobj.c). A SIGSTOP delivered while pos was
+             * sleeping left ti->stop_pending = true and the wait_obj
+             * untouched; route the wake to STOPPED instead of
+             * RUNNABLE and consume the flag.
+             */
+            enum task_state next = TASK_STATE_RUNNABLE;
+
+            if (UNLIKELY(pos->stop_pending)) {
+               next = TASK_STATE_STOPPED;
+               pos->stop_pending = false;
+            }
+
+            task_change_state(pos, next);
             any_woken_up_task = true;
          }
       }

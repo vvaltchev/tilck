@@ -173,8 +173,8 @@ static int dump_task_state_cb(void *obj, void *arg)
    if (ti->timer_ready)
       printk(NO_PREFIX " timer_ready");
 
-   if (ti->stopped)
-      printk(NO_PREFIX " stopped");
+   if (ti->stop_pending)
+      printk(NO_PREFIX " stop_pending");
 
    printk(NO_PREFIX "\n");
 
