@@ -90,7 +90,16 @@ struct task {
     * task_change_state(ti, TASK_STATE_STOPPED).
     */
    bool stop_pending;
-   bool was_stopped;
+
+   /*
+    * "The most recent stop/continue transition has been reported
+    * to the parent's waitpid()." Used only by
+    * waitpid.c:get_task_if_changed to de-duplicate WUNTRACED /
+    * WCONTINUED reports so a parent looping on waitpid() doesn't
+    * receive the same stop event repeatedly. Toggled by waitpid
+    * itself, not by the signal-delivery paths.
+    */
+   bool stop_reported;
 
    volatile ATOMIC(enum task_state) state;   /* see docs/atomics.md */
 

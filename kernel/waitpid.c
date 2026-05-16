@@ -73,13 +73,13 @@ get_task_if_changed(struct task *ti, int opts)
     */
    const bool stopped = is_task_stopped(ti);
 
-   if (stopped && !ti->was_stopped && (opts & WUNTRACED)) {
-      ti->was_stopped = true;
+   if (stopped && !ti->stop_reported && (opts & WUNTRACED)) {
+      ti->stop_reported = true;
       return ti;
    }
 
-   if (!stopped && ti->was_stopped && (opts & WCONTINUED)) {
-      ti->was_stopped = false;
+   if (!stopped && ti->stop_reported && (opts & WCONTINUED)) {
+      ti->stop_reported = false;
       return ti;
    }
 
