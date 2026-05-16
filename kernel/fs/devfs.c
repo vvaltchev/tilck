@@ -229,7 +229,7 @@ devfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
    statbuf->st_gid = 0; /* root */
 
    if (df->type == VFS_CHAR_DEV)
-      statbuf->st_rdev = (dev_t)(df->dev_major << 8 | df->dev_minor);
+      statbuf->st_rdev = ((u64)df->dev_major << 8) | df->dev_minor;
 
    statbuf->st_size = 0;
    statbuf->st_blksize = PAGE_SIZE;

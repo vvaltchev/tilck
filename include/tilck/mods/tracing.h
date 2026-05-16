@@ -137,7 +137,7 @@ struct syscall_info {
    u32 sys_n;
 
    /* number of parameters */
-   s8 n_params;
+   u8 n_params;
 
    /*
     * True if the syscall is expected to block. In other words:
