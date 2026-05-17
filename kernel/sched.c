@@ -67,10 +67,9 @@ static atomic_u64_t min_vruntime;
  * `(min_vruntime - WAKEUP_VRUNTIME_BONUS)` with an underflow guard at
  * 0 so it gets a small head start over the leading edge instead.
  *
- * In current (N-1)/tick vruntime semantics, 10 units is roughly 3 ticks
- * at N=4 -- a few ticks' worth of CPU burst after wake. Tunable; the
- * Linux analogue is sysctl_sched_wakeup_granularity (1 ms, weight-
- * scaled).
+ * In current +1/tick vruntime semantics, 10 units is 10 ticks --
+ * exactly one default time slice (TIME_SLICE_TICKS == 10 at
+ * KRN_TIMER_HZ == 250, i.e. 40 ms). Tunable.
  */
 #define WAKEUP_VRUNTIME_BONUS    10
 
@@ -904,43 +903,43 @@ void sched_account_ticks(void)
    if (is_running && curr != idle_task) {
 
       /*
-       * Grow vruntime by the number of *other* non-idle tasks waiting
-       * for the CPU — i.e. how much this tick costs us in fairness
-       * terms relative to the contenders.
+       * vruntime is now plain "CPU time consumed by this task",
+       * incremented by 1 per tick the task is RUNNING (idle
+       * excluded -- idle's CPU time is "free"). This matches the
+       * CFS semantic that most kernel readers expect.
        *
-       * runnable_tasks_count tallies all RUNNABLE non-worker
-       * non-idle tasks. curr is RUNNING (not in the tree, not
-       * counted); idle lives outside the tree entirely (see the
-       * comment above runnable_tree_root). So the count is exactly
-       * "number of other non-idle tasks waiting" -- no adjustment
-       * needed.
-       *
-       * The N=0 corner — curr is the only non-idle task — yields
-       * +0, which is load-bearing: a task forked later also starts
-       * at min_vruntime (fork_vruntime_handoff), and step 6 of the
-       * scheduler roadmap will switch this to a flat +1 once the
-       * wake/fork handoffs in steps 2 and 4 do the fairness
-       * compensation explicitly.
+       * Earlier in the roadmap, the increment was
+       * `runnable_tasks_count - 1` (i.e. weighted by the number of
+       * other non-idle waiters). That was an implicit fairness
+       * compensation -- pre-step-4, a freshly forked task started
+       * at vruntime 0 and would have leapfrogged everyone, so we
+       * leaned on the running task's vruntime growing faster under
+       * contention to keep the gap reasonable. Steps 2 and 4 (wake
+       * + fork handoffs to min_vruntime) now do that compensation
+       * explicitly: a woken or forked task lands at the leading
+       * edge, not at zero. Leaving the weighted formula in place
+       * on top would double-count.
        *
        * Picking the task with the lowest vruntime is fairer than
        * picking the lowest `total` ticks, because tasks that
        * monopolized the CPU while nothing else wanted it aren't
-       * penalized for it later.
+       * penalized for it later. (That property holds for both
+       * weighted and unweighted vruntime, since SLEEPING tasks
+       * accumulate nothing either way.)
        *
-       * The is_running gate is load-bearing now that the runnable
-       * container is a tree: vruntime IS the tree key while curr is
-       * RUNNABLE. Between task_change_state(curr, RUNNABLE) inside
-       * do_schedule() and set_curr_task(selected) inside
-       * switch_to_task(), get_curr_task() still returns the
-       * already-RUNNABLE outgoing task -- and that task now sits in
-       * the tree. A timer IRQ in that window would otherwise mutate
-       * the in-tree task's key out from under bintree_remove() and
-       * the next remove for it would chase a stale path. With this
-       * gate, the increment only fires while curr is genuinely
-       * RUNNING (outside the tree).
+       * The is_running gate is load-bearing because vruntime is the
+       * runnable-tree key while curr is RUNNABLE. Between
+       * task_change_state(curr, RUNNABLE) inside do_schedule() and
+       * set_curr_task(selected) inside switch_to_task(),
+       * get_curr_task() still returns the already-RUNNABLE outgoing
+       * task -- and that task now sits in the tree. A timer IRQ in
+       * that window would otherwise mutate the in-tree task's key
+       * out from under bintree_remove() and the next remove for it
+       * would chase a stale path. With this gate, the increment
+       * only fires while curr is genuinely RUNNING (outside the
+       * tree).
        */
-      atomic_fetch_add(&t->vruntime,
-                       (u64)get_runnable_tasks_count());
+      atomic_fetch_add(&t->vruntime, 1);
 
       /*
        * Roadmap step 1: monotonic high-watermark min_vruntime.
