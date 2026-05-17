@@ -425,6 +425,59 @@ rejected just as quickly as breaking the documented rules.
   dp/tracer code and in `kernel/poll.c`. Use them where prose flows
   naturally; don't sprinkle.
 
+### Multi-line call / declaration syntax (paren symmetry)
+
+When a function call or declaration wraps onto multiple lines, the
+shape must be visually symmetric. Two styles are valid; the
+asymmetric hybrid is **never** valid.
+
+**Style 1 — aligned to the opening paren** (use when the opening
+expression is short enough to leave room for the first argument on
+the same line). Subsequent args sit exactly under the first arg;
+`;` stays at the end of the last arg.
+
+```c
+very_long_expression(arg1,
+                     arg2,
+                     arg3);
+```
+
+**Style 2 — indented continuation with `);` on its own line** (use
+when the opening expression is too long for style 1 to fit, or
+alignment would push args past column 80). Open `(` ends the first
+line; args at +3-space indent; closing `);` on its own line, aligned
+with the start of the wrapping statement.
+
+```c
+context_switch = asm_save_regs_and_schedule(
+   __builtin_extract_return_addr(__builtin_return_address(0))
+);
+```
+
+**Style 3 — NEVER write this** (asymmetric hybrid: args indented but
+`);` at the end of the last arg). Top-heavy, no closing-paren
+symmetry, rejected on sight:
+
+```c
+this_is_a_long_expression(
+   arg, arg, arg);    /* WRONG: never write code this way in Tilck */
+```
+
+**Cross-function uniformity.** When a cluster of related calls or
+function definitions appears close together on screen (a series of
+wrapper inlines, a list of similar setup calls, a column of related
+typedefs), pick **one** style and apply it to the whole cluster. If
+even one entry in the cluster needs style 2 (because its name or
+signature is too long for style 1 to fit), use style 2 for **all**
+the cluster — even the entries that could have used style 1.
+Cross-function asymmetry on the same on-screen block reads as
+visual noise as much as intra-function asymmetry.
+
+Same principle for column-aligned multi-line declarations (struct
+initializers, `typedef` lists, `#define` blocks): pad every entry
+so the trailing column (`;`, `}`, `=`) lands at the same column
+across the whole cluster. Pretty over compact.
+
 ### Reference files to consult
 
 | Pattern | Look at |
