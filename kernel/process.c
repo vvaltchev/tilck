@@ -292,6 +292,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    list_add_tail(&parent_pi->children, &ti->siblings_node);
 
    pi->proc_tty = parent_pi->proc_tty;
+   fork_vruntime_handoff(ti);
    return ti;
 
 oom_case:
@@ -340,6 +341,7 @@ struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
 
    init_task_lists(ti);
    arch_specific_new_task_setup(ti, process_task);
+   fork_vruntime_handoff(ti);
    return ti;
 }
 

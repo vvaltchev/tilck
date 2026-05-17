@@ -225,6 +225,7 @@ void task_change_state(struct task *ti, enum task_state new_state);
 void task_change_state_unsafe(struct task *ti, enum task_state new_state);
 void task_change_state_idempotent(struct task *ti, enum task_state new_state);
 void wake_vruntime_handoff(struct task *ti);
+void fork_vruntime_handoff(struct task *ti);
 bool save_regs_and_schedule(bool skip_disable_preempt);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)

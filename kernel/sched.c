@@ -683,6 +683,23 @@ void remove_task(struct task *ti)
 }
 
 /*
+ * Roadmap step 4: fork vruntime handoff. Initialize a freshly-
+ * allocated task's vruntime to the current `min_vruntime`. A new
+ * fork (or new kernel thread) would otherwise start at 0 and
+ * leapfrog every accumulated runnable task until it caught up to
+ * the leading edge. Called from the new-task paths in process.c
+ * (allocate_new_process / allocate_new_thread).
+ *
+ * No BONUS, unlike wake_vruntime_handoff(): a fresh task shouldn't
+ * be more privileged than already-runnable tasks. It starts on par
+ * with the leading edge.
+ */
+void fork_vruntime_handoff(struct task *ti)
+{
+   atomic_store(&ti->ticks.vruntime, atomic_load(&min_vruntime));
+}
+
+/*
  * Roadmap step 2: wakeup vruntime handoff. Raise `ti`'s vruntime to
  * `max(vruntime, min_vruntime - WAKEUP_VRUNTIME_BONUS)` with underflow
  * guard at 0. Called from wake_up() (wobj.c) and tick_all_timers()
