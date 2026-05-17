@@ -32,13 +32,26 @@ static int current_max_kernel_tid = -1;
 struct task *idle_task;
 
 /*
- * Monotonic high-watermark vruntime. CFS-style baseline that step 2 of
- * the scheduler roadmap (wakeup vruntime handoff) consumes as the floor
- * when bringing a long-sleeper's vruntime back up at wake-up. No reader
- * in this commit -- pure infrastructure landing on its own so the
- * bookkeeping is reviewable in isolation.
+ * Monotonic high-watermark vruntime. CFS-style baseline consumed by
+ * `wake_vruntime_handoff()` as the floor when bringing a long-sleeper's
+ * vruntime back up at wake-up. Updated in sched_account_ticks(); never
+ * decreases.
  */
 static atomic_u64_t min_vruntime;
+
+/*
+ * How far below `min_vruntime` we let a woken task's vruntime sit.
+ * A long-sleeping task that wakes with stale-low vruntime would
+ * otherwise dominate the CPU until it caught up; we raise it to
+ * `(min_vruntime - WAKEUP_VRUNTIME_BONUS)` with an underflow guard at
+ * 0 so it gets a small head start over the leading edge instead.
+ *
+ * In current (N-1)/tick vruntime semantics, 10 units is roughly 3 ticks
+ * at N=4 -- a few ticks' worth of CPU burst after wake. Tunable; the
+ * Linux analogue is sysctl_sched_wakeup_granularity (1 ms, weight-
+ * scaled).
+ */
+#define WAKEUP_VRUNTIME_BONUS    10
 
 static ALWAYS_INLINE int get_runnable_tasks_count(void)
 {
@@ -667,6 +680,30 @@ void remove_task(struct task *ti)
       free_task(ti);
    }
    enable_preemption();
+}
+
+/*
+ * Roadmap step 2: wakeup vruntime handoff. Raise `ti`'s vruntime to
+ * `max(vruntime, min_vruntime - WAKEUP_VRUNTIME_BONUS)` with underflow
+ * guard at 0. Called from wake_up() (wobj.c) and tick_all_timers()
+ * (timer.c) on the SLEEPING -> RUNNABLE transition. Monotonic raise:
+ * never decreases the task's vruntime.
+ *
+ * No-op if the task's vruntime is already above the floor (woken
+ * before min_vruntime had a chance to outrun it).
+ */
+void wake_vruntime_handoff(struct task *ti)
+{
+   const u64 current_min = atomic_load(&min_vruntime);
+   u64 floor;
+
+   if (current_min > WAKEUP_VRUNTIME_BONUS)
+      floor = current_min - WAKEUP_VRUNTIME_BONUS;
+   else
+      floor = 0;
+
+   if (atomic_load(&ti->ticks.vruntime) < floor)
+      atomic_store(&ti->ticks.vruntime, floor);
 }
 
 void sched_account_ticks(void)

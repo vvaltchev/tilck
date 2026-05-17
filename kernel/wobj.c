@@ -145,6 +145,9 @@ void *wake_up(struct task *ti)
             ti->stop_pending = false;
          }
 
+         if (next == TASK_STATE_RUNNABLE)
+            wake_vruntime_handoff(ti);
+
          task_change_state_idempotent(ti, next);
       }
    }

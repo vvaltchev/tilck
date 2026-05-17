@@ -177,6 +177,9 @@ static void tick_all_timers(void)
                pos->stop_pending = false;
             }
 
+            if (next == TASK_STATE_RUNNABLE)
+               wake_vruntime_handoff(pos);
+
             task_change_state(pos, next);
             any_woken_up_task = true;
          }
