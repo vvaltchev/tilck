@@ -834,11 +834,6 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
       if (pos == idle_task)
          continue;
 
-      if (pos->timer_ready) {
-         selected = pos;
-         break;
-      }
-
       if (!selected) {
          selected = pos;
          continue;
@@ -924,11 +919,14 @@ void do_schedule(void)
    } else {
 
       /*
-       * A timer IRQ may have woken curr in tick_all_timers() while we
-       * were iterating the runnable list: curr would now be in the list
-       * with state RUNNABLE and timer_ready set, and the iteration
-       * picked it. Normalize here so a later sleep doesn't short-circuit
-       * via sched_should_return_immediately().
+       * Two paths reach here. Common: the normal "keep running curr"
+       * outcome -- curr had the lowest vruntime and we didn't pick
+       * anyone else. Rare: a timer IRQ ran tick_all_timers() while
+       * we were iterating the runnable list and woke curr (state
+       * SLEEPING -> RUNNABLE, vruntime raised by the wakeup handoff,
+       * timer_ready set); the vruntime-min iteration then picked
+       * curr back. Normalize state + clear timer_ready so a later
+       * sleep doesn't short-circuit via sched_should_return_immediately().
        */
       task_change_state_idempotent(curr, TASK_STATE_RUNNING);
       curr->timer_ready = false;
