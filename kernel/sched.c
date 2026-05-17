@@ -711,16 +711,42 @@ void fork_vruntime_handoff(struct task *ti)
  */
 void wake_vruntime_handoff(struct task *ti)
 {
-   const u64 current_min = atomic_load(&min_vruntime);
-   u64 floor;
+   ulong var;
 
-   if (current_min > WAKEUP_VRUNTIME_BONUS)
-      floor = current_min - WAKEUP_VRUNTIME_BONUS;
-   else
-      floor = 0;
+   /*
+    * Tree invariant (relied on by the upcoming AVL conversion of the
+    * runnable container): a task's vruntime is the tree key while
+    * it sits in the runnable container, so vruntime must NOT be
+    * mutated while ti is RUNNABLE. Restrict the raise to "ti is
+    * still SLEEPING", under IRQ-disabled so the state can't flip
+    * between the check and the store. A double-wake (wake_up()
+    * called on an already-RUNNABLE task because a peer wake won the
+    * wait_obj reset first, or tick_all_timers() and wake_up()
+    * racing on the same wobj+timer waiter) reaches this function
+    * with state == RUNNABLE and is correctly turned into a no-op.
+    *
+    * The list-based scheduler tolerated the prior unconditional
+    * mutation because list_for_each doesn't key on vruntime, but
+    * the invariant matters going forward.
+    */
+   disable_interrupts(&var);
+   {
+      if (atomic_load(&ti->state) != TASK_STATE_SLEEPING)
+         goto out;
 
-   if (atomic_load(&ti->ticks.vruntime) < floor)
-      atomic_store(&ti->ticks.vruntime, floor);
+      const u64 current_min = atomic_load(&min_vruntime);
+      u64 floor;
+
+      if (current_min > WAKEUP_VRUNTIME_BONUS)
+         floor = current_min - WAKEUP_VRUNTIME_BONUS;
+      else
+         floor = 0;
+
+      if (atomic_load(&ti->ticks.vruntime) < floor)
+         atomic_store(&ti->ticks.vruntime, floor);
+   }
+out:
+   enable_interrupts(&var);
 }
 
 void sched_account_ticks(void)
