@@ -24,7 +24,7 @@ enum task_state {
 
    /*
     * STOPPED is a real scheduler state: the task is not in the
-    * runnable list/tree and won't be picked until SIGCONT brings it
+    * runnable tree and won't be picked until SIGCONT brings it
     * back to RUNNABLE. See action_stop()/action_continue() in
     * kernel/signal.c. A SIGSTOP delivered while the task is SLEEPING
     * doesn't change state immediately — it sets ti->stop_pending and
@@ -125,7 +125,7 @@ struct task {
    void *worker_thread;                      /* only for worker threads */
 
    struct bintree_node tree_by_tid_node;
-   struct list_node runnable_node;
+   struct bintree_node runnable_tree_node;
    struct list_node wakeup_timer_node;
    struct list_node siblings_node;    /* nodes in parent's pi's children list */
 
@@ -189,7 +189,7 @@ extern struct task *kernel_process;
 extern struct process *kernel_process_pi;
 extern struct task *idle_task;
 
-extern struct list runnable_tasks_list;
+extern struct task *runnable_tree_root;
 extern const char *const task_state_str[6];
 
 /*

@@ -134,7 +134,7 @@ void *wake_up(struct task *ti)
           * but left the state SLEEPING (the wait_obj was untouched
           * on purpose). Honor that pending stop now by routing the
           * transition to STOPPED instead of RUNNABLE — the task
-          * stays out of the runnable list/tree until SIGCONT. The
+          * stays out of the runnable tree until SIGCONT. The
           * flag has done its job; consume it so the invariant
           * "stopped flag set => state == SLEEPING" is preserved.
           */

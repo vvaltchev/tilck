@@ -16,10 +16,10 @@
  * ordinary tasks. In particular:
  *
  *   - They live in worker_threads[] (sorted by priority), NOT in the
- *     scheduler's runnable_tasks_list. The scheduler picks them via
- *     a dedicated pass (wth_get_runnable_thread() in do_schedule)
- *     that runs BEFORE the regular runnable-list lookup, so a
- *     runnable worker always wins against a runnable non-worker.
+ *     scheduler's runnable tree. The scheduler picks them via a
+ *     dedicated pass (wth_get_runnable_thread() in do_schedule) that
+ *     runs BEFORE the regular runnable-tree lookup, so a runnable
+ *     worker always wins against a runnable non-worker.
  *
  *   - They have no timeslice: sched_account_ticks() never sets
  *     need_resched for a running worker. A worker yields voluntarily

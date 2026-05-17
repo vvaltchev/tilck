@@ -294,7 +294,7 @@ static void signal_wakeup_task(struct task *ti)
 
       /*
        * The task was explicitly stopped (SIGSTOP-class signal) and
-       * is therefore outside the runnable list/tree. A killing
+       * is therefore outside the runnable tree. A killing
        * signal needs the task to actually run to handle the death,
        * so transition it back to RUNNABLE here.
        */
@@ -336,7 +336,7 @@ static void action_stop(struct task *ti, int signum, int fl)
     * Branch on current state:
     *
     *  - RUNNING or RUNNABLE: transition into TASK_STATE_STOPPED.
-    *    The task is yanked out of the runnable list/tree and the
+    *    The task is yanked out of the runnable tree and the
     *    scheduler won't see it until SIGCONT brings it back via
     *    action_continue().
     *
@@ -376,7 +376,7 @@ static void action_continue(struct task *ti, int signum, int fl)
    /*
     * Inverse of action_stop's state branching:
     *
-    *  - STOPPED: bring the task back into the runnable list/tree.
+    *  - STOPPED: bring the task back into the runnable tree.
     *  - SLEEPING with the stopped flag set: a SIGSTOP was pending
     *    on this sleeping task. Cancel it by clearing the flag;
     *    when the wait fires, the wake-up routes to RUNNABLE.

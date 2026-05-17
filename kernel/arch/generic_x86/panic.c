@@ -108,7 +108,7 @@ stop_all_other_tasks(void *task, void *unused)
     * correct freeze action per state:
     *
     *   - RUNNABLE: transition straight to STOPPED (out of the
-    *     runnable list/tree).
+    *     runnable tree).
     *   - SLEEPING: arm stop_pending so the eventual wake routes
     *     to STOPPED instead of RUNNABLE (see kernel/wobj.c).
     *

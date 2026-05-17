@@ -20,8 +20,29 @@ atomic_int_t __need_resched;                 /* see docs/atomics.md */
 struct task *kernel_process;
 struct process *kernel_process_pi;
 
-/* Task lists */
-struct list runnable_tasks_list;
+/*
+ * Runnable tasks tree.
+ *
+ * AVL tree keyed by (vruntime, tid). Selection takes the leftmost
+ * entry -- CFS-style. tid is the tiebreaker since bintree_insert()
+ * requires unique keys; tids are unique system-wide, so the
+ * composite key is always unique.
+ *
+ * Invariant: a task's vruntime is never modified while it sits in
+ * this tree. The only writer of vruntime in IRQ context is
+ * sched_account_ticks() which mutates curr (which is RUNNING, not in
+ * the tree). The wake/fork handoffs (wake_vruntime_handoff,
+ * fork_vruntime_handoff) write vruntime BEFORE the task enters the
+ * RUNNABLE state and gets inserted. As long as this invariant holds,
+ * ordering-by-vruntime is stable.
+ *
+ * idle_task is intentionally NOT in this tree -- it lives in its own
+ * fallback slot consulted by do_schedule() when the tree is empty.
+ * Keeping idle out of the tree avoids a class of bugs where idle
+ * would have to be filtered at every walk site and would risk
+ * double-insertion on the curr-RUNNING -> curr-RUNNABLE transition.
+ */
+struct task *runnable_tree_root;
 
 /* Static variables */
 static struct task *tree_by_tid_root;
@@ -56,6 +77,35 @@ static atomic_u64_t min_vruntime;
 static ALWAYS_INLINE int get_runnable_tasks_count(void)
 {
    return atomic_load(&runnable_tasks_count);
+}
+
+/*
+ * Comparator for `runnable_tree_root`. Key: (vruntime, tid).
+ * vruntime is the primary sort key; tid is the tiebreaker so the
+ * composite is unique across the system (bintree_insert requires
+ * unique keys). The same comparator is used for both insert and
+ * remove -- bintree_remove passes the task pointer as `value_ptr`,
+ * matching this signature.
+ */
+static long sched_runnable_cmp(const void *a, const void *b)
+{
+   /*
+    * The cmpfun_ptr signature is `const void *` both arguments;
+    * cast back to non-const struct task * so atomic_load() can be
+    * called on the vruntime field (the dispatch macro doesn't have
+    * a const overload). atomic_load is semantically read-only;
+    * dropping the qualifier is safe.
+    */
+   struct task *t1 = (struct task *)a;
+   struct task *t2 = (struct task *)b;
+
+   const u64 v1 = atomic_load(&t1->ticks.vruntime);
+   const u64 v2 = atomic_load(&t2->ticks.vruntime);
+
+   if (v1 != v2)
+      return v1 < v2 ? -1 : 1;
+
+   return (long)t1->tid - (long)t2->tid;
 }
 
 const char *const task_state_str[6] = {
@@ -407,7 +457,7 @@ static void idle(void *unused)
       idle_ticks++;
       halt();
 
-      if (need_reschedule() || get_runnable_tasks_count() > 1)
+      if (need_reschedule() || get_runnable_tasks_count() > 0)
          schedule();
    }
 }
@@ -424,17 +474,17 @@ void yield_until_last(void)
     *
     * Worker threads are a separate schedulable class for bottom-half
     * processing (see wth.c); they live in worker_threads[], not in
-    * runnable_tasks_list, and are therefore INVISIBLE to this
+    * the runnable tree, and are therefore INVISIBLE to this
     * function. A worker chewing through queued jobs will NOT delay
     * our return. Callers that need worker quiescence too should
     * additionally call wth_wait_for_completion() on each worker they
     * care about.
     *
-    * Idle is always RUNNABLE while curr is RUNNING (it never blocks,
-    * just halt()s in a loop), so runnable_tasks_count >= 1; count > 1
-    * means at least one non-idle, non-worker task is RUNNABLE.
+    * Idle is also invisible: it lives outside the runnable tree (see
+    * the comment above runnable_tree_root). So count > 0 cleanly
+    * means "at least one non-idle, non-worker task is RUNNABLE".
     */
-   while (get_runnable_tasks_count() > 1)
+   while (get_runnable_tasks_count() > 0)
       kernel_yield();
 }
 
@@ -446,7 +496,7 @@ static void create_kernel_process(void)
    struct task *s_kernel_ti = &tp.main_task_obj;
    struct process *s_kernel_pi = &tp.process_obj;
 
-   list_init(&runnable_tasks_list);
+   /* runnable_tree_root starts at NULL (empty tree) -- no init needed. */
    s_kernel_pi->pid = create_new_pid();
    s_kernel_ti->tid = create_new_kernel_tid();
    atomic_store(&s_kernel_pi->ref_count, 1);
@@ -501,6 +551,29 @@ void init_sched(void)
       panic("Unable to create the idle_task!");
 
    idle_task = get_task(tid);
+
+   /*
+    * kthread_create() above ran with idle_task still NULL, so the
+    * `ti == idle_task` guards in task_add_to_state_list() and
+    * task_remove_from_state_list() didn't fire and idle was inserted
+    * into the runnable tree. Pull it back out now that idle_task is
+    * set — from this point forward those guards keep idle out for
+    * good. Disable interrupts around the bintree_remove for the
+    * same IRQ-vs-tree-mutation reason that add_task() does.
+    */
+   ulong var;
+   disable_interrupts(&var);
+   {
+      DEBUG_ONLY_UNSAFE(struct task *removed =)
+         bintree_remove(&runnable_tree_root,
+                        idle_task,
+                        sched_runnable_cmp,
+                        struct task,
+                        runnable_tree_node);
+      ASSERT(removed == idle_task);
+      atomic_fetch_sub(&runnable_tasks_count, 1);
+   }
+   enable_interrupts(&var);
 }
 
 void set_current_task_in_kernel(void)
@@ -514,19 +587,63 @@ static void task_add_to_state_list(struct task *ti)
    /*
     * Worker threads are a separate schedulable class for bottom-half
     * processing (see wth.c). They're tracked in worker_threads[] and
-    * picked by wth_get_runnable_thread() — never via this list — so
+    * picked by wth_get_runnable_thread() — never via this tree — so
     * they intentionally don't show up in runnable_tasks_count
     * either.
     */
    if (is_worker_thread(ti))
       return;
 
+   /*
+    * idle_task lives outside the runnable tree: do_schedule() falls
+    * back to it directly when the tree has no winner. Skipping idle
+    * here keeps the tree's leftmost element a real candidate (no
+    * skip-past-idle dance) and avoids the curr-RUNNING -> curr-
+    * RUNNABLE transition trying to re-insert idle when idle is curr.
+    *
+    * Note on init order: kthread_create() for idle runs before
+    * init_sched() assigns idle_task, so the very first add_task for
+    * idle reaches this function with idle_task still NULL. That's
+    * fine: idle goes into the tree once at boot, and init_sched()
+    * pulls it out immediately after assigning idle_task. From then
+    * on, this guard keeps idle out for good.
+    */
+   if (ti == idle_task)
+      return;
+
    switch ((enum task_state) atomic_load(&ti->state)) {
 
-      case TASK_STATE_RUNNABLE:
-         list_add_tail(&runnable_tasks_list, &ti->runnable_node);
+      case TASK_STATE_RUNNABLE: {
+
+         /*
+          * Re-initialize the node's left/right before each insert.
+          * bintree_insert() places `ti` at a slot but does NOT clear
+          * ti's own bintree_node — it relies on the caller to hand
+          * over a clean (leaf-ready) node. A prior insert/remove
+          * cycle leaves stale left/right pointing at whatever
+          * children ti had back then; reinserting with those stale
+          * links yields a corrupted tree whose later removes (and
+          * walks) chase dangling pointers into freed memory.
+          *
+          * (init_task_lists() does this once at task birth, which is
+          * why the very first insert is clean. The other in-tree
+          * trees in this file — tree_by_tid_root, tasks_waiting on
+          * wobj — get a single insert per task lifetime, so they
+          * don't need this guard. The runnable tree, by contrast,
+          * sees a task come and go on every state transition.)
+          */
+         bintree_node_init(&ti->runnable_tree_node);
+
+         DEBUG_ONLY_UNSAFE(bool inserted =)
+            bintree_insert(&runnable_tree_root,
+                           ti,
+                           sched_runnable_cmp,
+                           struct task,
+                           runnable_tree_node);
+         ASSERT(inserted);
          atomic_fetch_add(&runnable_tasks_count, 1);
          break;
+      }
 
       case TASK_STATE_SLEEPING:
          /* no dedicated list */
@@ -542,7 +659,7 @@ static void task_add_to_state_list(struct task *ti)
 
       case TASK_STATE_STOPPED:
          /*
-          * Stopped tasks live outside the runnable list/tree on
+          * Stopped tasks live outside the runnable tree on
           * purpose — that's the whole point of having STOPPED be a
           * real state rather than a flag overlaid on RUNNABLE. They
           * become reachable again only via task_change_state(...,
@@ -558,8 +675,12 @@ static void task_add_to_state_list(struct task *ti)
 
 static void task_remove_from_state_list(struct task *ti)
 {
-   /* Workers don't live in this list — see task_add_to_state_list(). */
+   /* Workers don't live in this tree — see task_add_to_state_list(). */
    if (is_worker_thread(ti))
+      return;
+
+   /* Neither does idle_task — see task_add_to_state_list(). */
+   if (ti == idle_task)
       return;
 
    switch ((enum task_state) atomic_load(&ti->state)) {
@@ -575,7 +696,15 @@ static void task_remove_from_state_list(struct task *ti)
           * in debug.
           */
          DEBUG_ONLY(int prev);
-         list_remove(&ti->runnable_node);
+
+         DEBUG_ONLY_UNSAFE(struct task *removed =)
+            bintree_remove(&runnable_tree_root,
+                           ti,
+                           sched_runnable_cmp,
+                           struct task,
+                           runnable_tree_node);
+         ASSERT(removed == ti);
+
          DEBUG_ONLY_UNSAFE(prev =)
             atomic_fetch_sub(&runnable_tasks_count, 1);
          ASSERT(prev >= 1);
@@ -596,7 +725,7 @@ static void task_remove_from_state_list(struct task *ti)
 
       case TASK_STATE_STOPPED:
          /*
-          * STOPPED tasks live outside the runnable list/tree —
+          * STOPPED tasks live outside the runnable tree —
           * mirror image of the STOPPED case in
           * task_add_to_state_list(). Removing such a task is a
           * no-op, but we still hit this path when the state
@@ -650,7 +779,19 @@ void task_change_state_idempotent(struct task *ti, enum task_state new_state)
 
 void add_task(struct task *ti)
 {
-   disable_preemption();
+   ulong var;
+
+   /*
+    * IRQ-safe wrapper: task_add_to_state_list() touches the AVL
+    * runnable_tree_root, and an IRQ-driven tick_all_timers() may
+    * also mutate that tree via task_change_state(). Without
+    * disable_interrupts(), an IRQ landing mid-rotation here would
+    * see a half-updated tree and could insert against stale links.
+    * disable_preemption() alone (the old guard from the list-based
+    * scheduler) is not strong enough now that the runnable container
+    * is a tree.
+    */
+   disable_interrupts(&var);
    {
       task_add_to_state_list(ti);
 
@@ -660,7 +801,7 @@ void add_task(struct task *ti)
                          tree_by_tid_node,
                          tid);
    }
-   enable_preemption();
+   enable_interrupts(&var);
 }
 
 void remove_task(struct task *ti)
@@ -714,20 +855,14 @@ void wake_vruntime_handoff(struct task *ti)
    ulong var;
 
    /*
-    * Tree invariant (relied on by the upcoming AVL conversion of the
-    * runnable container): a task's vruntime is the tree key while
-    * it sits in the runnable container, so vruntime must NOT be
-    * mutated while ti is RUNNABLE. Restrict the raise to "ti is
-    * still SLEEPING", under IRQ-disabled so the state can't flip
-    * between the check and the store. A double-wake (wake_up()
-    * called on an already-RUNNABLE task because a peer wake won the
-    * wait_obj reset first, or tick_all_timers() and wake_up()
-    * racing on the same wobj+timer waiter) reaches this function
-    * with state == RUNNABLE and is correctly turned into a no-op.
-    *
-    * The list-based scheduler tolerated the prior unconditional
-    * mutation because list_for_each doesn't key on vruntime, but
-    * the invariant matters going forward.
+    * Tree invariant: a task's vruntime is the tree key when it's in
+    * the runnable tree, so we must NOT mutate it while ti is in the
+    * tree (state == RUNNABLE). Restrict the raise to "ti is still
+    * SLEEPING", under IRQ-disabled so the state can't flip between
+    * the check and the store. A double-wake (wake_up() called on an
+    * already-RUNNABLE task because a peer wake won the wait_obj
+    * reset first) reaches this function with state == RUNNABLE and
+    * is correctly turned into a no-op.
     */
    disable_interrupts(&var);
    {
@@ -773,39 +908,39 @@ void sched_account_ticks(void)
        * for the CPU — i.e. how much this tick costs us in fairness
        * terms relative to the contenders.
        *
-       * runnable_tasks_count tallies what's in runnable_tasks_list:
-       * RUNNABLE non-idle tasks (curr is RUNNING, not in the list)
-       * plus idle (always RUNNABLE when not curr). The `- 1` backs
-       * out idle, leaving "number of other non-idle tasks waiting".
+       * runnable_tasks_count tallies all RUNNABLE non-worker
+       * non-idle tasks. curr is RUNNING (not in the tree, not
+       * counted); idle lives outside the tree entirely (see the
+       * comment above runnable_tree_root). So the count is exactly
+       * "number of other non-idle tasks waiting" -- no adjustment
+       * needed.
        *
-       * The N=1 corner — curr is the only non-idle task — yields +0,
-       * which is load-bearing: a task forked later also starts at
-       * vruntime 0 (allocate_new_thread() kzallocs), so keeping a
-       * long-running solo task at 0 too prevents the newcomer from
-       * leapfrogging an accumulated debt and starving us until it
-       * catches up. Tilck has no min_vruntime hand-off like Linux
-       * CFS; the `- 1` is what stands in for it.
+       * The N=0 corner — curr is the only non-idle task — yields
+       * +0, which is load-bearing: a task forked later also starts
+       * at min_vruntime (fork_vruntime_handoff), and step 6 of the
+       * scheduler roadmap will switch this to a flat +1 once the
+       * wake/fork handoffs in steps 2 and 4 do the fairness
+       * compensation explicitly.
        *
        * Picking the task with the lowest vruntime is fairer than
        * picking the lowest `total` ticks, because tasks that
        * monopolized the CPU while nothing else wanted it aren't
        * penalized for it later.
        *
-       * The is_running gate matters for the upcoming AVL conversion:
-       * vruntime will be the tree key while curr is RUNNABLE, and
-       * there's a transient window inside do_schedule() between
-       * task_change_state(curr, RUNNABLE) and set_curr_task(selected)
-       * where get_curr_task() still returns the already-RUNNABLE
-       * outgoing task. A timer IRQ landing in that window would
-       * otherwise mutate an in-tree task's key out from under
-       * bintree_remove(). With this gate, the increment only fires
-       * while curr is genuinely RUNNING (and therefore outside the
-       * runnable container). Today, with a list-based runnable
-       * container, the gate is benign -- ticks during that window
-       * just don't accrue.
+       * The is_running gate is load-bearing now that the runnable
+       * container is a tree: vruntime IS the tree key while curr is
+       * RUNNABLE. Between task_change_state(curr, RUNNABLE) inside
+       * do_schedule() and set_curr_task(selected) inside
+       * switch_to_task(), get_curr_task() still returns the
+       * already-RUNNABLE outgoing task -- and that task now sits in
+       * the tree. A timer IRQ in that window would otherwise mutate
+       * the in-tree task's key out from under bintree_remove() and
+       * the next remove for it would chase a stale path. With this
+       * gate, the increment only fires while curr is genuinely
+       * RUNNING (outside the tree).
        */
       atomic_fetch_add(&t->vruntime,
-                       (u64)(get_runnable_tasks_count() - 1));
+                       (u64)get_runnable_tasks_count());
 
       /*
        * Roadmap step 1: monotonic high-watermark min_vruntime.
@@ -874,35 +1009,40 @@ static struct task *
 sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 {
    struct task *curr = get_curr_task();
-   struct task *selected = NULL;
-   struct task *pos;
+   struct task *selected;
+   ulong var;
 
-   list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
+   /*
+    * Leftmost in (vruntime, tid) ordering: the smallest key sits at
+    * the leftmost node of the AVL tree. STOPPED tasks aren't in the
+    * tree (action_stop() routes them out), and idle_task lives
+    * outside the tree on purpose -- see the comment above
+    * `runnable_tree_root`. So the leftmost node, if any, is always
+    * a valid candidate.
+    *
+    * Disable interrupts around the descent: do_schedule() may run
+    * with IRQs on (irq_resched() re-enables them before calling us),
+    * and tree mutations from IRQ context (tick_all_timers waking a
+    * sleeper -> task_change_state -> bintree_insert) include AVL
+    * rotations that briefly leave links inconsistent. Reading
+    * LEFT_OF mid-rotation would dereference a stale pointer.
+    */
+   disable_interrupts(&var);
+   {
+      selected = bintree_get_first_obj(runnable_tree_root,
+                                       struct task,
+                                       runnable_tree_node);
+   }
+   enable_interrupts(&var);
 
-      ASSERT_TASK_STATE(atomic_load(&pos->state), TASK_STATE_RUNNABLE);
-
-      /*
-       * STOPPED tasks aren't in this list (they live outside it on
-       * purpose — see task_add_to_state_list and action_stop in
-       * kernel/signal.c), so the only thing we still need to skip
-       * here is the idle task itself.
-       */
-      if (pos == idle_task)
-         continue;
-
-      if (!selected) {
-         selected = pos;
-         continue;
-      }
-
-      const u64 pos_vruntime = atomic_load(&pos->ticks.vruntime);
-      const u64 selected_vruntime = atomic_load(&selected->ticks.vruntime);
-
-      if (pos_vruntime < selected_vruntime)
-         selected = pos;
+   if (selected) {
+      ASSERT_TASK_STATE(atomic_load(&selected->state), TASK_STATE_RUNNABLE);
    }
 
-   /* If there is still no selected task, check for current task */
+   /*
+    * Tree was empty. Keep running curr if it still wants to;
+    * otherwise let do_schedule() fall back to idle.
+    */
    if (!selected) {
 
       if (curr_state == TASK_STATE_RUNNING)
