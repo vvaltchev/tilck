@@ -140,7 +140,7 @@ void selftest_wth(void)
          if (attempts++ >= 3)
             panic("It seems that jobs don't get executed");
 
-         kernel_sleep(TIME_SLICE_TICKS);
+         kernel_sleep(SCHED_LATENCY_TICKS);
          continue;
       }
 

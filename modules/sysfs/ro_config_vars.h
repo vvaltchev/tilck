@@ -24,7 +24,8 @@ DEF_STATIC_CONF_RO(BOOL,   debugchecks,            DEBUG_CHECKS);
 
 /* kernel */
 DEF_STATIC_CONF_RO(ULONG, timer_hz,                KRN_TIMER_HZ);
-DEF_STATIC_CONF_RO(ULONG, time_slice_ticks,        TIME_SLICE_TICKS);
+DEF_STATIC_CONF_RO(ULONG, sched_latency_ticks,     SCHED_LATENCY_TICKS);
+DEF_STATIC_CONF_RO(ULONG, min_granularity_ticks,   MIN_GRANULARITY_TICKS);
 DEF_STATIC_CONF_RO(ULONG, stack_pages,             KERNEL_STACK_PAGES);
 DEF_STATIC_CONF_RO(ULONG, user_stack_pages,        KRN_USER_STACK_PAGES);
 DEF_STATIC_CONF_RO(BOOL,  track_nested_int,        KRN_TRACK_NESTED_INTERR);

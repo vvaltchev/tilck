@@ -81,13 +81,17 @@ show_tilck_logo(void)
 static void
 show_system_info(void)
 {
-   const int time_slice = 1000 / (KRN_TIMER_HZ / TIME_SLICE_TICKS);
+   const int latency_ms =
+      (int)((u64)SCHED_LATENCY_TICKS * 1000 / KRN_TIMER_HZ);
+   const int min_gran_ms =
+      (int)((u64)MIN_GRANULARITY_TICKS * 1000 / KRN_TIMER_HZ);
    const char *in_hyp_str = in_hypervisor() ? "yes" : "no";
 
    printk("\e[32mtimer_hz: \e[m\e[1m%i\e[m\e[32m"
-          "; time_slice: \e[m\e[1m%i\e[m\e[32m"
-          " ms; in_hypervisor: \e[m\e[1m%s\e[m\n",
-          KRN_TIMER_HZ, time_slice, in_hyp_str);
+          "; sched_latency: \e[m\e[1m%i\e[m\e[32m ms"
+          "; min_granularity: \e[m\e[1m%i\e[m\e[32m ms"
+          "; in_hypervisor: \e[m\e[1m%s\e[m\n",
+          KRN_TIMER_HZ, latency_ms, min_gran_ms, in_hyp_str);
 }
 
 #ifdef __riscv64

@@ -8,7 +8,9 @@
 #pragma once
 
 /* ------ Value-based config variables -------- */
-#define KRN_TIMER_HZ               @KRN_TIMER_HZ@
+#define KRN_TIMER_HZ                   @KRN_TIMER_HZ@
+#define KRN_SCHED_LATENCY_TICKS        @KRN_SCHED_LATENCY_TICKS@
+#define KRN_MIN_GRANULARITY_TICKS      @KRN_MIN_GRANULARITY_TICKS@
 
 /* --------- Boolean config variables --------- */
 #cmakedefine01 KRN_RESCHED_ENABLE_PREEMPT
@@ -30,17 +32,28 @@
 #define BOGOMIPS_CONST                          10000
 
 
+/*
+ * Dynamic time slice (CFS step 7). The per-tick slice budget is
+ *
+ *    slice = max(SCHED_LATENCY_TICKS / nr_running, MIN_GRANULARITY_TICKS)
+ *
+ * with `nr_running` = runnable_tasks_count + 1 (folding curr back
+ * in). Under light load the slice approaches the full latency
+ * target (good for cache locality); under contention it shrinks
+ * toward the floor (good for fairness / interactive latency).
+ *
+ * KRN_MINIMAL_TIME_SLICE is the stress-test override: pin both
+ * SCHED_LATENCY and MIN_GRANULARITY to 1 so every tick is a
+ * preemption point.
+ */
 #if !KRN_MINIMAL_TIME_SLICE
 
-   /* Default case */
-   #define TIME_SLICE_TICKS (KRN_TIMER_HZ / 25)
+   #define SCHED_LATENCY_TICKS         KRN_SCHED_LATENCY_TICKS
+   #define MIN_GRANULARITY_TICKS       KRN_MIN_GRANULARITY_TICKS
 
 #else
 
-   /*
-    * DEBUG configuration used trigger as many context switches as possible
-    * and reproduce race conditions in the kernel.
-    */
-   #define TIME_SLICE_TICKS 1
+   #define SCHED_LATENCY_TICKS         1
+   #define MIN_GRANULARITY_TICKS       1
 
 #endif

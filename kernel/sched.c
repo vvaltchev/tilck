@@ -68,8 +68,8 @@ static atomic_u64_t min_vruntime;
  * 0 so it gets a small head start over the leading edge instead.
  *
  * In current +1/tick vruntime semantics, 10 units is 10 ticks --
- * exactly one default time slice (TIME_SLICE_TICKS == 10 at
- * KRN_TIMER_HZ == 250, i.e. 40 ms). Tunable.
+ * one default time slice's worth at KRN_TIMER_HZ == 250 (40 ms).
+ * Tunable.
  */
 #define WAKEUP_VRUNTIME_BONUS    10
 
@@ -954,11 +954,24 @@ void sched_account_ticks(void)
    }
 
    /*
-    * need_resched is never set for worker threads when they used too much
-    * CPU time: their timeslice is unlimited and can preempted only be another
-    * worker thread.
+    * Dynamic timeslice: SCHED_LATENCY_TICKS / nr_running, clamped at
+    * MIN_GRANULARITY_TICKS so the slice can't collapse below
+    * something worth the context-switch cost. nr_running here is
+    * runnable_tasks_count + 1: the runnable container excludes curr
+    * (and idle, and workers), so we add 1 to fold curr back in.
+    * Under light load N is small and the slice approaches the full
+    * latency target (good for cache locality); under contention N
+    * grows and the slice shrinks toward the floor (good for
+    * fairness / interactive latency).
+    *
+    * need_resched is never set for worker threads when they used too
+    * much CPU time: their timeslice is unlimited and can be
+    * preempted only by another worker thread.
     */
-   const bool timeout = !is_worker && t->timeslice >= TIME_SLICE_TICKS;
+   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
+   const u32 slice = MAX(SCHED_LATENCY_TICKS / nr_running,
+                         (u32)MIN_GRANULARITY_TICKS);
+   const bool timeout = !is_worker && t->timeslice >= slice;
 
    /*
     * !is_running covers all the cases where curr can't keep running
