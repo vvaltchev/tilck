@@ -31,6 +31,15 @@ static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 struct task *idle_task;
 
+/*
+ * Monotonic high-watermark vruntime. CFS-style baseline that step 2 of
+ * the scheduler roadmap (wakeup vruntime handoff) consumes as the floor
+ * when bringing a long-sleeper's vruntime back up at wake-up. No reader
+ * in this commit -- pure infrastructure landing on its own so the
+ * bookkeeping is reviewable in isolation.
+ */
+static atomic_u64_t min_vruntime;
+
 static ALWAYS_INLINE int get_runnable_tasks_count(void)
 {
    return atomic_load(&runnable_tasks_count);
@@ -704,6 +713,17 @@ void sched_account_ticks(void)
        */
       atomic_fetch_add(&t->vruntime,
                        (u64)(get_runnable_tasks_count() - 1));
+
+      /*
+       * Roadmap step 1: monotonic high-watermark min_vruntime.
+       * Step 2 (wakeup handoff) will use this as the floor for the
+       * woken task's vruntime. The guard makes the store
+       * structurally monotonic -- no decrease can ever happen.
+       */
+      const u64 vruntime = atomic_load(&t->vruntime);
+
+      if (vruntime > atomic_load(&min_vruntime))
+         atomic_store(&min_vruntime, vruntime);
    }
 
    /*
