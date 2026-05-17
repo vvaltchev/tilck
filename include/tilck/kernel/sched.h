@@ -195,7 +195,7 @@ extern const char *const task_state_str[6];
  */
 static ALWAYS_INLINE bool is_task_stopped(struct task *ti)
 {
-   const enum task_state s = (enum task_state) atomic_load_int(&ti->state);
+   const enum task_state s = (enum task_state) atomic_load(&ti->state);
 
    return s == TASK_STATE_STOPPED
       || (s == TASK_STATE_SLEEPING && ti->stop_pending);
@@ -220,31 +220,31 @@ bool save_regs_and_schedule(bool skip_disable_preempt);
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {
    extern atomic_int_t __need_resched; /* see docs/atomics.md */
-   atomic_store_int(&__need_resched, 1);
+   atomic_store(&__need_resched, 1);
 }
 
 static ALWAYS_INLINE void sched_clear_need_resched(void)
 {
    extern atomic_int_t __need_resched; /* see docs/atomics.md */
-   atomic_store_int(&__need_resched, 0);
+   atomic_store(&__need_resched, 0);
 }
 
 static ALWAYS_INLINE bool need_reschedule(void)
 {
    extern atomic_int_t __need_resched; /* see docs/atomics.md */
-   return (bool) atomic_load_int(&__need_resched);
+   return (bool) atomic_load(&__need_resched);
 }
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
    extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
-   atomic_fetch_add_int(&__disable_preempt, 1);
+   atomic_fetch_add(&__disable_preempt, 1);
 }
 
 static ALWAYS_INLINE void enable_preemption_nosched(void)
 {
    extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
-   atomic_fetch_sub_int(&__disable_preempt, 1);
+   atomic_fetch_sub(&__disable_preempt, 1);
 }
 
 void enable_preemption(void);
@@ -256,13 +256,13 @@ void enable_preemption(void);
 static ALWAYS_INLINE void force_enable_preemption(void)
 {
    extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
-   atomic_store_int(&__disable_preempt, 0);
+   atomic_store(&__disable_preempt, 0);
 }
 
 static ALWAYS_INLINE int get_preempt_disable_count(void)
 {
    extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
-   return atomic_load_int(&__disable_preempt);
+   return atomic_load(&__disable_preempt);
 }
 
 static ALWAYS_INLINE bool is_preemption_enabled(void)
@@ -370,7 +370,7 @@ static ALWAYS_INLINE struct task *get_curr_task(void)
 static ALWAYS_INLINE enum task_state
 get_curr_task_state(void)
 {
-   return (enum task_state) atomic_load_int(&get_curr_task()->state);
+   return (enum task_state) atomic_load(&get_curr_task()->state);
 }
 
 #if DEBUG_CHECKS

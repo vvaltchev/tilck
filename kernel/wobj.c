@@ -27,7 +27,7 @@ void wait_obj_set(struct wait_obj *wo,
       ASSERT(list_node_is_null(&wo->wait_list_node) ||
              list_node_is_empty(&wo->wait_list_node));
 
-      atomic_store_ptr(&wo->__ptr, ptr);
+      atomic_store(&wo->__ptr, ptr);
       wo->extra = extra;
       list_node_init(&wo->wait_list_node);
 
@@ -77,7 +77,7 @@ void *wait_obj_reset(struct wait_obj *wo)
 
       if (old_type != WOBJ_NONE) {
 
-         oldp = atomic_exchange_ptr(&wo->__ptr, NULL);
+         oldp = atomic_exchange(&wo->__ptr, NULL);
 
          if (list_is_node_in_list(&wo->wait_list_node))
             list_remove(&wo->wait_list_node);
@@ -108,7 +108,7 @@ void prepare_to_wait_on(enum wo_type type,
       return;
    }
 
-   ASSERT(atomic_load_int(&ti->state) != TASK_STATE_SLEEPING);
+   ASSERT(atomic_load(&ti->state) != TASK_STATE_SLEEPING);
    wait_obj_set(&ti->wobj, type, ptr, extra, wait_list);
    task_change_state(ti, TASK_STATE_SLEEPING);
 }

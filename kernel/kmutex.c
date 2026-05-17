@@ -175,7 +175,7 @@ void kmutex_unlock(struct kmutex *m)
       if (m->flags & KMUTEX_FL_RECURSIVE)
          m->lock_count++;
 
-      ASSERT_TASK_STATE(atomic_load_int(&ti->state), TASK_STATE_SLEEPING);
+      ASSERT_TASK_STATE(atomic_load(&ti->state), TASK_STATE_SLEEPING);
       wake_up(ti);
 
    } // if (!list_is_empty(&m->wait_list))

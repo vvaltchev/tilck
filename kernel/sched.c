@@ -33,7 +33,7 @@ struct task *idle_task;
 
 static ALWAYS_INLINE int get_runnable_tasks_count(void)
 {
-   return atomic_load_int(&runnable_tasks_count);
+   return atomic_load(&runnable_tasks_count);
 }
 
 const char *const task_state_str[6] = {
@@ -47,7 +47,7 @@ const char *const task_state_str[6] = {
 
 void enable_preemption(void)
 {
-   int oldval = atomic_fetch_sub_int(&__disable_preempt, 1);
+   int oldval = atomic_fetch_sub(&__disable_preempt, 1);
 
    ASSERT(oldval > 0);
 
@@ -427,7 +427,7 @@ static void create_kernel_process(void)
    list_init(&runnable_tasks_list);
    s_kernel_pi->pid = create_new_pid();
    s_kernel_ti->tid = create_new_kernel_tid();
-   atomic_store_int(&s_kernel_pi->ref_count, 1);
+   atomic_store(&s_kernel_pi->ref_count, 1);
    s_kernel_ti->pi = s_kernel_pi;
    init_task_lists(s_kernel_ti);
    init_process_lists(s_kernel_pi);
@@ -436,7 +436,7 @@ static void create_kernel_process(void)
    s_kernel_ti->running_in_kernel = IN_SYSCALL_FLAG;
    memcpy(s_kernel_pi->str_cwd, "/", 2);
 
-   atomic_store_int(&s_kernel_ti->state, TASK_STATE_SLEEPING);
+   atomic_store(&s_kernel_ti->state, TASK_STATE_SLEEPING);
 
    kernel_process = s_kernel_ti;
    kernel_process_pi = s_kernel_ti->pi;
@@ -499,11 +499,11 @@ static void task_add_to_state_list(struct task *ti)
    if (is_worker_thread(ti))
       return;
 
-   switch ((enum task_state) atomic_load_int(&ti->state)) {
+   switch ((enum task_state) atomic_load(&ti->state)) {
 
       case TASK_STATE_RUNNABLE:
          list_add_tail(&runnable_tasks_list, &ti->runnable_node);
-         atomic_fetch_add_int(&runnable_tasks_count, 1);
+         atomic_fetch_add(&runnable_tasks_count, 1);
          break;
 
       case TASK_STATE_SLEEPING:
@@ -540,7 +540,7 @@ static void task_remove_from_state_list(struct task *ti)
    if (is_worker_thread(ti))
       return;
 
-   switch ((enum task_state) atomic_load_int(&ti->state)) {
+   switch ((enum task_state) atomic_load(&ti->state)) {
 
       case TASK_STATE_RUNNABLE: {
          /*
@@ -555,7 +555,7 @@ static void task_remove_from_state_list(struct task *ti)
          DEBUG_ONLY(int prev);
          list_remove(&ti->runnable_node);
          DEBUG_ONLY_UNSAFE(prev =)
-            atomic_fetch_sub_int(&runnable_tasks_count, 1);
+            atomic_fetch_sub(&runnable_tasks_count, 1);
          ASSERT(prev >= 1);
          break;
       }
@@ -597,11 +597,11 @@ static void task_remove_from_state_list(struct task *ti)
 void task_change_state_unsafe(struct task *ti, enum task_state new_state)
 {
    ASSERT(!are_interrupts_enabled());
-   ASSERT(atomic_load_int(&ti->state) != (int) new_state);
-   ASSERT(atomic_load_int(&ti->state) != TASK_STATE_ZOMBIE);
+   ASSERT(atomic_load(&ti->state) != (int) new_state);
+   ASSERT(atomic_load(&ti->state) != TASK_STATE_ZOMBIE);
 
    task_remove_from_state_list(ti);
-   atomic_store_int(&ti->state, (int) new_state);
+   atomic_store(&ti->state, (int) new_state);
    task_add_to_state_list(ti);
 }
 
@@ -620,7 +620,7 @@ void task_change_state_idempotent(struct task *ti, enum task_state new_state)
    ulong var;
    disable_interrupts(&var);
    {
-      if (atomic_load_int(&ti->state) != (int) new_state)
+      if (atomic_load(&ti->state) != (int) new_state)
          task_change_state_unsafe(ti, new_state);
    }
    enable_interrupts(&var);
@@ -645,7 +645,7 @@ void remove_task(struct task *ti)
 {
    disable_preemption();
    {
-      ASSERT_TASK_STATE(atomic_load_int(&ti->state), TASK_STATE_ZOMBIE);
+      ASSERT_TASK_STATE(atomic_load(&ti->state), TASK_STATE_ZOMBIE);
 
       task_remove_from_state_list(ti);
 
@@ -765,7 +765,7 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 
    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
-      ASSERT_TASK_STATE(atomic_load_int(&pos->state), TASK_STATE_RUNNABLE);
+      ASSERT_TASK_STATE(atomic_load(&pos->state), TASK_STATE_RUNNABLE);
 
       /*
        * STOPPED tasks aren't in this list (they live outside it on

@@ -366,6 +366,203 @@ _ATOMIC_NONINT_TYPES(_DEFINE_ATOMIC_NONINT_OPS)
 
 
 /* ============================================================
+ *  Untyped call-site sugar: atomic_<op>(p, ...)
+ * ============================================================
+ *
+ *  The X-macro above generates per-type wrappers (atomic_load_u32,
+ *  atomic_store_int, etc.). For call-site brevity we also expose
+ *  type-generic forms that dispatch on the pointer type:
+ *
+ *      atomic_int_t   x;
+ *      atomic_u64_t   y;
+ *      atomic_ptr_t   p;
+ *
+ *      atomic_load(&x);            // -> atomic_load_int(&x)
+ *      atomic_store(&y, 42);       // -> atomic_store_u64(&y, 42)
+ *      atomic_exchange(&p, NULL);  // -> atomic_exchange_ptr(...)
+ *
+ *  In C: implemented via C11 _Generic on the pointer type.
+ *  In C++: implemented via overloaded inline wrappers (one per
+ *  type) under extern "C++" so they participate in normal
+ *  overload resolution.
+ *
+ *  fetch_add and fetch_sub are defined only for integer types
+ *  (s8/u8/.../s64/u64/int). Calling them on atomic_bool_t or
+ *  atomic_ptr_t is a compile error -- the _Generic association
+ *  doesn't exist in the integer-only block.
+ */
+
+#ifndef __cplusplus
+
+   #define atomic_load(p)                                                \
+      (_Generic((p),                                                     \
+         atomic_s8_t    *: atomic_load_s8,                               \
+         atomic_u8_t    *: atomic_load_u8,                               \
+         atomic_s16_t   *: atomic_load_s16,                              \
+         atomic_u16_t   *: atomic_load_u16,                              \
+         atomic_s32_t   *: atomic_load_s32,                              \
+         atomic_u32_t   *: atomic_load_u32,                              \
+         atomic_s64_t   *: atomic_load_s64,                              \
+         atomic_u64_t   *: atomic_load_u64,                              \
+         atomic_int_t   *: atomic_load_int,                              \
+         atomic_bool_t  *: atomic_load_bool,                             \
+         atomic_ptr_t   *: atomic_load_ptr                               \
+      )((p)))
+
+   #define atomic_store(p, val)                                          \
+      (_Generic((p),                                                     \
+         atomic_s8_t    *: atomic_store_s8,                              \
+         atomic_u8_t    *: atomic_store_u8,                              \
+         atomic_s16_t   *: atomic_store_s16,                             \
+         atomic_u16_t   *: atomic_store_u16,                             \
+         atomic_s32_t   *: atomic_store_s32,                             \
+         atomic_u32_t   *: atomic_store_u32,                             \
+         atomic_s64_t   *: atomic_store_s64,                             \
+         atomic_u64_t   *: atomic_store_u64,                             \
+         atomic_int_t   *: atomic_store_int,                             \
+         atomic_bool_t  *: atomic_store_bool,                            \
+         atomic_ptr_t   *: atomic_store_ptr                              \
+      )((p), (val)))
+
+   #define atomic_fetch_add(p, val)                                      \
+      (_Generic((p),                                                     \
+         atomic_s8_t    *: atomic_fetch_add_s8,                          \
+         atomic_u8_t    *: atomic_fetch_add_u8,                          \
+         atomic_s16_t   *: atomic_fetch_add_s16,                         \
+         atomic_u16_t   *: atomic_fetch_add_u16,                         \
+         atomic_s32_t   *: atomic_fetch_add_s32,                         \
+         atomic_u32_t   *: atomic_fetch_add_u32,                         \
+         atomic_s64_t   *: atomic_fetch_add_s64,                         \
+         atomic_u64_t   *: atomic_fetch_add_u64,                         \
+         atomic_int_t   *: atomic_fetch_add_int                          \
+      )((p), (val)))
+
+   #define atomic_fetch_sub(p, val)                                      \
+      (_Generic((p),                                                     \
+         atomic_s8_t    *: atomic_fetch_sub_s8,                          \
+         atomic_u8_t    *: atomic_fetch_sub_u8,                          \
+         atomic_s16_t   *: atomic_fetch_sub_s16,                         \
+         atomic_u16_t   *: atomic_fetch_sub_u16,                         \
+         atomic_s32_t   *: atomic_fetch_sub_s32,                         \
+         atomic_u32_t   *: atomic_fetch_sub_u32,                         \
+         atomic_s64_t   *: atomic_fetch_sub_s64,                         \
+         atomic_u64_t   *: atomic_fetch_sub_u64,                         \
+         atomic_int_t   *: atomic_fetch_sub_int                          \
+      )((p), (val)))
+
+   #define atomic_exchange(p, val)                                       \
+      (_Generic((p),                                                     \
+         atomic_s8_t    *: atomic_exchange_s8,                           \
+         atomic_u8_t    *: atomic_exchange_u8,                           \
+         atomic_s16_t   *: atomic_exchange_s16,                          \
+         atomic_u16_t   *: atomic_exchange_u16,                          \
+         atomic_s32_t   *: atomic_exchange_s32,                          \
+         atomic_u32_t   *: atomic_exchange_u32,                          \
+         atomic_s64_t   *: atomic_exchange_s64,                          \
+         atomic_u64_t   *: atomic_exchange_u64,                          \
+         atomic_int_t   *: atomic_exchange_int,                          \
+         atomic_bool_t  *: atomic_exchange_bool,                         \
+         atomic_ptr_t   *: atomic_exchange_ptr                           \
+      )((p), (val)))
+
+   #define atomic_cas_weak(p, exp, des)                                  \
+      (_Generic((p),                                                     \
+         atomic_s8_t    *: atomic_cas_weak_s8,                           \
+         atomic_u8_t    *: atomic_cas_weak_u8,                           \
+         atomic_s16_t   *: atomic_cas_weak_s16,                          \
+         atomic_u16_t   *: atomic_cas_weak_u16,                          \
+         atomic_s32_t   *: atomic_cas_weak_s32,                          \
+         atomic_u32_t   *: atomic_cas_weak_u32,                          \
+         atomic_s64_t   *: atomic_cas_weak_s64,                          \
+         atomic_u64_t   *: atomic_cas_weak_u64,                          \
+         atomic_int_t   *: atomic_cas_weak_int,                          \
+         atomic_bool_t  *: atomic_cas_weak_bool,                         \
+         atomic_ptr_t   *: atomic_cas_weak_ptr                           \
+      )((p), (exp), (des)))
+
+   #define atomic_cas_strong(p, exp, des)                                \
+      (_Generic((p),                                                     \
+         atomic_s8_t    *: atomic_cas_strong_s8,                         \
+         atomic_u8_t    *: atomic_cas_strong_u8,                         \
+         atomic_s16_t   *: atomic_cas_strong_s16,                        \
+         atomic_u16_t   *: atomic_cas_strong_u16,                        \
+         atomic_s32_t   *: atomic_cas_strong_s32,                        \
+         atomic_u32_t   *: atomic_cas_strong_u32,                        \
+         atomic_s64_t   *: atomic_cas_strong_s64,                        \
+         atomic_u64_t   *: atomic_cas_strong_u64,                        \
+         atomic_int_t   *: atomic_cas_strong_int,                        \
+         atomic_bool_t  *: atomic_cas_strong_bool,                       \
+         atomic_ptr_t   *: atomic_cas_strong_ptr                         \
+      )((p), (exp), (des)))
+
+#else /* __cplusplus */
+
+extern "C++" {
+
+   /*
+    * Per-type overloaded inlines. C++ overload resolution picks
+    * the right one from the pointer type, the same way _Generic
+    * does in C.
+    */
+
+   #define _DEFINE_ATOMIC_GENERIC_CPP(name, T)                           \
+                                                                         \
+      static ALWAYS_INLINE T                                             \
+      atomic_load(atomic_##name##_t *p)                                  \
+      {                                                                  \
+         return atomic_load_##name(p);                                   \
+      }                                                                  \
+                                                                         \
+      static ALWAYS_INLINE void                                          \
+      atomic_store(atomic_##name##_t *p, T val)                          \
+      {                                                                  \
+         atomic_store_##name(p, val);                                    \
+      }                                                                  \
+                                                                         \
+      static ALWAYS_INLINE T                                             \
+      atomic_exchange(atomic_##name##_t *p, T val)                       \
+      {                                                                  \
+         return atomic_exchange_##name(p, val);                          \
+      }                                                                  \
+                                                                         \
+      static ALWAYS_INLINE bool                                          \
+      atomic_cas_weak(atomic_##name##_t *p, T *exp, T des)               \
+      {                                                                  \
+         return atomic_cas_weak_##name(p, exp, des);                     \
+      }                                                                  \
+                                                                         \
+      static ALWAYS_INLINE bool                                          \
+      atomic_cas_strong(atomic_##name##_t *p, T *exp, T des)             \
+      {                                                                  \
+         return atomic_cas_strong_##name(p, exp, des);                   \
+      }
+
+   #define _DEFINE_ATOMIC_GENERIC_FETCH_CPP(name, T)                     \
+                                                                         \
+      static ALWAYS_INLINE T                                             \
+      atomic_fetch_add(atomic_##name##_t *p, T val)                      \
+      {                                                                  \
+         return atomic_fetch_add_##name(p, val);                         \
+      }                                                                  \
+                                                                         \
+      static ALWAYS_INLINE T                                             \
+      atomic_fetch_sub(atomic_##name##_t *p, T val)                      \
+      {                                                                  \
+         return atomic_fetch_sub_##name(p, val);                         \
+      }
+
+   _ATOMIC_INT_TYPES_LE32(_DEFINE_ATOMIC_GENERIC_CPP)
+   _ATOMIC_INT_TYPES_LE32(_DEFINE_ATOMIC_GENERIC_FETCH_CPP)
+   _ATOMIC_INT_TYPES_64(_DEFINE_ATOMIC_GENERIC_CPP)
+   _ATOMIC_INT_TYPES_64(_DEFINE_ATOMIC_GENERIC_FETCH_CPP)
+   _ATOMIC_NONINT_TYPES(_DEFINE_ATOMIC_GENERIC_CPP)
+
+} // extern "C++"
+
+#endif /* __cplusplus */
+
+
+/* ============================================================
  *  Basic reference counting
  * ============================================================
  *
@@ -383,13 +580,13 @@ _ATOMIC_NONINT_TYPES(_DEFINE_ATOMIC_NONINT_OPS)
 /* Return the new value */
 static ALWAYS_INLINE int __retain_obj(atomic_int_t *ref_count)
 {
-   return atomic_fetch_add_int(ref_count, 1) + 1;
+   return atomic_fetch_add(ref_count, 1) + 1;
 }
 
 /* Return the new value */
 static ALWAYS_INLINE int __release_obj(atomic_int_t *ref_count)
 {
-   int old = atomic_fetch_sub_int(ref_count, 1);
+   int old = atomic_fetch_sub(ref_count, 1);
    ASSERT(old > 0);
    return old - 1;
 }
@@ -403,7 +600,7 @@ int __release_obj(atomic_int_t *ref_count);
 
 static ALWAYS_INLINE int __get_ref_count(atomic_int_t *ref_count)
 {
-   return atomic_load_int(ref_count);
+   return atomic_load(ref_count);
 }
 
 #define retain_obj(p)         (__retain_obj(&(p)->ref_count))

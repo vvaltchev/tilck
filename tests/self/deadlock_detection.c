@@ -99,7 +99,7 @@ void debug_check_for_deadlock(void)
 
          candidates++;
 
-         if (atomic_load_int(&ti->state) == TASK_STATE_RUNNABLE) {
+         if (atomic_load(&ti->state) == TASK_STATE_RUNNABLE) {
             found_runnable = true;
             break;
          }
@@ -128,7 +128,7 @@ nds_should_skip_progress_check(int i, int *tid_ref)
    if (!(ti = get_task(tid)))
       return true;
 
-   if (atomic_load_int(&ti->state) == TASK_STATE_ZOMBIE)
+   if (atomic_load(&ti->state) == TASK_STATE_ZOMBIE)
       return true;
 
    if (tid_ref)

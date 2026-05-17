@@ -278,7 +278,7 @@ static void signal_wakeup_task(struct task *ti)
     */
    ti->stop_pending = false;
 
-   if (atomic_load_int(&ti->state) == TASK_STATE_SLEEPING) {
+   if (atomic_load(&ti->state) == TASK_STATE_SLEEPING) {
 
       /*
        * We must NOT wake up tasks waiting on a mutex or on a semaphore:
@@ -290,7 +290,7 @@ static void signal_wakeup_task(struct task *ti)
       if (ti->wobj.type != WOBJ_KMUTEX && ti->wobj.type != WOBJ_SEM)
          wake_up(ti);
 
-   } else if (atomic_load_int(&ti->state) == TASK_STATE_STOPPED) {
+   } else if (atomic_load(&ti->state) == TASK_STATE_STOPPED) {
 
       /*
        * The task was explicitly stopped (SIGSTOP-class signal) and
@@ -350,7 +350,7 @@ static void action_stop(struct task *ti, int signum, int fl)
     *  - ZOMBIE: dying, nothing to do.
     */
    const enum task_state s =
-      (enum task_state) atomic_load_int(&ti->state);
+      (enum task_state) atomic_load(&ti->state);
 
    if (s == TASK_STATE_SLEEPING) {
       ti->stop_pending = true;
@@ -386,7 +386,7 @@ static void action_continue(struct task *ti, int signum, int fl)
     * above is the visible side-effect).
     */
    const enum task_state s =
-      (enum task_state) atomic_load_int(&ti->state);
+      (enum task_state) atomic_load(&ti->state);
 
    if (s == TASK_STATE_STOPPED) {
       task_change_state(ti, TASK_STATE_RUNNABLE);
@@ -515,7 +515,7 @@ int send_signal2(int pid, int tid, int signum, int flags)
    if (signum == 0)
       goto end; /* the user app is just checking permissions */
 
-   if (atomic_load_int(&ti->state) == TASK_STATE_ZOMBIE)
+   if (atomic_load(&ti->state) == TASK_STATE_ZOMBIE)
       goto end; /* do nothing */
 
    /* TODO: update this code when thread support is added */

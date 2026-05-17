@@ -27,13 +27,13 @@ atomic_int_t __in_irq_count;
 
 static ALWAYS_INLINE void inc_irq_count(void)
 {
-   atomic_fetch_add_int(&__in_irq_count, 1);
+   atomic_fetch_add(&__in_irq_count, 1);
 }
 
 static ALWAYS_INLINE void dec_irq_count(void)
 {
    DEBUG_ONLY_UNSAFE(int oldval =)
-      atomic_fetch_sub_int(&__in_irq_count, 1);
+      atomic_fetch_sub(&__in_irq_count, 1);
 
    ASSERT(oldval > 0);
 }

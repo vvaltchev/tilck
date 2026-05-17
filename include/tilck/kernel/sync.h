@@ -111,7 +111,7 @@ void *wait_obj_reset(struct wait_obj *wo);
 static ALWAYS_INLINE void *
 wait_obj_get_ptr(struct wait_obj *wo)
 {
-   return atomic_load_ptr(&wo->__ptr);
+   return atomic_load(&wo->__ptr);
 }
 
 static ALWAYS_INLINE long
