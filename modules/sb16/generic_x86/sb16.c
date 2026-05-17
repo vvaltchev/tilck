@@ -90,7 +90,7 @@ sb16_handle_irq(void *ctx)
    }
 
    if (producer_is_sleeping) {
-      if (owner && atomic_load_int(&owner->state) == TASK_STATE_SLEEPING)
+      if (owner && atomic_load(&owner->state) == TASK_STATE_SLEEPING)
          task_change_state(owner, TASK_STATE_RUNNABLE);
    }
 

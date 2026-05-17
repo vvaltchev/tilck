@@ -230,7 +230,7 @@ void wth_run(void *arg)
 
       if (t->waiting_for_jobs) {
          schedule();
-      } else if (atomic_load_int(&t->task->state) == TASK_STATE_RUNNABLE) {
+      } else if (atomic_load(&t->task->state) == TASK_STATE_RUNNABLE) {
          /*
           * Race wakeup: an IRQ-driven wth_wakeup() between the
           * IRQ-disabled region above and here cleared
@@ -265,7 +265,7 @@ struct task *wth_get_runnable_thread(void)
 
       struct worker_thread *t = worker_threads[i];
 
-      if (atomic_load_int(&t->task->state) == TASK_STATE_RUNNABLE)
+      if (atomic_load(&t->task->state) == TASK_STATE_RUNNABLE)
          if (!selected || t->priority < selected->priority)
             selected = t;
    }

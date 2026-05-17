@@ -117,7 +117,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size, offt *pos)
       if (rc)
          break; /* Everything is alright, we read something */
 
-      if (atomic_load_int(&p->write_handles) == 0) {
+      if (atomic_load(&p->write_handles) == 0) {
          /* No more writers, always return 0, no matter what. */
          break;
       }
@@ -176,7 +176,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size, offt *pos)
 
    while (true) {
 
-      if (atomic_load_int(&p->read_handles) == 0) {
+      if (atomic_load(&p->read_handles) == 0) {
 
          /* Broken pipe */
          send_signal(get_curr_pid(), SIGPIPE, true);
@@ -229,7 +229,7 @@ static int pipe_read_ready(fs_handle h)
    kmutex_lock(&p->mutex);
    {
       ret = !ringbuf_is_empty(&p->rb) ||
-            atomic_load_int(&p->write_handles) == 0;
+            atomic_load(&p->write_handles) == 0;
    }
    kmutex_unlock(&p->mutex);
    return ret;
@@ -251,7 +251,7 @@ static int pipe_write_ready(fs_handle h)
    kmutex_lock(&p->mutex);
    {
       ret = !ringbuf_is_full(&p->rb) ||
-            atomic_load_int(&p->read_handles) == 0;
+            atomic_load(&p->read_handles) == 0;
    }
    kmutex_unlock(&p->mutex);
    return ret;
@@ -272,10 +272,10 @@ static int pipe_except_ready(fs_handle h)
 
    kmutex_lock(&p->mutex);
    {
-      if (atomic_load_int(&p->read_handles) == 0)
+      if (atomic_load(&p->read_handles) == 0)
          ret |= POLLERR;
 
-      if (atomic_load_int(&p->write_handles) == 0)
+      if (atomic_load(&p->write_handles) == 0)
          ret |= POLLHUP;
    }
    kmutex_unlock(&p->mutex);
@@ -420,7 +420,7 @@ static void pipe_on_handle_close(fs_handle h)
     */
    kmutex_lock(&p->mutex);
    {
-      old = atomic_fetch_sub_int(
+      old = atomic_fetch_sub(
          (kh->fl_flags & O_WRONLY) ? &p->write_handles : &p->read_handles,
          1
       );
@@ -460,9 +460,9 @@ static void pipe_on_handle_dup(fs_handle h)
     * decrement) but that's acceptable for a debug aid.
     */
    if (is_write)
-      atomic_fetch_add_int(&p->write_handles, 1);
+      atomic_fetch_add(&p->write_handles, 1);
    else
-      atomic_fetch_add_int(&p->read_handles, 1);
+      atomic_fetch_add(&p->read_handles, 1);
 
 #if KRN_HANG_DETECTION
    record_pipe_event(p, 'D', is_write);
@@ -514,7 +514,7 @@ fs_handle pipe_create_read_handle(struct pipe *p)
    res = kfs_create_new_handle(&static_ops_pipe_read_end, (void *)p, O_RDONLY);
 
    if (res != NULL)
-      atomic_fetch_add_int(&p->read_handles, 1);
+      atomic_fetch_add(&p->read_handles, 1);
 
    return res;
 }
@@ -526,7 +526,7 @@ fs_handle pipe_create_write_handle(struct pipe *p)
    res = kfs_create_new_handle(&static_ops_pipe_write_end, (void*)p, O_WRONLY);
 
    if (res != NULL)
-      atomic_fetch_add_int(&p->write_handles, 1);
+      atomic_fetch_add(&p->write_handles, 1);
 
    return res;
 }

@@ -96,7 +96,7 @@ stop_all_other_tasks(void *task, void *unused)
     * unsafe variant.
     */
    const enum task_state s =
-      (enum task_state) atomic_load_int(&ti->state);
+      (enum task_state) atomic_load(&ti->state);
 
    if (s == TASK_STATE_RUNNABLE)
       task_change_state_unsafe(ti, TASK_STATE_STOPPED);

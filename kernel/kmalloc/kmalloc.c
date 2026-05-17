@@ -618,11 +618,11 @@ per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags)
    bool expected = false;
    void *res;
 
-   if (!atomic_cas_strong_bool(&h->in_use, &expected, true))
+   if (!atomic_cas_strong(&h->in_use, &expected, true))
       return NULL; /* heap already in use (we're in IRQ context) */
 
    res = per_heap_kmalloc_unsafe(h, size, flags);
-   atomic_store_bool(&h->in_use, false);
+   atomic_store(&h->in_use, false);
    return res;
 }
 
@@ -929,14 +929,14 @@ per_heap_kfree(struct kmalloc_heap *h,
    if (!ptr)
       return;
 
-   if (!atomic_cas_strong_bool(&h->in_use, &expected, true))
+   if (!atomic_cas_strong(&h->in_use, &expected, true))
    {
       per_heap_kfree_used_heap_corner_case(h, ptr, user_size, flags);
       return;
    }
 
    per_heap_kfree_unsafe(h, ptr, user_size, flags);
-   atomic_store_bool(&h->in_use, false);
+   atomic_store(&h->in_use, false);
 }
 
 void *kzmalloc(size_t size)

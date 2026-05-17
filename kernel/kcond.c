@@ -157,14 +157,14 @@ kcond_signal_int(struct kcond *c, struct wait_obj *wo)
       wait_obj_reset(wo);
       list_add_tail(&e->waiter->signaled_list, &e->signaled_node);
 
-      if (ti && atomic_load_int(&ti->state) == TASK_STATE_SLEEPING)
+      if (ti && atomic_load(&ti->state) == TASK_STATE_SLEEPING)
          wake_up(ti);
 
       return;
    }
 
    /* Single-obj path: traditional kcond wait. */
-   if (!ti || atomic_load_int(&ti->state) != TASK_STATE_SLEEPING) {
+   if (!ti || atomic_load(&ti->state) != TASK_STATE_SLEEPING) {
       /* the signal is lost, that's typical for conditions */
       return;
    }

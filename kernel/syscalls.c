@@ -287,7 +287,7 @@ stop_all_user_tasks(void *task, void *unused)
     * use the safe wrapper.
     */
    const enum task_state s =
-      (enum task_state) atomic_load_int(&ti->state);
+      (enum task_state) atomic_load(&ti->state);
 
    if (s == TASK_STATE_RUNNABLE)
       task_change_state(ti, TASK_STATE_STOPPED);

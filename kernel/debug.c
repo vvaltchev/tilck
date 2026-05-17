@@ -329,7 +329,7 @@ void *debug_refcount_obj = (void *)0;
 /* Return the new value */
 int __retain_obj(atomic_int_t *ref_count)
 {
-   int ret = atomic_fetch_add_int(ref_count, 1) + 1;
+   int ret = atomic_fetch_add(ref_count, 1) + 1;
 
    if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
       printk(COLOR_GREEN "refcount at %p: %d -> %d" RESET_ATTRS "\n",
@@ -342,7 +342,7 @@ int __retain_obj(atomic_int_t *ref_count)
 /* Return the new value */
 int __release_obj(atomic_int_t *ref_count)
 {
-   int old = atomic_fetch_sub_int(ref_count, 1);
+   int old = atomic_fetch_sub(ref_count, 1);
    int ret;
    ASSERT(old > 0);
    ret = old - 1;

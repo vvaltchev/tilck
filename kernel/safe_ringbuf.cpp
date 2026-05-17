@@ -38,20 +38,20 @@ bool safe_ringbuf_is_empty(struct safe_ringbuf *rb)
 bool safe_ringbuf_is_full(struct safe_ringbuf *rb)
 {
    struct generic_safe_ringbuf_stat cs;
-   cs.__raw = atomic_load_u32(&rb->s.raw);
+   cs.__raw = atomic_load(&rb->s.raw);
    return cs.full;
 }
 
 static ALWAYS_INLINE void
 begin_debug_write_checks(struct safe_ringbuf *rb)
 {
-   DEBUG_ONLY(atomic_fetch_add_int(&rb->nested_writes, 1));
+   DEBUG_ONLY(atomic_fetch_add(&rb->nested_writes, 1));
 }
 
 static ALWAYS_INLINE void
 end_debug_write_checks(struct safe_ringbuf *rb)
 {
-   DEBUG_ONLY(atomic_fetch_sub_int(&rb->nested_writes, 1));
+   DEBUG_ONLY(atomic_fetch_sub(&rb->nested_writes, 1));
 }
 
 static ALWAYS_INLINE void
@@ -59,7 +59,7 @@ begin_debug_read_checks(struct safe_ringbuf *rb)
 {
 #if DEBUG_CHECKS
 
-   int nw = atomic_load_int(&rb->nested_writes);
+   int nw = atomic_load(&rb->nested_writes);
 
    if (nw)
       panic("Read from safe_ringbuf interrupted on-going write. Not supported");
@@ -83,10 +83,10 @@ safe_ringbuf_init(struct safe_ringbuf *rb, u16 max_elems, u16 e_size, void *buf)
    rb->max_elems = max_elems;
    rb->elem_size = e_size;
    rb->buf = (u8 *)buf;
-   atomic_store_u32(&rb->s.raw, 0);
+   atomic_store(&rb->s.raw, 0);
 
 #if DEBUG_CHECKS
-   atomic_store_int(&rb->nested_writes, 0);
+   atomic_store(&rb->nested_writes, 0);
 #endif
 }
 
@@ -125,7 +125,7 @@ __safe_ringbuf_write(struct safe_ringbuf *rb,
       if (ns.write_pos == ns.read_pos)
          ns.full = true;
 
-   } while (!atomic_cas_weak_u32(&rb->s.raw,
+   } while (!atomic_cas_weak(&rb->s.raw,
                                  &cs.__raw,
                                  ns.__raw));
 
@@ -173,7 +173,7 @@ __safe_ringbuf_read(struct safe_ringbuf *rb, void *elem_ptr /* out */)
       ns.read_pos = (ns.read_pos + 1) % rb->max_elems;
       ns.full = false;
 
-   } while (!atomic_cas_weak_u32(&rb->s.raw,
+   } while (!atomic_cas_weak(&rb->s.raw,
                                  &cs.__raw,
                                  ns.__raw));
 

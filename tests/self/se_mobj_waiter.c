@@ -22,14 +22,14 @@ static void mobj_waiter_sig_thread(void *arg)
 
    printk("[thread %lu] signal cond %ld\n", n, n);
    kcond_signal_one(&conds[n]);
-   atomic_fetch_add_int(&mobj_se_test_signal_counter, 1);
+   atomic_fetch_add(&mobj_se_test_signal_counter, 1);
 }
 
 static void mobj_waiter_wait_thread(void *arg)
 {
    printk("[wait th] Start\n");
 
-   if (atomic_load_int(&mobj_se_test_signal_counter) > 0) {
+   if (atomic_load(&mobj_se_test_signal_counter) > 0) {
       printk("[wait th] Test timing assumption failed, re-try\n");
       mobj_se_test_assumption_failed = true;
       return;
@@ -72,7 +72,7 @@ void selftest_mobj_waiter()
 
 retry:
 
-   atomic_store_int(&mobj_se_test_signal_counter, 0);
+   atomic_store(&mobj_se_test_signal_counter, 0);
    mobj_se_test_assumption_failed = false;
 
    for (int i = 0; i < ARRAY_SIZE(conds); i++) {

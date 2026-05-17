@@ -43,7 +43,7 @@ static void ksem_test_wait_thread(void *arg)
 
    printk("ksem wait thread %d, wait: %d\n", get_curr_tid(), ctx->units);
 
-   atomic_store_int(&ctx->state, BLOCKED);
+   atomic_store(&ctx->state, BLOCKED);
    rc = ksem_wait(&test_sem, ctx->units, KSEM_WAIT_FOREVER);
 
    if (rc != 0) {
@@ -51,7 +51,7 @@ static void ksem_test_wait_thread(void *arg)
    }
 
    printk("wait(%d) done, rem_counter: %d\n", ctx->units, test_sem.counter);
-   atomic_store_int(&ctx->state, DONE);
+   atomic_store(&ctx->state, DONE);
 }
 
 static void wait_for_all_blocked(void)
@@ -61,7 +61,7 @@ static void wait_for_all_blocked(void)
       bool all_blocked = true;
 
       for (u32 i = 0; i < ARRAY_SIZE(sem_test_waiters); i++) {
-         if (atomic_load_int(&sem_test_waiters[i].state) != BLOCKED) {
+         if (atomic_load(&sem_test_waiters[i].state) != BLOCKED) {
             all_blocked = false;
             break;
          }
@@ -91,8 +91,8 @@ ksem_test_check_sem_counter(int expected)
       printk("waiter[%u, tid: %d]: units: %d, state: %d, task state: %s\n",
              i, sem_test_waiters[i].tid,
              sem_test_waiters[i].units,
-             atomic_load_int(&sem_test_waiters[i].state),
-             task ? task_state_str[atomic_load_int(&task->state)] : "N/A");
+             atomic_load(&sem_test_waiters[i].state),
+             task ? task_state_str[atomic_load(&task->state)] : "N/A");
    }
 
    panic("ksem test failure");
@@ -119,10 +119,10 @@ void selftest_ksem()
    enable_preemption();
    wait_for_all_blocked();
 
-   VERIFY(atomic_load_int(&sem_test_waiters[0].state) == BLOCKED);
-   VERIFY(atomic_load_int(&sem_test_waiters[1].state) == BLOCKED);
-   VERIFY(atomic_load_int(&sem_test_waiters[2].state) == BLOCKED);
-   VERIFY(atomic_load_int(&sem_test_waiters[3].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[0].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[1].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[2].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[3].state) == BLOCKED);
    ksem_test_check_sem_counter(0);
 
    printk("signal(2)\n");
@@ -131,10 +131,10 @@ void selftest_ksem()
    yield_until_last();
 
    ksem_test_check_sem_counter(1);
-   VERIFY(atomic_load_int(&sem_test_waiters[0].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[1].state) == BLOCKED);
-   VERIFY(atomic_load_int(&sem_test_waiters[2].state) == BLOCKED);
-   VERIFY(atomic_load_int(&sem_test_waiters[3].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[0].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[1].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[2].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[3].state) == BLOCKED);
 
    printk("signal(9)\n");
    rc = ksem_signal(&test_sem, 9);
@@ -142,10 +142,10 @@ void selftest_ksem()
    yield_until_last();
 
    ksem_test_check_sem_counter(2);
-   VERIFY(atomic_load_int(&sem_test_waiters[0].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[1].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[2].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[3].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[0].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[1].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[2].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[3].state) == BLOCKED);
 
    printk("signal(5)\n");
    rc = ksem_signal(&test_sem, 5);
@@ -153,10 +153,10 @@ void selftest_ksem()
    yield_until_last();
 
    ksem_test_check_sem_counter(2+5);
-   VERIFY(atomic_load_int(&sem_test_waiters[0].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[1].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[2].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[3].state) == BLOCKED);
+   VERIFY(atomic_load(&sem_test_waiters[0].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[1].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[2].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[3].state) == BLOCKED);
 
    printk("signal(3)\n");
    rc = ksem_signal(&test_sem, 3);
@@ -164,10 +164,10 @@ void selftest_ksem()
    yield_until_last();
 
    ksem_test_check_sem_counter(0);
-   VERIFY(atomic_load_int(&sem_test_waiters[0].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[1].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[2].state) == DONE);
-   VERIFY(atomic_load_int(&sem_test_waiters[3].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[0].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[1].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[2].state) == DONE);
+   VERIFY(atomic_load(&sem_test_waiters[3].state) == DONE);
 
    printk("Done\n");
    ksem_destroy(&test_sem);

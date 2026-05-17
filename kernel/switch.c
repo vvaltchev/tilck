@@ -343,7 +343,7 @@ switch_to_task(struct task *ti)
    regs_t *state = ti->state_regs;
    struct task *curr = get_curr_task();
    bool should_drop_top_syscall = false;
-   const bool zombie = (atomic_load_int(&curr->state) == TASK_STATE_ZOMBIE);
+   const bool zombie = (atomic_load(&curr->state) == TASK_STATE_ZOMBIE);
 
    ASSERT(curr != NULL);
 
@@ -353,8 +353,8 @@ switch_to_task(struct task *ti)
 #endif
 
    if (UNLIKELY(ti != curr)) {
-      ASSERT(atomic_load_int(&curr->state) != TASK_STATE_RUNNING);
-      ASSERT_TASK_STATE(atomic_load_int(&ti->state), TASK_STATE_RUNNABLE);
+      ASSERT(atomic_load(&curr->state) != TASK_STATE_RUNNING);
+      ASSERT_TASK_STATE(atomic_load(&ti->state), TASK_STATE_RUNNABLE);
    }
 
    ASSERT(!is_preemption_enabled());

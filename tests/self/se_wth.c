@@ -22,12 +22,12 @@ struct se_wth_ctx {
 
 static void test_wth_func(void *arg)
 {
-   atomic_fetch_add_u32(&g_counter, 1);
+   atomic_fetch_add(&g_counter, 1);
 }
 
 static void test_wth_func2(void *arg)
 {
-   atomic_fetch_add_u32(&g_counter, 1);
+   atomic_fetch_add(&g_counter, 1);
    kernel_sleep_ms(50);
 }
 
@@ -39,11 +39,11 @@ static void end_test(void *arg)
    const u32 tot_iters = max_jobs * 10;
 
    u64 elapsed = RDTSC() - g_cycles_begin;
-   VERIFY(atomic_load_u32(&g_counter) == tot_iters);
+   VERIFY(atomic_load(&g_counter) == tot_iters);
 
    printk("[se_wth] Avg cycles per job "
           "(enqueue + execute): %" PRIu64 "\n",
-          elapsed / atomic_load_u32(&g_counter));
+          elapsed / atomic_load(&g_counter));
 
    printk("[se_wth] end_test() waiting to grab the lock\n");
    kmutex_lock(&ctx->m);
@@ -76,7 +76,7 @@ void selftest_wth(void)
 
    kcond_init(&ctx.c);
    kmutex_init(&ctx.m, 0);
-   atomic_store_u32(&g_counter, 0);
+   atomic_store(&g_counter, 0);
 
    ASSERT(is_preemption_enabled());
    printk("[se_wth] BEGIN\n");
@@ -86,7 +86,7 @@ void selftest_wth(void)
    for (u32 i = 0; i < tot_iters; i++) {
 
       attempts = 1;
-      last_counter_val = atomic_load_u32(&g_counter);
+      last_counter_val = atomic_load(&g_counter);
       bool did_yield = false;
 
       do {
@@ -96,7 +96,7 @@ void selftest_wth(void)
 
          if (!(attempts % attempts_check)) {
 
-            counter_now = atomic_load_u32(&g_counter);
+            counter_now = atomic_load(&g_counter);
 
             if (counter_now == last_counter_val) {
 
@@ -114,7 +114,7 @@ void selftest_wth(void)
       tot_attempts += attempts;
    }
 
-   last_counter_val = atomic_load_u32(&g_counter);
+   last_counter_val = atomic_load(&g_counter);
    printk("[se_wth] Main test done\n");
    printk("[se_wth] AVG attempts: %u\n", (u32)(tot_attempts/tot_iters));
    printk("[se_wth] Yields:       %u\n", yields_count);
@@ -126,7 +126,7 @@ void selftest_wth(void)
 
    do {
 
-      counter_now = atomic_load_u32(&g_counter);
+      counter_now = atomic_load(&g_counter);
 
       if (counter_now == last_counter_val) {
 
@@ -179,7 +179,7 @@ void selftest_wth2(void)
    bool added;
    int cnt = 0;
 
-   atomic_store_u32(&g_counter, 0);
+   atomic_store(&g_counter, 0);
    wth = wth_find_worker(WTH_PRIO_LOWEST);
    ASSERT(wth != NULL);
 
@@ -197,8 +197,8 @@ void selftest_wth2(void)
    printk("[se_wth] wait for completion\n");
    wth_wait_for_completion(wth);
 
-   if (atomic_load_u32(&g_counter) != 10)
-      panic("[se_wth] counter (%d) != 10", atomic_load_u32(&g_counter));
+   if (atomic_load(&g_counter) != 10)
+      panic("[se_wth] counter (%d) != 10", atomic_load(&g_counter));
 
    printk("[se_wth] everything is OK\n");
 }

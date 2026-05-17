@@ -81,7 +81,7 @@ handle_children_of_dying_process(struct task *ti)
       if (pi->sa_handlers[SIGCHLD - 1] == SIG_IGN)
          pos->pi->automatic_reaping = true;
 
-      if (atomic_load_int(&pos->state) == TASK_STATE_ZOMBIE) {
+      if (atomic_load(&pos->state) == TASK_STATE_ZOMBIE) {
 
          /*
           * Corner case: the dying task had already dead children which it
@@ -215,7 +215,7 @@ void terminate_process(int exit_code, int term_sig)
    struct task *parent;
    const bool vforked = pi->vforked;
 
-   ASSERT(atomic_load_int(&ti->state) != TASK_STATE_ZOMBIE);
+   ASSERT(atomic_load(&ti->state) != TASK_STATE_ZOMBIE);
    ASSERT(!is_kernel_thread(ti));
    ASSERT(is_preemption_enabled());
 
@@ -241,7 +241,7 @@ void terminate_process(int exit_code, int term_sig)
    task_cancel_wakeup_timer(ti);
 
    /* Here we can either be RUNNABLE (if ti->wobj was set) or RUNNING */
-   ASSERT(atomic_load_int(&ti->state) == TASK_STATE_RUNNING || atomic_load_int(&ti->state) == TASK_STATE_RUNNABLE);
+   ASSERT(atomic_load(&ti->state) == TASK_STATE_RUNNING || atomic_load(&ti->state) == TASK_STATE_RUNNABLE);
 
    /* Drop the any pending signals and prevent new from being enqueued */
    drop_all_pending_signals(ti);

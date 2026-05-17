@@ -231,7 +231,7 @@ __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
 
          /* Repeat that until we were able to do that atomically */
 
-      } while (!atomic_cas_weak_u32(&printk_rbuf_stat.raw,
+      } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
                                     &cs.__raw,
                                     ns.__raw));
 
@@ -286,7 +286,7 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
       if (ns.write_pos == ns.read_pos)
          ns.full = 1;
 
-   } while (!atomic_cas_weak_u32(&printk_rbuf_stat.raw,
+   } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
                                  &cs.__raw,
                                  ns.__raw));
 
@@ -309,7 +309,7 @@ try_set_first_printk_on_stack(bool newline)
       ns = printk_rbuf_stat;
       ns.first_printk = 1;
       ns.newline = newline;
-   } while (!atomic_cas_weak_u32(&printk_rbuf_stat.raw,
+   } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
                                  &cs.__raw,
                                  ns.__raw));
 
@@ -325,7 +325,7 @@ restore_first_printk_value(void)
       cs = printk_rbuf_stat;
       ns = printk_rbuf_stat;
       ns.first_printk = 0;
-   } while (!atomic_cas_weak_u32(&printk_rbuf_stat.raw,
+   } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
                                  &cs.__raw,
                                  ns.__raw));
 }

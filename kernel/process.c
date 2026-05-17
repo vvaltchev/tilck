@@ -162,7 +162,7 @@ void free_common_task_allocs(struct task *ti)
 
 void free_mem_for_zombie_task(struct task *ti)
 {
-   ASSERT_TASK_STATE(atomic_load_int(&ti->state), TASK_STATE_ZOMBIE);
+   ASSERT_TASK_STATE(atomic_load(&ti->state), TASK_STATE_ZOMBIE);
 
 #if DEBUG_CHECKS
    if (ti == get_curr_task()) {
@@ -236,7 +236,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    pi->parent_pid = parent_pi->pid;
    pi->pdir = new_pdir;
-   atomic_store_int(&pi->ref_count, 1);
+   atomic_store(&pi->ref_count, 1);
    pi->pid = pid;
    pi->did_call_execve = false;
    pi->automatic_reaping = false;
@@ -372,7 +372,7 @@ static void free_process_int(struct process *pi)
 
 void free_task(struct task *ti)
 {
-   ASSERT_TASK_STATE(atomic_load_int(&ti->state), TASK_STATE_ZOMBIE);
+   ASSERT_TASK_STATE(atomic_load(&ti->state), TASK_STATE_ZOMBIE);
    arch_specific_free_task(ti);
 
    ASSERT(!ti->kernel_stack);
@@ -547,7 +547,7 @@ unblock_parent_of_vforked_child(struct process *pi)
    parent = get_task(pi->parent_pid);
 
    ASSERT(parent != NULL);
-   ASSERT(atomic_load_int(&parent->state) == TASK_STATE_STOPPED);
+   ASSERT(atomic_load(&parent->state) == TASK_STATE_STOPPED);
    ASSERT(parent->vfork_stopped);
 
    parent->vfork_stopped = false;
@@ -760,7 +760,7 @@ setup_first_process(pdir_t *pdir, struct task **ti_ref)
    pi->pgid = 1;
    pi->sid = 1;
    pi->umask = 0022;
-   atomic_store_int(&ti->state, TASK_STATE_RUNNING);
+   atomic_store(&ti->state, TASK_STATE_RUNNING);
    add_task(ti);
    memcpy(pi->str_cwd, "/", 2);
    *ti_ref = ti;
@@ -772,7 +772,7 @@ finalize_usermode_task_setup(struct task *ti, regs_t *user_regs)
 {
    ASSERT(!is_preemption_enabled());
 
-   ASSERT_TASK_STATE(atomic_load_int(&ti->state), TASK_STATE_RUNNING);
+   ASSERT_TASK_STATE(atomic_load(&ti->state), TASK_STATE_RUNNING);
    task_change_state(ti, TASK_STATE_RUNNABLE);
 
    ti->running_in_kernel = 0;
@@ -938,7 +938,7 @@ kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
       name++;         /* see the macro kthread_create() */
 
    ti->kthread_name = name;
-   atomic_store_int(&ti->state, TASK_STATE_RUNNABLE);
+   atomic_store(&ti->state, TASK_STATE_RUNNABLE);
    ti->running_in_kernel = IN_SYSCALL_FLAG;
    task_info_reset_kernel_stack(ti);
    kthread_create_setup_initial_stack(ti, &r, arg);

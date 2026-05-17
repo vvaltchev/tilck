@@ -32,7 +32,7 @@ void wth_wakeup(struct worker_thread *t)
    int exp_state = TASK_STATE_SLEEPING;
 
    t->waiting_for_jobs = false;
-   atomic_cas_strong_int(&t->task->state, &exp_state, TASK_STATE_RUNNABLE);
+   atomic_cas_strong(&t->task->state, &exp_state, TASK_STATE_RUNNABLE);
    /*
     * Note: we don't care whether the CAS succeeded or not. Reason:
     * if it didn't, an IRQ preempted us and made its state RUNNABLE.

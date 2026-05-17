@@ -161,11 +161,11 @@ alloc_new_small_heap(void)
    struct small_heap_node *res;
    bool exp = false;
 
-   if (!atomic_cas_strong_bool(&in_use, &exp, true))
+   if (!atomic_cas_strong(&in_use, &exp, true))
       return NULL;
 
    res = alloc_new_small_heap_unsafe();
-   atomic_store_bool(&in_use, false);
+   atomic_store(&in_use, false);
    return res;
 }
 
