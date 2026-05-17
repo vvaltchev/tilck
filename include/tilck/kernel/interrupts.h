@@ -11,8 +11,8 @@ void set_fault_handler(int fault, void *ptr);
 
 static ALWAYS_INLINE bool in_irq(void)
 {
-   extern ATOMIC(int) __in_irq_count;
-   return atomic_load_explicit(&__in_irq_count, mo_relaxed) > 0;
+   extern atomic_int_t __in_irq_count;
+   return atomic_load_int(&__in_irq_count) > 0;
 }
 
 #if KRN_TRACK_NESTED_INTERR

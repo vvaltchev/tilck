@@ -102,21 +102,13 @@ struct task {
    bool stop_reported;
 
    /*
-    * Both `volatile` and `_Atomic` are load-bearing here, for two
-    * separate reasons:
-    *
-    *   - _Atomic: the field is updated from interrupt context (see
-    *     wth.c) and from regular code, so the load/store must be
-    *     indivisible on architectures where a single MOV is not
-    *     enough (e.g. riscv64).
-    *
-    *   - volatile: even with _Atomic, C11 lets the compiler combine
-    *     or hoist `mo_relaxed` loads when no sequenced-before /
-    *     synchronizes-with relationship demands otherwise. volatile
-    *     is what forces every access to be a real load/store. See
-    *     docs/atomics.md for the full rationale.
+    * Updated from interrupt context (see wth.c) and from regular
+    * code, so the load/store must be indivisible. Stored as int
+    * (enum task_state's underlying type); the wrapper API handles
+    * atomicity + the no-fold-no-hoist volatile cast in one place.
+    * See docs/atomics.md.
     */
-   volatile ATOMIC(enum task_state) state;
+   atomic_int_t state;
 
    regs_t *state_regs;
    regs_t *fault_resume_regs;
@@ -203,14 +195,7 @@ extern const char *const task_state_str[6];
  */
 static ALWAYS_INLINE bool is_task_stopped(struct task *ti)
 {
-   /*
-    * Explicit cast: atomic_load_explicit on a _Atomic enum returns
-    * the underlying integer type when this header is included from
-    * C++ (gtests), and C++ won't implicitly narrow int back to the
-    * enum. The cast keeps both C and C++ compilations happy.
-    */
-   const enum task_state s = (enum task_state)
-      atomic_load_explicit(&ti->state, mo_relaxed);
+   const enum task_state s = (enum task_state) atomic_load_int(&ti->state);
 
    return s == TASK_STATE_STOPPED
       || (s == TASK_STATE_SLEEPING && ti->stop_pending);
@@ -234,32 +219,32 @@ bool save_regs_and_schedule(bool skip_disable_preempt);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {
-   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&__need_resched, 1, mo_relaxed);
+   extern atomic_int_t __need_resched; /* see docs/atomics.md */
+   atomic_store_int(&__need_resched, 1);
 }
 
 static ALWAYS_INLINE void sched_clear_need_resched(void)
 {
-   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&__need_resched, 0, mo_relaxed);
+   extern atomic_int_t __need_resched; /* see docs/atomics.md */
+   atomic_store_int(&__need_resched, 0);
 }
 
 static ALWAYS_INLINE bool need_reschedule(void)
 {
-   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
-   return (bool) atomic_load_explicit(&__need_resched, mo_relaxed);
+   extern atomic_int_t __need_resched; /* see docs/atomics.md */
+   return (bool) atomic_load_int(&__need_resched);
 }
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   atomic_fetch_add_explicit(&__disable_preempt, 1, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   atomic_fetch_add_int(&__disable_preempt, 1);
 }
 
 static ALWAYS_INLINE void enable_preemption_nosched(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   atomic_fetch_sub_explicit(&__disable_preempt, 1, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   atomic_fetch_sub_int(&__disable_preempt, 1);
 }
 
 void enable_preemption(void);
@@ -270,14 +255,14 @@ void enable_preemption(void);
  */
 static ALWAYS_INLINE void force_enable_preemption(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   atomic_store_explicit(&__disable_preempt, 0, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   atomic_store_int(&__disable_preempt, 0);
 }
 
 static ALWAYS_INLINE int get_preempt_disable_count(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   return atomic_load_explicit(&__disable_preempt, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   return atomic_load_int(&__disable_preempt);
 }
 
 static ALWAYS_INLINE bool is_preemption_enabled(void)
@@ -385,17 +370,7 @@ static ALWAYS_INLINE struct task *get_curr_task(void)
 static ALWAYS_INLINE enum task_state
 get_curr_task_state(void)
 {
-   STATIC_ASSERT(sizeof(get_curr_task()->state) == 4);
-
-   /*
-    * Casting `state` to u32 and back to `enum task_state` to avoid compiler
-    * errors in some weird configurations.
-    */
-
-   return (enum task_state) atomic_load_explicit(
-      (ATOMIC(u32)*)&get_curr_task()->state,
-      mo_relaxed
-   );
+   return (enum task_state) atomic_load_int(&get_curr_task()->state);
 }
 
 #if DEBUG_CHECKS

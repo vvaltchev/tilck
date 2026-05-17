@@ -96,34 +96,58 @@ static inline void list_remove(struct list_node *elem)
 #define list_last_obj(list_root_ptr, type, member) \
    list_to_obj((list_root_ptr)->last, type, member)
 
+/*
+ * Compute &pos->member without dereferencing pos via the struct type.
+ * Used by the iteration macros below in lieu of the natural
+ * `&(pos)->member` because pos may be the sentinel produced by
+ * CONTAINER_OF(&list_head, struct_type, member) at end-of-list -- if
+ * struct_type carries a stricter alignment than the head's container,
+ * that sentinel is misaligned by struct_type's standards even though
+ * the list_node it computes to is real and valid. Going through
+ * (char *) keeps the arithmetic at byte alignment and dodges
+ * -fsanitize=alignment's struct-pointer alignment check, which would
+ * otherwise fire on the never-actually-dereferenced sentinel.
+ */
+#define list_node_ptr_of(pos, list_mem_name)                          \
+   ((struct list_node *)(void *)                                      \
+      ((char *)(pos) + OFFSET_OF(typeof(*(pos)), list_mem_name)))
+
+#define list_next_node(pos, list_mem_name) \
+   (list_node_ptr_of(pos, list_mem_name)->next)
+
+#define list_prev_node(pos, list_mem_name) \
+   (list_node_ptr_of(pos, list_mem_name)->prev)
+
 // Here 'pos' is an object (struct *), containing a struct list_node 'member'
 
 #define list_next_obj(pos, list_mem_name) \
-   list_to_obj((pos)->list_mem_name.next, typeof(*(pos)), list_mem_name)
+   list_to_obj(list_next_node(pos, list_mem_name),                    \
+               typeof(*(pos)), list_mem_name)
 
 #define list_prev_obj(pos, list_mem_name) \
-   list_to_obj((pos)->list_mem_name.prev, typeof(*(pos)), list_mem_name)
+   list_to_obj(list_prev_node(pos, list_mem_name),                    \
+               typeof(*(pos)), list_mem_name)
 
 // Here 'tp' is a temporary variable having the same type of 'pos'.
 
 #define list_for_each(pos, tp, list_ptr, member)                     \
    for (pos = list_first_obj(list_ptr, typeof(*pos), member),        \
         tp = list_next_obj(pos, member);                             \
-        &pos->member != (struct list_node *)(list_ptr);              \
+        list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = tp, tp = list_next_obj(tp, member))
 
 #define list_for_each_ro(pos, list_ptr, member)                      \
    for (pos = list_first_obj(list_ptr, typeof(*pos), member);        \
-        &pos->member != (struct list_node *)(list_ptr);              \
+        list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = list_next_obj(pos, member))
 
 /* Same as list_for_each_ro(), but the orig. value of `pos` is kept */
 #define list_for_each_ro_kp(pos, list_ptr, member)                   \
-   for (; &pos->member != (struct list_node *)(list_ptr);            \
+   for (; list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = list_next_obj(pos, member))
 
 #define list_for_each_reverse(pos, tp, list_ptr, member)             \
    for (pos = list_last_obj(list_ptr, typeof(*pos), member),         \
         tp = list_prev_obj(pos, member);                             \
-        &pos->member != (list_ptr);                                  \
+        list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = tp, tp = list_prev_obj(tp, member))

@@ -23,17 +23,17 @@ void arch_irq_handling(regs_t *r);
  * to do with `KRN_TRACK_NESTED_INTERR` which is a debug util that tracks all
  * the interrupt types, including: syscalls, faults and IRQs.
  */
-ATOMIC(int) __in_irq_count;
+atomic_int_t __in_irq_count;
 
 static ALWAYS_INLINE void inc_irq_count(void)
 {
-   atomic_fetch_add_explicit(&__in_irq_count, 1, mo_relaxed);
+   atomic_fetch_add_int(&__in_irq_count, 1);
 }
 
 static ALWAYS_INLINE void dec_irq_count(void)
 {
    DEBUG_ONLY_UNSAFE(int oldval =)
-      atomic_fetch_sub_explicit(&__in_irq_count, 1, mo_relaxed);
+      atomic_fetch_sub_int(&__in_irq_count, 1);
 
    ASSERT(oldval > 0);
 }

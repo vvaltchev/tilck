@@ -33,8 +33,10 @@ enum wo_type {
  * `type` is the "is the wobj live?" gate: WOBJ_NONE means the wobj is reset,
  * anything else means it's currently waiting on something. Atomic ops on it
  * (used by wait_obj_set / wait_obj_reset) cast the address through
- * `ATOMIC(u32) *` so the field itself can stay a plain enum — same pattern
- * used by `struct task::state` (see get_curr_task_state() in sched.h).
+ * `(u32 volatile *)` so the field itself can stay a plain enum -- the
+ * atomic wrapper layer (atomic_int_t etc.) is for fields that need a
+ * struct-typed declaration; for this single tagged-union discriminator
+ * direct `__atomic_*` builtins via cast are clearer.
  *
  * The gate lives on `type` (not on `__ptr` as in earlier versions) because
  * `__ptr` can legitimately be NULL for some wo_type values — most notably
@@ -46,7 +48,7 @@ enum wo_type {
 struct wait_obj {
 
    union {
-      ATOMIC(void *) __ptr;          /* ptr to the object we're waiting for */
+      atomic_ptr_t __ptr;            /* ptr to the object we're waiting for */
       long __data;                   /* data field (id) describing the obj  */
    };
 
@@ -109,7 +111,7 @@ void *wait_obj_reset(struct wait_obj *wo);
 static ALWAYS_INLINE void *
 wait_obj_get_ptr(struct wait_obj *wo)
 {
-   return atomic_load_explicit(&wo->__ptr, mo_relaxed);
+   return atomic_load_ptr(&wo->__ptr);
 }
 
 static ALWAYS_INLINE long

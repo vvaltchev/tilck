@@ -67,7 +67,7 @@ struct generic_safe_ringbuf_stat {
          u32 avail_bit : 1;
       };
 
-      ATOMIC(u32) raw;
+      atomic_u32_t raw;
       u32 __raw;
    };
 
@@ -81,7 +81,7 @@ struct safe_ringbuf {
    u8 *buf;
 
 #if DEBUG_CHECKS
-   ATOMIC(int) nested_writes;
+   atomic_int_t nested_writes;
 #endif
 };
 

@@ -21,8 +21,8 @@ static struct rwlock_wp test_rwlwp;
 static int se_rwlock_vars[3];
 static const int se_rwlock_set_1[3] = {1, 2, 3};
 static const int se_rwlock_set_2[3] = {10, 20, 30};
-static ATOMIC(int) readers_running;
-static ATOMIC(int) writers_running;
+static atomic_int_t readers_running;
+static atomic_int_t writers_running;
 
 struct se_rwlock_ctx {
 
@@ -71,7 +71,7 @@ static void se_rwlock_check_set_eq(const int *set)
 static void se_rwlock_read_thread(void *arg)
 {
    struct se_rwlock_ctx *ctx = arg;
-   readers_running++;
+   atomic_fetch_add_int(&readers_running, 1);
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
 
@@ -88,13 +88,13 @@ static void se_rwlock_read_thread(void *arg)
       ctx->shunlock(ctx->arg);
    }
 
-   readers_running--;
+   atomic_fetch_sub_int(&readers_running, 1);
 }
 
 static void se_rwlock_write_thread(void *arg)
 {
    struct se_rwlock_ctx *ctx = arg;
-   writers_running++;
+   atomic_fetch_add_int(&writers_running, 1);
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
 
@@ -121,7 +121,7 @@ static void se_rwlock_write_thread(void *arg)
       ctx->exunlock(ctx->arg);
    }
 
-   writers_running--;
+   atomic_fetch_sub_int(&writers_running, 1);
 }
 
 static void se_rwlock_common(int *rt, int *wt, struct se_rwlock_ctx *ctx)
@@ -145,7 +145,8 @@ void selftest_rwlock_rp()
    int wt[RWLOCK_WRITERS];
    int retry;
 
-   readers_running = writers_running = 0;
+   atomic_store_int(&readers_running, 0);
+   atomic_store_int(&writers_running, 0);
    rwlock_rp_init(&test_rwlrp);
 
    /*
@@ -160,9 +161,10 @@ void selftest_rwlock_rp()
 
       se_rwlock_common(rt, wt, &se_rp_ctx);
       kthread_join_all(rt, ARRAY_SIZE(rt), true);
-      printk("After readers, running writers: %d\n", writers_running);
+      printk("After readers, running writers: %d\n",
+             atomic_load_int(&writers_running));
 
-      if (writers_running == 0) {
+      if (atomic_load_int(&writers_running) == 0) {
 
          kthread_join_all(wt, ARRAY_SIZE(wt), true);
 
@@ -192,9 +194,10 @@ void selftest_rwlock_rp()
       if (se_is_stop_requested())
          goto end;
 
-      printk("After writers, running readers: %d\n", readers_running);
+      printk("After writers, running readers: %d\n",
+             atomic_load_int(&readers_running));
 
-      if (readers_running > 0) {
+      if (atomic_load_int(&readers_running) > 0) {
 
          kthread_join_all(rt, ARRAY_SIZE(rt), true);
 
@@ -228,7 +231,8 @@ void selftest_rwlock_wp()
    int wt[RWLOCK_WRITERS];
    int retry;
 
-   readers_running = writers_running = 0;
+   atomic_store_int(&readers_running, 0);
+   atomic_store_int(&writers_running, 0);
    rwlock_wp_init(&test_rwlwp, false);
 
    printk("-------- sub-test: join readers and then writers -----------\n");
@@ -243,9 +247,10 @@ void selftest_rwlock_wp()
 
       se_rwlock_common(rt, wt, &se_wp_ctx);
       kthread_join_all(rt, ARRAY_SIZE(rt), true);
-      printk("After readers, running writers: %d\n", writers_running);
+      printk("After readers, running writers: %d\n",
+             atomic_load_int(&writers_running));
 
-      if (writers_running > 0) {
+      if (atomic_load_int(&writers_running) > 0) {
 
          kthread_join_all(wt, ARRAY_SIZE(wt), true);
 
@@ -271,9 +276,10 @@ void selftest_rwlock_wp()
 
       se_rwlock_common(rt, wt, &se_wp_ctx);
       kthread_join_all(wt, ARRAY_SIZE(wt), true);
-      printk("After writers, running readers: %d\n", readers_running);
+      printk("After writers, running readers: %d\n",
+             atomic_load_int(&readers_running));
 
-      if (readers_running == 0) {
+      if (atomic_load_int(&readers_running) == 0) {
 
          kthread_join_all(rt, ARRAY_SIZE(rt), true);
 

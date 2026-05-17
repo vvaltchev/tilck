@@ -9,7 +9,7 @@
 #include <tilck/kernel/sync.h>
 
 static struct kcond conds[2];
-static ATOMIC(int) mobj_se_test_signal_counter;
+static atomic_int_t mobj_se_test_signal_counter;
 static bool mobj_se_test_assumption_failed;
 
 static void mobj_waiter_sig_thread(void *arg)
@@ -22,14 +22,14 @@ static void mobj_waiter_sig_thread(void *arg)
 
    printk("[thread %lu] signal cond %ld\n", n, n);
    kcond_signal_one(&conds[n]);
-   mobj_se_test_signal_counter++;
+   atomic_fetch_add_int(&mobj_se_test_signal_counter, 1);
 }
 
 static void mobj_waiter_wait_thread(void *arg)
 {
    printk("[wait th] Start\n");
 
-   if (mobj_se_test_signal_counter > 0) {
+   if (atomic_load_int(&mobj_se_test_signal_counter) > 0) {
       printk("[wait th] Test timing assumption failed, re-try\n");
       mobj_se_test_assumption_failed = true;
       return;
@@ -72,7 +72,7 @@ void selftest_mobj_waiter()
 
 retry:
 
-   mobj_se_test_signal_counter = 0;
+   atomic_store_int(&mobj_se_test_signal_counter, 0);
    mobj_se_test_assumption_failed = false;
 
    for (int i = 0; i < ARRAY_SIZE(conds); i++) {

@@ -157,15 +157,15 @@ alloc_new_small_heap_unsafe(void)
 static struct small_heap_node *
 alloc_new_small_heap(void)
 {
-   static ATOMIC(bool) in_use;
+   static atomic_bool_t in_use;
    struct small_heap_node *res;
    bool exp = false;
 
-   if (!atomic_cas_strong(&in_use, &exp, true, mo_relaxed, mo_relaxed))
+   if (!atomic_cas_strong_bool(&in_use, &exp, true))
       return NULL;
 
    res = alloc_new_small_heap_unsafe();
-   atomic_store_explicit(&in_use, false, mo_relaxed);
+   atomic_store_bool(&in_use, false);
    return res;
 }
 

@@ -17,7 +17,7 @@ struct kmalloc_heap {
    size_t mem_allocated;
    void *metadata_nodes;
    int region;
-   ATOMIC(bool) in_use;
+   atomic_bool_t in_use;
 
    size_t min_block_size;
    size_t alloc_block_size;

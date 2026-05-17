@@ -73,9 +73,9 @@ static void reset_all_fs_refcounts()
    root2->reset_refcounts();
    root3->reset_refcounts();
 
-   fs1.ref_count = 1;
-   fs2.ref_count = 1;
-   fs3.ref_count = 1;
+   atomic_store_int(&fs1.ref_count, 1);
+   atomic_store_int(&fs2.ref_count, 1);
+   atomic_store_int(&fs3.ref_count, 1);
 }
 
 static void check_all_fs_refcounts()
@@ -84,9 +84,9 @@ static void check_all_fs_refcounts()
    test_fs_check_refcounts(root2);
    test_fs_check_refcounts(root3);
 
-   ASSERT_EQ(fs1.ref_count, 5);
-   ASSERT_EQ(fs2.ref_count, 2);
-   ASSERT_EQ(fs3.ref_count, 2);
+   ASSERT_EQ(atomic_load_int(&fs1.ref_count), 5);
+   ASSERT_EQ(atomic_load_int(&fs2.ref_count), 2);
+   ASSERT_EQ(atomic_load_int(&fs3.ref_count), 2);
 }
 
 static int resolve(const char *path, struct vfs_path *p, bool res_last_sl)
