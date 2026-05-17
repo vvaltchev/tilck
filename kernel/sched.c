@@ -61,17 +61,37 @@ struct task *idle_task;
 static atomic_u64_t min_vruntime;
 
 /*
+ * Sub-tick precision factor. vruntime and `timeslice` are stored in
+ * "subticks" -- 1 real tick == VRUNTIME_SCALE subticks -- so the
+ * integer math in sched_account_ticks() keeps useful resolution
+ * when SCHED_LATENCY_TICKS / nr_running would otherwise truncate
+ * hard (e.g. 20/3 = 6 instead of 6.67 in raw ticks, but 320/3 = 106
+ * subticks = 6.625 ticks with VRUNTIME_SCALE = 16).
+ *
+ * 16 was picked as the sweet spot: 4 bits of sub-tick precision is
+ * enough to keep slice ratios sharp at the runnable counts Tilck
+ * actually hits, and the multiply lowers to a single shift. u64
+ * vruntime overflows at ~2^60 subticks, hundreds of years at
+ * KRN_TIMER_HZ=250, so the larger numbers don't shorten the
+ * overflow horizon in any practical sense.
+ *
+ * Power-of-two so the compiler can fold *VRUNTIME_SCALE / SCALE
+ * into shifts; keep it that way if you ever tune it.
+ */
+#define VRUNTIME_SCALE           16
+
+/*
  * How far below `min_vruntime` we let a woken task's vruntime sit.
  * A long-sleeping task that wakes with stale-low vruntime would
  * otherwise dominate the CPU until it caught up; we raise it to
  * `(min_vruntime - WAKEUP_VRUNTIME_BONUS)` with an underflow guard at
  * 0 so it gets a small head start over the leading edge instead.
  *
- * In current +1/tick vruntime semantics, 10 units is 10 ticks --
- * one default time slice's worth at KRN_TIMER_HZ == 250 (40 ms).
- * Tunable.
+ * Expressed in subticks (see VRUNTIME_SCALE). 10 ticks' worth of
+ * head start = 10 * VRUNTIME_SCALE = 160 subticks; at KRN_TIMER_HZ
+ * = 250 that's one default time slice (40 ms). Tunable.
  */
-#define WAKEUP_VRUNTIME_BONUS    10
+#define WAKEUP_VRUNTIME_BONUS    (10 * VRUNTIME_SCALE)
 
 static ALWAYS_INLINE int get_runnable_tasks_count(void)
 {
@@ -894,7 +914,7 @@ void sched_account_ticks(void)
    ASSERT(curr != NULL);
    ASSERT(!is_preemption_enabled());
 
-   t->timeslice++;
+   t->timeslice += VRUNTIME_SCALE;
    t->total++;
 
    if (curr->running_in_kernel)
@@ -903,10 +923,12 @@ void sched_account_ticks(void)
    if (is_running && curr != idle_task) {
 
       /*
-       * vruntime is now plain "CPU time consumed by this task",
-       * incremented by 1 per tick the task is RUNNING (idle
-       * excluded -- idle's CPU time is "free"). This matches the
-       * CFS semantic that most kernel readers expect.
+       * vruntime is "CPU time consumed by this task", incremented
+       * each tick the task is RUNNING (idle excluded -- idle's CPU
+       * time is "free"). Stored in subticks (VRUNTIME_SCALE per
+       * real tick) so the slice math in the timeout check below can
+       * keep useful resolution when SCHED_LATENCY_TICKS / nr_running
+       * would otherwise truncate hard.
        *
        * Earlier in the roadmap, the increment was
        * `runnable_tasks_count - 1` (i.e. weighted by the number of
@@ -939,13 +961,14 @@ void sched_account_ticks(void)
        * only fires while curr is genuinely RUNNING (outside the
        * tree).
        */
-      atomic_fetch_add(&t->vruntime, 1);
+      atomic_fetch_add(&t->vruntime, VRUNTIME_SCALE);
 
       /*
        * Roadmap step 1: monotonic high-watermark min_vruntime.
-       * Step 2 (wakeup handoff) will use this as the floor for the
+       * Step 2 (wakeup handoff) uses this as the floor for the
        * woken task's vruntime. The guard makes the store
        * structurally monotonic -- no decrease can ever happen.
+       * Like vruntime itself, min_vruntime is in subticks.
        */
       const u64 vruntime = atomic_load(&t->vruntime);
 
@@ -964,13 +987,19 @@ void sched_account_ticks(void)
     * grows and the slice shrinks toward the floor (good for
     * fairness / interactive latency).
     *
+    * The whole computation is in subticks (VRUNTIME_SCALE per real
+    * tick) so the divide keeps useful resolution at runnable counts
+    * Tilck actually hits: e.g. N=3 at the default constants yields
+    * SCHED_LATENCY*SCALE/N = 20*16/3 = 106 subticks (~6.625 ticks)
+    * instead of the raw-tick 20/3 = 6.
+    *
     * need_resched is never set for worker threads when they used too
     * much CPU time: their timeslice is unlimited and can be
     * preempted only by another worker thread.
     */
    const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
-   const u32 slice = MAX(SCHED_LATENCY_TICKS / nr_running,
-                         (u32)MIN_GRANULARITY_TICKS);
+   const u32 slice = MAX(SCHED_LATENCY_TICKS * VRUNTIME_SCALE / nr_running,
+                         (u32)MIN_GRANULARITY_TICKS * VRUNTIME_SCALE);
    const bool timeout = !is_worker && t->timeslice >= slice;
 
    /*
