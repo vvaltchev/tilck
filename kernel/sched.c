@@ -766,7 +766,7 @@ void sched_account_ticks(void)
    if (curr->running_in_kernel)
       t->total_kernel++;
 
-   if (curr != idle_task) {
+   if (is_running && curr != idle_task) {
 
       /*
        * Grow vruntime by the number of *other* non-idle tasks waiting
@@ -790,6 +790,19 @@ void sched_account_ticks(void)
        * picking the lowest `total` ticks, because tasks that
        * monopolized the CPU while nothing else wanted it aren't
        * penalized for it later.
+       *
+       * The is_running gate matters for the upcoming AVL conversion:
+       * vruntime will be the tree key while curr is RUNNABLE, and
+       * there's a transient window inside do_schedule() between
+       * task_change_state(curr, RUNNABLE) and set_curr_task(selected)
+       * where get_curr_task() still returns the already-RUNNABLE
+       * outgoing task. A timer IRQ landing in that window would
+       * otherwise mutate an in-tree task's key out from under
+       * bintree_remove(). With this gate, the increment only fires
+       * while curr is genuinely RUNNING (and therefore outside the
+       * runnable container). Today, with a list-based runnable
+       * container, the gate is benign -- ticks during that window
+       * just don't accrue.
        */
       atomic_fetch_add(&t->vruntime,
                        (u64)(get_runnable_tasks_count() - 1));
