@@ -393,7 +393,16 @@ rejected just as quickly as breaking the documented rules.
   `(ssize_t)sizeof(...)`, never the bare-operand form.
 - **Empty loop body uses `{ }`, never `;`.** A bare semicolon on its
   own line as a loop body is rejected as ugly. Write
-  `while (cond) { }`, not `while (cond)\n   ;`.
+  `while (cond) { }`, not `while (cond)\n   ;`. For loops with
+  conditions too long to fit on one line, use
+  `{ \n /* do nothing */ \n }` instead. **Generalization:** avoid
+  empty statements (bare `;`) at all cost — they're rejected
+  everywhere, not just in loop bodies. A common antipattern is
+  putting a `goto` target inside a lock-scope block:
+  `disable_interrupts(); { ... out:; } enable_interrupts();` —
+  rejected. Place the label AFTER the closing brace instead, so the
+  enable-call also runs on the goto path:
+  `disable_interrupts(); { ... goto out; ... } out: enable_interrupts();`.
 - **No `(void)expr` casts.** The kernel never uses them
   (`grep -nE '\(void\)[a-z_]' kernel/` returns nothing). Reasons:
   - `-Wno-unused-parameter` is enabled in `USERAPPS_CFLAGS` and on
