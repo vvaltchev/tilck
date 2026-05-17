@@ -115,8 +115,15 @@ get_process_task(struct process *pi)
    /*
     * allocate_new_process() allocates `struct task` and `struct process` in one
     * chunk placing struct process immediately after struct task.
+    *
+    * Cast goes through `void *` to silence clang's -Wcast-align:
+    * struct task can have stronger alignment than struct process
+    * (on i386, struct task contains atomic_u64_t -> 8-aligned,
+    * struct process is 4-aligned). The chunk layout above
+    * guarantees `pi` is suitably aligned for `struct task` -- the
+    * compiler can't see that invariant.
     */
-   return ((struct task *)pi) - 1;
+   return (struct task *)(void *)pi - 1;
 }
 
 static ALWAYS_INLINE bool
