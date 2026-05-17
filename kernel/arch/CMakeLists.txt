@@ -5,11 +5,11 @@ if (${KERNEL_SYSCC} AND ${ARCH} STREQUAL "i386"
                     AND NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
    # Clang does not accept -march=i686; use --target instead.
-   set(CMAKE_C_FLAGS "--target=i686-linux-gnu")
-   set(CMAKE_CXX_FLAGS "--target=i686-linux-gnu ${KERNEL_CXX_FLAGS}")
-   # Clang's integrated assembler (llvm-as) is not 100% compatible
-   # with GAS's intel-syntax dialect, so use the GCC toolchain's as.
-   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+   # The assembler / objcopy / strip / ar / ranlib for this build
+   # are already taken from the cross-toolchain by
+   # other/cmake/linux-syscc.cmake.
+   set(CMAKE_C_FLAGS "--target=i686-linux-musl")
+   set(CMAKE_CXX_FLAGS "--target=i686-linux-musl ${KERNEL_CXX_FLAGS}")
 
 else()
 
@@ -38,9 +38,20 @@ endif()
 #     GCC_TC_ISYSTEM override in the top-level CMakeLists.txt
 #     for the matching path adjustment.)
 #
+# In both cases, also add the cross-toolchain's libstdc++
+# headers for kernel C++ sources. With linux-syscc.cmake setting
+# CMAKE_SYSTEM_NAME=Linux, cmake no longer auto-adds darwin's
+# `-isysroot <SDK>` that would have pointed clang at darwin's
+# libc++; without an explicit replacement, `#include <cstdint>`
+# in basic_defs.h would fail. The cross-toolchain's libstdc++ is
+# the correct C++ stdlib for a Linux <arch> target anyway.
+#
 if (${KERNEL_SYSCC} AND (KERNEL_FORCE_TC_ISYSTEM OR
                           CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin"))
    include_directories(SYSTEM ${GCC_TC_ISYSTEM})
+   include_directories(SYSTEM ${GCC_TC_SYSROOT}/include/c++/${GCC_TC_VER})
+   include_directories(SYSTEM
+      ${GCC_TC_SYSROOT}/include/c++/${GCC_TC_VER}/${GCC_TC_LIBC_DIRNAME})
 endif()
 
 smart_config_file(

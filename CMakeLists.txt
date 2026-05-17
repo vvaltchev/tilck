@@ -1361,7 +1361,20 @@ if (NOT KERNEL_SYSCC)
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
    )
 else()
+   #
+   # KERNEL_SYSCC: use the host's C/CXX compiler but everything
+   # else (assembler, objcopy, strip, ar, ranlib) still from the
+   # cross-toolchain. The linux-syscc.cmake toolchain file
+   # encapsulates that mix and sets CMAKE_SYSTEM_NAME=Linux so
+   # cmake stops auto-adding darwin-host flags (`-arch <host>`,
+   # `-isysroot <SDK>`) -- those would otherwise reach the
+   # cross-toolchain's gcc when it assembles .S files and trip
+   # `unrecognized command-line option '-arch'`.
+   #
    set(_kernel_tc_args
+      -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/linux-syscc.cmake
+      -DARCH=${ARCH}
+      -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
    )

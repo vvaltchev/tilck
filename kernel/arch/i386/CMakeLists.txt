@@ -65,6 +65,22 @@ set(
    -Wl,--script=${KERNEL_SCRIPT}
 )
 
+if (${KERNEL_SYSCC} AND NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
+   #
+   # Under KERNEL_SYSCC + clang, the host clang invokes its
+   # default linker (Apple `ld` on darwin, `ld` on Linux), which
+   # may not handle the GNU-style options the kernel link needs
+   # (--hash-style, --eh-frame-hdr, --build-id, --script). The
+   # cross-toolchain ships an ELF-target `i686-linux-ld`; point
+   # clang at it via --gcc-toolchain so it ALSO picks up the
+   # toolchain's libgcc search paths -- otherwise the link fails
+   # on `cannot find -lgcc`.
+   #
+   list(APPEND KERNEL_LINK_FLAGS_LIST
+      --gcc-toolchain=${GCC_TC_ROOT}
+      -fuse-ld=${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ld)
+endif()
+
 # Because of the properties way the Tilck kernel is linked, in its ELF
 # binary it looks like that it has an executable stack, while that's
 # clearly not the case, because it's not a userspace application and the
