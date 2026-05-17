@@ -478,6 +478,156 @@ initializers, `typedef` lists, `#define` blocks): pad every entry
 so the trailing column (`;`, `}`, `=`) lands at the same column
 across the whole cluster. Pretty over compact.
 
+### Multi-line control-flow conditions: braces on a new line
+
+When an `if`/`while`/`for`/etc. condition expression spans more than
+one source line, the body MUST be wrapped in braces, and the opening
+`{` MUST go on its own line aligned with the keyword. This holds
+**even when the body is a single statement** — the "omit braces for
+single-statement bodies" rule above does NOT apply here.
+
+```c
+if (this + is + a + very + long +
+    multi + line + expression)
+{
+   do_something();
+}
+```
+
+**Never** put `{` at the end of the wrapped condition line (style
+collision with single-line `if (cond) {`), and **never** omit the
+braces:
+
+```c
+if (this + is + a + very + long +
+    multi + line + expression) {     /* WRONG: { on condition line */
+   do_something();
+}
+
+if (this + is + a + very + long +
+    multi + line + expression)
+   do_something();                   /* WRONG: missing braces */
+```
+
+Reason: with a wrapped condition, the eye has to scan vertically to
+find where the body begins. Putting `{` on its own line at the
+keyword's column gives the body an unambiguous left boundary. A
+bare statement after a wrapped condition is hard to tell apart from
+the next statement at the same indent level.
+
+The same applies to multi-line `for ( ; ; )` headers and any other
+control structure where the header wraps.
+
+#### Nested-if propagation
+
+When a nested `if` ends up in the brace-on-own-line form (multi-line
+condition), the **outer** `if` whose body contains it MUST also use
+braces — even if the outer body is "just one statement" textually:
+
+```c
+/* WRONG: the outer `if` is brace-less, but its body spans multiple
+ * lines because of the nested brace block. */
+if (curr_state == TASK_STATE_RUNNING)
+   if (atomic_load(&curr->ticks.vruntime) <
+       atomic_load(&selected->ticks.vruntime))
+   {
+      selected = curr;
+   }
+```
+
+The general rule "if the body is multiple visual lines, use braces"
+implies this — the nested `if {...}` block is multiple visual lines.
+
+#### Style is a craft, not a rule-table
+
+The brace-on-own-line form is the **fall-back** when a condition
+can't be flattened to a single line. Before using it, evaluate
+several alternative shapes for the surrounding code and pick
+whichever reads best overall:
+
+- introduce one or two well-named local variables for the
+  sub-expressions, so the `if` itself fits on a single line;
+- introduce a convenience pointer to a nested struct so multiple
+  field accesses get shorter (often nicer than per-field locals
+  when more than one field is read in the scope);
+- accept the multi-line condition and use brace-on-own-line, when
+  factoring would just rearrange ugliness without removing it.
+
+There's no mechanical "always do X" answer — the right choice
+depends on how many accesses there are, how deeply nested the
+fields are, and how the resulting code reads. The hard rules in
+this section still hold (when you DO end up with a multi-line
+condition, the brace placement is mandatory), but they kick in
+only after the aesthetic choice is made.
+
+#### Preferred: refactor with local variables
+
+One common way to flatten a multi-line condition is to introduce
+temporary locals so the `if` itself fits on one line:
+
+```c
+if (curr_state == TASK_STATE_RUNNING) {
+
+   const u64 curr_vruntime = atomic_load(&curr->ticks.vruntime);
+   const u64 selected_vruntime = atomic_load(&selected->ticks.vruntime);
+
+   if (curr_vruntime < selected_vruntime)
+      selected = curr;
+}
+```
+
+The locals add a line or two but flatten the inner `if` to a clean
+single-line condition under the normal "no braces for
+single-statement body" rule. This is **often** nice but not always
+the answer — over-extracting (a wall of `const u64 x = ...;` lines
+before the real logic) creates noise.
+
+#### Often better: convenience pointer for nested fields
+
+When multiple accesses in the same scope reach into the same nested
+struct (`curr->ticks.X`, `curr->ticks.Y`, `curr->ticks.Z`), one
+typed alias near the top of the block (or function) shortens every
+subsequent expression and usually beats per-field locals:
+
+```c
+struct sched_ticks *const ct = &curr->ticks;
+struct sched_ticks *const st = &selected->ticks;
+
+/* every access in the block becomes short: */
+if (atomic_load(&ct->vruntime) < atomic_load(&st->vruntime))
+   selected = curr;
+```
+
+Scope the alias to the smallest block where it pays for itself.
+Don't go too deep: storing the LEAF value (`vruntime` itself) as
+a local is fine for an isolated comparison, but storing every leaf
+becomes noise. A pointer one level up (`&curr->ticks`) is usually
+the sweet spot when the block accesses several fields.
+
+#### Naming: balance brevity vs readability
+
+When the long subexpression IS replaced by a local, name the local
+**descriptively**. You bought horizontal space by factoring out the
+long expression; spend some back on a name the comparison reads
+naturally with: `if (pos_vruntime < selected_vruntime)` reads like
+prose. `if (pos_vr < sel_vr)` is fine only as a fall-back when the
+descriptive form doesn't fit.
+
+When the descriptive name doesn't fit in 80 cols, the fall-back
+ladder is (in order):
+
+1. **Mildly abbreviate** the modifier, keep the noun:
+   `selected_vruntime` → `sel_vruntime`.
+2. **Drop `const` from both statements for symmetry.** If keeping
+   `const` is what's pushing one line over 80 but not the other,
+   drop it from both — never have one `const` and one not.
+3. **Last resort: short names** like `pos_vr`/`sel_vr`. Step 1 or
+   2 usually wins first.
+
+Don't pick a line break inside the assignment statement as the
+fall-back — a broken-assignment line costs more readability than
+the symmetric `const`-drop or mild abbreviation.
+
 ### Reference files to consult
 
 | Pattern | Look at |
