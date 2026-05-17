@@ -702,7 +702,8 @@ void sched_account_ticks(void)
        * monopolized the CPU while nothing else wanted it aren't
        * penalized for it later.
        */
-      t->vruntime += (u64)(get_runnable_tasks_count() - 1);
+      atomic_fetch_add(&t->vruntime,
+                       (u64)(get_runnable_tasks_count() - 1));
    }
 
    /*
@@ -781,7 +782,15 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
          break;
       }
 
-      if (!selected || pos->ticks.vruntime < selected->ticks.vruntime)
+      if (!selected) {
+         selected = pos;
+         continue;
+      }
+
+      const u64 pos_vruntime = atomic_load(&pos->ticks.vruntime);
+      const u64 selected_vruntime = atomic_load(&selected->ticks.vruntime);
+
+      if (pos_vruntime < selected_vruntime)
          selected = pos;
    }
 
@@ -800,9 +809,14 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
        * yield to any other task.
        */
 
-      if (curr_state == TASK_STATE_RUNNING)
-         if (curr->ticks.vruntime < selected->ticks.vruntime)
+      if (curr_state == TASK_STATE_RUNNING) {
+
+         const u64 curr_vruntime = atomic_load(&curr->ticks.vruntime);
+         const u64 selected_vruntime = atomic_load(&selected->ticks.vruntime);
+
+         if (curr_vruntime < selected_vruntime)
             selected = curr;
+      }
    }
 
    return selected;

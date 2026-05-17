@@ -53,7 +53,16 @@ struct sched_ticks {
    u32 timeslice;       /* ticks counter for the current time slice */
    u64 total;           /* total life-time ticks */
    u64 total_kernel;    /* total life-time ticks spent in kernel */
-   u64 vruntime;        /* a brutal approx. of Linux's vruntime */
+
+   /*
+    * A brutal approx. of Linux's vruntime. atomic because the
+    * writer (sched_account_ticks) runs in timer-IRQ context while
+    * the reader (sched_do_select_runnable_task) runs with
+    * preemption disabled but interrupts NOT masked -- a torn 64-
+    * bit load on i386 would otherwise be observable. The atomic
+    * wrapper provides indivisibility + the volatile cast.
+    */
+   atomic_u64_t vruntime;
 };
 
 STATIC_ASSERT(sizeof(enum sig_state) == 1);
