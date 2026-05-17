@@ -51,7 +51,7 @@ inline struct mnt_fs create_test_fs(const char *name, tfs_entry *root)
 {
    struct mnt_fs fs {
 
-      .ref_count        = 1,
+      .ref_count        = { .v = 1 },
       .pss_lock_root    = nullptr,
       .fs_type_name     = name,
       .device_id        = 0,

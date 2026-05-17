@@ -29,17 +29,13 @@ int wth_create_thread_for(struct worker_thread *t)
 void wth_wakeup(struct worker_thread *t)
 {
    struct task *curr = get_curr_task();
-   enum task_state exp_state = TASK_STATE_SLEEPING;
+   int exp_state = TASK_STATE_SLEEPING;
 
    t->waiting_for_jobs = false;
-   atomic_cas_strong(&t->task->state,
-                     &exp_state,
-                     TASK_STATE_RUNNABLE,
-                     mo_relaxed, mo_relaxed);
+   atomic_cas_strong_int(&t->task->state, &exp_state, TASK_STATE_RUNNABLE);
    /*
-    * Note: we don't care whether atomic_cas_strong() succeeded or not.
-    * Reason: if it didn't succeed, that's because an IRQ preempted us
-    * and made its state to be runnable.
+    * Note: we don't care whether the CAS succeeded or not. Reason:
+    * if it didn't, an IRQ preempted us and made its state RUNNABLE.
     */
 
    struct worker_thread *curr_tt = curr->worker_thread;

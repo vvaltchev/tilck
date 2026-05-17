@@ -13,7 +13,7 @@
 
 static struct kcond cond = { 0 };
 static struct kmutex cond_mutex = { 0 };
-static ATOMIC(int) waiters_ready;
+static atomic_int_t waiters_ready;
 
 static void kcond_thread_test(void *arg)
 {
@@ -31,7 +31,7 @@ static void kcond_thread_test(void *arg)
     * signal_all and exit before a slow-to-start waiter ever calls
     * kcond_wait(), leaving that waiter blocked forever.
     */
-   atomic_fetch_add_explicit(&waiters_ready, 1, mo_relaxed);
+   atomic_fetch_add_int(&waiters_ready, 1);
 
    bool success = kcond_wait(&cond, &cond_mutex, KCOND_WAIT_FOREVER);
 
@@ -75,7 +75,7 @@ static void kcond_thread_signal_generator(void *unused)
    while (true) {
       kmutex_lock(&cond_mutex);
       {
-         if (atomic_load_explicit(&waiters_ready, mo_relaxed) == THREAD_COUNT)
+         if (atomic_load_int(&waiters_ready) == THREAD_COUNT)
             break;
       }
       kmutex_unlock(&cond_mutex);
@@ -102,7 +102,7 @@ void selftest_kcond()
    int tids[THREAD_COUNT + 1];
    kmutex_init(&cond_mutex, 0);
    kcond_init(&cond);
-   atomic_store_explicit(&waiters_ready, 0, mo_relaxed);
+   atomic_store_int(&waiters_ready, 0);
 
    for (u32 i = 0; i < THREAD_COUNT; i++) {
       tids[i] = kthread_create(&kcond_thread_test, 0, TO_PTR(i + 1));

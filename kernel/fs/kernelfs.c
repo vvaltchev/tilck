@@ -160,7 +160,7 @@ static struct mnt_fs *create_kernelfs(void)
    if (!fs)
       return NULL;
 
-   fs->ref_count = 1;
+   atomic_store_int(&fs->ref_count, 1);
    return fs;
 }
 

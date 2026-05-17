@@ -147,7 +147,7 @@ static int fbdev_munmap(struct user_mapping *um, void *vaddr, size_t len)
    ASSERT(IS_PAGE_ALIGNED(len));
    ASSERT(hb->pi == get_curr_proc());
 
-   if (get_process_task(hb->pi)->state == TASK_STATE_ZOMBIE)
+   if (atomic_load_int(&get_process_task(hb->pi)->state) == TASK_STATE_ZOMBIE)
       dying_task = true;
 
    unmapped_count = unmap_pages_permissive(

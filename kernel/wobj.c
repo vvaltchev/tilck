@@ -27,7 +27,7 @@ void wait_obj_set(struct wait_obj *wo,
       ASSERT(list_node_is_null(&wo->wait_list_node) ||
              list_node_is_empty(&wo->wait_list_node));
 
-      atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
+      atomic_store_ptr(&wo->__ptr, ptr);
       wo->extra = extra;
       list_node_init(&wo->wait_list_node);
 
@@ -35,14 +35,18 @@ void wait_obj_set(struct wait_obj *wo,
          list_add_tail(wait_list, &wo->wait_list_node);
 
       /*
-       * Publish: this store makes the wobj "live". A signaler walking
-       * a wait_list and reading wo->type must see a fully initialized
-       * wobj, so the type write goes last. Cast through ATOMIC(u32) *
-       * to use atomic ops on a plain-enum field — same trick as in
-       * get_curr_task_state().
+       * Publish: this store makes the wobj "live". A signaler
+       * walking a wait_list and reading wo->type must see a fully
+       * initialized wobj, so the type write goes last. wo->type
+       * stays a plain enum (most readers access it directly under
+       * preempt-disabled regions); the publish-store goes through
+       * a volatile-qualified atomic builtin so the compiler can't
+       * sink it past the field initializations above.
        */
-      atomic_store_explicit(
-         (ATOMIC(u32) *)&wo->type, (u32)type, mo_relaxed
+      __atomic_store_n(
+         (u32 volatile *)&wo->type,
+         (u32)type,
+         __ATOMIC_RELAXED
       );
    }
    enable_preemption();
@@ -65,13 +69,15 @@ void *wait_obj_reset(struct wait_obj *wo)
        * intermediate state (type==WOBJ_NONE while the node is still
        * linked) — which would corrupt the dispatch in kcond_signal_int.
        */
-      old_type = (enum wo_type) atomic_exchange_explicit(
-         (ATOMIC(u32) *)&wo->type, (u32)WOBJ_NONE, mo_relaxed
+      old_type = (enum wo_type) __atomic_exchange_n(
+         (u32 volatile *)&wo->type,
+         (u32)WOBJ_NONE,
+         __ATOMIC_RELAXED
       );
 
       if (old_type != WOBJ_NONE) {
 
-         oldp = atomic_exchange_explicit(&wo->__ptr, NULL, mo_relaxed);
+         oldp = atomic_exchange_ptr(&wo->__ptr, NULL);
 
          if (list_is_node_in_list(&wo->wait_list_node))
             list_remove(&wo->wait_list_node);
@@ -102,7 +108,7 @@ void prepare_to_wait_on(enum wo_type type,
       return;
    }
 
-   ASSERT(ti->state != TASK_STATE_SLEEPING);
+   ASSERT(atomic_load_int(&ti->state) != TASK_STATE_SLEEPING);
    wait_obj_set(&ti->wobj, type, ptr, extra, wait_list);
    task_change_state(ti, TASK_STATE_SLEEPING);
 }

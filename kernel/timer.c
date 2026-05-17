@@ -29,7 +29,7 @@ int __tick_adj_ticks_rem;
 u32 slow_timer_irq_handler_count;
 
 /* Temporary global used by asm_do_bogomips_loop() */
-volatile ATOMIC(u32) __bogo_loops;
+atomic_u32_t __bogo_loops;
 
 /* Static variables */
 static struct list timer_wakeup_list = STATIC_LIST_INIT(timer_wakeup_list);
@@ -161,7 +161,7 @@ static void tick_all_timers(void)
          pos->timer_ready = true;
          list_remove(&pos->wakeup_timer_node);
 
-         if (pos->state == TASK_STATE_SLEEPING) {
+         if (atomic_load_int(&pos->state) == TASK_STATE_SLEEPING) {
 
             /*
              * Stop-on-wake: see the matching comment in wake_up()
@@ -366,7 +366,7 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
        * discard the loops so far in this partial tick and start counting zero
        * from now, when the timer IRQ just arrived.
        */
-      __bogo_loops = 0;
+      atomic_store_u32(&__bogo_loops, 0);
       ctx->pass_start = true;
       return IRQ_NOT_HANDLED;
    }
@@ -379,10 +379,12 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
 
       disable_interrupts_forced();
       {
-         loops_per_tick = __bogo_loops * BOGOMIPS_CONST/MEASURE_BOGOMIPS_TICKS;
+         loops_per_tick =
+            atomic_load_u32(&__bogo_loops)
+               * BOGOMIPS_CONST/MEASURE_BOGOMIPS_TICKS;
          loops_per_ms = loops_per_tick / (1000 / KRN_TIMER_HZ);
          loops_per_us = loops_per_ms / 1000;
-         __bogo_loops = -1;
+         atomic_store_u32(&__bogo_loops, (u32)-1);
       }
       enable_interrupts_forced();
    }

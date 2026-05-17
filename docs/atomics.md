@@ -1,102 +1,255 @@
-
 Use of atomics in Tilck
----------------------------
+=======================
 
-Being Tilck a non-SMP kernel, apparently, it should never need to use atomics.
-Actually, that's not true. While it is true that there no need for any type
-of *sequential consistency* in a non-SMP kernel, the need for simple atomicity
-remains in order to the kernel to be portable. While on i386 and on x86_64
-the load/store operations on pointer-size variables are inherently atomic (but
-again, without sequential consistency guaratees), on other architectures,
-typically RISC ones, that's simply not true. There, it might be even necessary
-to use two instructions to store a 32-bit immediate value to a memory location.
+Tilck is a non-SMP kernel; *sequential consistency* across CPUs is
+never needed. **Simple atomicity** still is, because:
 
-Because of that, for variables that need to be accessed also from interrupt
-context or for variables that are shared across multiple tasks (ref-counts),
-C11 atomics are used with the memory-model parameter set to *relaxed*. With the
-*relaxed* memory-model, on architectures like x86, the atomic load/store
-operations will be translated into simple `MOV` instructions, as if there was no
-involvment with atomic semantics at all while, on other architectures, special
-instructions for atomics will be used.
+  - Some variables are accessed from both regular code and IRQ
+    handlers (preemption nesting counters, scheduler flags, the
+    bogoMIPS calibration counter, ref-counts, …). A store that
+    isn't a single indivisible operation can be interrupted
+    half-written, leaving the value corrupt.
 
-Why we need simply atomicity for certain variables: examples
--------------------------------------------------------------
+  - Non-x86 architectures (notably riscv64) sometimes need
+    multiple instructions to store an integer to memory. Even
+    when the variable is naturally aligned, that's still a
+    multi-step write whose intermediate state would be visible
+    to an interrupt.
 
-Think about a variable like `__disable_preempt`, used both in regular
-code and in interrupt handlers. Now imagine that it takes two separate
-instructions to store a value into it. What happens if an IRQs gets delivered
-after the first instruction, but before the second one? Well get a *corrupt*
-value for the variable and everything will get messed up.
+The atomic layer used to be a thin wrapper over C11 `_Atomic` and
+`atomic_*_explicit`. After a series of pain points accumulated
+(see "Why not C11 `_Atomic` directly?" below) we replaced it with
+a small Tilck-specific layer that delivers the same guarantees
+without those costs.
 
-The same example applies for reference count variables used in objects shared
-across all the tasks in the system (like fs objects). What happens if, in the
-middle of a non-atomic store to such reference count, the task gets preempted
-by the scheduler and another task to made to run? We'll get a corrupted value.
+The new API
+-----------
 
-Volatile vs Atomic
----------------------
+Defined in `include/tilck/common/atomics.h`.
 
-Please note that the following implications are *not* true:
+### Type set
 
-   - volatile -> atomic
-   - atomic -> volatile
+```
+atomic_s8_t   atomic_u8_t
+atomic_s16_t  atomic_u16_t
+atomic_s32_t  atomic_u32_t
+atomic_s64_t  atomic_u64_t
+atomic_int_t
+atomic_bool_t
+atomic_ptr_t     /* untyped void *, used by wait_obj.__ptr */
+```
 
-Therefore, it makes sense to have:
+Each type is a struct wrapping a single plain field `v`. The
+wrapper exists so the field type itself enforces "no accidental
+non-atomic access": `int x; x = 5;` works at any call site, but
+`atomic_int_t x; x = 5;` is a compile error (struct assignment
+without an initializer of the same struct type). Writes must go
+through `atomic_store_int(&x, 5)`.
 
-   - atomic variables which are *not* also volatile
-   - volatile variables which are *not* also atomic
-   - volatile atomic variables
+64-bit types carry `ALIGNED_AT(8)` so `lock cmpxchg8b` on i386 is
+guaranteed atomic against cache-line crossings. On x86_64 /
+riscv64 the attribute is a no-op (natural alignment).
 
-An example: the `state` field in `struct task`. It needs to be *atomic* because
-its value can be read and updated by interrupt handlers (see `wth.c`), but
-it also needs to be *volatile* because it is read in loops (see `sys_waitpid`)
-waiting for it to change. Theoretically, in case of consecutive atomic loads,
-the compiler is *not* obliged to perform every time an actual read and it might
-cache the value in a register, according to the C11 atomics model.
+### Sugar
 
-### Why `_Atomic` alone isn't enough: the C11 relaxed-atomics gap
+```c
+#define atomic(x) atomic_##x##_t
+```
 
-The reason atomic-without-volatile is not a substitute for volatile-atomic
-goes deeper than the example above. Per the C11/C17 memory model, two
-adjacent `atomic_load_explicit(&x, memory_order_relaxed)` calls have *no*
-sequenced-before or synchronizes-with relationship between them, so the
-compiler is permitted to combine them into a single load. The same applies
-to a load that no other observable behavior depends on — it can be hoisted
-out of a loop. GCC and Clang in their current versions don't do this
-aggressively for atomic operations, but that's an implementation choice,
-not a language guarantee, and it can change between releases or under LTO.
+So `atomic(int) foo;` is `atomic_int_t foo;`, `atomic(u32) bar;`
+is `atomic_u32_t bar;`, etc. Lowercase deliberately — as a
+function-like macro it only fires when followed by `(`, so it
+doesn't collide with C++'s `std::atomic<T>` (no `(`).
 
-`volatile` is the standard's mechanism for "every access is an observable
-side effect; emit a real load/store every time." Tagging the field
-`volatile` (Tilck's approach) and casting to volatile at each access site
-(Linux's `READ_ONCE` / `WRITE_ONCE`) are two ways to spell the same
-defensive guarantee. Either way, the compiler is forced to honor each
-access.
+### Operations
 
-### A note on the `sys_waitpid` example
+For every atomic type:
 
-The cited wait loop in `kernel/waitpid.c` is *currently* safe even without
-volatile, but for a reason that doesn't generalize: the loop body calls
-out-of-TU functions (`disable_preemption`, `prepare_to_wait_on`,
-`enter_sleep_wait_state`, ...) and the compiler can't carry a cached
-register value of `ti->state` across them — they're opaque and could
-modify any memory. That's a *coincidental* protection, not a designed one.
+```c
+TYPE atomic_load_<type>      (atomic_<type>_t *p);
+void atomic_store_<type>     (atomic_<type>_t *p, TYPE val);
+TYPE atomic_exchange_<type>  (atomic_<type>_t *p, TYPE val);
+bool atomic_cas_weak_<type>  (atomic_<type>_t *p, TYPE *expected, TYPE desired);
+bool atomic_cas_strong_<type>(atomic_<type>_t *p, TYPE *expected, TYPE desired);
+```
 
-Two ways that protection can disappear:
+Integer types additionally have:
 
-1. **Inlining changes.** A `static inline` annotation, LTO, or a refactor
-   that brings the helpers into the same TU lets the compiler see they
-   don't touch `ti->state` and hoist the load.
+```c
+TYPE atomic_fetch_add_<type> (atomic_<type>_t *p, TYPE val);
+TYPE atomic_fetch_sub_<type> (atomic_<type>_t *p, TYPE val);
+```
 
-2. **Similar patterns elsewhere.** A future poll loop somewhere else in
-   the kernel that does
-   `while (atomic_load_explicit(&ti->state, mo_relaxed) != X) { ... }`
-   without function-call barriers in the body has no such backstop and
-   would silently break under `-O2`.
+All wrappers are `ALWAYS_INLINE`. Memory ordering is implicit
+`mo_relaxed` and not parameterized — every in-tree caller is fine
+with relaxed; if some future site needs a stronger order, we'll
+add a separately-named wrapper (e.g. `atomic_load_acquire_int`)
+rather than parameterize.
 
-So `volatile` on `state` is the actual defense, doing real work even
-where the current code happens to be safe for other reasons. The general
-rule: **for any variable read by code that depends on observing a change
-written elsewhere (an ISR, another task), prefer volatile-atomic over
-plain atomic**, regardless of whether today's call graph happens to
-serialize the accesses.
+Implementation
+--------------
+
+Inside each wrapper, the field pointer is cast to
+`(T volatile *)&p->v`. The volatile half is what guarantees the
+no-fold-no-hoist behavior (Linux's `READ_ONCE`/`WRITE_ONCE`
+pattern); the access is then handed to a compiler builtin:
+
+  - **Most cases**: `__atomic_load_n` / `__atomic_store_n` /
+    `__atomic_fetch_add` / `__atomic_fetch_sub` /
+    `__atomic_exchange_n` / `__atomic_compare_exchange_n`. These
+    are GCC/clang intrinsics, header-free.
+
+  - **i386 u64 / s64**: `__sync_val_compare_and_swap`,
+    `__sync_fetch_and_add`, etc. The `__atomic_*` builtins on
+    i386 64-bit operands route through libatomic, whose
+    implementation uses `FILDLL` / `FISTPLL` (FPU) — forbidden
+    in kernel context. `__sync_*` inlines directly to
+    `lock cmpxchg8b` and stays clear of libatomic. The atomic-
+    load shape uses the "CAS(0,0)" trick: a compare-exchange
+    with expected=desired=0 reads atomically and only writes 0
+    when *p is already 0 (a no-op store). Same trick Linux's
+    `atomic64_read` uses on 32-bit x86.
+
+The result is that the kernel binary contains no FPU instructions
+in atomic paths and no libatomic dependency. Verify with:
+
+```
+objdump -d build/tilck | grep -E 'fildll|fistpll|__atomic_load_8|__atomic_store_8|__atomic_fetch_add_8'
+```
+
+(should be empty).
+
+Why we don't include `<stdatomic.h>`
+------------------------------------
+
+Everything above lives on top of compiler intrinsics. The C11
+`<stdatomic.h>` (and C++ `<atomic>`) would add typedefs
+(`atomic_int`, `atomic_bool`, …) that collide with our short
+names, plus thin wrap macros over the same `__atomic_*` builtins,
+plus the `memory_order_*` enum which equals the
+compiler-predefined `__ATOMIC_*` constants. None of those add
+value over the direct intrinsics, so we skip them. The header has
+zero system-header dependency on the atomic side.
+
+Why not C11 `_Atomic` directly?
+-------------------------------
+
+The previous design used `_Atomic(T)` as the storage type
+(`ATOMIC(int) foo`, `volatile ATOMIC(enum) state`, …). We moved
+away from it after hitting five separate pain points:
+
+1. **i386 u64 routes through libatomic, which uses FPU.** GCC
+   emits libcalls to `__atomic_load_8` / `__atomic_store_8` for
+   any `_Atomic(u64)` access on i386 (regardless of `-O`,
+   regardless of `-march=i686`). The toolchain's libatomic
+   implementation of those uses `FILDLL`/`FISTPLL` — FPU
+   instructions, which the kernel forbids outside `fpu_context`.
+   First access panics.
+
+2. **`_Atomic(u64)` bumps containing-struct alignment.** On
+   i386, plain `u64` has 4-byte alignment but `_Atomic(u64)`
+   has 8-byte. Any struct containing it inherits the bump; any
+   cast from a 4-aligned pointer to a struct-now-8-aligned trips
+   `-Wcast-align` under clang.
+
+3. **GCC 11.0→11.1 ABI change.** `_Atomic(long long)` alignment
+   changed in 11.1; GCC emits a per-TU `-Wpsabi` note for every
+   consumer of every header that declares the field.
+
+4. **`_Atomic` doesn't exist in C++.** That forced the
+   pre-existing atomics.h to maintain three parallel paths (C,
+   C++ with `<atomic>`, C++ under `KERNEL_FORCE_TC_ISYSTEM` with
+   `fake_atomics.h`).
+
+5. **`volatile` was load-bearing.** Because C11 lets the
+   compiler combine or hoist `mo_relaxed` loads, atomic fields
+   that needed every access to be a real load/store (e.g.
+   `task.state`, `__bogo_loops`) were declared
+   `volatile ATOMIC(...)` and the rationale was documented at
+   each site.
+
+By using plain `T` storage and casting to `_Atomic(T)`-equivalent
+qualifiers on the fly inside the wrapper — actually, by using
+`__atomic_*` builtins on `(T volatile *)` and skipping the
+`_Atomic` keyword entirely — all five pain points go away. The
+i386 u64 case escapes to `__sync_*` and stays clear of
+libatomic; the field-alignment surprises disappear; there's no
+psabi note; the wrapper compiles uniformly in C and C++; and
+every wrapper call is volatile-cast, so call sites never need to
+write `volatile` themselves.
+
+### Side benefit: `fake_atomics.h` is gone
+
+The legacy `include/tilck/common/fake_atomics.h` was needed only
+because C++ couldn't include `<atomic>` under the
+`KERNEL_FORCE_TC_ISYSTEM` static-analysis build. With the new
+layer there's no `<atomic>` reference at all, so the
+static-analysis build compiles without any fallback, and the
+file has been deleted.
+
+Examples
+--------
+
+A scheduler counter that an IRQ increments while regular code
+reads:
+
+```c
+static atomic_int_t runnable_tasks_count;
+
+void on_runnable(struct task *t)
+{
+   atomic_fetch_add_int(&runnable_tasks_count, 1);
+}
+
+int get_runnable_tasks_count(void)
+{
+   return atomic_load_int(&runnable_tasks_count);
+}
+```
+
+A bool flag with CAS-based handoff:
+
+```c
+static atomic_bool_t lock_in_use;
+
+bool try_lock(void)
+{
+   bool expected = false;
+   return atomic_cas_strong_bool(&lock_in_use, &expected, true);
+}
+
+void unlock(void)
+{
+   atomic_store_bool(&lock_in_use, false);
+}
+```
+
+A pointer slot accessed atomically:
+
+```c
+struct wait_obj {
+   atomic_ptr_t __ptr;
+   ...
+};
+
+void *p = atomic_load_ptr(&wo->__ptr);  /* cast at the call site
+                                          to the concrete type */
+```
+
+A bitfield-packed `u32` updated via CAS loop:
+
+```c
+struct ringbuf_stat {
+   union {
+      struct { u32 read_pos:14; u32 write_pos:14; u32 full:1; ... };
+      atomic_u32_t raw;
+      u32 __raw;
+   };
+};
+
+do {
+   cs = stat;                 /* read both views */
+   ns = stat;
+   /* compute updated ns ... */
+} while (!atomic_cas_weak_u32(&stat.raw, &cs.__raw, ns.__raw));
+```

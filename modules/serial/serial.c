@@ -21,7 +21,7 @@ struct serial_device {
    const char *name;
    u16 ioport;
    struct tty *tty;
-   ATOMIC(int) jobs_cnt;
+   atomic_int_t jobs_cnt;
    struct worker_thread *wth;
 };
 
@@ -58,7 +58,7 @@ static void ser_bh_handler(void *ctx)
       tty_send_keyevent(t, make_key_event(0, c, true), true);
    }
 
-   dev->jobs_cnt--;
+   atomic_fetch_sub_int(&dev->jobs_cnt, 1);
 }
 
 static enum irq_action serial_con_irq_handler(void *ctx)
@@ -68,7 +68,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    if (!serial_read_ready(dev->ioport))
       return IRQ_NOT_HANDLED; /* Not an IRQ from this "device" [irq sharing] */
 
-   if (dev->jobs_cnt >= 2)
+   if (atomic_load_int(&dev->jobs_cnt) >= 2)
       return IRQ_HANDLED;
 
    if (UNLIKELY(in_panic())) {
@@ -77,7 +77,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
       ulong val;
       disable_interrupts(&val);
       {
-         dev->jobs_cnt++;
+         atomic_fetch_add_int(&dev->jobs_cnt, 1);
          ser_bh_handler(dev);
       }
       enable_interrupts(&val);
@@ -89,7 +89,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
       return IRQ_HANDLED;
    }
 
-   dev->jobs_cnt++;
+   atomic_fetch_add_int(&dev->jobs_cnt, 1);
    return IRQ_HANDLED;
 }
 
