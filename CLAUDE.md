@@ -20,16 +20,28 @@ educational today".
 **Boot time is sacred.** Current numbers to anchor against: under
 pure QEMU emulation (TCG, no KVM), a full boot through the custom
 bootloader completes in **under 100 ms**; loaded directly with
-`-kernel` the figure is **under 50 ms**. Never propose anything that
-trades boot time for a feature improvement unless the cost is
-unambiguously below ~1 ms *and* there is no implementation that
-defers the work post-boot. A "block boot for ~1 second to do X
-cleanly" suggestion will be rejected on principle; find a way to
-do X asynchronously, lazily, or not at all. Concrete mistake to
-not repeat: proposing a synchronous busy-wait for the RTC second
-edge in `init_system_time()` to get a precise `boot_timestamp` --
-that's exactly the kind of thing the existing async
-`clock_drift_adj` kthread exists to avoid.
+`-kernel` the figure is **under 50 ms**. The rule is about
+order-of-magnitude costs, not paranoia about individual
+microseconds:
+
+- **Hundreds of ns to ~1 us**: free. Initializing a kcond,
+  installing an IRQ handler, zeroing a struct -- do it at boot if
+  it makes the code simpler, even when the resource isn't used
+  yet. Don't bend over backwards with lazy-init / one-time CAS /
+  constructor-on-first-use patterns to save a kcond_init.
+- **~10 us to ~1 ms**: prefer to defer, but not a hard rule. If
+  the work is needed during boot anyway, just do it.
+- **>1 ms, and especially anything in the seconds**: hard
+  rejection. Find a way to do the work asynchronously (kthread,
+  worker job, lazy on first real use) or drop the feature.
+
+Concrete mistake to not repeat: proposing a synchronous busy-wait
+for the RTC second edge in `init_system_time()` to get a precise
+`boot_timestamp` -- that would cost up to 1 s of boot, on the
+critical path, for a feature an async kthread already covers. The
+right shape is to make the kthread itself simpler / faster (e.g.
+RTC UIE-driven instead of polling-driven), not to drag its work
+into boot.
 
 The same principle extends to runtime hot paths (timer IRQ,
 scheduler tick, syscall entry/exit, context switch, IRQ handlers).
