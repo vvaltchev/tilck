@@ -43,6 +43,42 @@
 void selftest_rtc_uie(void)
 {
    u64 edges[RTC_UIE_EDGES];
+   u64 probe_ns;
+   struct clock_resync_stats stats;
+
+   /*
+    * Probe first: on arches without a CMOS RTC (riscv64), the WEAK
+    * fallback in kernel/misc.c returns false unconditionally. Skip
+    * the test cleanly instead of hanging on the drift-kthread-resync
+    * wait below, which would never see full_resync_count tick.
+    */
+   if (!rtc_wait_for_second_edge(&probe_ns, RTC_UIE_WAIT_TIMEOUT_TICKS)) {
+      printk("rtc_uie: no RTC UIE on this platform, skipping\n");
+      se_regular_end();
+      return;
+   }
+
+   /*
+    * The drift-compensation kthread (kernel/datetime.c:clock_drift_adj)
+    * is itself UIE-driven. Its first compensation cycle happens at the
+    * first RTC second edge after boot and shifts __time_ns by the
+    * boot-time drift (typically ~80 ms in QEMU TCG), which inflates
+    * the delta between any two edges that straddle the compensation.
+    * After that the kthread sleeps for clock_drift_adj_loop_delay
+    * (default: 60 s), leaving __time_ns moving at real-time pace.
+    *
+    * Wait for the kthread to have done at least one compensation
+    * cycle, then wait for any in-progress adjustment to settle.
+    * After that, RTC-edge-to-RTC-edge deltas should match real time
+    * to within the measurement tolerance.
+    */
+   do {
+      kernel_sleep(KRN_TIMER_HZ / 10);
+      clock_get_resync_stats(&stats);
+   } while (stats.full_resync_count == 0);
+
+   while (clock_in_resync())
+      kernel_sleep(KRN_TIMER_HZ / 10);
 
    for (int i = 0; i < RTC_UIE_EDGES; i++) {
 

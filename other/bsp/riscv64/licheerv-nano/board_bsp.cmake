@@ -58,9 +58,11 @@ set(KERNEL_PADDR                  0x80200000)
 math(EXPR KERNEL_ENTRY "${KERNEL_PADDR} + 0x1000" OUTPUT_FORMAT HEXADECIMAL)
 math(EXPR KERNEL_LOAD "${UIMAG_ADDR} - 0x800000" OUTPUT_FORMAT HEXADECIMAL)
 
-# licheerv-nano do not have a rtc
-set(KRN_CLOCK_DRIFT_COMP OFF CACHE BOOL
-    "Compensate periodically for the clock drift in the system time" FORCE)
+# licheerv-nano does not have an RTC. The drift-compensation kthread is
+# created unconditionally now (KRN_CLOCK_DRIFT_COMP option removed); the
+# kthread auto-exits on the first rtc_wait_for_second_edge() call because
+# its WEAK stub returns false. No drift compensation -- but no harm
+# either; the kthread stack is freed seconds after boot.
 
 unset(BOOTLOADER)
 unset(BOOTLOADER_DIR)

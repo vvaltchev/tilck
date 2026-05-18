@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck_gen_headers/config_kernel.h>
-
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
@@ -22,11 +20,6 @@ void selftest_time(void)
    u32 orig_tick_duration = 0;
    u32 art_drift_p = 5;
    ulong var;
-
-   if (!KRN_CLOCK_DRIFT_COMP) {
-      printk("Skipping the test because KRN_CLOCK_DRIFT_COMP = 0.\n");
-      goto out;
-   }
 
    if (clock_drift_adj_loop_delay > 60 * KRN_TIMER_HZ) {
 
@@ -129,7 +122,6 @@ void selftest_time(void)
       enable_interrupts(&var);
    }
 
-out:
    if (se_is_stop_requested())
       se_interrupted_end();
    else

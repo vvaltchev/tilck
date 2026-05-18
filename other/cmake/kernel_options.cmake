@@ -176,13 +176,6 @@ tilck_option(KRN_TIMER_HZ
    HELP     "Kernel timer frequency in Hz"
 )
 
-tilck_option(KRN_CLOCK_DRIFT_COMP
-   TYPE     BOOL
-   CATEGORY "Kernel Misc"
-   DEFAULT  ON
-   HELP     "Periodically compensate for clock drift"
-)
-
 tilck_option(KRN_MAX_HANDLES
    TYPE     UINT
    CATEGORY "Kernel Misc"
