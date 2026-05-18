@@ -51,8 +51,14 @@ void release_pageframes_mapped_at() { }
 bool irq_is_masked() { NOT_REACHED(); return false; }
 void dump_stacktrace() { NOT_REACHED(); }
 bool allocate_fpu_regs() { NOT_REACHED(); return false; }
-void kthread_create_init_regs_arch() { NOT_REACHED(); }
-void kthread_create_setup_initial_stack() { NOT_REACHED(); }
+/*
+ * Reachable from init_sched() -> kthread_create(&idle, ...) when the
+ * scheduler gtest exercises the real init_sched(). The actual register
+ * state set up here is never executed in the test (switch_to_task /
+ * context_switch are unreachable on aarch64 host), so a no-op is fine.
+ */
+void kthread_create_init_regs_arch() { }
+void kthread_create_setup_initial_stack() { }
 void save_curr_fpu_ctx_if_enabled() { }
 void arch_usermode_task_switch() { }
 
