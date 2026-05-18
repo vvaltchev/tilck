@@ -147,6 +147,73 @@ Examples to copy: `kernel/mm/system_mmap.c` +
 
 Never `extern`-redeclare a kernel `static` in a `.cpp` test file.
 
+### Keep kernel code untouched when adding tests
+
+**Avoid `#ifdef UNIT_TEST_ENVIRONMENT` in production kernel code.** It
+is ugly and erodes the readability of the real implementation. When a
+test needs the kernel to behave differently, provide a fake on the
+test side instead. Pretty production code matters.
+
+Three mechanisms, in order of preference:
+
+1. **Upgrade a test stub.** If a helper the production code calls
+   already has a no-op / NULL-returning stub in
+   `tests/unit/generic_stubs.c` / `mm_fakes.cpp` / `misc_fake.c`,
+   strengthen the stub to a real fake. Zero kernel changes. Used
+   for `hi_vmem_reserve` / `hi_vmem_release` (real malloc fakes in
+   `mm_fakes.cpp`) so `alloc_kernel_isolated_stack` works as-is
+   in gtests.
+2. **Override via `__wrap_*`.** For a kernel function whose body
+   you want to replace entirely, add the symbol to
+   `other/cmake/wrapped_syms.cmake` and define `__wrap_<symbol>` in
+   a test fakes file. Production calls get linker-redirected to the
+   wrap. Requires the kernel symbol to be non-`static` (use the
+   `STATIC` macro so it stays `static` in real builds).
+3. **`STATIC` + test header.** When tests need to *call* a kernel
+   function directly (not replace it), use the STATIC + test-header
+   pattern documented above.
+
+What you should NOT do: gate kernel branches on
+`UNIT_TEST_ENVIRONMENT`, replicate kernel logic in a wrapper, or
+re-implement large kernel pieces inside tests. The kernel is the
+source of truth; tests sit beside it.
+
+### Portability: target archs vs host archs
+
+Don't confuse the two. **Target arches** (what Tilck cross-compiles
+for): i386 (primary), riscv64, x86_64 today; **aarch64 is a planned
+future first-class target** and other arches (eg. RISC-V variants)
+may follow. **Host arches** (where gtests / build tools run): Linux
+x86_64 and aarch64; FreeBSD x86_64 (aarch64 future); Darwin aarch64
+only.
+
+Implications for test infrastructure and any header gated on the
+host compiler's arch predefines:
+
+- Never gate test-only code on `__aarch64__` alone. gtests are
+  built on x86_64 hosts too — code in an `#elif defined(__aarch64__)`
+  branch is invisible to them.
+- Conversely, never assume "aarch64 = test-only". aarch64 will be a
+  real Tilck target; the existing aarch64 test stubs in
+  `include/tilck/kernel/hal.h` are gated on
+  `__aarch64__ && UNIT_TEST_ENVIRONMENT`, not on `__aarch64__`
+  alone, and that pattern is load-bearing.
+- Cross-arch test stubs (anything not specific to one arch's
+  hardware) belong in a `#ifdef UNIT_TEST_ENVIRONMENT` block placed
+  after the arch dispatch — typically end of `hal.h`. The
+  arch-specific headers (`common/arch/<arch>/*.h`) should skip
+  their production definition of the same symbol under
+  `UNIT_TEST_ENVIRONMENT`, so the cross-arch version wins
+  uniformly. Pattern in place for IRQ-state primitives
+  (`disable_interrupts`, `enable_interrupts`,
+  `are_interrupts_enabled`, etc.): production defs in
+  `include/tilck/common/arch/{generic_x86,riscv}/*_utils.h` under
+  `#ifndef UNIT_TEST_ENVIRONMENT`; test versions in `hal.h` under
+  `#ifdef UNIT_TEST_ENVIRONMENT`.
+
+When in doubt: portable test code is gated on
+`UNIT_TEST_ENVIRONMENT`, not on a specific arch predefine.
+
 ## Fast iteration loop under QEMU (Darwin)
 
 Interactive bootloader + framebuffer is too slow for tight cycles

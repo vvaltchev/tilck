@@ -70,30 +70,12 @@
       #define COM4 3
       #define X86_PC_TIMER_IRQ 0
 
-      static ALWAYS_INLINE bool are_interrupts_enabled(void)
-      {
-         return true;
-      }
-
-      static ALWAYS_INLINE void disable_interrupts(ulong *var)
-      {
-         /* STUB function: do nothing */
-      }
-
-      static ALWAYS_INLINE void enable_interrupts(ulong *var)
-      {
-         /* STUB function: do nothing */
-      }
-
-      static ALWAYS_INLINE void disable_interrupts_forced(void)
-      {
-         /* STUB function: do nothing */
-      }
-
-      static ALWAYS_INLINE void enable_interrupts_forced(void)
-      {
-         /* STUB function: do nothing */
-      }
+      /*
+       * IRQ-state stubs for tests live in the cross-arch
+       * UNIT_TEST_ENVIRONMENT block below (after the arch
+       * dispatch). They apply equally to gtests built for x86_64
+       * and aarch64 hosts, and to any future host architecture.
+       */
 
       static ALWAYS_INLINE void __set_curr_pdir(ulong paddr)
       {
@@ -211,6 +193,56 @@
 
    #error Unsupported architecture.
 
+#endif
+
+#ifdef UNIT_TEST_ENVIRONMENT
+   /*
+    * Cross-arch IRQ-state tracking for the gtest build. The
+    * arch-specific headers above skip defining the disable /
+    * enable / are_interrupts_enabled trio under
+    * UNIT_TEST_ENVIRONMENT; this block provides them in a way
+    * that works on any host arch (x86_64 and aarch64 today,
+    * whatever Tilck builds gtests on tomorrow).
+    *
+    * The counter starts at 0 (interrupts logically enabled), so
+    * code that ASSERTs `are_interrupts_enabled()` keeps passing.
+    * Kernel critical sections that bracket work with
+    * disable_interrupts() / enable_interrupts() bump the counter,
+    * so code that ASSERTs `!are_interrupts_enabled()` inside the
+    * scope works too. `var` is saved/restored just to mirror the
+    * production save-and-restore-EFLAGS shape; tests don't care
+    * about its value.
+    *
+    * The storage lives in tests/unit/misc_fake.c.
+    */
+   extern int __tilck_test_irqs_disabled;
+
+   static ALWAYS_INLINE bool are_interrupts_enabled(void)
+   {
+      return __tilck_test_irqs_disabled == 0;
+   }
+
+   static ALWAYS_INLINE void disable_interrupts(ulong *var)
+   {
+      if (var)
+         *var = (ulong) __tilck_test_irqs_disabled;
+      __tilck_test_irqs_disabled++;
+   }
+
+   static ALWAYS_INLINE void enable_interrupts(ulong *var)
+   {
+      __tilck_test_irqs_disabled--;
+   }
+
+   static ALWAYS_INLINE void disable_interrupts_forced(void)
+   {
+      __tilck_test_irqs_disabled++;
+   }
+
+   static ALWAYS_INLINE void enable_interrupts_forced(void)
+   {
+      __tilck_test_irqs_disabled--;
+   }
 #endif
 
 STATIC_ASSERT(ARCH_TASK_MEMBERS_SIZE == sizeof(arch_task_members_t));

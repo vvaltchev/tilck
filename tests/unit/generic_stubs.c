@@ -62,8 +62,12 @@ void kthread_create_setup_initial_stack() { }
 void save_curr_fpu_ctx_if_enabled() { }
 void arch_usermode_task_switch() { }
 
-void *hi_vmem_reserve(size_t size) { return NULL; }
-void hi_vmem_release(void *ptr, size_t size) { }
+/*
+ * hi_vmem_reserve / hi_vmem_release: real test fakes in
+ * tests/unit/mm_fakes.cpp -- they need to return malloc'd memory
+ * for code paths like alloc_kernel_isolated_stack() to round-trip
+ * correctly through the page-table fakes.
+ */
 void on_first_pdir_update(void) { }
 
 void *get_syscall_func_ptr(u32 n) { return NULL; }

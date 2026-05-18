@@ -220,18 +220,22 @@ static ALWAYS_INLINE void set_eflags(ulong f)
                : "cc");
 }
 
+/*
+ * Production IRQ-state primitives for x86. Skipped under
+ * UNIT_TEST_ENVIRONMENT -- the cross-arch test versions in
+ * include/tilck/kernel/hal.h take over for gtests, regardless of
+ * host architecture.
+ */
+#ifndef UNIT_TEST_ENVIRONMENT
+
 static ALWAYS_INLINE void enable_interrupts_forced(void)
 {
-#ifndef UNIT_TEST_ENVIRONMENT
    asmVolatile("sti");
-#endif
 }
 
 static ALWAYS_INLINE void disable_interrupts_forced(void)
 {
-#ifndef UNIT_TEST_ENVIRONMENT
    asmVolatile("cli");
-#endif
 }
 
 static ALWAYS_INLINE bool are_interrupts_enabled(void)
@@ -254,6 +258,8 @@ static ALWAYS_INLINE void enable_interrupts(const ulong *const var)
       enable_interrupts_forced();
    }
 }
+
+#endif /* !UNIT_TEST_ENVIRONMENT */
 
 /*
  * Invalidates the TLB entry used for resolving the page containing 'vaddr'.

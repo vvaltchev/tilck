@@ -152,4 +152,25 @@ int virtual_write(pdir_t *pdir, void *extern_va, void *src, size_t len)
    return 0;
 }
 
+/*
+ * High-virtual-memory reservation: in the real kernel this carves
+ * address space out of a top-of-memory range for the isolated
+ * kernel-stack mapping (see alloc_kernel_isolated_stack in
+ * kernel/process.c). For tests we just hand out a page-aligned
+ * malloc'd buffer per call -- map_pages above doesn't dereference
+ * the address, it just records the va->pa mapping by key, so any
+ * unique non-null pointer works. hi_vmem_release frees the buffer.
+ */
+void *hi_vmem_reserve(size_t size)
+{
+   void *p = aligned_alloc(PAGE_SIZE, size);
+   assert(p != nullptr);
+   return p;
+}
+
+void hi_vmem_release(void *ptr, size_t size)
+{
+   free(ptr);
+}
+
 } // extern "C"

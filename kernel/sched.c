@@ -59,7 +59,7 @@ struct task *idle_task;
  * vruntime back up at wake-up. Updated in sched_account_ticks(); never
  * decreases.
  */
-static atomic_u64_t min_vruntime;
+STATIC atomic_u64_t min_vruntime;
 
 /*
  * Sub-tick precision factor. vruntime and `timeslice` are stored in
