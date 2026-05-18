@@ -393,16 +393,55 @@ rejected just as quickly as breaking the documented rules.
   `(ssize_t)sizeof(...)`, never the bare-operand form.
 - **Empty loop body uses `{ }`, never `;`.** A bare semicolon on its
   own line as a loop body is rejected as ugly. Write
-  `while (cond) { }`, not `while (cond)\n   ;`. For loops with
-  conditions too long to fit on one line, use
-  `{ \n /* do nothing */ \n }` instead. **Generalization:** avoid
-  empty statements (bare `;`) at all cost — they're rejected
-  everywhere, not just in loop bodies. A common antipattern is
-  putting a `goto` target inside a lock-scope block:
+  `while (cond) { }`, not `while (cond)\n   ;`. The `{ }` stays on
+  the **same line** as the loop header when the header fits; do NOT
+  put `{ }` on its own line below the header (`for (...)` followed
+  by an indented `{ }` is still treated as "empty statement on its
+  own line" stylistically). Only for loops whose header itself
+  doesn't fit on one line, use a multi-line body of
+  `{ \n /* do nothing */ \n }`. **Generalization:** avoid empty
+  statements (bare `;`) at all cost — they're rejected everywhere,
+  not just in loop bodies. A common antipattern is putting a `goto`
+  target inside a lock-scope block:
   `disable_interrupts(); { ... out:; } enable_interrupts();` —
   rejected. Place the label AFTER the closing brace instead, so the
   enable-call also runs on the goto path:
   `disable_interrupts(); { ... goto out; ... } out: enable_interrupts();`.
+- **Non-const variable declarations go at the top of their block.**
+  Hard rule for any non-`const` local: declare it at the top of the
+  enclosing block, pre-C99 style. C99-style mid-block declarations
+  are NOT used in Tilck for non-const locals. When you open a block
+  (function body, lock-scope `{ ... }`, branch arm, loop body),
+  every mutable local that block uses should be visible at the top.
+  Exception: a loop induction variable declared in the `for`
+  initial statement (`for (int i = 0; ...; ...)`) is fine — its
+  scope is the loop header, not a stray mid-block declaration.
+
+  A common idiom: introduce a bare `{ ... }` block just to give a
+  few temporaries a narrow scope and keep them out of the function's
+  top-of-body declarations:
+  ```c
+  void foo(void)
+  {
+     int a, b;             /* function-level mutables at the top */
+     ...
+     {
+        int temp = compute_thing();
+        ... uses temp ...
+     }
+     /* temp out of scope here */
+     ...
+  }
+  ```
+
+  For `const` locals, the rule is softer: a `const` declaration
+  computed mid-function from values that aren't in scope at function
+  entry is fine (and often preferable to a forward-declared mutable
+  that's only written once), but a `const` that could trivially live
+  at the top usually should — readability over compactness. See e.g.
+  `kernel/sched.c:sched_account_ticks()`: `const u32 nr_running`
+  and `const u32 slice` are declared mid-function because their
+  values depend on per-tick state.
 - **No `(void)expr` casts.** The kernel never uses them
   (`grep -nE '\(void\)[a-z_]' kernel/` returns nothing). Reasons:
   - `-Wno-unused-parameter` is enabled in `USERAPPS_CFLAGS` and on
