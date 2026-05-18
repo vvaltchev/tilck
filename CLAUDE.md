@@ -101,14 +101,14 @@ Four test types: unit (gtest, host), selftest (in-kernel), shellcmd
 (syscall-based), interactive (`--intr` build).
 
 ```bash
-# Unit tests (host, needs gtest/gmock)
+# Unit tests (host, needs gtest/gmock) -- ~2s, 10s timeout is plenty
 ./build/gtests
 ./build/gtests --gtest_filter=kmalloc_test.*
 ./build/gtests --gtest_list_tests
 
 # Test runner (boots QEMU, needs KVM)
 ./build/st/run_all_tests             # one VM per test
-./build/st/run_all_tests -c          # single VM
+./build/st/run_all_tests -c          # single VM -- ~46s, 60s timeout
 
 # By type (-T prefix-matched: 'se'=selftest, 'sh'=shellcmd)
 ./build/st/run_all_tests -T selftest
@@ -117,6 +117,10 @@ Four test types: unit (gtest, host), selftest (in-kernel), shellcmd
 ./build/st/run_all_tests -T shellcmd -l         # list
 ./build/st/run_all_tests -T shellcmd -f <regex> # filter
 ```
+
+**Calibrate timeouts to these numbers.** If a run goes 2-3x over,
+something is hung (infinite loop, deadlock, lost wakeup); kill and
+investigate rather than extending the timeout.
 
 ## Fast iteration loop under QEMU (Darwin)
 
