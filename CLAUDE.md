@@ -122,6 +122,31 @@ Four test types: unit (gtest, host), selftest (in-kernel), shellcmd
 something is hung (infinite loop, deadlock, lost wakeup); kill and
 investigate rather than extending the timeout.
 
+### Calling kernel `static` functions from gtests: the `STATIC` pattern
+
+`static` blocks gtests from linking; redeclaring the function in the
+test file as `extern` works but rots silently when the signature
+changes. Project idiom (see `include/tilck/kernel/test/README` and
+`include/tilck/common/basic_defs.h`):
+
+- C source uses the `STATIC` macro instead of `static`. It expands
+  to `static` in real builds and to nothing under
+  `UNIT_TEST_ENVIRONMENT`.
+- Declarations live in a dedicated test header
+  `include/tilck/kernel/test/<file>.h`, written with the same
+  `STATIC` keyword.
+- Both the kernel C source AND the gtest `#include` that test
+  header. A signature drift breaks the build at one of the two
+  sites.
+
+Examples to copy: `kernel/mm/system_mmap.c` +
+`include/tilck/kernel/test/mem_regions.h` (called from
+`tests/unit/mem_regions.cpp`); `kernel/fork.c` +
+`include/tilck/kernel/test/fork.h` (called from
+`tests/unit/fork_test.cpp`).
+
+Never `extern`-redeclare a kernel `static` in a `.cpp` test file.
+
 ## Fast iteration loop under QEMU (Darwin)
 
 Interactive bootloader + framebuffer is too slow for tight cycles
