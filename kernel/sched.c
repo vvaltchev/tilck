@@ -11,6 +11,7 @@
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/test/sched.h>
 
 /* Shared global variables */
 struct task *__current;
@@ -1046,7 +1047,7 @@ sched_should_return_immediately(struct task *curr, enum task_state curr_state)
    return false;
 }
 
-static struct task *
+STATIC struct task *
 sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 {
    struct task *curr = get_curr_task();
