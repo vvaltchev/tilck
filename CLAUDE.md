@@ -11,6 +11,30 @@ binary level. It runs on i386 (primary), riscv64, and x86_64. It implements
 Micropython, Lua) without custom rewrites. ~13,300 lines of kernel code.
 Licensed BSD 2-Clause.
 
+## Boot time and runtime latency are non-negotiable
+
+Tilck's eventual target is embedded systems with hard-realtime
+ambitions. Evaluate proposals against that future, not against "it's
+educational today".
+
+**Boot time is sacred.** Current numbers to anchor against: under
+pure QEMU emulation (TCG, no KVM), a full boot through the custom
+bootloader completes in **under 100 ms**; loaded directly with
+`-kernel` the figure is **under 50 ms**. Never propose anything that
+trades boot time for a feature improvement unless the cost is
+unambiguously below ~1 ms *and* there is no implementation that
+defers the work post-boot. A "block boot for ~1 second to do X
+cleanly" suggestion will be rejected on principle; find a way to
+do X asynchronously, lazily, or not at all. Concrete mistake to
+not repeat: proposing a synchronous busy-wait for the RTC second
+edge in `init_system_time()` to get a precise `boot_timestamp` --
+that's exactly the kind of thing the existing async
+`clock_drift_adj` kthread exists to avoid.
+
+The same principle extends to runtime hot paths (timer IRQ,
+scheduler tick, syscall entry/exit, context switch, IRQ handlers).
+Don't add work to those paths to make a cold path cleaner.
+
 ## Working with Git History
 
 **Always check `docs/annotated-commit-history.txt` before reading actual
