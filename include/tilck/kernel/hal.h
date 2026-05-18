@@ -243,7 +243,35 @@ int get_int_num(regs_t *context);
 void on_first_pdir_update(void);
 extern void (*hw_read_clock)(struct datetime *out);
 void hw_read_clock_cmos(struct datetime *out);
-u32 hw_timer_setup(u32 hz);
+/*
+ * Per-tick wall-clock advance, as returned by hw_timer_setup().
+ *
+ * The simple "ns per IRQ" integer is `ns_per_tick`. To avoid the
+ * truncation that would otherwise accumulate (the divisor / PIT_FREQ
+ * ratio rarely has an integer ns representation), the function also
+ * returns a `(frac_per_tick, frac_denom)` pair the caller uses to
+ * track the residue:
+ *
+ *    each tick:
+ *       __time_ns      += ns_per_tick;
+ *       __frac_acc     += frac_per_tick;
+ *       if (__frac_acc >= frac_denom) {
+ *          __frac_acc   -= frac_denom;
+ *          __time_ns    += 1;
+ *       }
+ *
+ * Architectures that don't bother with fractional accuracy can set
+ * `frac_per_tick = 0` and any non-zero `frac_denom`; the if-branch
+ * is then dormant.
+ */
+struct hw_timer_info {
+
+   u32 ns_per_tick;     /* integer ns advanced per timer IRQ */
+   u32 frac_per_tick;   /* residue numerator per IRQ */
+   u32 frac_denom;      /* denominator (when acc reaches this, +1 ns) */
+};
+
+void hw_timer_setup(u32 hz, struct hw_timer_info *out);
 
 bool allocate_fpu_regs(arch_task_members_t *arch_fields);
 void copy_main_tss_on_regs(regs_t *ctx);

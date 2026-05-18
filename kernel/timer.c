@@ -21,7 +21,10 @@ static u64 __ticks;        /* ticks since the timer started */
 
 /* System time */
 u64 __time_ns;             /* nanoseconds since the timer started */
-u32 __tick_duration;       /* the real duration of a tick, ~TS_SCALE/KRN_TIMER_HZ */
+u32 __tick_duration;       /* integer ns per IRQ (the truncated value) */
+u32 __tick_frac_per_tick;  /* residue numerator added to acc each IRQ */
+u32 __tick_frac_denom;     /* denominator: when acc >= this, +1 ns */
+u32 __tick_frac_acc;       /* running residue accumulator */
 int __tick_adj_val;
 int __tick_adj_ticks_rem;
 
@@ -332,6 +335,27 @@ static enum irq_action timer_irq_handler(void *ctx)
 
       __ticks++;
       __time_ns += ns_delta;
+
+      /*
+       * Fractional-ns accumulator: hw_timer_setup() gave us
+       * (frac_per_tick, frac_denom) capturing the sub-ns residue
+       * of the ideal tick interval. Add the residue each IRQ; when
+       * the accumulator crosses the denominator, "spend" one ns of
+       * residue by bumping __time_ns by 1 and subtracting. Net
+       * effect: __time_ns advances at exactly (divisor / PIT_FREQ)
+       * * TS_SCALE per IRQ on average, with no software-induced
+       * drift from the truncation that just-using-__tick_duration
+       * would accumulate.
+       *
+       * On arches that didn't bother filling in fractional info,
+       * __tick_frac_per_tick is 0 and the if-branch never fires.
+       */
+      __tick_frac_acc += __tick_frac_per_tick;
+
+      if (__tick_frac_acc >= __tick_frac_denom) {
+         __tick_frac_acc -= __tick_frac_denom;
+         __time_ns       += 1;
+      }
    }
    enable_interrupts_forced();
 
@@ -426,10 +450,15 @@ void delay_us(u32 us)
 
 void init_timer(void)
 {
+   struct hw_timer_info info;
    static struct bogo_measure_ctx ctx;
    measure_bogomips.context = &ctx;
 
-   __tick_duration = hw_timer_setup(TS_SCALE / KRN_TIMER_HZ);
+   hw_timer_setup(TS_SCALE / KRN_TIMER_HZ, &info);
+   __tick_duration      = info.ns_per_tick;
+   __tick_frac_per_tick = info.frac_per_tick;
+   __tick_frac_denom    = info.frac_denom;
+   __tick_frac_acc      = 0;
 
    printk("*** Init the kernel timer\n");
 
