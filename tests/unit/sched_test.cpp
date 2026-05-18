@@ -52,8 +52,18 @@ protected:
     * Per-suite, run once. init_kmalloc_for_tests wipes the heap;
     * init_sched then creates idle_task as a real kthread (via the
     * arch stubs we converted to no-ops in tests/unit/generic_stubs.c).
+    *
+    * Idempotent: gtest invokes SetUpTestSuite once per suite, and
+    * derived suites (e.g. scheduler_fairness_test) inherit this
+    * one. A second call would wipe the heap (dangling idle_task)
+    * and then re-init_sched, which fails because sched.c statics
+    * (runnable_tree_root / tree_by_tid_root) still reference
+    * freed memory from the first run. Guard on idle_task -- once
+    * set, we keep using it across suites.
     */
    static void SetUpTestSuite() {
+      if (idle_task != nullptr)
+         return;
       init_kmalloc_for_tests();
       init_sched();
    }
@@ -541,4 +551,296 @@ TEST_F(scheduler_test, wake_handoff_underflow_guarded_at_zero)
 
    /* Restore min_vruntime so the next test isn't surprised. */
    atomic_store(&min_vruntime, saved_min);
+}
+
+
+/* =====================================================================
+ *           Category 5: workload-driven fairness simulator
+ *
+ * Drives the real scheduler through N synthetic ticks with a vector
+ * of scheduled events. Per-tick:
+ *
+ *   - apply any sim_event whose .tick matches (sleep / wake);
+ *   - create any task whose fork_at_tick matches (real
+ *     kthread_create -> fork_vruntime_handoff -> add_task);
+ *   - call sched_account_ticks();
+ *   - if need_reschedule, run sched_do_select_runnable_task and
+ *     simulate the switch via the fixture helper;
+ *   - record per-tick "who ran" + per-task tick counts.
+ *
+ * The same harness will validate EEVDF's selection logic when it
+ * replaces the leftmost-pick: only the kernel-side selector
+ * changes; this driver and the assertions stay the same.
+ * ===================================================================== */
+
+enum sim_action {
+   SIM_SLEEP,    /* task transitions RUNNING/RUNNABLE -> SLEEPING        */
+   SIM_WAKE,     /* task transitions SLEEPING -> RUNNABLE w/ handoff     */
+};
+
+struct sim_event {
+   u64 tick;
+   int tid_idx;          /* index into sim_workload::tasks         */
+   enum sim_action act;
+};
+
+struct sim_task_spec {
+   /*
+    * Tick at which this task is created. 0 means "exists from
+    * tick 0, RUNNABLE". >0 means kthread_create runs at that
+    * tick, exercising fork_vruntime_handoff against the
+    * accumulated min_vruntime.
+    */
+   u64 fork_at_tick;
+};
+
+struct sim_workload {
+   std::vector<sim_task_spec> tasks;
+   std::vector<sim_event> events;
+   u64 n_ticks;
+};
+
+struct sim_result {
+   std::vector<u64> cpu_ticks;          /* per-task cumulative ticks   */
+   std::vector<int> per_tick_curr;      /* [n_ticks], -1 = idle        */
+   u64 idle_ticks;
+};
+
+class scheduler_fairness_test : public scheduler_test {
+protected:
+   /*
+    * Create a kernel thread the natural way: kthread_create runs
+    * fork_vruntime_handoff against the CURRENT min_vruntime and
+    * add_task inserts into the runnable tree. Used for both the
+    * initial pool of tasks and the fork-at-tick-K case (the only
+    * difference is timing, not mechanism).
+    */
+   struct task *make_fork_task() {
+      int tid = kthread_create(&dummy_kthread, 0, nullptr);
+      EXPECT_GT(tid, 0);
+      struct task *ti = get_task(tid);
+      EXPECT_NE(ti, nullptr);
+      tasks.push_back(ti);
+      return ti;
+   }
+
+   /*
+    * Apply one event. SLEEP transitions the task out of the
+    * runnable tree (the next sched_account_ticks will see
+    * !is_running on curr and set need_resched). WAKE mirrors
+    * kernel/wobj.c:wake_up: handoff first, then state change to
+    * RUNNABLE (insert into tree at the new key).
+    */
+   void apply_event(const sim_event &ev,
+                    std::vector<struct task *> &task_ptrs)
+   {
+      struct task *t = task_ptrs[ev.tid_idx];
+      ASSERT_NE(t, nullptr);
+
+      switch (ev.act) {
+
+         case SIM_SLEEP:
+            task_change_state(t, TASK_STATE_SLEEPING);
+            break;
+
+         case SIM_WAKE:
+            wake_vruntime_handoff(t);
+            task_change_state(t, TASK_STATE_RUNNABLE);
+            break;
+      }
+   }
+
+   /*
+    * Mimic kernel/sched.c:do_schedule's tail: if need_resched is
+    * set, pick the next runnable task and switch. Falls back to
+    * idle_task when the tree is empty, matching do_schedule's
+    * `if (!selected) selected = idle_task;` line.
+    */
+   void advance_one_tick(sim_result &r, u64 t,
+                         const std::vector<struct task *> &task_ptrs)
+   {
+      sched_account_ticks();
+
+      if (need_reschedule()) {
+         struct task *curr = get_curr_task();
+         const enum task_state cs =
+            (enum task_state) atomic_load(&curr->state);
+         struct task *next =
+            sched_do_select_runnable_task(cs, true);
+
+         if (!next)
+            next = idle_task;
+
+         if (next != curr)
+            switch_curr_to(next);
+         else
+            sched_clear_need_resched();
+      }
+
+      struct task *curr = get_curr_task();
+      if (curr == idle_task) {
+         r.idle_ticks++;
+         r.per_tick_curr[t] = -1;
+      } else {
+         for (size_t i = 0; i < task_ptrs.size(); i++) {
+            if (task_ptrs[i] == curr) {
+               r.cpu_ticks[i]++;
+               r.per_tick_curr[t] = (int)i;
+               break;
+            }
+         }
+      }
+   }
+
+   sim_result run_workload(const sim_workload &w) {
+
+      /*
+       * Strict-monotonic tick precheck. Two events at the same
+       * tick are explicitly disallowed: it's almost always a
+       * test bug, and forbidding it keeps the per-tick semantics
+       * unambiguous.
+       */
+      for (size_t i = 1; i < w.events.size(); i++) {
+         EXPECT_LT(w.events[i - 1].tick, w.events[i].tick)
+            << "sim_workload events must be strictly tick-monotonic"
+               " (event " << i - 1 << " and " << i << ")";
+      }
+
+      sim_result r;
+      r.cpu_ticks.assign(w.tasks.size(), 0);
+      r.per_tick_curr.assign(w.n_ticks, -1);
+      r.idle_ticks = 0;
+
+      std::vector<struct task *> task_ptrs(w.tasks.size(), nullptr);
+
+      /* Create the tasks scheduled for tick 0. */
+      for (size_t i = 0; i < w.tasks.size(); i++) {
+         if (w.tasks[i].fork_at_tick == 0)
+            task_ptrs[i] = make_fork_task();
+      }
+
+      size_t event_idx = 0;
+      for (u64 t = 0; t < w.n_ticks; t++) {
+
+         /* Forks scheduled for this tick (after tick 0). */
+         if (t > 0) {
+            for (size_t i = 0; i < w.tasks.size(); i++) {
+               if (w.tasks[i].fork_at_tick == t && !task_ptrs[i])
+                  task_ptrs[i] = make_fork_task();
+            }
+         }
+
+         /* Events scheduled for this tick. */
+         while (event_idx < w.events.size() &&
+                w.events[event_idx].tick == t)
+         {
+            apply_event(w.events[event_idx], task_ptrs);
+            event_idx++;
+         }
+
+         advance_one_tick(r, t, task_ptrs);
+      }
+
+      return r;
+   }
+
+   /* CPU ticks for `tid_idx` in the half-open window [start, end). */
+   static u64 cpu_in_window(const sim_result &r, int tid_idx,
+                            u64 start, u64 end)
+   {
+      u64 count = 0;
+      const u64 cap = std::min(end, (u64) r.per_tick_curr.size());
+      for (u64 t = start; t < cap; t++) {
+         if (r.per_tick_curr[t] == tid_idx)
+            count++;
+      }
+      return count;
+   }
+};
+
+TEST_F(scheduler_fairness_test, equal_weight_all_runnable)
+{
+   /*
+    * N equal-weight tasks runnable for the whole window. Each
+    * should get ~1/N of the CPU. Window is large enough
+    * (2000 ticks at 250 Hz = 8 s guest time) for the slice-
+    * discretization noise to average out under a 5% tolerance.
+    */
+   sim_workload w;
+   w.n_ticks = 2000;
+   w.tasks.resize(4);
+
+   sim_result r = run_workload(w);
+
+   for (size_t i = 0; i < w.tasks.size(); i++) {
+      const double share = (double) r.cpu_ticks[i] / (double) w.n_ticks;
+      EXPECT_NEAR(share, 0.25, 0.05)
+         << "task " << i << " got " << r.cpu_ticks[i]
+         << " ticks (share " << share << ")";
+   }
+
+   /*
+    * Idle should barely run -- only the initial slice the boot
+    * sets curr=idle for before need_resched fires. Cap at 5%.
+    */
+   EXPECT_LE(r.idle_ticks, w.n_ticks / 20);
+}
+
+TEST_F(scheduler_fairness_test, post_wake_sleeper_does_not_dominate)
+{
+   /*
+    * Task 0 sleeps for the first half of the run, wakes at the
+    * midpoint. Without the wake handoff, its vruntime would be
+    * stale-low when it wakes and it would dominate the second
+    * half (CFS's pre-handoff pathology). With the handoff at
+    * `min_vruntime - WAKEUP_VRUNTIME_BONUS`, it gets a one-slice
+    * head start and then falls back into the 1/N rotation.
+    *
+    * Post-wake window [1000, 2000), 3 runnable tasks, expected
+    * share ~33%. Tolerate up to 50% to absorb the one-slice
+    * BONUS head start and slice-discretization noise.
+    */
+   sim_workload w;
+   w.n_ticks = 2000;
+   w.tasks.resize(3);
+   w.events = {
+      { 1,    0, SIM_SLEEP },
+      { 1000, 0, SIM_WAKE  },
+   };
+
+   sim_result r = run_workload(w);
+
+   const u64 post = cpu_in_window(r, 0, 1000, w.n_ticks);
+   const double share = (double) post / (double) (w.n_ticks - 1000);
+   EXPECT_LE(share, 0.50)
+      << "task 0 dominated post-wake (share=" << share << ")";
+   EXPECT_GE(share, 0.10)
+      << "task 0 starved post-wake (share=" << share << ")";
+}
+
+TEST_F(scheduler_fairness_test, fresh_fork_does_not_leapfrog)
+{
+   /*
+    * Two tasks run for the first half accumulating vruntime; a
+    * third task is forked at the midpoint via real
+    * kthread_create -> fork_vruntime_handoff. The handoff lands
+    * its vruntime at the current min_vruntime, so it joins the
+    * 1/N rotation rather than leapfrogging the existing tasks
+    * (which would happen if it started at vruntime=0 while the
+    * existing tasks were already deep into the high hundreds of
+    * subticks).
+    */
+   sim_workload w;
+   w.n_ticks = 2000;
+   w.tasks.resize(3);
+   w.tasks[2].fork_at_tick = 1000;
+
+   sim_result r = run_workload(w);
+
+   const u64 post = cpu_in_window(r, 2, 1000, w.n_ticks);
+   const double share = (double) post / (double) (w.n_ticks - 1000);
+   EXPECT_LE(share, 0.50)
+      << "freshly-forked task dominated (share=" << share << ")";
+   EXPECT_GE(share, 0.10)
+      << "freshly-forked task starved (share=" << share << ")";
 }
