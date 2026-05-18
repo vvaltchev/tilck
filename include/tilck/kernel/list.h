@@ -109,8 +109,8 @@ static inline void list_remove(struct list_node *elem)
  * otherwise fire on the never-actually-dereferenced sentinel.
  */
 #define list_node_ptr_of(pos, list_mem_name)                          \
-   ((struct list_node *)(void *)                                      \
-      ((char *)(pos) + OFFSET_OF(typeof(*(pos)), list_mem_name)))
+   ((struct list_node *)                                              \
+      TO_PTR((char *)(pos) + OFFSET_OF(typeof(*(pos)), list_mem_name)))
 
 #define list_next_node(pos, list_mem_name) \
    (list_node_ptr_of(pos, list_mem_name)->next)

@@ -172,7 +172,7 @@ void selftest_fairness(void)
 
       fairness_start_ticks[i] = 0;
       fairness_end_ticks[i] = 0;
-      tids[i] = kthread_create(fairness_thread, 0, (void *)(ulong)i);
+      tids[i] = kthread_create(fairness_thread, 0, TO_PTR(i));
       VERIFY(tids[i] > 0);
    }
 
