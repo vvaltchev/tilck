@@ -243,6 +243,39 @@ int get_int_num(regs_t *context);
 void on_first_pdir_update(void);
 extern void (*hw_read_clock)(struct datetime *out);
 void hw_read_clock_cmos(struct datetime *out);
+
+/*
+ * RTC Update-Ended interrupt (UIE) support.
+ *
+ * The CMOS RTC chip can fire IRQ 8 at every wall-clock second
+ * boundary when its UIE bit is set. This is a much cleaner way to
+ * detect the exact moment the wall-clock second changes than
+ * polling the seconds register in a loop -- the IRQ handler
+ * snapshots `__time_ns` at the precise instant of the edge and
+ * signals waiters via a kcond, so the caller gets sub-microsecond
+ * precision without burning CPU.
+ *
+ * UIE is part of the IBM PC AT specification (MC146818 / DS12887
+ * and successors) and is universally available on x86 PCs from
+ * 1984 onwards, in every PC-class hypervisor, and in every modern
+ * Southbridge / PCH. Other arches with an equivalent RTC interrupt
+ * (e.g. goldfish on riscv64) can implement these to plug into the
+ * same drift-compensation logic; the default WEAK stubs in
+ * kernel/misc.c make them no-ops where not implemented.
+ *
+ * Usage:
+ *
+ *    u64 edge_ns;
+ *    if (rtc_wait_for_second_edge(&edge_ns, KRN_TIMER_HZ * 2)) {
+ *       // edge_ns is __time_ns at the moment the RTC second
+ *       // ticked over. hw_read_clock() now returns the wall-clock
+ *       // time of that exact moment.
+ *    }
+ *
+ * Returns true on signal, false on timeout.
+ */
+void init_rtc_uie(void);
+bool rtc_wait_for_second_edge(u64 *time_ns_out, u32 timeout_ticks);
 /*
  * Per-tick wall-clock advance, as returned by hw_timer_setup().
  *

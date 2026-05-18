@@ -1,9 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/datetime.h>
+#include <tilck/kernel/sync.h>
+#include <tilck/kernel/irq.h>
+#include <tilck/kernel/timer.h>
+#include <tilck/kernel/worker_thread.h>
 
 #define CMOS_CONTROL_PORT                 0x70
 #define CMOS_DATA_PORT                    0x71
@@ -18,8 +23,18 @@
 
 #define REG_STATUS_REG_A                  0x0A
 #define REG_STATUS_REG_B                  0x0B
+#define REG_STATUS_REG_C                  0x0C
 
 #define STATUS_REG_A_UPDATE_IN_PROGRESS   0x80
+
+/* Register B (control) bits */
+#define REG_B_UIE                        (1u << 4)   /* update-ended IRQ enable */
+
+/* Register C (interrupt flags, read-clear) bits */
+#define REG_C_UF                         (1u << 4)   /* update-ended flag */
+#define REG_C_AF                         (1u << 5)   /* alarm flag */
+#define REG_C_PF                         (1u << 6)   /* periodic flag */
+#define REG_C_IRQF                       (1u << 7)   /* any of the above */
 
 static inline u8 bcd_to_dec(u8 bcd)
 {
@@ -31,6 +46,13 @@ static inline u32 cmos_read_reg(u8 reg)
    u8 NMI_disable_bit = 0; // temporary
    outb(CMOS_CONTROL_PORT, (u8)(NMI_disable_bit << 7) | reg);
    return inb(CMOS_DATA_PORT);
+}
+
+static inline void cmos_write_reg(u8 reg, u8 value)
+{
+   u8 NMI_disable_bit = 0; // temporary
+   outb(CMOS_CONTROL_PORT, (u8)(NMI_disable_bit << 7) | reg);
+   outb(CMOS_DATA_PORT, value);
 }
 
 static inline bool cmos_is_update_in_progress(void)
@@ -109,4 +131,137 @@ void hw_read_clock_cmos(struct datetime *out)
 
    d.year = (u16)(d.year + (d.year < 70 ? 2000 : 1900));
    *out = d;
+}
+
+/*
+ * Update-Ended Interrupt (UIE) support.
+ * =====================================
+ *
+ * The CMOS RTC will assert IRQ 8 each time it completes an internal
+ * update of the time registers -- once per wall-clock second -- if
+ * the UIE bit (Register B, bit 4) is set. The interrupt-flag bit
+ * (UF in Register C, bit 4) latches; reading Register C clears all
+ * of the chip's interrupt-flag bits (UF/AF/PF) atomically. Without
+ * reading Register C, the chip will not raise IRQ 8 again, so the
+ * IRQ handler MUST read it even if we don't otherwise care about
+ * AF/PF.
+ *
+ * The handler signals a kcond after snapshotting __time_ns at the
+ * moment the IRQ fired -- that snapshot is the precise anchor
+ * point a caller uses to align system time against the RTC. UIE is
+ * enabled on demand (rtc_wait_for_second_edge), waited on, then
+ * disabled: we don't keep IRQ 8 firing unless someone's about to
+ * consume the signal.
+ */
+
+extern u64 __time_ns;                 /* defined in kernel/timer.c */
+
+static struct kcond rtc_uie_cond;
+static volatile u64 rtc_uie_signal_time_ns;
+
+static void rtc_enable_uie(void)
+{
+   u8 reg_b = (u8) cmos_read_reg(REG_STATUS_REG_B);
+   cmos_write_reg(REG_STATUS_REG_B, reg_b | REG_B_UIE);
+   /*
+    * Clear any stale interrupt flag from before UIE was enabled
+    * (or from a previous enable cycle). Without this, the very
+    * first kcond_wait might return immediately on a leftover flag
+    * that doesn't correspond to a real edge.
+    */
+   (void) cmos_read_reg(REG_STATUS_REG_C);
+}
+
+static void rtc_disable_uie(void)
+{
+   u8 reg_b = (u8) cmos_read_reg(REG_STATUS_REG_B);
+   cmos_write_reg(REG_STATUS_REG_B, reg_b & ~REG_B_UIE);
+}
+
+static void rtc_uie_signal_waiters(void *unused)
+{
+   /*
+    * Runs in worker-thread context (bottom half of the UIE IRQ).
+    * kcond_signal_*() can't run in IRQ context -- it walks the
+    * wait_list and can transition tasks RUNNABLE, which the IRQ
+    * paths assert against. Doing it here adds the worker-dispatch
+    * latency (sub-ms in practice) to the second-edge precision,
+    * which is fine: the precision the caller cares about is the
+    * `rtc_uie_signal_time_ns` snapshot, taken inside the IRQ
+    * handler at the actual instant of the edge.
+    */
+   kcond_signal_all(&rtc_uie_cond);
+}
+
+static enum irq_action rtc_uie_irq_handler(void *ctx)
+{
+   const u8 reg_c = (u8) cmos_read_reg(REG_STATUS_REG_C);
+
+   /*
+    * Reading Register C clears UF/AF/PF unconditionally. We still
+    * need to filter: a shared IRQ 8 (alarm or periodic enabled
+    * by something else) could fire without UF set. Return
+    * IRQ_NOT_HANDLED in that case so a chained handler can claim
+    * the IRQ; we never share IRQ 8 today but the chain in
+    * arch_irq_handling iterates so being correct here costs
+    * nothing.
+    */
+   if (!(reg_c & REG_C_UF))
+      return IRQ_NOT_HANDLED;
+
+   /*
+    * Snapshot __time_ns at the moment the second ticked. We're in
+    * IRQ context with interrupts disabled (arch_irq_handling
+    * re-enables them only between push/pop), so the timer IRQ's
+    * own update of __time_ns can't be racing this read. u64 on
+    * i386 isn't atomic, but the only other writer is the timer
+    * IRQ which can't preempt us.
+    */
+   rtc_uie_signal_time_ns = __time_ns;
+
+   /*
+    * Defer the kcond_signal_all() to a worker. If the enqueue
+    * fails (queue full -- very unlikely at 1 IRQ/sec), the waiter
+    * times out and the caller retries; we don't panic for what
+    * would only be a temporary fairness glitch in the drift
+    * compensation loop. Just log it.
+    */
+   if (!wth_enqueue_anywhere(WTH_PRIO_HIGHEST,
+                             &rtc_uie_signal_waiters,
+                             NULL))
+   {
+      printk("rtc: ERROR: UIE worker enqueue failed\n");
+   }
+
+   return IRQ_HANDLED;
+}
+
+DEFINE_IRQ_HANDLER_NODE(rtc_uie_handler, rtc_uie_irq_handler, NULL);
+
+void init_rtc_uie(void)
+{
+   /*
+    * Set up the kcond and install the IRQ 8 handler unconditionally
+    * at boot. Both operations are sub-microsecond (a kcond_init is
+    * a struct zero-fill; irq_install_handler is a list_add + an
+    * IMR write); doing them lazily on first use would just add a
+    * branch to every wait without saving anything meaningful. UIE
+    * itself stays OFF on the chip until a caller explicitly waits.
+    */
+   kcond_init(&rtc_uie_cond);
+   irq_install_handler(X86_PC_RTC_IRQ, &rtc_uie_handler);
+}
+
+bool rtc_wait_for_second_edge(u64 *time_ns_out, u32 timeout_ticks)
+{
+   bool got_signal;
+
+   rtc_enable_uie();
+   got_signal = kcond_wait(&rtc_uie_cond, NULL, timeout_ticks);
+   rtc_disable_uie();
+
+   if (got_signal && time_ns_out)
+      *time_ns_out = rtc_uie_signal_time_ns;
+
+   return got_signal;
 }

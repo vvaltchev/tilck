@@ -460,6 +460,15 @@ void init_timer(void)
    __tick_frac_denom    = info.frac_denom;
    __tick_frac_acc      = 0;
 
+   /*
+    * Wire up the RTC Update-Ended interrupt now that workers and
+    * IRQs are both initialized. UIE on the chip stays OFF until a
+    * caller waits via rtc_wait_for_second_edge(); the install here
+    * just gets the kcond and handler in place. No-op on arches
+    * without UIE support (weak stub in kernel/misc.c).
+    */
+   init_rtc_uie();
+
    printk("*** Init the kernel timer\n");
 
    if (!wth_enqueue_anywhere(WTH_PRIO_HIGHEST, &do_bogomips_loop, &ctx))
