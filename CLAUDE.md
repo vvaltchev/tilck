@@ -723,6 +723,66 @@ the symmetric `const`-drop or mild abbreviation.
 | Userspace static fn style | `userapps/tracer/screen_tracing.c`, `userapps/dp/dp_main.c` |
 | Comment header for a non-trivial file | the prologues of any of the above |
 
+## Cross-config and cross-arch pitfalls
+
+Default local build (`gcc` + `DEBUG_CHECKS=1` + `KRN_HANG_DETECTION=0`
++ i386) hides bugs that CI catches. Before declaring done, run one
+release + UBSAN config and one riscv64 build:
+
+```bash
+CMAKE_ARGS='-DKERNEL_UBSAN=1 -DKRN_HANG_DETECTION=1 -DKRN_MINIMAL_TIME_SLICE=1' \
+   ./scripts/build_generators/gcc_rel && make -j
+CMAKE_ARGS='-DARCH=riscv64 -DKERNEL_UBSAN=1 -DKRN_HANG_DETECTION=1 -DKRN_MINIMAL_TIME_SLICE=1' \
+   ./scripts/build_generators/gcc     && make -j
+```
+
+Full sweep: `./scripts/adv/gen_other_builds`. CI flags layered on
+i386/riscv64 (`other/ci/{i386,riscv64}.yml`): `KERNEL_UBSAN`,
+`KRN_HANG_DETECTION`, `KRN_MINIMAL_TIME_SLICE`,
+`KRN_RESCHED_ENABLE_PREEMPT`, `TIMER_HZ=500`,
+`KRN_KMALLOC_FREE_MEM_POISONING`. Matrix includes release configs
+with `DEBUG_CHECKS=0`.
+
+**Code under feature flags** (`#if KRN_HANG_DETECTION`, etc.) is
+invisible to the default build. If touching such a block, set the
+flag before building.
+
+**Macros that may expand to nothing.** `ASSERT()`, `ASSERT_TASK_STATE()`,
+`ASSERT_CURR_TASK_STATE()` become `do {} while(0)` under
+`DEBUG_CHECKS=0`. Brace-less `if (x) ASSERT(...)` then trips
+`-Werror=empty-body` in release builds. Always brace-wrap.
+
+**Strict-alignment types propagate.** A struct embedding `atomic_u64_t`
+/ `atomic_s64_t` (anything `ALIGNED_AT(8)`) inherits 8-byte alignment
+recursively. Intrusive `list_for_each` produces a sentinel
+`container_of(&head, struct task, ...)` whose value doesn't satisfy
+that alignment even though the underlying memory access is sound.
+`-fsanitize=alignment` (on in i386/riscv64 UBSAN builds) fires on
+`&pos->member` of the sentinel. Mitigation lives in
+`include/tilck/kernel/list.h`: `list_node_ptr_of()` routes through
+`(char *)pos + offsetof(...)` cast back via `TO_PTR()`. New list
+macros must follow the same pattern.
+
+**Cast-align.** riscv64 is strict; `(char *)x → (T *)` trips
+`-Werror=cast-align`. Bypass via `TO_PTR(x)` (preferred for
+integer-shaped values, idiomatic across the kernel) or
+`(T *)(void *)x` (pointer-to-pointer). `(T *)(char *)x` is broken on
+riscv64. Never `(void)expr` to discard a `warn_unused_result` return
+— check it and act.
+
+**Integer narrowing.** `-Wconversion` / `-Wshorten-64-to-32` are on
+under `--contrib` and parts of CI. Explicit cast on the value being
+narrowed. timespec / size_t→int conversions are the common offenders;
+pattern in `kernel/fs/fs_syscalls.c` (explicit cast + comment on the
+assumption).
+
+**WEAK fallbacks in selftests.** `kernel/misc.c` carries WEAK stubs
+returning false / no-op for arch-absent features (e.g.
+`rtc_wait_for_second_edge` on riscv64). A selftest that calls into
+such an API must probe + skip on the first call; otherwise it hangs
+on a signal that never arrives until the per-test timeout fires.
+Canonical pattern: `tests/self/se_rtc_uie.c`.
+
 ## Porting expectations
 
 When asked to port a feature from one backend to another (kernel →
