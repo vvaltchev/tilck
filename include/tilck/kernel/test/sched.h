@@ -9,6 +9,7 @@ STATIC struct task *
 sched_do_select_runnable_task(enum task_state curr_state, bool resched);
 
 STATIC u64 sched_compute_avg_vruntime(void);
+STATIC bool sched_is_eligible(struct task *ti);
 
 #ifdef UNIT_TEST_ENVIRONMENT
    /*

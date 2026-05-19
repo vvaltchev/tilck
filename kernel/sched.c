@@ -915,6 +915,22 @@ STATIC u64 sched_compute_avg_vruntime(void)
 }
 
 /*
+ * EEVDF eligibility predicate: a task is eligible at virtual time
+ * V if its vruntime has not yet caught up to V (it has consumed at
+ * or below its fair share). Ineligible tasks are skipped by the
+ * selector until V advances enough to bring them back.
+ *
+ * Predicate is unchanged under per-task weights -- only V's
+ * definition (sched_compute_avg_vruntime) generalizes. See
+ * docs/scheduler.md.
+ */
+STATIC bool sched_is_eligible(struct task *ti)
+{
+   const u64 v = atomic_load(&ti->ticks.vruntime);
+   return v <= sched_compute_avg_vruntime();
+}
+
+/*
  * Refresh `ti`'s EEVDF slice request and virtual deadline. Called
  * at every RUNNABLE-entry (fork, wake, preemption) and at quantum
  * start, so the deadline field stays consistent with the task's

@@ -631,6 +631,77 @@ TEST_F(scheduler_test, avg_vruntime_is_mean_of_runnable_and_curr)
 
 
 /* =====================================================================
+ *               Category 4c: eligibility predicate
+ *
+ * A task is EEVDF-eligible when its vruntime <= V (= avg_vruntime).
+ * Predicate is unchanged under per-task weights -- only V's
+ * definition generalizes.
+ * ===================================================================== */
+
+TEST_F(scheduler_test, eligibility_single_task_is_trivially_eligible)
+{
+   /* With only curr in the system, V = curr_v, so curr is at the
+    * boundary and counts as eligible. */
+   struct task *curr = make_task_at(0);
+   switch_curr_to(curr);
+
+   EXPECT_TRUE(sched_is_eligible(curr));
+}
+
+TEST_F(scheduler_test, eligibility_below_avg_is_eligible)
+{
+   struct task *curr = make_task_at(100);   /* high */
+   switch_curr_to(curr);
+
+   struct task *low = make_task_at(0);      /* well below */
+   struct task *mid = make_task_at(50);
+
+   /* V = (100 + 0 + 50) / 3 = 50. low (0) and mid (50) both <= V.
+    * curr (100) > V -> ineligible (regression: curr has consumed
+    * more than its fair share). */
+   EXPECT_TRUE(sched_is_eligible(low));
+   EXPECT_TRUE(sched_is_eligible(mid));
+   EXPECT_FALSE(sched_is_eligible(curr));
+}
+
+TEST_F(scheduler_test, eligibility_boundary_is_eligible)
+{
+   /*
+    * Convention: v_i == V is eligible (the <= form). Two equal
+    * tasks tie at V = their shared vruntime; both must be eligible
+    * so the selector has a candidate.
+    */
+   struct task *curr = make_task_at(0);
+   switch_curr_to(curr);
+
+   struct task *peer = make_task_at(0);   /* same vruntime as curr */
+
+   /* V = (0 + 0) / 2 = 0. Both at the boundary. */
+   EXPECT_TRUE(sched_is_eligible(curr));
+   EXPECT_TRUE(sched_is_eligible(peer));
+}
+
+TEST_F(scheduler_test, eligibility_minimum_runnable_always_eligible)
+{
+   /*
+    * Equal-slice invariant that E5 will lean on: the task with the
+    * MINIMUM vruntime is always at or below the mean and is
+    * therefore always eligible. Verify this holds for an
+    * arbitrarily-skewed mix of vruntimes.
+    */
+   struct task *curr = make_task_at(500);
+   switch_curr_to(curr);
+
+   make_task_at(40);
+   make_task_at(120);
+   struct task *min_v = make_task_at(5);    /* lowest */
+   make_task_at(300);
+
+   EXPECT_TRUE(sched_is_eligible(min_v));
+}
+
+
+/* =====================================================================
  *           Category 5: workload-driven fairness simulator
  *
  * Drives the real scheduler through N synthetic ticks with a vector
