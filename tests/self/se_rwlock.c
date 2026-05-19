@@ -24,6 +24,47 @@ static const int se_rwlock_set_2[3] = {10, 20, 30};
 static atomic_int_t readers_running;
 static atomic_int_t writers_running;
 
+/*
+ * Diagnostic instrumentation: per-thread end-tick records, slot
+ * assigned by atomic_fetch_add on enter. Lets us see, on a failed
+ * retry, whether readers finished long before writers (the CFS
+ * scheduler favouring readers-first hypothesis) or whether the two
+ * groups interleaved normally and the failure window was a fluke.
+ * Cheap: one atomic increment + two timestamps per thread; no
+ * extra printk inside the work loop.
+ */
+static atomic_int_t reader_slot_idx;
+static atomic_int_t writer_slot_idx;
+static u64 reader_start_ticks[RWLOCK_READERS];
+static u64 reader_end_ticks[RWLOCK_READERS];
+static u64 writer_start_ticks[RWLOCK_WRITERS];
+static u64 writer_end_ticks[RWLOCK_WRITERS];
+
+static void dump_diag(int sub_test, int retry, u64 sub_test_start_tick)
+{
+   printk(NO_PREFIX "[diag r%d/%d] sub-test start tick: %llu\n",
+          sub_test, retry,
+          (unsigned long long) sub_test_start_tick);
+
+   printk(NO_PREFIX "[diag r%d/%d] reader starts:", sub_test, retry);
+   for (int i = 0; i < RWLOCK_READERS; i++)
+      printk(NO_PREFIX " %llu", (unsigned long long) reader_start_ticks[i]);
+
+   printk(NO_PREFIX "\n[diag r%d/%d] reader ends:  ", sub_test, retry);
+   for (int i = 0; i < RWLOCK_READERS; i++)
+      printk(NO_PREFIX " %llu", (unsigned long long) reader_end_ticks[i]);
+
+   printk(NO_PREFIX "\n[diag r%d/%d] writer starts:", sub_test, retry);
+   for (int i = 0; i < RWLOCK_WRITERS; i++)
+      printk(NO_PREFIX " %llu", (unsigned long long) writer_start_ticks[i]);
+
+   printk(NO_PREFIX "\n[diag r%d/%d] writer ends:  ", sub_test, retry);
+   for (int i = 0; i < RWLOCK_WRITERS; i++)
+      printk(NO_PREFIX " %llu", (unsigned long long) writer_end_ticks[i]);
+
+   printk(NO_PREFIX "\n");
+}
+
 struct se_rwlock_ctx {
 
    void (*shlock)(void *);
@@ -71,6 +112,11 @@ static void se_rwlock_check_set_eq(const int *set)
 static void se_rwlock_read_thread(void *arg)
 {
    struct se_rwlock_ctx *ctx = arg;
+   const int slot = atomic_fetch_add(&reader_slot_idx, 1);
+
+   if (slot < RWLOCK_READERS)
+      reader_start_ticks[slot] = get_ticks();
+
    atomic_fetch_add(&readers_running, 1);
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
@@ -89,11 +135,19 @@ static void se_rwlock_read_thread(void *arg)
    }
 
    atomic_fetch_sub(&readers_running, 1);
+
+   if (slot < RWLOCK_READERS)
+      reader_end_ticks[slot] = get_ticks();
 }
 
 static void se_rwlock_write_thread(void *arg)
 {
    struct se_rwlock_ctx *ctx = arg;
+   const int slot = atomic_fetch_add(&writer_slot_idx, 1);
+
+   if (slot < RWLOCK_WRITERS)
+      writer_start_ticks[slot] = get_ticks();
+
    atomic_fetch_add(&writers_running, 1);
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
@@ -122,6 +176,9 @@ static void se_rwlock_write_thread(void *arg)
    }
 
    atomic_fetch_sub(&writers_running, 1);
+
+   if (slot < RWLOCK_WRITERS)
+      writer_end_ticks[slot] = get_ticks();
 }
 
 static void se_rwlock_common(int *rt, int *wt, struct se_rwlock_ctx *ctx)
@@ -274,6 +331,21 @@ void selftest_rwlock_wp()
 
    for (retry = 0; retry < RETRY_COUNT; retry++) {
 
+      u64 sub_test_start_tick;
+
+      /* Reset per-retry instrumentation. */
+      atomic_store(&reader_slot_idx, 0);
+      atomic_store(&writer_slot_idx, 0);
+      for (int i = 0; i < RWLOCK_READERS; i++) {
+         reader_start_ticks[i] = 0;
+         reader_end_ticks[i] = 0;
+      }
+      for (int i = 0; i < RWLOCK_WRITERS; i++) {
+         writer_start_ticks[i] = 0;
+         writer_end_ticks[i] = 0;
+      }
+      sub_test_start_tick = get_ticks();
+
       se_rwlock_common(rt, wt, &se_wp_ctx);
       kthread_join_all(wt, ARRAY_SIZE(wt), true);
       printk("After writers, running readers: %d\n",
@@ -282,6 +354,8 @@ void selftest_rwlock_wp()
       if (atomic_load(&readers_running) == 0) {
 
          kthread_join_all(rt, ARRAY_SIZE(rt), true);
+
+         dump_diag(2, retry, sub_test_start_tick);
 
          if (se_is_stop_requested())
             break;
