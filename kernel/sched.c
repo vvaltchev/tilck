@@ -852,23 +852,6 @@ void remove_task(struct task *ti)
 }
 
 /*
- * Roadmap step 4: fork vruntime handoff. Initialize a freshly-
- * allocated task's vruntime to the current `min_vruntime`. A new
- * fork (or new kernel thread) would otherwise start at 0 and
- * leapfrog every accumulated runnable task until it caught up to
- * the leading edge. Called from the new-task paths in process.c
- * (allocate_new_process / allocate_new_thread).
- *
- * No BONUS, unlike wake_vruntime_handoff(): a fresh task shouldn't
- * be more privileged than already-runnable tasks. It starts on par
- * with the leading edge.
- */
-void fork_vruntime_handoff(struct task *ti)
-{
-   atomic_store(&ti->ticks.vruntime, atomic_load(&min_vruntime));
-}
-
-/*
  * Dynamic per-quantum slice (subticks). Equal-slice instantiation
  * of EEVDF: every task gets SCHED_LATENCY / N clamped at MIN_GRAN.
  * General EEVDF allows per-task slice_i (interactive tasks request
@@ -886,8 +869,42 @@ static u32 sched_compute_slice(void)
 }
 
 /*
+ * Refresh `ti`'s EEVDF slice request and virtual deadline. Called
+ * at every RUNNABLE-entry (fork, wake, preemption) and at quantum
+ * start, so the deadline field stays consistent with the task's
+ * current vruntime.
+ *
+ * Equal-weight collapse: deadline = vruntime + slice. With per-task
+ * weights it'd be vruntime + slice / w.
+ */
+static void sched_refresh_slice_deadline(struct task *ti)
+{
+   ti->ticks.slice = sched_compute_slice();
+   atomic_store(&ti->ticks.deadline,
+                atomic_load(&ti->ticks.vruntime) + ti->ticks.slice);
+}
+
+/*
+ * Roadmap step 4: fork vruntime handoff. Initialize a freshly-
+ * allocated task's vruntime to the current `min_vruntime`. A new
+ * fork (or new kernel thread) would otherwise start at 0 and
+ * leapfrog every accumulated runnable task until it caught up to
+ * the leading edge. Called from the new-task paths in process.c
+ * (allocate_new_process / allocate_new_thread).
+ *
+ * No BONUS, unlike wake_vruntime_handoff(): a fresh task shouldn't
+ * be more privileged than already-runnable tasks. It starts on par
+ * with the leading edge.
+ */
+void fork_vruntime_handoff(struct task *ti)
+{
+   atomic_store(&ti->ticks.vruntime, atomic_load(&min_vruntime));
+   sched_refresh_slice_deadline(ti);
+}
+
+/*
  * Begin a new EEVDF quantum on `ti`: reset the per-tick counter
- * and freeze the quantum's slice budget. Called from
+ * and freeze the quantum's slice budget + deadline. Called from
  * switch_to_task() on a real task switch and from do_schedule()'s
  * keep-curr branch. The slice is frozen for the duration of the
  * quantum -- subsequent wake/sleep activity by other tasks may
@@ -896,7 +913,7 @@ static u32 sched_compute_slice(void)
 void sched_start_quantum(struct task *ti)
 {
    ti->ticks.slice_used = 0;
-   ti->ticks.slice = sched_compute_slice();
+   sched_refresh_slice_deadline(ti);
 }
 
 /*
@@ -938,6 +955,14 @@ void wake_vruntime_handoff(struct task *ti)
 
       if (atomic_load(&ti->ticks.vruntime) < floor)
          atomic_store(&ti->ticks.vruntime, floor);
+
+      /*
+       * Recompute slice + deadline now that vruntime is finalized.
+       * The task is still SLEEPING (won't enter the runnable tree
+       * until task_change_state_idempotent below), so this happens
+       * before any selector can read the deadline.
+       */
+      sched_refresh_slice_deadline(ti);
    }
 out:
    enable_interrupts(&var);
@@ -1170,8 +1195,17 @@ void do_schedule(void)
    if (selected != curr) {
 
       /* If we preempted the process, it is still `running` */
-      if (curr_state == TASK_STATE_RUNNING)
+      if (curr_state == TASK_STATE_RUNNING) {
+
+         /*
+          * Refresh deadline before re-entering the runnable tree:
+          * the quantum is ending, vruntime has grown, and the new
+          * deadline (vruntime + next-quantum slice) is what an
+          * EEVDF selector will compare against.
+          */
+         sched_refresh_slice_deadline(curr);
          task_change_state(curr, TASK_STATE_RUNNABLE);
+      }
 
       /* A task switch is required */
       switch_to_task(selected);

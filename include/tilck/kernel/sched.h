@@ -74,6 +74,17 @@ struct sched_ticks {
     * wrapper provides indivisibility + the volatile cast.
     */
    atomic_u64_t vruntime;
+
+   /*
+    * EEVDF virtual deadline: vruntime + slice. Recomputed on every
+    * RUNNABLE-entry (fork, wake, preemption) and at quantum start.
+    * Atomic for the same IRQ/reader race as vruntime above.
+    *
+    * Equal-weight collapse: in general EEVDF deadline = vruntime +
+    * slice/weight; with w=1 everywhere it reduces to the form
+    * above. See docs/scheduler.md.
+    */
+   atomic_u64_t deadline;
 };
 
 STATIC_ASSERT(sizeof(enum sig_state) == 1);
