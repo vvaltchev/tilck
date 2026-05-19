@@ -8,6 +8,8 @@
 STATIC struct task *
 sched_do_select_runnable_task(enum task_state curr_state, bool resched);
 
+STATIC u64 sched_compute_avg_vruntime(void);
+
 #ifdef UNIT_TEST_ENVIRONMENT
    /*
     * sched.c file-scope statics surfaced for unit tests via STATIC
@@ -17,6 +19,7 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched);
     * min_vruntime to set up the < BONUS scenario.
     */
    extern atomic_u64_t min_vruntime;
+   extern atomic_u64_t sum_vruntime_in_tree;
 #endif
 
 /*

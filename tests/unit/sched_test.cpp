@@ -555,6 +555,82 @@ TEST_F(scheduler_test, wake_handoff_underflow_guarded_at_zero)
 
 
 /* =====================================================================
+ *               Category 4b: avg_vruntime maintenance
+ *
+ * sum_vruntime_in_tree is maintained incrementally at insert/remove
+ * from the runnable tree. avg_vruntime is then (sum + curr_v) /
+ * nr_running, computed on demand.
+ * ===================================================================== */
+
+TEST_F(scheduler_test, sum_vruntime_zero_with_empty_tree)
+{
+   /* curr is idle (parked by SetUp); tree is empty. sum should be 0
+    * because no test has populated the runnable tree yet. */
+   EXPECT_EQ(atomic_load(&sum_vruntime_in_tree), 0u);
+
+   /* avg = (sum + curr_v) / 1 = idle_v / 1. idle is curr; its
+    * vruntime is whatever it carried across previous tests but is
+    * the only contributor. */
+   const u64 idle_v = atomic_load(&idle_task->ticks.vruntime);
+   EXPECT_EQ(sched_compute_avg_vruntime(), idle_v);
+}
+
+TEST_F(scheduler_test, sum_vruntime_tracks_inserts_and_removes)
+{
+   /*
+    * Place three tasks at known offsets, verify sum tracks
+    * insertions, then remove them via TearDown and verify the
+    * counter returns to 0.
+    *
+    * make_task_at(offset) ends up with vruntime = base_min + offset
+    * and state == RUNNABLE (in tree). Sum should equal the sum of
+    * their vruntimes.
+    */
+   struct task *a = make_task_at(10);
+   struct task *b = make_task_at(20);
+   struct task *c = make_task_at(30);
+
+   const u64 va = atomic_load(&a->ticks.vruntime);
+   const u64 vb = atomic_load(&b->ticks.vruntime);
+   const u64 vc = atomic_load(&c->ticks.vruntime);
+
+   EXPECT_EQ(atomic_load(&sum_vruntime_in_tree), va + vb + vc);
+
+   /* Drop one out of the tree (RUNNABLE -> SLEEPING). */
+   task_change_state(b, TASK_STATE_SLEEPING);
+   EXPECT_EQ(atomic_load(&sum_vruntime_in_tree), va + vc);
+
+   /* Bring it back. */
+   task_change_state(b, TASK_STATE_RUNNABLE);
+   EXPECT_EQ(atomic_load(&sum_vruntime_in_tree), va + vb + vc);
+}
+
+TEST_F(scheduler_test, avg_vruntime_is_mean_of_runnable_and_curr)
+{
+   /*
+    * Make `curr` a non-idle task with a known vruntime so we can
+    * read avg deterministically (idle's vruntime drifts across
+    * tests).
+    */
+   struct task *curr = make_task_at(0);
+   switch_curr_to(curr);
+
+   struct task *a = make_task_at(10);
+   struct task *b = make_task_at(20);
+   struct task *c = make_task_at(30);
+
+   const u64 vcurr = atomic_load(&curr->ticks.vruntime);
+   const u64 va = atomic_load(&a->ticks.vruntime);
+   const u64 vb = atomic_load(&b->ticks.vruntime);
+   const u64 vc = atomic_load(&c->ticks.vruntime);
+
+   /* avg = (va + vb + vc + vcurr) / 4 */
+   const u64 expected = (va + vb + vc + vcurr) / 4;
+   EXPECT_EQ(sched_compute_avg_vruntime(), expected);
+}
+
+
+/* =====================================================================
  *           Category 5: workload-driven fairness simulator
  *
  * Drives the real scheduler through N synthetic ticks with a vector

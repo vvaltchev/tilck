@@ -62,6 +62,18 @@ struct task *idle_task;
 STATIC atomic_u64_t min_vruntime;
 
 /*
+ * Sum of vruntime over tasks currently in the runnable tree.
+ * Incrementally maintained at insert/remove. Combined with curr's
+ * vruntime in sched_compute_avg_vruntime() to give the EEVDF
+ * "virtual time" V used by the eligibility check.
+ *
+ * Equal-weight collapse: with all weights = 1 this is a plain sum.
+ * General EEVDF would track sum(w_i * v_i) plus sum(w_i) separately.
+ * See docs/scheduler.md.
+ */
+STATIC atomic_u64_t sum_vruntime_in_tree;
+
+/*
  * Sub-tick precision factor. vruntime, slice_used and slice are
  * stored in "subticks" -- 1 real tick == VRUNTIME_SCALE subticks
  * -- so the integer math in sched_account_ticks() keeps useful
@@ -600,6 +612,16 @@ void init_sched(void)
                         runnable_tree_node);
       ASSERT(removed == idle_task);
       atomic_fetch_sub(&runnable_tasks_count, 1);
+
+      /*
+       * Mirror task_remove_from_state_list's sum adjustment so the
+       * runnable_tasks_count and sum_vruntime_in_tree counters stay
+       * coherent. idle's vruntime is 0 here so this is effectively a
+       * no-op, but doing it keeps the invariant defensive against
+       * future changes to idle's startup vruntime.
+       */
+      atomic_fetch_sub(&sum_vruntime_in_tree,
+                       atomic_load(&idle_task->ticks.vruntime));
    }
    enable_interrupts(&var);
 }
@@ -670,6 +692,8 @@ static void task_add_to_state_list(struct task *ti)
                            runnable_tree_node);
          ASSERT(inserted);
          atomic_fetch_add(&runnable_tasks_count, 1);
+         atomic_fetch_add(&sum_vruntime_in_tree,
+                          atomic_load(&ti->ticks.vruntime));
          break;
       }
 
@@ -736,6 +760,8 @@ static void task_remove_from_state_list(struct task *ti)
          DEBUG_ONLY_UNSAFE(prev =)
             atomic_fetch_sub(&runnable_tasks_count, 1);
          ASSERT(prev >= 1);
+         atomic_fetch_sub(&sum_vruntime_in_tree,
+                          atomic_load(&ti->ticks.vruntime));
          break;
       }
 
@@ -866,6 +892,26 @@ static u32 sched_compute_slice(void)
    const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
    return MAX(SCHED_LATENCY_TICKS * VRUNTIME_SCALE / nr_running,
               (u32)MIN_GRANULARITY_TICKS * VRUNTIME_SCALE);
+}
+
+/*
+ * EEVDF "virtual time" V: weighted mean vruntime over all runnable
+ * tasks + curr. A task is eligible when v_i <= V (it has not
+ * consumed more than its fair share).
+ *
+ * Equal-weight collapse: simple mean over (sum_in_tree + curr_v) /
+ * nr_running. General form V = sum(w_i * v_i) / sum(w_i). The
+ * computation is on demand; per-tick vruntime growth on curr is
+ * reflected via the curr_v read here (no separate maintenance).
+ * See docs/scheduler.md.
+ */
+STATIC u64 sched_compute_avg_vruntime(void)
+{
+   struct task *curr = get_curr_task();
+   const u64 curr_v = atomic_load(&curr->ticks.vruntime);
+   const u64 sum = atomic_load(&sum_vruntime_in_tree);
+   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
+   return (sum + curr_v) / nr_running;
 }
 
 /*
