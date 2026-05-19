@@ -82,7 +82,7 @@ protected:
    /*
     * Per-test setup: park __current on idle in RUNNING state so the
     * scheduler functions have a defined `curr` to work against;
-    * clear need_resched and idle's timeslice; capture the current
+    * clear need_resched and idle's slice_used; capture the current
     * min_vruntime as the test's baseline (min_vruntime grows
     * monotonically across the test process; all assertions are
     * stated relative to this baseline).
@@ -90,7 +90,7 @@ protected:
    void SetUp() override {
       set_curr_task(idle_task);
       atomic_store(&idle_task->state, TASK_STATE_RUNNING);
-      idle_task->ticks.timeslice = 0;
+      sched_start_quantum(idle_task);
       sched_clear_need_resched();
       base_min = atomic_load(&min_vruntime);
    }
@@ -144,7 +144,7 @@ protected:
 
    /*
     * Make `ti` the currently-running task. Mirrors switch_to_task's
-    * algorithmic side effects (state transitions + timeslice reset +
+    * algorithmic side effects (state transitions + quantum start +
     * __current update + need_resched clear) and skips the parts
     * we're explicitly not testing (FPU save, kernel-stack pointer,
     * the actual context_switch assembly).
@@ -161,7 +161,7 @@ protected:
       }
 
       task_change_state_idempotent(ti, TASK_STATE_RUNNING);
-      ti->ticks.timeslice = 0;
+      sched_start_quantum(ti);
       set_curr_task(ti);
       sched_clear_need_resched();
    }
@@ -245,10 +245,10 @@ TEST_F(scheduler_test, min_vruntime_is_monotonic)
 
 
 /* =====================================================================
- *                  Category 2: dynamic timeslice / timeout
+ *                  Category 2: dynamic slice / timeout
  * ===================================================================== */
 
-TEST_F(scheduler_test, timeslice_ends_at_dynamic_slice)
+TEST_F(scheduler_test, quantum_ends_at_dynamic_slice)
 {
    /*
     * Dynamic slice: MAX(SCHED_LATENCY * SCALE / N, MIN_GRAN * SCALE)
@@ -258,7 +258,7 @@ TEST_F(scheduler_test, timeslice_ends_at_dynamic_slice)
     *    slice = MAX(SCHED_LATENCY_TICKS * SCALE / 4,
     *                MIN_GRANULARITY_TICKS * SCALE)
     *
-    * sched_account_ticks bumps timeslice by SCALE per call, so
+    * sched_account_ticks bumps slice_used by SCALE per call, so
     * need_resched should fire after exactly (slice / SCALE) calls
     * (= ceil but the math is exact when the inputs are integer
     * multiples).
@@ -285,7 +285,7 @@ TEST_F(scheduler_test, timeslice_ends_at_dynamic_slice)
    EXPECT_TRUE(need_reschedule());
 }
 
-TEST_F(scheduler_test, timeslice_clamps_at_min_granularity)
+TEST_F(scheduler_test, slice_clamps_at_min_granularity)
 {
    /*
     * With many runnable tasks, SCHED_LATENCY/N drops below

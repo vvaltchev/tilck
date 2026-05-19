@@ -21,7 +21,7 @@
  *     runs BEFORE the regular runnable-tree lookup, so a runnable
  *     worker always wins against a runnable non-worker.
  *
- *   - They have no timeslice: sched_account_ticks() never sets
+ *   - They have no slice budget: sched_account_ticks() never sets
  *     need_resched for a running worker. A worker yields voluntarily
  *     when its queue drains, or gets preempted only by a
  *     higher-priority worker waking up.

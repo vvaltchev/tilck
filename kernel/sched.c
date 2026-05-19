@@ -62,10 +62,10 @@ struct task *idle_task;
 STATIC atomic_u64_t min_vruntime;
 
 /*
- * Sub-tick precision factor. vruntime and `timeslice` are stored in
- * "subticks" -- 1 real tick == VRUNTIME_SCALE subticks -- so the
- * integer math in sched_account_ticks() keeps useful resolution
- * when SCHED_LATENCY_TICKS / nr_running would otherwise truncate
+ * Sub-tick precision factor. vruntime, slice_used and slice are
+ * stored in "subticks" -- 1 real tick == VRUNTIME_SCALE subticks
+ * -- so the integer math in sched_account_ticks() keeps useful
+ * resolution when SCHED_LATENCY_TICKS / nr_running would truncate
  * hard (e.g. 20/3 = 6 instead of 6.67 in raw ticks, but 320/3 = 106
  * subticks = 6.625 ticks with VRUNTIME_SCALE = 16).
  *
@@ -530,6 +530,14 @@ static void create_kernel_process(void)
 
    atomic_store(&s_kernel_ti->state, TASK_STATE_SLEEPING);
 
+   /*
+    * kernel_process becomes curr at boot without going through
+    * switch_to_task, so the usual sched_start_quantum() site
+    * doesn't fire. Seed the slice here; nr_running is 0 at this
+    * point so it lands at the SCHED_LATENCY value (no contenders).
+    */
+   sched_start_quantum(s_kernel_ti);
+
    kernel_process = s_kernel_ti;
    kernel_process_pi = s_kernel_ti->pi;
 
@@ -861,6 +869,37 @@ void fork_vruntime_handoff(struct task *ti)
 }
 
 /*
+ * Dynamic per-quantum slice (subticks). Equal-slice instantiation
+ * of EEVDF: every task gets SCHED_LATENCY / N clamped at MIN_GRAN.
+ * General EEVDF allows per-task slice_i (interactive tasks request
+ * short slices; throughput tasks request long ones). See
+ * docs/scheduler.md.
+ *
+ * nr_running = runnable_tasks_count + 1: the runnable container
+ * excludes curr (and idle and workers), so we fold curr back in.
+ */
+static u32 sched_compute_slice(void)
+{
+   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
+   return MAX(SCHED_LATENCY_TICKS * VRUNTIME_SCALE / nr_running,
+              (u32)MIN_GRANULARITY_TICKS * VRUNTIME_SCALE);
+}
+
+/*
+ * Begin a new EEVDF quantum on `ti`: reset the per-tick counter
+ * and freeze the quantum's slice budget. Called from
+ * switch_to_task() on a real task switch and from do_schedule()'s
+ * keep-curr branch. The slice is frozen for the duration of the
+ * quantum -- subsequent wake/sleep activity by other tasks may
+ * change nr_running but doesn't re-fair this quantum.
+ */
+void sched_start_quantum(struct task *ti)
+{
+   ti->ticks.slice_used = 0;
+   ti->ticks.slice = sched_compute_slice();
+}
+
+/*
  * Roadmap step 2: wakeup vruntime handoff. Raise `ti`'s vruntime to
  * `max(vruntime, min_vruntime - WAKEUP_VRUNTIME_BONUS)` with underflow
  * guard at 0. Called from wake_up() (wobj.c) and tick_all_timers()
@@ -915,7 +954,7 @@ void sched_account_ticks(void)
    ASSERT(curr != NULL);
    ASSERT(!is_preemption_enabled());
 
-   t->timeslice += VRUNTIME_SCALE;
+   t->slice_used += VRUNTIME_SCALE;
    t->total++;
 
    if (curr->running_in_kernel)
@@ -978,30 +1017,13 @@ void sched_account_ticks(void)
    }
 
    /*
-    * Dynamic timeslice: SCHED_LATENCY_TICKS / nr_running, clamped at
-    * MIN_GRANULARITY_TICKS so the slice can't collapse below
-    * something worth the context-switch cost. nr_running here is
-    * runnable_tasks_count + 1: the runnable container excludes curr
-    * (and idle, and workers), so we add 1 to fold curr back in.
-    * Under light load N is small and the slice approaches the full
-    * latency target (good for cache locality); under contention N
-    * grows and the slice shrinks toward the floor (good for
-    * fairness / interactive latency).
-    *
-    * The whole computation is in subticks (VRUNTIME_SCALE per real
-    * tick) so the divide keeps useful resolution at runnable counts
-    * Tilck actually hits: e.g. N=3 at the default constants yields
-    * SCHED_LATENCY*SCALE/N = 20*16/3 = 106 subticks (~6.625 ticks)
-    * instead of the raw-tick 20/3 = 6.
-    *
-    * need_resched is never set for worker threads when they used too
-    * much CPU time: their timeslice is unlimited and can be
-    * preempted only by another worker thread.
+    * EEVDF slice budget for the current quantum. Frozen at quantum
+    * start by sched_start_quantum() so a wake/sleep by another task
+    * mid-quantum doesn't re-fair curr's quantum length. Workers
+    * have unlimited slice -- they're preempted only by another
+    * worker, never by the timer-based timeout.
     */
-   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
-   const u32 slice = MAX(SCHED_LATENCY_TICKS * VRUNTIME_SCALE / nr_running,
-                         (u32)MIN_GRANULARITY_TICKS * VRUNTIME_SCALE);
-   const bool timeout = !is_worker && t->timeslice >= slice;
+   const bool timeout = !is_worker && t->slice_used >= t->slice;
 
    /*
     * !is_running covers all the cases where curr can't keep running
@@ -1171,8 +1193,8 @@ void do_schedule(void)
 
       if (LIKELY(!pending_signals())) {
 
-         /* Just reset the current timeslice */
-         selected->ticks.timeslice = 0;
+         /* Keep-curr: start a new quantum (resets slice_used + slice). */
+         sched_start_quantum(selected);
 
       } else {
 

@@ -50,7 +50,18 @@ struct misc_buf {
 
 struct sched_ticks {
 
-   u32 timeslice;       /* ticks counter for the current time slice */
+   /*
+    * EEVDF per-quantum pair (subticks). slice_used is the consumed
+    * counter, incremented per tick by sched_account_ticks(). slice
+    * is the budget, frozen for the quantum at sched_start_quantum().
+    * Quantum ends when slice_used >= slice.
+    *
+    * Equal slice for every task today (SCHED_LATENCY / N clamped at
+    * MIN_GRAN); general EEVDF allows per-task slice_i. See
+    * docs/scheduler.md.
+    */
+   u32 slice_used;
+   u32 slice;
    u64 total;           /* total life-time ticks */
    u64 total_kernel;    /* total life-time ticks spent in kernel */
 
@@ -226,6 +237,7 @@ void task_change_state_unsafe(struct task *ti, enum task_state new_state);
 void task_change_state_idempotent(struct task *ti, enum task_state new_state);
 void wake_vruntime_handoff(struct task *ti);
 void fork_vruntime_handoff(struct task *ti);
+void sched_start_quantum(struct task *ti);
 bool save_regs_and_schedule(bool skip_disable_preempt);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
