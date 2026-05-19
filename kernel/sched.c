@@ -1164,12 +1164,37 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
    ulong var;
 
    /*
-    * Leftmost in (vruntime, tid) ordering: the smallest key sits at
-    * the leftmost node of the AVL tree. STOPPED tasks aren't in the
-    * tree (action_stop() routes them out), and idle_task lives
-    * outside the tree on purpose -- see the comment above
-    * `runnable_tree_root`. So the leftmost node, if any, is always
-    * a valid candidate.
+    * EEVDF selection: pick the eligible task with the earliest
+    * virtual deadline. Equal-slice + equal-weight collapse in
+    * Tilck today:
+    *
+    *   - deadline = vruntime + slice, with slice uniform across all
+    *     tasks (SCHED_LATENCY / N clamped at MIN_GRAN), so ordering
+    *     by deadline is identical to ordering by vruntime.
+    *   - leftmost (vruntime, tid) is therefore the min-deadline
+    *     task in the tree.
+    *   - min vruntime <= mean vruntime by definition over its own
+    *     set, so under equal weights the leftmost is normally
+    *     eligible too -- a single bintree_get_first_obj() lookup
+    *     gives the EEVDF answer in O(log N).
+    *
+    * When slice diverges per task, deadline order decouples from
+    * vruntime order; the leftmost-by-vruntime may not be the
+    * min-deadline task and may need an in-order walk skipping
+    * ineligibles, or a tree augmented with subtree-min-eligible-
+    * deadline. Both are future work tied to per-task slice support.
+    * See docs/scheduler.md.
+    *
+    * On the eligibility predicate: `v_i <= avg_vruntime` is a
+    * coarse approximation. Under the wake-handoff transient (a
+    * just-woken curr drags avg below a long-RUNNABLE peer), a tree
+    * task can be temporarily flagged ineligible even though the
+    * algorithm should still pick it. EEVDF's own "if none eligible,
+    * pick leftmost" fallback covers this: same task picked either
+    * way, no behavior difference. A more precise predicate would
+    * need per-task lag computed against an avg-with-load-tracking
+    * baseline -- worth picking up only if/when per-task weights or
+    * slices land. See docs/scheduler.md.
     *
     * Disable interrupts around the descent: do_schedule() may run
     * with IRQs on (irq_resched() re-enables them before calling us),

@@ -437,6 +437,35 @@ TEST_F(scheduler_test, select_preempts_curr_when_resched_true)
    EXPECT_EQ(selected, t_low);
 }
 
+TEST_F(scheduler_test, select_picks_leftmost_even_if_ineligible_by_simple_predicate)
+{
+   /*
+    * Wake-handoff transient: curr has just-woken vruntime well
+    * below a single long-RUNNABLE peer. avg = mean(curr, peer)
+    * lands ABOVE the peer's vruntime, flipping the simple `v <=
+    * avg` eligibility predicate to false for the peer.
+    *
+    * EEVDF's "if no eligible task, pick leftmost" fallback covers
+    * this -- the selector must still return the peer because it's
+    * the only candidate in the tree and the algorithm picks it
+    * regardless of the transient predicate state. This is the
+    * structural property that lets the leftmost-pick implementation
+    * stay correct under the coarse predicate.
+    */
+   struct task *peer = make_task_at(100);   /* high vruntime, in tree */
+   struct task *curr = make_task_at(0);     /* low vruntime, becomes curr */
+   switch_curr_to(curr);
+
+   /* avg = (0 + 100) / 2 = 50; peer at 100 > 50 -> NOT eligible by
+    * the simple predicate. Sanity-check the setup explicitly. */
+   ASSERT_FALSE(sched_is_eligible(peer));
+
+   struct task *selected = sched_do_select_runnable_task(
+      TASK_STATE_RUNNING, true);
+
+   EXPECT_EQ(selected, peer);
+}
+
 
 /* =====================================================================
  *                  Category 4: fork / wake handoffs
@@ -751,6 +780,17 @@ struct sim_result {
    std::vector<u64> cpu_ticks;          /* per-task cumulative ticks   */
    std::vector<int> per_tick_curr;      /* [n_ticks], -1 = idle        */
    u64 idle_ticks;
+
+   /*
+    * Counts ticks on which the task picked by the selector was
+    * flagged ineligible by the simple `v <= avg_vruntime`
+    * predicate. Expected to be ~0 in well-behaved workloads under
+    * equal-slice; non-zero is informative (a wake-handoff transient
+    * is the usual culprit), not necessarily a bug -- the selector's
+    * "pick leftmost when no eligible candidate" fallback masks it
+    * behaviorally.
+    */
+   u64 ineligible_picks;
 };
 
 class scheduler_fairness_test : public scheduler_test {
@@ -818,6 +858,16 @@ protected:
          if (!next)
             next = idle_task;
 
+         /*
+          * EEVDF eligibility-respect tracking. Captured BEFORE the
+          * switch so the avg_vruntime reflects the same state the
+          * selector saw -- after switch_curr_to() runs, `next` is
+          * curr and is no longer in sum_vruntime_in_tree, which
+          * would change avg's value.
+          */
+         if (next != idle_task && !sched_is_eligible(next))
+            r.ineligible_picks++;
+
          if (next != curr)
             switch_curr_to(next);
          else
@@ -857,6 +907,7 @@ protected:
       r.cpu_ticks.assign(w.tasks.size(), 0);
       r.per_tick_curr.assign(w.n_ticks, -1);
       r.idle_ticks = 0;
+      r.ineligible_picks = 0;
 
       std::vector<struct task *> task_ptrs(w.tasks.size(), nullptr);
 
@@ -931,6 +982,18 @@ TEST_F(scheduler_fairness_test, equal_weight_all_runnable)
     * sets curr=idle for before need_resched fires. Cap at 5%.
     */
    EXPECT_LE(r.idle_ticks, w.n_ticks / 20);
+
+   /*
+    * No sleep/wake events and no mid-run forks; once curr is a
+    * regular task (no longer parked idle), the eligibility
+    * predicate holds for every pick. The handful permitted here
+    * covers the boot-from-idle transient: idle's stale vruntime
+    * from prior tests can drag avg below the first picked task
+    * for a few ticks before idle stops being curr.
+    */
+   EXPECT_LE(r.ineligible_picks, 4u)
+      << "all-runnable workload had excessive ineligible picks "
+         "(got " << r.ineligible_picks << ")";
 }
 
 TEST_F(scheduler_fairness_test, post_wake_sleeper_does_not_dominate)
@@ -963,6 +1026,18 @@ TEST_F(scheduler_fairness_test, post_wake_sleeper_does_not_dominate)
       << "task 0 dominated post-wake (share=" << share << ")";
    EXPECT_GE(share, 0.10)
       << "task 0 starved post-wake (share=" << share << ")";
+
+   /*
+    * The wake handoff places task 0 at vruntime = min - BONUS,
+    * which can transiently flag the picked task as "ineligible by
+    * simple predicate." Bound this loosely -- a sustained
+    * ineligibility rate would indicate something is wrong (e.g.
+    * avg drifting structurally below the tree), but a few percent
+    * of ticks is normal handoff noise.
+    */
+   EXPECT_LE(r.ineligible_picks, w.n_ticks / 10)
+      << "ineligible-pick fraction exceeded 10% (got "
+      << r.ineligible_picks << " of " << w.n_ticks << ")";
 }
 
 TEST_F(scheduler_fairness_test, fresh_fork_does_not_leapfrog)
@@ -990,4 +1065,15 @@ TEST_F(scheduler_fairness_test, fresh_fork_does_not_leapfrog)
       << "freshly-forked task dominated (share=" << share << ")";
    EXPECT_GE(share, 0.10)
       << "freshly-forked task starved (share=" << share << ")";
+
+   /*
+    * Fork handoff places the new task at vruntime = min_vruntime
+    * (no BONUS), so avg shouldn't be pulled BELOW any in-tree
+    * task's vruntime over steady state. Idle's stale vruntime
+    * carried across the test boundary can fire a single transient
+    * ineligible pick on the very first tick; bound at a handful.
+    */
+   EXPECT_LE(r.ineligible_picks, 4u)
+      << "fresh-fork workload had excessive ineligible picks "
+         "(got " << r.ineligible_picks << ")";
 }
