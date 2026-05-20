@@ -7,12 +7,32 @@ from . import sizeof_parens
 from . import static_fn_def_type_own_line
 from . import comment_block_multiline_format
 
+# M2a -- raw-text and token rules (no libclang TU needed)
+from . import indent_3sp
+from . import trailing_ws
+from . import spdx_header
+from . import hex_literal_lowercase
+from . import no_void_cast_discard
+
+# `null_check_no_null` (if (ptr != NULL) -> if (ptr)) is intentionally
+# NOT registered: corpus inspection shows ASSERT(ptr != NULL),
+# LIKELY(ptr != NULL), and plain if (ptr != NULL) are all used by
+# hand in kernel/poll.c, fork.c, execve.c, signal.c, etc.
+# docs/contributing.md says "generally" (not "always"), and the
+# user's actual style is permissive on this point. Revisit in v2 if
+# we find a narrower, capturable form.
+
 ALL_RULES = [
    cols_80.RULE,
    pragma_once.RULE,
    sizeof_parens.RULE,
    static_fn_def_type_own_line.RULE,
    comment_block_multiline_format.RULE,
+   indent_3sp.RULE,
+   trailing_ws.RULE,
+   spdx_header.RULE,
+   hex_literal_lowercase.RULE,
+   no_void_cast_discard.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }
