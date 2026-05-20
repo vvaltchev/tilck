@@ -606,6 +606,37 @@ flag before building.
 `DEBUG_CHECKS=0`. Brace-less `if (x) ASSERT(...)` then trips
 `-Werror=empty-body` in release builds. Always brace-wrap.
 
+**Debug-only code: prefer `if (DEBUG_CHECKS) { ... }`.** `DEBUG_CHECKS`
+is a literal 0/1 macro, so the compiler dead-code-eliminates the dead
+branch — release builds are identical to ones that never had the
+block, and the source has no conditional-compilation noise. Use this
+whenever the debug-only code consists only of statements:
+
+```c
+if (DEBUG_CHECKS) {
+   verify_invariant(thing);
+   trace_log("foo");
+}
+```
+
+When the code requires a debug-only *declaration* (e.g. a local whose
+only uses are inside `ASSERT`s), `if (DEBUG_CHECKS)` stops working —
+the decl is visible in both branches and `-Werror=unused-variable`
+breaks the release build. Use `DEBUG_ONLY(decl)` there. It is a
+necessary evil, not a preferred form: don't reach for it when the
+plain `if (DEBUG_CHECKS)` form fits.
+
+```c
+DEBUG_ONLY(enum task_state state = atomic_load(&ti->state));
+ASSERT(state != TASK_STATE_ZOMBIE);
+ASSERT(state == TASK_STATE_RUNNING || state == TASK_STATE_RUNNABLE);
+```
+
+`#ifdef DEBUG_CHECKS ... #endif` only when neither form fits
+(debug-only struct fields, debug-only header includes). **Do not use
+`IS_RELEASE_BUILD` as a debug gate — `DEBUG_CHECKS` is the canonical
+macro for this.**
+
 **Strict-alignment types propagate.** A struct embedding `atomic_u64_t`
 / `atomic_s64_t` (anything `ALIGNED_AT(8)`) inherits 8-byte alignment
 recursively. Intrusive `list_for_each` produces a sentinel
