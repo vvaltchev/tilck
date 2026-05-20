@@ -14,6 +14,11 @@ from . import spdx_header
 from . import hex_literal_lowercase
 from . import no_void_cast_discard
 
+# M2b -- structural rules via libclang + raw text
+from . import void_arglist
+from . import no_trailing_enum_comma
+from . import one_stmt_per_line
+
 # `null_check_no_null` (if (ptr != NULL) -> if (ptr)) is intentionally
 # NOT registered: corpus inspection shows ASSERT(ptr != NULL),
 # LIKELY(ptr != NULL), and plain if (ptr != NULL) are all used by
@@ -33,6 +38,9 @@ ALL_RULES = [
    spdx_header.RULE,
    hex_literal_lowercase.RULE,
    no_void_cast_discard.RULE,
+   void_arglist.RULE,
+   no_trailing_enum_comma.RULE,
+   one_stmt_per_line.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

@@ -43,11 +43,15 @@ RELEVANT_KINDS = frozenset({
    CursorKind.STRUCT_DECL,
    CursorKind.UNION_DECL,
    CursorKind.ENUM_DECL,
+   CursorKind.ENUM_CONSTANT_DECL,
    CursorKind.VAR_DECL,
    CursorKind.PARM_DECL,
    CursorKind.RETURN_STMT,
    CursorKind.GOTO_STMT,
    CursorKind.LABEL_STMT,
+   CursorKind.CALL_EXPR,
+   CursorKind.CSTYLE_CAST_EXPR,
+   CursorKind.INIT_LIST_EXPR,
 })
 
 

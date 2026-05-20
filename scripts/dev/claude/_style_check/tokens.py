@@ -350,6 +350,132 @@ def offset_to_line_col(source: str, offset: int) -> tuple:
    return line, col
 
 
+def line_col_to_offset(source: str, line: int, col: int) -> int:
+   """Convert a 1-based (line, col) pair to a string offset, or -1
+   if out of range."""
+
+   if line < 1 or col < 1:
+      return -1
+
+   offset = 0
+   target = line - 1
+
+   for _ in range(target):
+
+      nl = source.find('\n', offset)
+
+      if nl < 0:
+         return -1
+
+      offset = nl + 1
+
+   return offset + col - 1
+
+
+def find_matching_close(source: str, open_offset: int,
+                        open_ch: str = '(',
+                        close_ch: str = ')') -> int:
+   """Given an offset pointing at an opening brace/paren, return the
+   offset of the matching closer, or -1. Skips strings, char literals,
+   and comments correctly via the same state machine as scan_comments."""
+
+   if open_offset >= len(source) or source[open_offset] != open_ch:
+      return -1
+
+   state = _S_CODE
+   depth = 0
+   i = open_offset
+   n = len(source)
+
+   while i < n:
+
+      c = source[i]
+      nxt = source[i + 1] if i + 1 < n else ''
+
+      if state == _S_CODE:
+
+         if c == '/' and nxt == '/':
+            state = _S_LINE_COMMENT
+            i += 2
+            continue
+
+         if c == '/' and nxt == '*':
+            state = _S_BLOCK_COMMENT
+            i += 2
+            continue
+
+         if c == '"':
+            state = _S_STRING
+            i += 1
+            continue
+
+         if c == "'":
+            state = _S_CHAR
+            i += 1
+            continue
+
+         if c == open_ch:
+            depth += 1
+            i += 1
+            continue
+
+         if c == close_ch:
+            depth -= 1
+
+            if depth == 0:
+               return i
+
+            i += 1
+            continue
+
+         i += 1
+         continue
+
+      if state == _S_LINE_COMMENT:
+
+         if c == '\n':
+            state = _S_CODE
+
+         i += 1
+         continue
+
+      if state == _S_BLOCK_COMMENT:
+
+         if c == '*' and nxt == '/':
+            state = _S_CODE
+            i += 2
+            continue
+
+         i += 1
+         continue
+
+      if state == _S_STRING:
+
+         if c == '\\' and nxt:
+            i += 2
+            continue
+
+         if c == '"':
+            state = _S_CODE
+
+         i += 1
+         continue
+
+      if state == _S_CHAR:
+
+         if c == '\\' and nxt:
+            i += 2
+            continue
+
+         if c == "'":
+            state = _S_CODE
+
+         i += 1
+         continue
+
+   return -1
+
+
 def build_line_in_comment_index(comments: List[CommentRange],
                                 num_lines: int) -> List[bool]:
    """Return a (num_lines+1)-element list where index L is True iff line

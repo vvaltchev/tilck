@@ -147,6 +147,29 @@ class TestRulesOnFixtures(unittest.TestCase):
       )
       self.assertEqual(len(diags), 2)
 
+   def test_bad_void_arglist(self):
+
+      r = RULES_BY_ID['void_arglist']
+      diags = _run_rule(r, FIXTURES / 'bad_void_arglist.c', self.parser)
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'void_arglist')
+
+   def test_bad_no_trailing_enum_comma(self):
+
+      r = RULES_BY_ID['no_trailing_enum_comma']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_no_trailing_enum_comma.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+
+   def test_bad_one_stmt_per_line(self):
+
+      r = RULES_BY_ID['one_stmt_per_line']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_one_stmt_per_line.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+
 
 class TestRulesOnGoldenFiles(unittest.TestCase):
    """Canonical files in the kernel must report zero diagnostics. Files
