@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# scripts/dev/claude/style_check -- libclang-based style checker for Tilck.
+#
+# Reports formatting violations against the user's C coding style as
+# machine-readable JSONL (or human-readable text) so Claude can apply
+# the style correctly without having to memorize every nuance.
+#
+# Dev-only: never called from the build system. See _style_check/README.md
+# for installation requirements (python3-clang) and the full rule list.
+
+set -euo pipefail
+
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PYTHONPATH="$HERE" exec python3 -m _style_check "$@"
