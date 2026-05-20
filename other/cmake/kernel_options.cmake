@@ -176,13 +176,6 @@ tilck_option(KRN_TIMER_HZ
    HELP     "Kernel timer frequency in Hz"
 )
 
-tilck_option(KRN_CLOCK_DRIFT_COMP
-   TYPE     BOOL
-   CATEGORY "Kernel Misc"
-   DEFAULT  ON
-   HELP     "Periodically compensate for clock drift"
-)
-
 tilck_option(KRN_MAX_HANDLES
    TYPE     UINT
    CATEGORY "Kernel Misc"
@@ -204,7 +197,32 @@ tilck_option(KRN_MINIMAL_TIME_SLICE
    HELP     "Use 1-tick time slice (stress test)"
             "Forces the scheduler's time slice to a single tick to"
             "trigger more race conditions in testing. Not meant for"
-            "production builds."
+            "production builds. Overrides KRN_SCHED_LATENCY_TICKS and"
+            "KRN_MIN_GRANULARITY_TICKS, pinning both to 1."
+)
+
+tilck_option(KRN_SCHED_LATENCY_TICKS
+   TYPE     UINT
+   CATEGORY "Kernel Misc"
+   DEFAULT  20
+   HELP     "Target scheduling latency in ticks"
+            "Each RUNNABLE task gets to run for SCHED_LATENCY_TICKS /"
+            "nr_running ticks before preemption, clamped at"
+            "KRN_MIN_GRANULARITY_TICKS. Default 20 at the default"
+            "KRN_TIMER_HZ=250 is 80 ms -- the 2-task case yields a"
+            "10-tick (40 ms) slice, matching pre-CFS-step-7 fixed-"
+            "slice behavior. Higher values trade preemption latency"
+            "for cache locality under light load."
+)
+
+tilck_option(KRN_MIN_GRANULARITY_TICKS
+   TYPE     UINT
+   CATEGORY "Kernel Misc"
+   DEFAULT  2
+   HELP     "Floor under SCHED_LATENCY_TICKS / nr_running"
+            "Caps how short the per-task slice can shrink under heavy"
+            "load. Default 2 at the default KRN_TIMER_HZ=250 is 8 ms"
+            "-- still well above context-switch cost."
 )
 
 tilck_option(KRN_HANG_DETECTION

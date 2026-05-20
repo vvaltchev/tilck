@@ -343,7 +343,7 @@ switch_to_task(struct task *ti)
    regs_t *state = ti->state_regs;
    struct task *curr = get_curr_task();
    bool should_drop_top_syscall = false;
-   const bool zombie = (curr->state == TASK_STATE_ZOMBIE);
+   const bool zombie = (atomic_load(&curr->state) == TASK_STATE_ZOMBIE);
 
    ASSERT(curr != NULL);
 
@@ -353,8 +353,8 @@ switch_to_task(struct task *ti)
 #endif
 
    if (UNLIKELY(ti != curr)) {
-      ASSERT(curr->state != TASK_STATE_RUNNING);
-      ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNABLE);
+      ASSERT(atomic_load(&curr->state) != TASK_STATE_RUNNING);
+      ASSERT_TASK_STATE(atomic_load(&ti->state), TASK_STATE_RUNNABLE);
    }
 
    ASSERT(!is_preemption_enabled());
@@ -362,7 +362,7 @@ switch_to_task(struct task *ti)
 
    /* Do as much as possible work before disabling the interrupts */
    task_change_state_idempotent(ti, TASK_STATE_RUNNING);
-   ti->ticks.timeslice = 0;
+   sched_start_quantum(ti);
 
    if (!is_kernel_thread(curr) && !zombie) {
       save_curr_fpu_ctx_if_enabled();

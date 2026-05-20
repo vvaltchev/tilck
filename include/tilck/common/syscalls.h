@@ -137,7 +137,18 @@ enum tilck_cmd {
 
 #elif defined(__aarch64__) && (defined(KERNEL_TEST) || defined(TESTING))
 
-   /* Allow this just for the unit tests */
+   /*
+    * Allow this just for the unit tests. The values are arbitrary
+    * placeholders — the host build never invokes real syscalls with
+    * them; they only need to be compile-time constants so the kernel
+    * source compiles. We pick the Linux x86_64 numbers to match the
+    * rest of the shim's flavor.
+    */
+   #define STAT_SYSCALL_N      4
+   #define LSTAT_SYSCALL_N     6
+   #define FSTAT_SYSCALL_N     5
+   #define FCNTL_SYSCALL_N     72
+   #define MMAP_SYSCALL_N      9
 
 #elif defined(__riscv)
 

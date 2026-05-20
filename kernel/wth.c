@@ -16,12 +16,12 @@
  * ordinary tasks. In particular:
  *
  *   - They live in worker_threads[] (sorted by priority), NOT in the
- *     scheduler's runnable_tasks_list. The scheduler picks them via
- *     a dedicated pass (wth_get_runnable_thread() in do_schedule)
- *     that runs BEFORE the regular runnable-list lookup, so a
- *     runnable worker always wins against a runnable non-worker.
+ *     scheduler's runnable tree. The scheduler picks them via a
+ *     dedicated pass (wth_get_runnable_thread() in do_schedule) that
+ *     runs BEFORE the regular runnable-tree lookup, so a runnable
+ *     worker always wins against a runnable non-worker.
  *
- *   - They have no timeslice: sched_account_ticks() never sets
+ *   - They have no slice budget: sched_account_ticks() never sets
  *     need_resched for a running worker. A worker yields voluntarily
  *     when its queue drains, or gets preempted only by a
  *     higher-priority worker waking up.
@@ -230,7 +230,7 @@ void wth_run(void *arg)
 
       if (t->waiting_for_jobs) {
          schedule();
-      } else if (t->task->state == TASK_STATE_RUNNABLE) {
+      } else if (atomic_load(&t->task->state) == TASK_STATE_RUNNABLE) {
          /*
           * Race wakeup: an IRQ-driven wth_wakeup() between the
           * IRQ-disabled region above and here cleared
@@ -265,7 +265,7 @@ struct task *wth_get_runnable_thread(void)
 
       struct worker_thread *t = worker_threads[i];
 
-      if (t->task->state == TASK_STATE_RUNNABLE)
+      if (atomic_load(&t->task->state) == TASK_STATE_RUNNABLE)
          if (!selected || t->priority < selected->priority)
             selected = t;
    }

@@ -60,18 +60,26 @@ waitpid_should_skip_child(struct task *waiting_task,
 static struct task *
 get_task_if_changed(struct task *ti, int opts)
 {
-   enum task_state s = atomic_load_explicit(&ti->state, mo_relaxed);
+   enum task_state s = (enum task_state) atomic_load(&ti->state);
 
    if (s == TASK_STATE_ZOMBIE)
       return ti;
 
-   if (ti->stopped && !ti->was_stopped && (opts & WUNTRACED)) {
-      ti->was_stopped = true;
+   /*
+    * is_task_stopped() captures both flavors of "stopped" the user
+    * cares about: explicitly STOPPED, or SLEEPING with a SIGSTOP
+    * pending that hasn't been honored yet by a wake. See
+    * include/tilck/kernel/sched.h.
+    */
+   const bool stopped = is_task_stopped(ti);
+
+   if (stopped && !ti->stop_reported && (opts & WUNTRACED)) {
+      ti->stop_reported = true;
       return ti;
    }
 
-   if (!ti->stopped && ti->was_stopped && (opts & WCONTINUED)) {
-      ti->was_stopped = false;
+   if (!stopped && ti->stop_reported && (opts & WCONTINUED)) {
+      ti->stop_reported = false;
       return ti;
    }
 
@@ -109,7 +117,7 @@ is_waiting_on_multiple_children(struct task *ti, int *tid)
 {
    struct wait_obj *wobj = &ti->wobj;
 
-   if (ti->state != TASK_STATE_SLEEPING)
+   if (atomic_load(&ti->state) != TASK_STATE_SLEEPING)
       return false;
 
    if (wobj->type != WOBJ_TASK)
@@ -140,7 +148,7 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
       ASSERT(wo->type == WOBJ_TASK);
       struct task *task_to_wake_up = CONTAINER_OF(wo, struct task, wobj);
 
-      if (task_to_wake_up->state != TASK_STATE_SLEEPING) {
+      if (atomic_load(&task_to_wake_up->state) != TASK_STATE_SLEEPING) {
 
          /*
           * The task MUST be in waitpid(), but it's not sleeping. Because of
@@ -280,7 +288,7 @@ int sys_wait4(int tid, int *user_wstatus, int options, void *user_rusage)
          chtask_tid = -EFAULT;
    }
 
-   if (chtask->state == TASK_STATE_ZOMBIE)
+   if (atomic_load(&chtask->state) == TASK_STATE_ZOMBIE)
       remove_task(chtask);
 
    enable_preemption();

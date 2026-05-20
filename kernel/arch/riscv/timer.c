@@ -57,10 +57,12 @@ static ulong fdt_parse_timebase_frequency(void)
 
 DEFINE_IRQ_HANDLER_NODE(riscv_timer_irq_node, riscv_timer_irq_handler, NULL);
 
-u32 hw_timer_setup(u32 interval)
+void hw_timer_setup(u32 interval, struct hw_timer_info *out)
 {
    int irq;
    u64 actual_interval;
+
+   ASSERT(out != NULL);
 
    riscv_timebase = fdt_parse_timebase_frequency();
    riscv_hz = TS_SCALE / interval;
@@ -71,11 +73,21 @@ u32 hw_timer_setup(u32 interval)
    ASSERT(IN_RANGE_INC(riscv_hz, 18, 1000));
    ASSERT(actual_interval < UINT32_MAX);
 
+   /*
+    * The fractional-ns accumulator added on x86 isn't wired up here
+    * yet; report ns_per_tick only and leave the residue dormant
+    * (frac_per_tick=0 makes the if-branch in the caller never
+    * trigger). Worth doing later -- the same truncation problem
+    * applies to any divider-based timer.
+    */
+   out->ns_per_tick   = (u32)actual_interval;
+   out->frac_per_tick = 0;
+   out->frac_denom    = 1;       /* any non-zero value works */
+
    irq = irqchip_get_free_irq(root_domain, IRQ_S_TIMER);
    root_domain->irq_map[IRQ_S_TIMER] = irq;
    irq_install_handler(irq, &riscv_timer_irq_node);
 
    sbi_set_timer(rdtime() + riscv_timebase / riscv_hz);
-   return (u32)actual_interval;
 }
 

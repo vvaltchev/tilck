@@ -99,6 +99,14 @@
 })
 
 
+/*
+ * Production IRQ-state primitives for riscv. Skipped under
+ * UNIT_TEST_ENVIRONMENT -- the cross-arch test versions in
+ * include/tilck/kernel/hal.h take over for gtests, regardless of
+ * host architecture.
+ */
+#ifndef UNIT_TEST_ENVIRONMENT
+
 static ALWAYS_INLINE bool are_interrupts_enabled(void)
 {
    return !!(csr_read(CSR_SSTATUS) & SR_SIE);
@@ -129,6 +137,8 @@ static ALWAYS_INLINE void enable_interrupts_forced(void)
 {
    csr_set(CSR_SSTATUS, SR_SIE);
 }
+
+#endif /* !UNIT_TEST_ENVIRONMENT */
 
 static ALWAYS_INLINE void hw_fpu_enable(void)
 {

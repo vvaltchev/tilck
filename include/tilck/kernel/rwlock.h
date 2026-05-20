@@ -46,11 +46,12 @@ struct rwlock_wp {
 
    struct task *ex_owner;
    struct kmutex m;
-   struct kcond c;
-   int r;     /* readers count */
-   bool w;    /* writer waiting */
-   bool rec;  /* is exlock operation recursive */
-   u16 rc;    /* recursive locking count */
+   struct kcond readers_cv;  /* readers waiting for `wq` to drain  */
+   struct kcond writers_cv;  /* writers waiting for their turn     */
+   int r;                    /* current readers (shlock holders)   */
+   int wq;                   /* writers waiting + holder           */
+   bool rec;                 /* is exlock operation recursive      */
+   u16 rc;                   /* recursive locking count            */
 };
 
 void rwlock_wp_init(struct rwlock_wp *rw, bool recursive);

@@ -338,8 +338,15 @@ STATIC int fat_stat(struct mnt_fs *fs,
                                        e->DIR_WrtTime,
                                        0 /* No WrtTimeTenth */);
 
-   statbuf->st_ctim.tv_sec = (time_t)datetime_to_timestamp(crt_time);
-   statbuf->st_mtim.tv_sec = (time_t)datetime_to_timestamp(wrt_time);
+   /*
+    * Narrowing to k_timespec32::tv_sec is part of the Y2038
+    * limitation of struct k_stat64 -- see the comment on the
+    * struct declaration in include/tilck/kernel/sys_types.h.
+    * Make the cast explicit so -Wshorten-64-to-32 (clang_wconv)
+    * doesn't trip on what's a deliberate truncation.
+    */
+   statbuf->st_ctim.tv_sec = (s32)datetime_to_timestamp(crt_time);
+   statbuf->st_mtim.tv_sec = (s32)datetime_to_timestamp(wrt_time);
    statbuf->st_atim = statbuf->st_mtim;
    return 0;
 }

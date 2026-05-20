@@ -124,7 +124,14 @@ sysfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
    statbuf->st_gid = 0; /* root */
    statbuf->st_blksize = PAGE_SIZE;
    statbuf->st_blocks = 0;
-   statbuf->st_ctim.tv_sec = d->wrt_time;
+   /*
+    * Narrowing to k_timespec32::tv_sec is part of the existing
+    * Y2038 limitation of struct k_stat64 — see the comment on
+    * the struct declaration in include/tilck/kernel/sys_types.h.
+    * Make the cast explicit so -Wshorten-64-to-32 (clang_wconv)
+    * doesn't trip on what's a deliberate truncation.
+    */
+   statbuf->st_ctim.tv_sec = (s32)d->wrt_time;
    statbuf->st_mtim = statbuf->st_ctim;
    statbuf->st_atim = statbuf->st_mtim;
 

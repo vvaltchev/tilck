@@ -70,30 +70,12 @@
       #define COM4 3
       #define X86_PC_TIMER_IRQ 0
 
-      static ALWAYS_INLINE bool are_interrupts_enabled(void)
-      {
-         return true;
-      }
-
-      static ALWAYS_INLINE void disable_interrupts(ulong *var)
-      {
-         /* STUB function: do nothing */
-      }
-
-      static ALWAYS_INLINE void enable_interrupts(ulong *var)
-      {
-         /* STUB function: do nothing */
-      }
-
-      static ALWAYS_INLINE void disable_interrupts_forced(void)
-      {
-         /* STUB function: do nothing */
-      }
-
-      static ALWAYS_INLINE void enable_interrupts_forced(void)
-      {
-         /* STUB function: do nothing */
-      }
+      /*
+       * IRQ-state stubs for tests live in the cross-arch
+       * UNIT_TEST_ENVIRONMENT block below (after the arch
+       * dispatch). They apply equally to gtests built for x86_64
+       * and aarch64 hosts, and to any future host architecture.
+       */
 
       static ALWAYS_INLINE void __set_curr_pdir(ulong paddr)
       {
@@ -213,6 +195,56 @@
 
 #endif
 
+#ifdef UNIT_TEST_ENVIRONMENT
+   /*
+    * Cross-arch IRQ-state tracking for the gtest build. The
+    * arch-specific headers above skip defining the disable /
+    * enable / are_interrupts_enabled trio under
+    * UNIT_TEST_ENVIRONMENT; this block provides them in a way
+    * that works on any host arch (x86_64 and aarch64 today,
+    * whatever Tilck builds gtests on tomorrow).
+    *
+    * The counter starts at 0 (interrupts logically enabled), so
+    * code that ASSERTs `are_interrupts_enabled()` keeps passing.
+    * Kernel critical sections that bracket work with
+    * disable_interrupts() / enable_interrupts() bump the counter,
+    * so code that ASSERTs `!are_interrupts_enabled()` inside the
+    * scope works too. `var` is saved/restored just to mirror the
+    * production save-and-restore-EFLAGS shape; tests don't care
+    * about its value.
+    *
+    * The storage lives in tests/unit/misc_fake.c.
+    */
+   extern int __tilck_test_irqs_disabled;
+
+   static ALWAYS_INLINE bool are_interrupts_enabled(void)
+   {
+      return __tilck_test_irqs_disabled == 0;
+   }
+
+   static ALWAYS_INLINE void disable_interrupts(ulong *var)
+   {
+      if (var)
+         *var = (ulong) __tilck_test_irqs_disabled;
+      __tilck_test_irqs_disabled++;
+   }
+
+   static ALWAYS_INLINE void enable_interrupts(ulong *var)
+   {
+      __tilck_test_irqs_disabled--;
+   }
+
+   static ALWAYS_INLINE void disable_interrupts_forced(void)
+   {
+      __tilck_test_irqs_disabled++;
+   }
+
+   static ALWAYS_INLINE void enable_interrupts_forced(void)
+   {
+      __tilck_test_irqs_disabled--;
+   }
+#endif
+
 STATIC_ASSERT(ARCH_TASK_MEMBERS_SIZE == sizeof(arch_task_members_t));
 STATIC_ASSERT(ARCH_TASK_MEMBERS_ALIGN == alignof(arch_task_members_t));
 
@@ -243,7 +275,68 @@ int get_int_num(regs_t *context);
 void on_first_pdir_update(void);
 extern void (*hw_read_clock)(struct datetime *out);
 void hw_read_clock_cmos(struct datetime *out);
-u32 hw_timer_setup(u32 hz);
+
+/*
+ * RTC Update-Ended interrupt (UIE) support.
+ *
+ * The CMOS RTC chip can fire IRQ 8 at every wall-clock second
+ * boundary when its UIE bit is set. This is a much cleaner way to
+ * detect the exact moment the wall-clock second changes than
+ * polling the seconds register in a loop -- the IRQ handler
+ * snapshots `__time_ns` at the precise instant of the edge and
+ * signals waiters via a kcond, so the caller gets sub-microsecond
+ * precision without burning CPU.
+ *
+ * UIE is part of the IBM PC AT specification (MC146818 / DS12887
+ * and successors) and is universally available on x86 PCs from
+ * 1984 onwards, in every PC-class hypervisor, and in every modern
+ * Southbridge / PCH. Other arches with an equivalent RTC interrupt
+ * (e.g. goldfish on riscv64) can implement these to plug into the
+ * same drift-compensation logic; the default WEAK stubs in
+ * kernel/misc.c make them no-ops where not implemented.
+ *
+ * Usage:
+ *
+ *    u64 edge_ns;
+ *    if (rtc_wait_for_second_edge(&edge_ns, KRN_TIMER_HZ * 2)) {
+ *       // edge_ns is __time_ns at the moment the RTC second
+ *       // ticked over. hw_read_clock() now returns the wall-clock
+ *       // time of that exact moment.
+ *    }
+ *
+ * Returns true on signal, false on timeout.
+ */
+void init_rtc_uie(void);
+bool rtc_wait_for_second_edge(u64 *time_ns_out, u32 timeout_ticks);
+/*
+ * Per-tick wall-clock advance, as returned by hw_timer_setup().
+ *
+ * The simple "ns per IRQ" integer is `ns_per_tick`. To avoid the
+ * truncation that would otherwise accumulate (the divisor / PIT_FREQ
+ * ratio rarely has an integer ns representation), the function also
+ * returns a `(frac_per_tick, frac_denom)` pair the caller uses to
+ * track the residue:
+ *
+ *    each tick:
+ *       __time_ns      += ns_per_tick;
+ *       __frac_acc     += frac_per_tick;
+ *       if (__frac_acc >= frac_denom) {
+ *          __frac_acc   -= frac_denom;
+ *          __time_ns    += 1;
+ *       }
+ *
+ * Architectures that don't bother with fractional accuracy can set
+ * `frac_per_tick = 0` and any non-zero `frac_denom`; the if-branch
+ * is then dormant.
+ */
+struct hw_timer_info {
+
+   u32 ns_per_tick;     /* integer ns advanced per timer IRQ */
+   u32 frac_per_tick;   /* residue numerator per IRQ */
+   u32 frac_denom;      /* denominator (when acc reaches this, +1 ns) */
+};
+
+void hw_timer_setup(u32 hz, struct hw_timer_info *out);
 
 bool allocate_fpu_regs(arch_task_members_t *arch_fields);
 void copy_main_tss_on_regs(regs_t *ctx);

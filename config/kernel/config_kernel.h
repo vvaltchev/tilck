@@ -20,7 +20,6 @@
 #cmakedefine01 KRN_TINY_KERNEL
 #cmakedefine01 KERNEL_GCOV
 #cmakedefine01 KERNEL_UBSAN
-#cmakedefine01 KRN_CLOCK_DRIFT_COMP
 #cmakedefine01 KRN32_LIN_VADDR
 
 /*

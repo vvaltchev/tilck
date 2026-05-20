@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <random>
 
 using namespace std;
@@ -150,6 +151,42 @@ int virtual_write(pdir_t *pdir, void *extern_va, void *src, size_t len)
 {
    memcpy(extern_va, src, len);
    return 0;
+}
+
+/*
+ * High-virtual-memory reservation. In the real kernel this carves
+ * address space out of a top-of-memory range for the isolated
+ * kernel-stack mapping (see alloc_kernel_isolated_stack in
+ * kernel/process.c). For tests we hand out a page-aligned malloc'd
+ * buffer per call -- map_pages above doesn't dereference the
+ * address, it just records the va->pa mapping by key, so any
+ * unique non-null pointer works.
+ *
+ * Release-side complication: vfree2() in kernel/kmalloc/kmalloc.c
+ * routes ANY freed pointer at or above LINEAR_MAPPING_END through
+ * hi_vmem_release, including kmalloc'd ptrs that happen to land
+ * there (the test heap is 256 MB while LINEAR_MAPPING_SIZE is
+ * 128 MB, so the upper half of the heap matches "high address").
+ * Track our own allocations explicitly and ignore anything else --
+ * those ptrs belong to the kmalloc fake heap and would crash if
+ * passed to free().
+ */
+static std::unordered_set<void *> hi_vmem_owned;
+
+void *hi_vmem_reserve(size_t size)
+{
+   void *p = aligned_alloc(PAGE_SIZE, size);
+   assert(p != nullptr);
+   hi_vmem_owned.insert(p);
+   return p;
+}
+
+void hi_vmem_release(void *ptr, size_t size)
+{
+   if (hi_vmem_owned.erase(ptr))
+      free(ptr);
+   /* else: not our allocation -- vfree2 misroute from a
+    * kmalloc'd high-address ptr. Leak silently. */
 }
 
 } // extern "C"

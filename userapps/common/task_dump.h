@@ -36,6 +36,7 @@
 #define TS_RUNNING    2
 #define TS_SLEEPING   3
 #define TS_ZOMBIE     4
+#define TS_STOPPED    5
 
 extern struct dp_task_info dp_tasks_buf[MAX_DP_TASKS];
 extern int dp_tasks_count;

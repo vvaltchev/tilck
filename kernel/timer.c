@@ -21,7 +21,10 @@ static u64 __ticks;        /* ticks since the timer started */
 
 /* System time */
 u64 __time_ns;             /* nanoseconds since the timer started */
-u32 __tick_duration;       /* the real duration of a tick, ~TS_SCALE/KRN_TIMER_HZ */
+u32 __tick_duration;       /* integer ns per IRQ (the truncated value) */
+u32 __tick_frac_per_tick;  /* residue numerator added to acc each IRQ */
+u32 __tick_frac_denom;     /* denominator: when acc >= this, +1 ns */
+u32 __tick_frac_acc;       /* running residue accumulator */
 int __tick_adj_val;
 int __tick_adj_ticks_rem;
 
@@ -29,7 +32,7 @@ int __tick_adj_ticks_rem;
 u32 slow_timer_irq_handler_count;
 
 /* Temporary global used by asm_do_bogomips_loop() */
-volatile ATOMIC(u32) __bogo_loops;
+atomic_u32_t __bogo_loops;
 
 /* Static variables */
 static struct list timer_wakeup_list = STATIC_LIST_INIT(timer_wakeup_list);
@@ -161,8 +164,26 @@ static void tick_all_timers(void)
          pos->timer_ready = true;
          list_remove(&pos->wakeup_timer_node);
 
-         if (pos->state == TASK_STATE_SLEEPING) {
-            task_change_state(pos, TASK_STATE_RUNNABLE);
+         if (atomic_load(&pos->state) == TASK_STATE_SLEEPING) {
+
+            /*
+             * Stop-on-wake: see the matching comment in wake_up()
+             * (kernel/wobj.c). A SIGSTOP delivered while pos was
+             * sleeping left ti->stop_pending = true and the wait_obj
+             * untouched; route the wake to STOPPED instead of
+             * RUNNABLE and consume the flag.
+             */
+            enum task_state next = TASK_STATE_RUNNABLE;
+
+            if (UNLIKELY(pos->stop_pending)) {
+               next = TASK_STATE_STOPPED;
+               pos->stop_pending = false;
+            }
+
+            if (next == TASK_STATE_RUNNABLE)
+               wake_vruntime_handoff(pos);
+
+            task_change_state(pos, next);
             any_woken_up_task = true;
          }
       }
@@ -314,6 +335,27 @@ static enum irq_action timer_irq_handler(void *ctx)
 
       __ticks++;
       __time_ns += ns_delta;
+
+      /*
+       * Fractional-ns accumulator: hw_timer_setup() gave us
+       * (frac_per_tick, frac_denom) capturing the sub-ns residue
+       * of the ideal tick interval. Add the residue each IRQ; when
+       * the accumulator crosses the denominator, "spend" one ns of
+       * residue by bumping __time_ns by 1 and subtracting. Net
+       * effect: __time_ns advances at exactly (divisor / PIT_FREQ)
+       * * TS_SCALE per IRQ on average, with no software-induced
+       * drift from the truncation that just-using-__tick_duration
+       * would accumulate.
+       *
+       * On arches that didn't bother filling in fractional info,
+       * __tick_frac_per_tick is 0 and the if-branch never fires.
+       */
+      __tick_frac_acc += __tick_frac_per_tick;
+
+      if (__tick_frac_acc >= __tick_frac_denom) {
+         __tick_frac_acc -= __tick_frac_denom;
+         __time_ns       += 1;
+      }
    }
    enable_interrupts_forced();
 
@@ -351,7 +393,7 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
        * discard the loops so far in this partial tick and start counting zero
        * from now, when the timer IRQ just arrived.
        */
-      __bogo_loops = 0;
+      atomic_store(&__bogo_loops, 0);
       ctx->pass_start = true;
       return IRQ_NOT_HANDLED;
    }
@@ -364,10 +406,12 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
 
       disable_interrupts_forced();
       {
-         loops_per_tick = __bogo_loops * BOGOMIPS_CONST/MEASURE_BOGOMIPS_TICKS;
+         loops_per_tick =
+            atomic_load(&__bogo_loops)
+               * BOGOMIPS_CONST/MEASURE_BOGOMIPS_TICKS;
          loops_per_ms = loops_per_tick / (1000 / KRN_TIMER_HZ);
          loops_per_us = loops_per_ms / 1000;
-         __bogo_loops = -1;
+         atomic_store(&__bogo_loops, (u32)-1);
       }
       enable_interrupts_forced();
    }
@@ -406,10 +450,24 @@ void delay_us(u32 us)
 
 void init_timer(void)
 {
+   struct hw_timer_info info;
    static struct bogo_measure_ctx ctx;
    measure_bogomips.context = &ctx;
 
-   __tick_duration = hw_timer_setup(TS_SCALE / KRN_TIMER_HZ);
+   hw_timer_setup(TS_SCALE / KRN_TIMER_HZ, &info);
+   __tick_duration      = info.ns_per_tick;
+   __tick_frac_per_tick = info.frac_per_tick;
+   __tick_frac_denom    = info.frac_denom;
+   __tick_frac_acc      = 0;
+
+   /*
+    * Wire up the RTC Update-Ended interrupt now that workers and
+    * IRQs are both initialized. UIE on the chip stays OFF until a
+    * caller waits via rtc_wait_for_second_edge(); the install here
+    * just gets the kcond and handler in place. No-op on arches
+    * without UIE support (weak stub in kernel/misc.c).
+    */
+   init_rtc_uie();
 
    printk("*** Init the kernel timer\n");
 

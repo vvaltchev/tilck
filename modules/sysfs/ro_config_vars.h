@@ -24,7 +24,8 @@ DEF_STATIC_CONF_RO(BOOL,   debugchecks,            DEBUG_CHECKS);
 
 /* kernel */
 DEF_STATIC_CONF_RO(ULONG, timer_hz,                KRN_TIMER_HZ);
-DEF_STATIC_CONF_RO(ULONG, time_slice_ticks,        TIME_SLICE_TICKS);
+DEF_STATIC_CONF_RO(ULONG, sched_latency_ticks,     SCHED_LATENCY_TICKS);
+DEF_STATIC_CONF_RO(ULONG, min_granularity_ticks,   MIN_GRANULARITY_TICKS);
 DEF_STATIC_CONF_RO(ULONG, stack_pages,             KERNEL_STACK_PAGES);
 DEF_STATIC_CONF_RO(ULONG, user_stack_pages,        KRN_USER_STACK_PAGES);
 DEF_STATIC_CONF_RO(BOOL,  track_nested_int,        KRN_TRACK_NESTED_INTERR);
@@ -41,7 +42,6 @@ DEF_STATIC_CONF_RO(BOOL,  fork_no_cow,             FORK_NO_COW);
 DEF_STATIC_CONF_RO(BOOL,  mmap_no_cow,             MMAP_NO_COW);
 DEF_STATIC_CONF_RO(BOOL,  ubsan,                   KERNEL_UBSAN);
 DEF_STATIC_CONF_RO(BOOL,  kernel_64bit_offt,       KERNEL_64BIT_OFFT);
-DEF_STATIC_CONF_RO(BOOL,  clock_drift_comp,        KRN_CLOCK_DRIFT_COMP);
 
 /* console */
 DEF_STATIC_CONF_RO(ULONG, big_font_threshold,      KRN_FBCON_BIGFONT_THR);

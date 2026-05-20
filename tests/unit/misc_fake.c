@@ -23,8 +23,23 @@ bool suppress_printk;
 volatile bool __in_panic;
 volatile bool __in_kernel_shutdown;
 volatile bool __in_panic_debugger;
-void *__kernel_pdir;
+/*
+ * __kernel_pdir is opaque to the test stubs (map_pages / get_mapping
+ * in mm_fakes.cpp ignore the pdir argument), but
+ * alloc_kernel_isolated_stack and several callers ASSERT it is
+ * non-NULL. Any non-NULL sentinel will do.
+ */
+void *__kernel_pdir = (void *) 0x1;
 bool mock_kmalloc = false; /* see the comments above __wrap_general_kmalloc() */
+
+/*
+ * Virtual IRQ-disable counter for unit tests, used by the cross-arch
+ * test stubs in include/tilck/kernel/hal.h. Starts at 0 (interrupts
+ * logically enabled) so functions that ASSERT(are_interrupts_enabled())
+ * keep working; the stubs increment/decrement around disable/enable
+ * pairs so functions that ASSERT(!are_interrupts_enabled()) work too.
+ */
+int __tilck_test_irqs_disabled;
 
 void *__real_general_kmalloc(size_t *size, u32 flags);
 void __real_general_kfree(void *ptr, size_t *size, u32 flags);

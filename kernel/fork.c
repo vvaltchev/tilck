@@ -69,7 +69,7 @@ int do_fork(regs_t *user_regs, bool vfork)
    disable_preemption();
 
    ASSERT(curr != NULL);
-   ASSERT_TASK_STATE(curr->state, TASK_STATE_RUNNING);
+   ASSERT_TASK_STATE(atomic_load(&curr->state), TASK_STATE_RUNNING);
 
    if ((pid = create_new_pid()) < 0)
       goto out; /* NOTE: rc is already set to -EAGAIN */
@@ -99,7 +99,7 @@ int do_fork(regs_t *user_regs, bool vfork)
    /* Child's kernel stack must be set */
    ASSERT(child->kernel_stack != NULL);
 
-   child->state = TASK_STATE_RUNNABLE;
+   atomic_store(&child->state, TASK_STATE_RUNNABLE);
    child->running_in_kernel = 0;
    task_info_reset_kernel_stack(child);
 
@@ -121,8 +121,15 @@ int do_fork(regs_t *user_regs, bool vfork)
 
    if (vfork) {
 
-      curr->stopped = true;
+      /*
+       * Park the parent in TASK_STATE_STOPPED until the child execs
+       * or dies. vfork_stopped distinguishes "stopped because of
+       * vfork" from a SIGSTOP, which matters for
+       * signal_wakeup_task() (which won't wake a vfork-stopped
+       * task for a killing signal — see signal.c).
+       */
       curr->vfork_stopped = true;
+      task_change_state(curr, TASK_STATE_STOPPED);
 
    } else {
 
@@ -146,14 +153,17 @@ int do_fork(regs_t *user_regs, bool vfork)
        */
       schedule();
 
-      /* Make absolutely sure that we're running because we're not stopped */
-      ASSERT(!curr->stopped);
+      /*
+       * If we're past schedule() then the vfork-completion code in
+       * process.c transitioned us back to RUNNABLE (and the
+       * scheduler now to RUNNING) and cleared vfork_stopped.
+       */
       ASSERT(!curr->vfork_stopped);
 
       /* Check that the child died or called execve() */
       ASSERT(
          (child->pi->did_call_execve && !child->pi->vforked) ||
-         child->state == TASK_STATE_ZOMBIE
+         atomic_load(&child->state) == TASK_STATE_ZOMBIE
       );
    }
 
@@ -168,7 +178,7 @@ oom_case:
       pdir_destroy(new_pdir);
 
    if (child) {
-      child->state = TASK_STATE_ZOMBIE;
+      atomic_store(&child->state, TASK_STATE_ZOMBIE);
       free_common_task_allocs(child);
       free_task(child);
    }

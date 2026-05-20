@@ -185,8 +185,13 @@ tty_inbuf_write_elem(struct tty *t, u8 c, bool block)
       /* OK, signal all consumers waiting for input (tty_read()) */
       kcond_signal_all(&t->input_cond);
 
-      /* Now, block on the `output_cond` waiting for a consumer to signal us */
-      kcond_wait(&t->output_cond, NULL, TIME_SLICE_TICKS);
+      /*
+       * Now, block on the `output_cond` waiting for a consumer to signal
+       * us. The wait is finite so a missed wakeup (signal racing our
+       * predicate check) only delays drainage by SCHED_LATENCY_TICKS,
+       * not forever.
+       */
+      kcond_wait(&t->output_cond, NULL, SCHED_LATENCY_TICKS);
    }
 }
 
@@ -551,15 +556,15 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
           * via timeout instead of signal is handled correctly; worst-
           * case latency on a missed signal becomes the timeout.
           *
-          * The timeout is intentionally not TIME_SLICE_TICKS: under the
-          * stress config (KRN_MINIMAL_TIME_SLICE) that's 1 tick, which
-          * makes every blocked tty reader add itself to the wakeup-timer
-          * list every tick and forces tick_all_timers() to walk it on
-          * each interrupt. That's enough scheduler pressure to perturb
-          * boot timing on slow emulators (riscv64 without KVM hangs at
-          * the first shell prompt with TIME_SLICE_TICKS here). 250ms is
-          * still imperceptible for interactive input but keeps the
-          * timer-list churn bounded.
+          * The timeout is intentionally not SCHED_LATENCY_TICKS: under
+          * the stress config (KRN_MINIMAL_TIME_SLICE) the slice
+          * collapses to 1 tick, which would make every blocked tty
+          * reader add itself to the wakeup-timer list every tick and
+          * force tick_all_timers() to walk it on each interrupt. That's
+          * enough scheduler pressure to perturb boot timing on slow
+          * emulators (riscv64 without KVM hangs at the first shell
+          * prompt at slice=1). 250ms is still imperceptible for
+          * interactive input but keeps the timer-list churn bounded.
           */
          kcond_wait(&t->input_cond, NULL, KRN_TIMER_HZ / 4);
 

@@ -57,22 +57,46 @@ void rwlock_rp_exunlock(struct rwlock_rp *r)
 
 /* ---------------------------------------------- */
 
+/*
+ * Writer-preferring rwlock.
+ *
+ * Invariant: while any writer is queued or holding (`wq > 0`),
+ * incoming readers block on `readers_cv`. The hand-off after a
+ * writer release is done explicitly via `writers_cv` (one wake)
+ * when more writers are still queued, or via `readers_cv` (wake
+ * all) only after the writer queue has fully drained.
+ *
+ * Two condvars are essential. With a single mixed queue the
+ * lock's "write-preferring" semantics would degrade to "depends
+ * on whoever wins the kmutex race after exunlock" -- and that
+ * race is settled by the scheduler's tiebreak rule, not by this
+ * file. The earlier implementation got away with one condvar
+ * only because the pre-CFS scheduler gave woken writers a stale-
+ * low vruntime advantage; after the wake_vruntime_handoff
+ * equalises post-wake vruntime, the tid tiebreak hands the lock
+ * to readers on every cycle. Splitting the queues moves the
+ * guarantee back into this code.
+ */
+
 void rwlock_wp_init(struct rwlock_wp *rw, bool recursive)
 {
    kmutex_init(&rw->m, 0);
-   kcond_init(&rw->c);
+   kcond_init(&rw->readers_cv);
+   kcond_init(&rw->writers_cv);
    rw->ex_owner = NULL;
    rw->r = 0;
-   rw->w = false;
+   rw->wq = 0;
    rw->rec = recursive;
+   rw->rc = 0;
 }
 
 void rwlock_wp_destroy(struct rwlock_wp *rw)
 {
-   rw->ex_owner = NULL;
-   rw->w = false;
-   rw->r = 0;
-   kcond_destroy(&rw->c);
+   ASSERT(rw->ex_owner == NULL);
+   ASSERT(rw->r == 0);
+   ASSERT(rw->wq == 0);
+   kcond_destroy(&rw->writers_cv);
+   kcond_destroy(&rw->readers_cv);
    kmutex_destroy(&rw->m);
 }
 
@@ -80,16 +104,15 @@ void rwlock_wp_shlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
-      /* Wait until there's at least one writer waiting (they have priority) */
-      while (rw->w) {
-         kcond_wait(&rw->c, &rw->m, KCOND_WAIT_FOREVER);
-      }
-
       /*
-       * OK, no writer is waiting and we're holding the mutex: we can safely
-       * increment the readers count and claim that the acquired a shared
-       * lock.
+       * Block while any writer is queued or holding. wq == 0 is
+       * the only safe condition to take a shared lock: it means
+       * no writer is registered, so we won't starve one by
+       * acquiring shared.
        */
+      while (rw->wq > 0) {
+         kcond_wait(&rw->readers_cv, &rw->m, KCOND_WAIT_FOREVER);
+      }
       rw->r++;
    }
    kmutex_unlock(&rw->m);
@@ -100,11 +123,13 @@ void rwlock_wp_shunlock(struct rwlock_wp *rw)
    kmutex_lock(&rw->m);
    {
       /*
-       * Decrement the readers count and, in case there no more readers, signal
-       * the condition in order to wake-up the writers are waiting on it.
+       * Decrement readers. When r reaches 0 and there's a writer
+       * waiting, hand off to the writer at the head of writers_cv.
+       * Do NOT touch readers_cv -- those readers must keep
+       * waiting until the writer queue drains.
        */
-      if (--rw->r == 0)
-         kcond_signal_one(&rw->c);
+      if (--rw->r == 0 && rw->wq > 0)
+         kcond_signal_one(&rw->writers_cv);
    }
    kmutex_unlock(&rw->m);
 }
@@ -113,43 +138,36 @@ static void rwlock_wp_exlock_int(struct rwlock_wp *rw)
 {
    if (rw->rec) {
       if (rw->ex_owner == get_curr_task()) {
-         ASSERT(rw->w);
+         ASSERT(rw->wq >= 1);
          ASSERT(rw->rc >= 1);
          rw->rc++;
          return;
       }
    }
 
-
-   /* Wait our turn until other writers are waiting to write */
-   while (rw->w) {
-      kcond_wait(&rw->c, &rw->m, KCOND_WAIT_FOREVER);
-   }
+   /*
+    * Register as a writer. From this point new readers block,
+    * because shlock checks wq > 0.
+    */
+   rw->wq++;
 
    /*
-    * OK, no writer is waiting to write and we're holding the mutex: now
-    * it's our turn to wait on the condition `readers > 0`.
+    * Wait until both: (a) no other writer holds the lock
+    * (ex_owner == NULL) and (b) no reader holds shlock (r == 0).
+    * The shunlock path (when r reaches 0) and the exunlock path
+    * (when the current writer releases) signal writers_cv to
+    * wake exactly one waiter from the head of this queue, which
+    * is FIFO -- so writers are served in arrival order.
     */
-   rw->w = true;
-
-   /* Wait until there are any readers currently holding the rwlock */
-   while (rw->r > 0) {
-      kcond_wait(&rw->c, &rw->m, KCOND_WAIT_FOREVER);
+   while (rw->ex_owner != NULL || rw->r > 0) {
+      kcond_wait(&rw->writers_cv, &rw->m, KCOND_WAIT_FOREVER);
    }
 
-   /*
-    * No more readers: great. Now we're really holding an exclusive access to
-    * the rwlock. New readers cannot acquire a shared lock because `w` is set
-    * and other writes cannot acquire it, for the same reason.
-    */
-
-   ASSERT(rw->ex_owner == NULL);
    rw->ex_owner = get_curr_task();
 
    if (rw->rec) {
-      /* recursive locking count */
       ASSERT(rw->rc == 0);
-      rw->rc++;
+      rw->rc = 1;
    }
 }
 
@@ -165,28 +183,30 @@ void rwlock_wp_exlock(struct rwlock_wp *rw)
 static void rwlock_wp_exunlock_int(struct rwlock_wp *rw)
 {
    ASSERT(rw->ex_owner == get_curr_task());
+   ASSERT(rw->wq >= 1);
 
    if (rw->rec) {
-
-      /* recursive locking count */
-      ASSERT(rw->rec > 0);
-      ASSERT(rw->w);
+      ASSERT(rw->rc > 0);
       rw->rc--;
-
       if (rw->rc > 0)
          return;
    }
 
    rw->ex_owner = NULL;
+   rw->wq--;
 
-   /* The `w` flag must be set */
-   ASSERT(rw->w);
-
-   /* Unset the `w` flag (no more writers) */
-   rw->w = false;
-
-   /* Signal all the readers potentially waiting on the condition */
-   kcond_signal_all(&rw->c);
+   /*
+    * Hand-off rule: while writers are still in the queue, wake
+    * exactly one of them -- they get the lock next, ahead of any
+    * reader. Only when the writer queue is fully drained do we
+    * wake the (potentially many) readers blocked on readers_cv.
+    * This keeps "write-preferring" a property of this code, not
+    * of the scheduler.
+    */
+   if (rw->wq > 0)
+      kcond_signal_one(&rw->writers_cv);
+   else
+      kcond_signal_all(&rw->readers_cv);
 }
 
 void rwlock_wp_exunlock(struct rwlock_wp *rw)

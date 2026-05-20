@@ -45,7 +45,7 @@ struct ringbuf_stat {
          u32 unused0               :  1;
       };
 
-      ATOMIC(u32) raw;
+      atomic_u32_t raw;
       u32 __raw;
    };
 };
@@ -56,7 +56,7 @@ struct ringbuf_stat {
    static char printk_rbuf[8 * KB];
 #endif
 
-static volatile struct ringbuf_stat printk_rbuf_stat =
+static struct ringbuf_stat printk_rbuf_stat =
 {
    .newline = 1
 };
@@ -232,10 +232,8 @@ __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
          /* Repeat that until we were able to do that atomically */
 
       } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                                &cs.__raw,
-                                ns.__raw,
-                                mo_relaxed,
-                                mo_relaxed));
+                                    &cs.__raw,
+                                    ns.__raw));
 
       /* Note: we checked that `first_printk` in `cs` was unset! */
       if (!to_read)
@@ -289,10 +287,8 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
          ns.full = 1;
 
    } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                             &cs.__raw,
-                             ns.__raw,
-                             mo_relaxed,
-                             mo_relaxed));
+                                 &cs.__raw,
+                                 ns.__raw));
 
    // Now we have some allocated space in the ringbuf
 
@@ -314,10 +310,8 @@ try_set_first_printk_on_stack(bool newline)
       ns.first_printk = 1;
       ns.newline = newline;
    } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                             &cs.__raw,
-                             ns.__raw,
-                             mo_relaxed,
-                             mo_relaxed));
+                                 &cs.__raw,
+                                 ns.__raw));
 
    return cs;
 }
@@ -332,10 +326,8 @@ restore_first_printk_value(void)
       ns = printk_rbuf_stat;
       ns.first_printk = 0;
    } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                             &cs.__raw,
-                             ns.__raw,
-                             mo_relaxed,
-                             mo_relaxed));
+                                 &cs.__raw,
+                                 ns.__raw));
 }
 
 STATIC int

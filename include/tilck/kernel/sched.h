@@ -20,7 +20,19 @@ enum task_state {
    TASK_STATE_RUNNABLE  = 1,
    TASK_STATE_RUNNING   = 2,
    TASK_STATE_SLEEPING  = 3,
-   TASK_STATE_ZOMBIE    = 4
+   TASK_STATE_ZOMBIE    = 4,
+
+   /*
+    * STOPPED is a real scheduler state: the task is not in the
+    * runnable tree and won't be picked until SIGCONT brings it
+    * back to RUNNABLE. See action_stop()/action_continue() in
+    * kernel/signal.c. A SIGSTOP delivered while the task is SLEEPING
+    * doesn't change state immediately — it sets ti->stop_pending and
+    * the wake-up path (wake_up() in kernel/wobj.c, tick_all_timers()
+    * in kernel/timer.c) redirects the eventual SLEEPING -> RUNNABLE
+    * transition into SLEEPING -> STOPPED.
+    */
+   TASK_STATE_STOPPED   = 5,
 };
 
 enum wakeup_reason {
@@ -38,10 +50,41 @@ struct misc_buf {
 
 struct sched_ticks {
 
-   u32 timeslice;       /* ticks counter for the current time slice */
+   /*
+    * EEVDF per-quantum pair (subticks). slice_used is the consumed
+    * counter, incremented per tick by sched_account_ticks(). slice
+    * is the budget, frozen for the quantum at sched_start_quantum().
+    * Quantum ends when slice_used >= slice.
+    *
+    * Equal slice for every task today (SCHED_LATENCY / N clamped at
+    * MIN_GRAN); general EEVDF allows per-task slice_i. See
+    * docs/scheduler.md.
+    */
+   u32 slice_used;
+   u32 slice;
    u64 total;           /* total life-time ticks */
    u64 total_kernel;    /* total life-time ticks spent in kernel */
-   u64 vruntime;        /* a brutal approx. of Linux's vruntime */
+
+   /*
+    * A brutal approx. of Linux's vruntime. atomic because the
+    * writer (sched_account_ticks) runs in timer-IRQ context while
+    * the reader (sched_do_select_runnable_task) runs with
+    * preemption disabled but interrupts NOT masked -- a torn 64-
+    * bit load on i386 would otherwise be observable. The atomic
+    * wrapper provides indivisibility + the volatile cast.
+    */
+   atomic_u64_t vruntime;
+
+   /*
+    * EEVDF virtual deadline: vruntime + slice. Recomputed on every
+    * RUNNABLE-entry (fork, wake, preemption) and at quantum start.
+    * Atomic for the same IRQ/reader race as vruntime above.
+    *
+    * Equal-weight collapse: in general EEVDF deadline = vruntime +
+    * slice/weight; with w=1 everywhere it reduces to the form
+    * above. See docs/scheduler.md.
+    */
+   atomic_u64_t deadline;
 };
 
 STATIC_ASSERT(sizeof(enum sig_state) == 1);
@@ -66,10 +109,37 @@ struct task {
 
    u32 running_in_kernel;
    bool is_main_thread;                      /* value of `tid == pi->pid` */
-   bool stopped;
-   bool was_stopped;
 
-   volatile ATOMIC(enum task_state) state;   /* see docs/atomics.md */
+   /*
+    * "SIGSTOP pending on a sleeping task" — narrow stop-on-wake
+    * marker. action_stop() sets it only when state == SLEEPING; the
+    * wake paths (wake_up in kernel/wobj.c, tick_all_timers in
+    * kernel/timer.c) read it to route the SLEEPING -> RUNNABLE
+    * transition to SLEEPING -> STOPPED instead, and clear it.
+    * Invariant: stop_pending => state == SLEEPING. For
+    * RUNNING/RUNNABLE tasks the stop is applied directly via
+    * task_change_state(ti, TASK_STATE_STOPPED).
+    */
+   bool stop_pending;
+
+   /*
+    * "The most recent stop/continue transition has been reported
+    * to the parent's waitpid()." Used only by
+    * waitpid.c:get_task_if_changed to de-duplicate WUNTRACED /
+    * WCONTINUED reports so a parent looping on waitpid() doesn't
+    * receive the same stop event repeatedly. Toggled by waitpid
+    * itself, not by the signal-delivery paths.
+    */
+   bool stop_reported;
+
+   /*
+    * Updated from interrupt context (see wth.c) and from regular
+    * code, so the load/store must be indivisible. Stored as int
+    * (enum task_state's underlying type); the wrapper API handles
+    * atomicity + the no-fold-no-hoist volatile cast in one place.
+    * See docs/atomics.md.
+    */
+   atomic_int_t state;
 
    regs_t *state_regs;
    regs_t *fault_resume_regs;
@@ -77,7 +147,7 @@ struct task {
    void *worker_thread;                      /* only for worker threads */
 
    struct bintree_node tree_by_tid_node;
-   struct list_node runnable_node;
+   struct bintree_node runnable_tree_node;
    struct list_node wakeup_timer_node;
    struct list_node siblings_node;    /* nodes in parent's pi's children list */
 
@@ -141,8 +211,26 @@ extern struct task *kernel_process;
 extern struct process *kernel_process_pi;
 extern struct task *idle_task;
 
-extern struct list runnable_tasks_list;
-extern const char *const task_state_str[5];
+extern struct task *runnable_tree_root;
+extern const char *const task_state_str[6];
+
+/*
+ * "Is this task semantically stopped from the user POV?"
+ *
+ * Returns true for either an explicitly STOPPED task or a task
+ * still SLEEPING with a SIGSTOP pending (the actual SLEEPING ->
+ * STOPPED transition happens at the next wake — see
+ * kernel/wobj.c and kernel/timer.c). Used by waitpid() and the
+ * debugpanel task dump where the user-facing notion of "stopped"
+ * should include both flavors.
+ */
+static ALWAYS_INLINE bool is_task_stopped(struct task *ti)
+{
+   const enum task_state s = (enum task_state) atomic_load(&ti->state);
+
+   return s == TASK_STATE_STOPPED
+      || (s == TASK_STATE_SLEEPING && ti->stop_pending);
+}
 
 #define KTH_ALLOC_BUFS                       (1 << 0)
 #define KTH_WORKER_THREAD                    (1 << 1)
@@ -158,36 +246,39 @@ struct process *get_process(int pid);
 void task_change_state(struct task *ti, enum task_state new_state);
 void task_change_state_unsafe(struct task *ti, enum task_state new_state);
 void task_change_state_idempotent(struct task *ti, enum task_state new_state);
+void wake_vruntime_handoff(struct task *ti);
+void fork_vruntime_handoff(struct task *ti);
+void sched_start_quantum(struct task *ti);
 bool save_regs_and_schedule(bool skip_disable_preempt);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {
-   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&__need_resched, 1, mo_relaxed);
+   extern atomic_int_t __need_resched; /* see docs/atomics.md */
+   atomic_store(&__need_resched, 1);
 }
 
 static ALWAYS_INLINE void sched_clear_need_resched(void)
 {
-   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&__need_resched, 0, mo_relaxed);
+   extern atomic_int_t __need_resched; /* see docs/atomics.md */
+   atomic_store(&__need_resched, 0);
 }
 
 static ALWAYS_INLINE bool need_reschedule(void)
 {
-   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
-   return (bool) atomic_load_explicit(&__need_resched, mo_relaxed);
+   extern atomic_int_t __need_resched; /* see docs/atomics.md */
+   return (bool) atomic_load(&__need_resched);
 }
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   atomic_fetch_add_explicit(&__disable_preempt, 1, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   atomic_fetch_add(&__disable_preempt, 1);
 }
 
 static ALWAYS_INLINE void enable_preemption_nosched(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   atomic_fetch_sub_explicit(&__disable_preempt, 1, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   atomic_fetch_sub(&__disable_preempt, 1);
 }
 
 void enable_preemption(void);
@@ -198,14 +289,14 @@ void enable_preemption(void);
  */
 static ALWAYS_INLINE void force_enable_preemption(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   atomic_store_explicit(&__disable_preempt, 0, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   atomic_store(&__disable_preempt, 0);
 }
 
 static ALWAYS_INLINE int get_preempt_disable_count(void)
 {
-   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
-   return atomic_load_explicit(&__disable_preempt, mo_relaxed);
+   extern atomic_int_t __disable_preempt; /* see docs/atomics.md */
+   return atomic_load(&__disable_preempt);
 }
 
 static ALWAYS_INLINE bool is_preemption_enabled(void)
@@ -313,17 +404,7 @@ static ALWAYS_INLINE struct task *get_curr_task(void)
 static ALWAYS_INLINE enum task_state
 get_curr_task_state(void)
 {
-   STATIC_ASSERT(sizeof(get_curr_task()->state) == 4);
-
-   /*
-    * Casting `state` to u32 and back to `enum task_state` to avoid compiler
-    * errors in some weird configurations.
-    */
-
-   return (enum task_state) atomic_load_explicit(
-      (ATOMIC(u32)*)&get_curr_task()->state,
-      mo_relaxed
-   );
+   return (enum task_state) atomic_load(&get_curr_task()->state);
 }
 
 #if DEBUG_CHECKS
