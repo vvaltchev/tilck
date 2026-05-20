@@ -19,6 +19,17 @@ from . import void_arglist
 from . import no_trailing_enum_comma
 from . import one_stmt_per_line
 
+# M2c -- control flow + brace placement
+from . import else_same_line_as_brace
+from . import fn_body_brace_own_line
+
+# goto_label_flush_left was prototyped but NOT registered: the "flush
+# left" rule applies only to function-scope cleanup labels (kernel/
+# fork.c:175-177 style), not to labels nested in deeper block scopes
+# (userapps/devshell/devshell.c:286 has an indented label inside a
+# while loop). Distinguishing the two requires tracking scope depth.
+# Re-enable in v2 with proper scope analysis.
+
 # `null_check_no_null` (if (ptr != NULL) -> if (ptr)) is intentionally
 # NOT registered: corpus inspection shows ASSERT(ptr != NULL),
 # LIKELY(ptr != NULL), and plain if (ptr != NULL) are all used by
@@ -41,6 +52,8 @@ ALL_RULES = [
    void_arglist.RULE,
    no_trailing_enum_comma.RULE,
    one_stmt_per_line.RULE,
+   else_same_line_as_brace.RULE,
+   fn_body_brace_own_line.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

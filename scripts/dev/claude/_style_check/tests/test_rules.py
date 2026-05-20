@@ -170,6 +170,22 @@ class TestRulesOnFixtures(unittest.TestCase):
       )
       self.assertEqual(len(diags), 1)
 
+   def test_bad_else_same_line_as_brace(self):
+
+      r = RULES_BY_ID['else_same_line_as_brace']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_else_same_line_as_brace.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+
+   def test_bad_fn_body_brace_own_line(self):
+
+      r = RULES_BY_ID['fn_body_brace_own_line']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_fn_body_brace_own_line.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+
 
 class TestRulesOnGoldenFiles(unittest.TestCase):
    """Canonical files in the kernel must report zero diagnostics. Files
