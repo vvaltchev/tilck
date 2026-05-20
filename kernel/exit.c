@@ -214,8 +214,9 @@ void terminate_process(int exit_code, int term_sig)
    struct process *const pi = ti->pi;
    struct task *parent;
    const bool vforked = pi->vforked;
+   DEBUG_ONLY(enum task_state state = atomic_load(&ti->state));
 
-   ASSERT(atomic_load(&ti->state) != TASK_STATE_ZOMBIE);
+   ASSERT(state != TASK_STATE_ZOMBIE);
    ASSERT(!is_kernel_thread(ti));
    ASSERT(is_preemption_enabled());
 
@@ -241,7 +242,7 @@ void terminate_process(int exit_code, int term_sig)
    task_cancel_wakeup_timer(ti);
 
    /* Here we can either be RUNNABLE (if ti->wobj was set) or RUNNING */
-   ASSERT(atomic_load(&ti->state) == TASK_STATE_RUNNING || atomic_load(&ti->state) == TASK_STATE_RUNNABLE);
+   ASSERT(state == TASK_STATE_RUNNING || state == TASK_STATE_RUNNABLE);
 
    /* Drop the any pending signals and prevent new from being enqueued */
    drop_all_pending_signals(ti);

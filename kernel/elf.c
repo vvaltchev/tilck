@@ -443,7 +443,9 @@ load_elf_program(const char *filepath,
       MMAP_NO_COW ? KRN_USER_STACK_PAGES : USER_ARGS_PAGE_COUNT;
 
    const size_t zero_mapped_pages = KRN_USER_STACK_PAGES - pre_allocated_pages;
-   const ulong stack_top = (USERMODE_VADDR_END - KRN_USER_STACK_PAGES * PAGE_SIZE);
+
+   const ulong stack_top =
+      (USERMODE_VADDR_END - KRN_USER_STACK_PAGES * PAGE_SIZE);
 
    count = map_zero_pages(pinfo->pdir,
                           (void *)stack_top,
