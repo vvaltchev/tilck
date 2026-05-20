@@ -23,6 +23,18 @@ from . import one_stmt_per_line
 from . import else_same_line_as_brace
 from . import fn_body_brace_own_line
 
+from . import multiline_call_style
+
+# `non_const_locals_top_of_block` was prototyped but NOT registered:
+# CLAUDE.md claims this is a hard rule ("declare at top of enclosing
+# block"), but the corpus regularly uses C99 mixed-declaration style:
+# kernel/signal.c:21-33 (`int slot = ...` after ASSERT and `signum--`),
+# kernel/poll.c:21 (`fs_handle h = ...` mid-loop-body). Other
+# canonical files (kernel/fork.c:62-67) do use C89 top-of-function
+# style. Both forms are accepted in practice -- the rule isn't a hard
+# binary check. Defer until we can distinguish "intentional mid-block
+# C99 style" from "drift".
+
 # goto_label_flush_left was prototyped but NOT registered: the "flush
 # left" rule applies only to function-scope cleanup labels (kernel/
 # fork.c:175-177 style), not to labels nested in deeper block scopes
@@ -54,6 +66,7 @@ ALL_RULES = [
    one_stmt_per_line.RULE,
    else_same_line_as_brace.RULE,
    fn_body_brace_own_line.RULE,
+   multiline_call_style.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

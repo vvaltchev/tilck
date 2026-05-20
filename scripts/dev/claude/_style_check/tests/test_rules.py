@@ -186,6 +186,15 @@ class TestRulesOnFixtures(unittest.TestCase):
       )
       self.assertEqual(len(diags), 1)
 
+   def test_bad_multiline_call_style(self):
+
+      r = RULES_BY_ID['multiline_call_style']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_multiline_call_style.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'multiline_call_style')
+
 
 class TestRulesOnGoldenFiles(unittest.TestCase):
    """Canonical files in the kernel must report zero diagnostics. Files
