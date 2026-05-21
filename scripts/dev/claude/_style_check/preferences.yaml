@@ -1294,6 +1294,68 @@ questions:
          Going forward, only ask cosmetic/formatting questions.
     weight: 0.5
 
+  - id: q20-define-backslash-placement
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      Backslash placement for line-continuation in a multi-line
+      function-like macro. Three placements: aligned to longest
+      body line, immediately after content, all at column 80.
+    snippets:
+      - label: "1"
+        desc: Backslashes aligned to longest body line + small pad
+        code: |
+          #define INIT_STATE(s)                  \
+             do {                                \
+                (s)->count = 0;                  \
+                (s)->head = NULL;                \
+                atomic_store(&(s)->ready, true); \
+             } while (0)
+      - label: "2"
+        desc: Backslashes immediately after content (one space)
+        code: |
+          #define INIT_STATE(s) \
+             do { \
+                (s)->count = 0; \
+                (s)->head = NULL; \
+                atomic_store(&(s)->ready, true); \
+             } while (0)
+      - label: "3"
+        desc: Backslashes all at column 80
+        code: |
+          #define INIT_STATE(s)                                                          \
+             do {                                                                        \
+                (s)->count = 0;                                                          \
+                (s)->head = NULL;                                                        \
+                atomic_store(&(s)->ready, true);                                         \
+             } while (0)
+    guess: ["1", "3", "2"]
+    ranking: ["3", "1", "2"]
+    comment: V2 is forbidden -- too ugly.
+    notes: >
+      Claude's guess [1, 3, 2] was wrong on V1 vs V3. The user's
+      actual preference is column-80 backslashes (V3) for visual
+      consistency across all macros in the project, regardless
+      of body width. V1 (body-aligned) is an acceptable fallback
+      but V3 is the canonical.
+
+      V2 (one space after content) is a HARD RULE violation.
+
+      Correction to earlier model: Agent A's original summary
+      ("`\` always at column 80") was right; I had distrusted
+      the rule-text in favor of the cited example
+      (STATIC_KSEM_INIT with backslashes at ~col 48). The
+      example was drift. When the rule-text and cited example
+      disagree, trust the rule-text -- the example may be drift.
+
+      Linter implication: detect multi-line #define directives,
+      check whether all backslashes within the same macro are at
+      the same column AND that column is at or near 80 (some
+      tolerance). The body-aligned form V1 is acceptable as a
+      lower-scored alternative; V2 (per-line varying positions)
+      is a hard violation.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

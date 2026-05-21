@@ -359,6 +359,46 @@ become preferable to keep the referent clear at distance.
 
 ## Concrete formatting rules surfaced
 
+### Multi-line `#define` continuation backslashes go at column 80
+
+Source: Q20 (2026-05-20).
+
+For a function-like macro whose body spans multiple lines, the
+`\` line-continuation characters MUST all sit at column 80 (or
+just within it). This gives visual consistency across every
+macro in the project, regardless of body width.
+
+```c
+#define INIT_STATE(s)                                                          \
+   do {                                                                        \
+      (s)->count = 0;                                                          \
+      (s)->head = NULL;                                                        \
+      atomic_store(&(s)->ready, true);                                         \
+   } while (0)
+```
+
+An acceptable fallback (lower-scored): backslashes aligned to
+the longest body line + small padding (the "body-aligned"
+form). The corpus has examples of both -- the body-aligned form
+appears in `include/tilck/kernel/sync.h:159-164`
+(`STATIC_KSEM_INIT`) -- but the user has confirmed that's drift,
+not the canonical.
+
+**Forbidden** (hard rule): backslashes placed immediately after
+each content line with a single space. This produces
+inconsistent backslash columns within a single macro and is
+rejected.
+
+**Linter implication:** detect multi-line `#define` directives;
+extract the column of each `\` continuation. Verify:
+
+  - All backslashes within the same macro at the same column.
+  - That column equal to 80 (preferred) or within a tolerance
+    of the longest body line + a few spaces (fallback,
+    lower-scored).
+
+Per-line varying backslash positions is a hard violation.
+
 ### Blank lines inside function bodies
 
 Source: Q18 (2026-05-20).
