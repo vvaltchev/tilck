@@ -78,3 +78,28 @@ accumulates against the function's local budget, and (ii) a
 name is short/generic (a tunable feature, hard to evaluate
 mechanically -- start with: penalty rises sharply for names <= 5
 chars).
+
+### const is monotonically valuable; no consistency penalty
+
+Source: Q3 (2026-05-20).
+
+Adding `const` to a declaration where it is correct is a *gain*;
+missing it is a *loss*. There is NO penalty for applying const to
+some declarations but not others within the same block -- partial
+const strictly beats no const. The "consistency" intuition (that
+mixed const usage looks half-committed) is wrong.
+
+The previously-recorded "visual weight" exception still applies:
+when the type spelling is heavy enough (e.g. `enum task_state`,
+~15+ chars), const tips the decl from "annotated" to "noisy" and
+can be skipped. But this is a per-decl judgment based on TYPE
+length, not a function-wide consistency consideration. The
+threshold is somewhere between short scalars (`int`, `bool`,
+`u32`) where const is free, and long enums/multi-word types where
+const adds noise.
+
+**Linter implication:** per-decl, a missing const where it COULD be
+applied adds a small negative coefficient. The penalty is
+type-length-conditional: zero (or near-zero) below some character
+threshold, larger above. This is additive across decls, not
+modulated by within-block consistency.

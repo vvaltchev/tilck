@@ -125,3 +125,41 @@ questions:
       original semantic shape is preserved while the wrapping
       disappears.
     weight: 1.0
+
+  - id: q3-decl-const-short-types
+    topic: declarations
+    date: 2026-05-20
+    prompt: >
+      Function preamble with two read-only locals -- one struct
+      pointer (not reassigned, fields mutated through it) and one int
+      (read but never reassigned). Types are short; no visual-weight
+      argument either way.
+    snippets:
+      - label: "1"
+        desc: const where applicable, on both
+        code: |
+          struct task *const ti = get_curr_task();
+          const int prio = ti->priority;
+      - label: "2"
+        desc: const on the pointer only (*const), not on the int
+        code: |
+          struct task *const ti = get_curr_task();
+          int prio = ti->priority;
+      - label: "3"
+        desc: no const anywhere
+        code: |
+          struct task *ti = get_curr_task();
+          int prio = ti->priority;
+    guess: ["1", "3", "2"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      Claude got V1 right (top) but had V2 last, ranked V3 above V2.
+      I read "const on pointer but not on int" as an inconsistency
+      penalty -- the user doesn't see it that way. Const is
+      monotonically valuable: adding it where correct is a gain,
+      missing it is a loss, partial-const is strictly better than
+      no-const. There's no symmetry/consistency penalty for partial
+      application. The visual-weight exception only fires at higher
+      type-spelling thresholds (e.g. `enum task_state`).
+    weight: 1.0
