@@ -1396,6 +1396,70 @@ questions:
       whitespace AFTER. Any other shape is a violation.
     weight: 1.5
 
+  - id: q22-cast-spacing
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Spacing around a pointer cast: inside the cast, after the
+      closing paren. Three forms compared.
+    snippets:
+      - label: "1"
+        desc: Space inside (`Type *`) AND space after `)`
+        code: |
+          char *p = (char *) ptr;
+      - label: "2"
+        desc: Space inside (`Type *`), no space after `)`
+        code: |
+          char *p = (char *)ptr;
+      - label: "3"
+        desc: No space inside (`Type*`), space after `)`
+        code: |
+          char *p = (char*) ptr;
+    guess: ["1", "2", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      V3 is forbidden -- asymmetric: removes space inside cast but
+      keeps space after `)`. Wrong shape.
+
+      Compact form `(char*)ptr` (no spaces anywhere) is
+      conditionally acceptable, but ONLY when needed to keep an
+      81-col statement at 80 cols, AND only with symmetric
+      application across the whole expression.
+    notes: >
+      Major model corrections:
+
+      1. V2 (no space after cast `)`) is the preferred default,
+         not V1. Agent B's corpus citation
+         (kernel/elf.c:52: `(char *) expr`) was either drift or
+         the agent misread; the user's actual default is no
+         space after `)`.
+
+      2. NEW CROSS-CUTTING RULE: compact-form-for-line-fit.
+         When a statement is just over 80 cols (~81 cols), all
+         default-space rules can be tightened uniformly:
+
+           - Cast:     (char*)ptr        (drop space inside + outside)
+           - Args:     foo(1,2,3)        (drop spaces after commas)
+           - Operators: foo(1+2)         (drop spaces around binary ops)
+
+         Symmetry rule when applying compact form: tighten
+         EVERYTHING in the expression, never mix forms. The
+         user's example of what NOT to do:
+         `call(foo(1,2,3), bar(1, 2, 3))` -- mixed forms are
+         uglier than either pure form.
+
+      3. META-RULE: "If unsure, break the line." Compact form is
+         a last-resort hack. The user prefers wrapping over
+         space-omission in many cases.
+
+      4. V3 here (no space inside cast, space after `)`) is the
+         asymmetric form -- forbidden by the symmetry rule.
+         It removes space inside without removing the outside
+         space, half-applying the compactness.
+
+      Cross-cutting rules added to preferences-notes.md.
+    weight: 2.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
