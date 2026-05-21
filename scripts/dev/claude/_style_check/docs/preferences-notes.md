@@ -64,6 +64,79 @@ not flag them (good). When the rule fires on H4c-style violations,
 the suggested alternative should be the HIGHEST-fitting form (H1 if
 possible, else H2, etc.) -- not just "use Style 2 strict."
 
+## Choice-of-form dimensions
+
+### Macro vs inline: type-genericity and compiler-inlining
+
+Source: Q16 (2026-05-20).
+
+The default preference for small reusable computations is:
+**V2 (static inline) > V1 (macro) > V3 (regular fn)** for a
+single-type expression. Two dimensions shift the ranking:
+
+**Dimension 1 -- type genericity.** C has no templates. If the
+same expression must work across N integer types, an inline
+function must be either duplicated N times or wrapped in a
+`_Generic` / X-macro dispatch layer (e.g. the
+`atomic_load`/`atomic_store` setup in
+`include/tilck/common/atomics.h`).
+
+  - N = 1: V2 dominates (type safety, zero macro pitfalls).
+  - N = 2: V1 ~= V2 (V2 with two inline impls is close to V1).
+  - N >= 3: V1 dominates (a single generic macro beats N
+    duplicates or a dispatch layer's complexity).
+
+**Dimension 2 -- compiler-inlining failure.** When `-O3` does
+NOT inline a `static inline` function despite the keyword
+(observed in terminal code), the runtime cost becomes real.
+V1 is then the forced choice. The user accepts this AS LONG AS
+the deviation is documented:
+
+  - Add a comment at the macro definition explaining why the
+    function form was tried and abandoned.
+  - The macro is a documented exception, not a default.
+
+**Linter implication:** when v2 sees a macro definition,
+ranking depends on:
+  - how many types it must support (count distinct types in
+    expansion-site usage, hard to compute mechanically; rough
+    proxy: look for type casts in the macro body or count
+    distinct integer types in callers),
+  - whether the macro has a comment near its definition that
+    looks like a "why this is a macro" justification.
+
+Without both signals, default to a soft penalty: "consider
+static inline instead of this macro." With either signal
+present, the penalty should drop or vanish.
+
+### Documenting pragmatic exceptions
+
+Source: Q16 (2026-05-20) -- generalized.
+
+When code intentionally violates the user's stated default style
+preference for pragmatic reasons (compiler limitations, hardware
+quirks, ABI requirements, perf-critical hot paths), the deviation
+MUST be accompanied by a comment that explains:
+
+  - WHAT the default preference would have been.
+  - WHY the deviation is needed in this specific case.
+
+Examples observed:
+  - Q16: macro instead of inline because `-O3` didn't inline.
+  - Q11: `DEBUG_ONLY()` wrap accepted as necessary evil over
+    cleaner `if (DEBUG_CHECKS)` -- documented in CLAUDE.md.
+
+This is a meta-rule: it doesn't tell the linter what to
+enforce in code shape, but it tells the linter NOT to flag a
+deviation as drift when an explanatory comment is present
+within ~5 lines.
+
+**Linter implication:** when a hard-rule violation is detected,
+scan a small window above the violation for a comment. If a
+"why this exception" comment is present, downgrade the
+violation to a soft warning (or suppress entirely). Without
+the comment, treat as drift.
+
 ## Higher-order alternatives
 
 ### Init-with-default + conditional override

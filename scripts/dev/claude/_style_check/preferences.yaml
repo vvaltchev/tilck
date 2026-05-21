@@ -977,6 +977,78 @@ questions:
       function extraction before nesting gets deep.
     weight: 2.0
 
+  - id: q16-macro-vs-inline
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      A small reusable computation (align-up to a power of 2)
+      used in ~10 places across the kernel. Three implementations:
+      function-like macro, static inline in a header, regular
+      non-inline function.
+    snippets:
+      - label: "1"
+        desc: Function-like macro
+        code: |
+          #define ALIGN_UP(n, a)   (((n) + (a) - 1) & ~((a) - 1))
+      - label: "2"
+        desc: static inline function in a header
+        code: |
+          static inline ulong
+          align_up(ulong n, ulong a)
+          {
+             return (n + a - 1) & ~(a - 1);
+          }
+      - label: "3"
+        desc: Regular non-inline function with header declaration
+        code: |
+          /* header */
+          ulong align_up(ulong n, ulong a);
+
+          /* implementation in .c */
+          ulong
+          align_up(ulong n, ulong a)
+          {
+             return (n + a - 1) & ~(a - 1);
+          }
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      Default ranking for a single-type small expression. Two
+      qualifications:
+
+      Type-genericity: when the operation must work across N
+      integer types, the calculus shifts. At 2 types, V1 ~= V2
+      (V2 requires two inline impls or a dispatch layer). At 3+
+      types, V1 wins outright -- macros are the most generic
+      form.
+
+      Compiler-inlining failure: in some cases -O3 doesn't
+      actually inline `static inline` functions (the user has
+      seen this in terminal code). When that happens, V1 is
+      forced. Document the pragmatic exception with a comment.
+    notes: >
+      EXACT MATCH on the default ranking. The valuable info is in
+      the qualifications.
+
+      Two model extensions surfaced:
+
+      1. Type-genericity dimension: C lacks templates, so multi-
+         type small operations don't fit V2 cleanly. Either
+         duplicate V2 per type, build a dispatch layer
+         (atomic_load/store style via _Generic or X-macros), or
+         use a macro. Threshold: 2 types ~= 50/50; 3+ types V1
+         dominates.
+
+      2. Compiler-inlining-failure escape: when `-O3` doesn't
+         actually inline the inline function (real example:
+         terminal code), the user falls back to V1 with a
+         comment explaining the why. This generalizes to a
+         broader rule: when going against the stated default
+         preference for pragmatic reasons, DOCUMENT the why in
+         a comment so the next reader (or v2 linter) knows it
+         is an intentional exception, not drift.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
