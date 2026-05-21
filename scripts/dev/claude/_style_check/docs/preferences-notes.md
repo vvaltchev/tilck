@@ -359,6 +359,65 @@ become preferable to keep the referent clear at distance.
 
 ## Concrete formatting rules surfaced
 
+### Compact-form-for-line-fit (with symmetry requirement)
+
+Source: Q22 (2026-05-20).
+
+A cross-cutting space-omission rule. The default spacing rules
+in this codebase are:
+
+  - **Cast:** `(Type *)expr` -- space inside (between Type and
+    `*`), NO space after the closing `)`.
+  - **Argument lists:** `foo(a, b, c)` -- space after each comma.
+  - **Binary operators:** `a + b` -- space around the operator.
+
+When a statement is *just* over 80 cols (~81 cols) AND wrapping
+would make the code uglier, these spacing rules MAY be tightened
+*uniformly* across the whole expression to fit on one line:
+
+  - Cast: `(Type*)expr` -- drop space inside AND after `)`.
+  - Argument lists: `foo(a,b,c)` -- drop comma-after spaces.
+  - Binary operators: `a+b` -- drop spaces around operator.
+
+**Symmetry rule (hard):** if you tighten, you tighten the *whole*
+expression. Mixing forms is forbidden:
+
+```c
+call(foo(1,2,3), bar(1, 2, 3))   /* FORBIDDEN: asymmetric */
+```
+
+The mixed form is uglier than either pure form would have been.
+
+**Meta-rule -- compact form is a last resort.** The user prefers
+to break the line and accept the wrap over deploying the compact
+hack. Compact form should only appear when:
+
+  - The wrap would be aesthetically worse than the compact line,
+    AND
+  - The single-line form fits in 80 cols after compaction,
+    AND
+  - All spaces in the expression can be tightened symmetrically.
+
+When in doubt, wrap.
+
+**Forbidden -- asymmetric "compact" forms.** A cast like
+`(Type*) expr` (compact inside, normal outside) is forbidden.
+It's the half-applied compact form, which has the worst of both
+worlds: visually compact inside the cast, visually expanded
+around it.
+
+**Linter implication:** the rule has two faces.
+
+  - Default mode: detect violations of standard spacing (cast
+    no-space-after-`)`, args with spaces after commas, operators
+    with spaces around them).
+  - Compact mode: when the entire expression uses the compact
+    form symmetrically AND the line ends at or under 80 cols,
+    accept it as a "compact-form override" with a small
+    soft-penalty (compact-form is a hack, not the default). When
+    the same expression has mixed compact and default forms,
+    flag as a symmetry violation regardless of line length.
+
 ### Pointer `*` attached to the variable name (hard rule)
 
 Source: Q21 (2026-05-20).
