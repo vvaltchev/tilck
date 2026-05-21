@@ -1877,6 +1877,74 @@ questions:
       navigability.
     weight: 1.0
 
+  - id: q28-multi-statement-macro-wrap
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      Multi-statement function-like macro wrap form. Three
+      options: do/while(0), braces-only, comma expression.
+    snippets:
+      - label: "1"
+        desc: do { ... } while (0) wrap
+        code: |
+          #define SET_AND_BUMP(p, val)                                                   \
+             do {                                                                        \
+                *(p) = (val);                                                            \
+                (p)++;                                                                   \
+             } while (0)
+      - label: "2"
+        desc: Braces only (no do/while)
+        code: |
+          #define SET_AND_BUMP(p, val) {                                                 \
+             *(p) = (val);                                                               \
+             (p)++;                                                                      \
+          }
+      - label: "3"
+        desc: Comma expression (single-statement form)
+        code: |
+          #define SET_AND_BUMP(p, val) ((*(p) = (val)), (p)++)
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V1 is preferred -- "widespread and preferred in this
+      project." V2 and V3 should both be avoided, but for
+      different reasons:
+
+        V2: does NOT require `;` at the call site, so the macro
+        invocation looks unnatural versus normal statements.
+        The `while (0)` in V1 forces the `;` and keeps call
+        sites visually consistent.
+
+        V3: technically works but too subtle ("comma
+        expression"). Claude should NEVER generate V3 even
+        though existing V3 code is not rewritten as a rule
+        violation.
+    notes: >
+      Important new meta-rule: V3 (comma expression) is in the
+      "Claude shouldn't generate this" category -- distinct
+      from a linter rule. The user is explicit: "Not a hard
+      rule that should trigger a code rewrite if I used it,
+      but please don't generate code like that yourself."
+
+      Same shape as Q19's naming-out-of-scope rule: this is a
+      rule about what Claude DOES, not what the linter
+      ENFORCES. Recording as a separate "process-rules"
+      section in preferences-notes.md.
+
+      Why V1 specifically: the `while (0)` forces a `;` at the
+      call site, keeping macro invocations visually consistent
+      with regular statements. V2's brace-only form lets the
+      caller omit the `;`, producing call sites that look
+      inconsistent with other statements.
+
+      For the linter: detect V2-shape macros (multi-line
+      `#define` ending with `}` and not `} while (0)`), flag
+      as recommend-V1. Detect V3-shape macros (multi-statement
+      expression with `,` operator) -- soft suggestion only,
+      not a hard rule. Existing V3 stays; new V3 from Claude
+      is forbidden.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

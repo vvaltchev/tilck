@@ -64,6 +64,48 @@ not flag them (good). When the rule fires on H4c-style violations,
 the suggested alternative should be the HIGHEST-fitting form (H1 if
 possible, else H2, etc.) -- not just "use Style 2 strict."
 
+## Claude-process rules (distinct from linter rules)
+
+Source: emergent across Q14 (placement), Q16 (DEBUG_ONLY),
+Q19 (naming-content out of scope), Q28 (comma-expression
+macros).
+
+A category of rule that governs what CLAUDE DOES when
+generating new code, distinct from what the LINTER should
+flag in existing code. Existing code that violates a
+Claude-process rule is NOT rewritten as a violation; but
+Claude must not produce such code from scratch.
+
+Examples:
+
+  - **Don't generate comma-expression macros** (Q28). V3 of
+    Q28 (`#define X(p, v) ((*(p) = (v)), (p)++)`) is too
+    subtle. Existing instances are accepted; new Claude
+    output must not introduce them.
+
+  - **Don't enforce identifier-content choices** (Q19). The
+    tool should not penalize specific identifier-content
+    patterns (e.g. "prefer `is_X` over `X_is`"); semantic
+    naming decisions are out of scope.
+
+  - **Don't reach for `DEBUG_ONLY()` when `if (DEBUG_CHECKS)`
+    works** (CLAUDE.md). DEBUG_ONLY() is a necessary evil
+    when the debug-only code needs a declaration; otherwise
+    the `if (DEBUG_CHECKS) { ... }` form is preferred. This
+    is a process rule: existing DEBUG_ONLY() that COULD have
+    been an `if (DEBUG_CHECKS)` is not rewritten.
+
+  - **Place helpers in the right file, not at random**
+    (Q14). A semantic placement decision rather than a
+    syntactic one.
+
+**General principle:** when a rule depends on intent,
+semantics, or context that the linter cannot mechanically
+determine, it belongs in this process-rules category. The
+v2 linter should not try to enforce these. Claude's own
+behavior is the place these rules live, and they survive
+across sessions via memory entries and CLAUDE.md.
+
 ## v2 tool scope
 
 ### What the tool should and should not try to enforce
