@@ -688,6 +688,65 @@ questions:
       matches the locals-present condition.
     weight: 1.5
 
+  - id: q13-include-ordering
+    topic: file-org
+    date: 2026-05-20
+    prompt: >
+      `#include` ordering at the top of a kernel .c file with
+      headers from four subtrees (tilck_gen_headers, tilck/common,
+      tilck/kernel, tilck/mods). Three orderings compared.
+    snippets:
+      - label: "1"
+        desc: Grouped by subtree, blank lines between groups
+        code: |
+          #include <tilck_gen_headers/config_global.h>
+
+          #include <tilck/common/basic_defs.h>
+          #include <tilck/common/string_util.h>
+
+          #include <tilck/kernel/sync.h>
+          #include <tilck/kernel/process.h>
+          #include <tilck/kernel/sched.h>
+
+          #include <tilck/mods/console.h>
+      - label: "2"
+        desc: Single contiguous block, ordered by subtree, no blank lines
+        code: |
+          #include <tilck_gen_headers/config_global.h>
+          #include <tilck/common/basic_defs.h>
+          #include <tilck/common/string_util.h>
+          #include <tilck/kernel/sync.h>
+          #include <tilck/kernel/process.h>
+          #include <tilck/kernel/sched.h>
+          #include <tilck/mods/console.h>
+      - label: "3"
+        desc: Strict alphabetical, no semantic grouping
+        code: |
+          #include <tilck/common/basic_defs.h>
+          #include <tilck/common/string_util.h>
+          #include <tilck/kernel/process.h>
+          #include <tilck/kernel/sched.h>
+          #include <tilck/kernel/sync.h>
+          #include <tilck/mods/console.h>
+          #include <tilck_gen_headers/config_global.h>
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: V3 is forbidden -- hard rule.
+    notes: >
+      Claude got the order right [1, 2, 3] but missed that V3 is
+      not "least preferred" but a HARD RULE violation. The reason
+      is structural: alphabetical ordering forces
+      `tilck_gen_headers/config_global.h` to the LAST position,
+      whereas it must come FIRST -- it carries generated config
+      defines that other headers in the project depend on. V3
+      breaks two properties at once: required-first ordering for
+      gen_headers, and required-grouping by subtree.
+
+      The real V1 vs V2 soft choice is whether to insert blank
+      lines between subtree groups. V1 (with blanks) wins; V2
+      (single block) is acceptable.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

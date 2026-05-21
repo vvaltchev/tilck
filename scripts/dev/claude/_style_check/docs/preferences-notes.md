@@ -213,6 +213,34 @@ These are rules promoted from "soft preference" to "hard rule" by user
 feedback during the v2 ranked-preference loop. They should be enforced
 by `style_check`, not just penalized.
 
+### `#include` ordering: tilck_gen_headers first, then grouped by subtree
+
+Source: Q13 (2026-05-20).
+
+`#include` ordering at the top of a Tilck .c file has two structural
+constraints (hard rules) and one soft preference:
+
+  HARD: `tilck_gen_headers/...` MUST come first. It carries the
+  generated config defines that other headers in the project
+  depend on; putting it anywhere else breaks the build or
+  silently mis-resolves config.
+
+  HARD: includes MUST be grouped by subtree (gen_headers /
+  common / kernel / mods / 3rd_party / system). Strict
+  alphabetical ordering across subtrees is forbidden because it
+  inevitably violates the "gen_headers first" rule.
+
+  SOFT: insert a blank line between subtree groups (preferred)
+  vs single contiguous block (acceptable). The blank-line form
+  makes the grouping visually explicit.
+
+**Linter implication:** detect the `#include` block at file
+top. Verify the first directive is `<tilck_gen_headers/...>`
+and that the remaining directives are subtree-grouped (no
+group interleaving). Blank lines between groups are a soft
+preference -- penalty per missing separator, not a hard
+violation.
+
 ### Switch-case: case labels indented +3 from switch (no Linux-flush)
 
 Source: Q12 (2026-05-20).
