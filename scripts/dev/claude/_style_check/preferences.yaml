@@ -1627,6 +1627,108 @@ questions:
       self-identifying.
     weight: 1.5
 
+  - id: q25-multiline-if-operator-break
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Three-clause && condition that doesn't fit on one line.
+      Three layouts: break before operator, break after operator,
+      flatten to early returns.
+    snippets:
+      - label: "1"
+        desc: Break BEFORE the operator (operator at start of continuation)
+        code: |
+          if (cond_one
+              && cond_two
+              && cond_three)
+          {
+             do_work();
+          }
+      - label: "2"
+        desc: >
+          Break AFTER the operator (operator at end of previous
+          line). Q25's snippet had `&&` immediately after the
+          expression; the user clarified the operators must be
+          column-aligned at a position to the RIGHT of where the
+          final `)` lands. Fixed example shown.
+        code: |
+          if (cond_one   &&
+              cond_two   &&
+              cond_three)
+          {
+             do_work();
+          }
+      - label: "3"
+        desc: >
+          Flatten to early-return guards. Q25's snippet had no
+          blank line between successive returns; per Q18 there
+          must be one. Fixed example shown.
+        code: |
+          if (!cond_one)
+             return;
+
+          if (!cond_two)
+             return;
+
+          if (!cond_three)
+             return;
+
+          do_work();
+    guess: ["2", "1", "3"]
+    ranking: null
+    comment: >
+      V1 is forbidden -- hard rule (break before operator).
+
+      V2 and V3 are context-dependent in this simple example;
+      "equally OK" after fixing the formatting bugs. The choice
+      depends on:
+        - Body complexity: V3 doesn't work if the rest of the
+          function should still execute regardless.
+        - Condition type: errors prefer V3 (early return, keeps
+          positive path unindented). Non-error conditions
+          ("might happen") prefer V2.
+
+      User needs a more complex example to choose between V2/V3.
+    notes: >
+      Three corrections:
+
+      1. V1 (break before operator) is forbidden, not just
+         dispreferred. Hard rule.
+
+      2. The operator-alignment rule from Q10 has an additional
+         constraint: the column of the `&&` / `||` must be to
+         the RIGHT of the column where the final `)` of the
+         condition lands. Padding lines with extra spaces so
+         operators reach that column is the norm. My Q25 V2
+         snippet had the operators at the natural end-of-
+         expression position; that's wrong on its own merits
+         even before Q10's column-alignment kicks in.
+
+      3. Q18's "blank line after every non-final return" rule
+         was not applied to my V3 snippet. Each return must be
+         followed by a blank line (except the final return at
+         function end).
+
+      Context-rule for V2 vs V3 (when neither is structurally
+      forbidden):
+
+        Body complexity check:
+          - Function continues after the check regardless?
+            -> V2 (V3 can't apply; we want to skip a block,
+               not exit the function).
+          - Function exits on failure? -> V3 candidate.
+
+        If V3 candidate, condition-type check:
+          - Condition is an error -> V3 wins ("if error return"
+            keeps positive path unindented).
+          - Condition is something that might happen -> V2
+            likely wins.
+
+      For the linter: rule is fuzzy and needs context. Provide
+      both forms as alternatives with a context-conditional
+      scoring -- not a flat ranking.
+    weight: 2.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

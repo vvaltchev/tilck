@@ -600,6 +600,47 @@ identifiers are project free functions (heuristic: any function
 matching `*free*`, `kfree*`, or that takes one pointer arg and
 returns void -- with allowlist tuning).
 
+### Multi-line boolean condition: operator column past the closing `)`
+
+Source: Q25 clarification (2026-05-20). REFINES the Q10 rule.
+
+In a multi-line boolean condition for an `if` / `while` / `for`,
+the trailing operators (`&&`, `||`) must be column-aligned. The
+Q25 clarification adds that the alignment column must be **to
+the RIGHT of the column where the closing `)` of the condition
+lands** on the last line.
+
+```c
+if (cond_one   &&             /* && at, say, col 16             */
+    cond_two   &&             /* same col 16                    */
+    cond_three)               /* `)` at col 13 -- operators are */
+{                             /* past it                        */
+   ...
+}
+```
+
+If the natural end-of-expression position for the operator
+would put it AT OR BEFORE the closing-paren column, padding
+spaces are added on the operator lines so the operators reach
+the required column.
+
+This is a refinement of the "operators column-aligned" rule
+from Q10's footnote. The alignment column is not free -- it
+must be past the `)`.
+
+**Break-direction rule (hard).** Always break AFTER the
+operator (operator at end of previous line); never break
+BEFORE the operator. The "operator at start of continuation"
+form is forbidden.
+
+**Linter implication:**
+  - Detect multi-line conditions of `if` / `while` / `for`.
+  - Find the trailing operators on the wrapped lines.
+  - Verify they're all in the same column.
+  - Verify that column > the closing `)` column on the last
+    line.
+  - Also verify the break is after the operator (not before).
+
 ### Multi-line boolean operators (`||`, `&&`) are column-aligned
 
 Source: Q10 (2026-05-20), user-volunteered.
