@@ -747,6 +747,123 @@ questions:
       (single block) is acceptable.
     weight: 1.0
 
+  - id: q14-helper-placement
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      A small helper called by exactly one caller in the same .c
+      file. Where do you place the helper? Three options: above the
+      caller (no fwd decl), below the caller (with fwd decl at top),
+      or in a separate .c file with a header.
+    snippets:
+      - label: "1"
+        desc: Helper above the caller (no forward declaration)
+        code: |
+          static int
+          validate_request(struct req *r)
+          {
+             /* ... validate, return -EINVAL on bad ... */
+             return 0;
+          }
+
+          static int
+          process_request(struct req *r)
+          {
+             int rc = validate_request(r);
+             if (rc < 0)
+                return rc;
+
+             /* ... do the actual work ... */
+             return 0;
+          }
+      - label: "2"
+        desc: Caller above; helper below with forward declaration at top of file
+        code: |
+          /* forward declaration at top of file */
+          static int validate_request(struct req *r);
+
+          static int
+          process_request(struct req *r)
+          {
+             int rc = validate_request(r);
+             if (rc < 0)
+                return rc;
+             /* ... */
+             return 0;
+          }
+
+          static int
+          validate_request(struct req *r)
+          {
+             /* ... */
+             return 0;
+          }
+      - label: "3"
+        desc: Helper in a separate .c file with a header declaration
+        code: |
+          /* request_helpers.h */
+          int validate_request(struct req *r);
+
+          /* request_helpers.c */
+          int
+          validate_request(struct req *r)
+          {
+             /* ... */
+             return 0;
+          }
+
+          /* request_main.c */
+          #include "request_helpers.h"
+
+          static int
+          process_request(struct req *r)
+          {
+             int rc = validate_request(r);
+             /* ... */
+             return 0;
+          }
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V2 (helper below caller with forward decl) is allowed ONLY
+      when re-ordering cannot avoid the forward declaration (e.g.
+      mutual recursion). Placing a helper below its caller is
+      "very bad" when reordering would work.
+
+      V3 ranks last only because this example stipulated a single
+      caller and a genuinely private helper. If the helper were
+      part of a broader interface used by multiple callers, V3
+      would WIN -- "each function should be placed in the right
+      file, not at random."
+    notes: >
+      Got the flat ranking right but missed two structural layers:
+
+      1. V2 is a HARD RULE violation whenever reordering would
+         eliminate the forward declaration. Forward decls are
+         allowed only when unavoidable (mutual recursion, or some
+         genuine forcing function). Placing a helper below its
+         caller for no language-imposed reason is rejected.
+
+      2. V3 is context-dependent. For a TRULY private single-
+         caller helper, V3 is overkill -- artificial file split.
+         For a helper that conceptually belongs to a shared
+         interface, V3 WINS -- the helper should live in the
+         appropriate .c/.h pair, not as a local static.
+
+      The real decision is a placement tree, not a ranking:
+
+        Helper conceptually private to one caller?
+          YES -> V1 (above caller, same file).
+                 V2 forbidden if reordering avoids fwd decl.
+                 V3 wrong (artificial split).
+          NO (part of broader interface) -> V3 (right file).
+
+      The under-appreciated insight: WHERE a function lives is a
+      style decision, not just "wherever it happens to be needed."
+      I keep treating file/scope choices as mechanical when they
+      carry conceptual weight.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

@@ -213,6 +213,43 @@ These are rules promoted from "soft preference" to "hard rule" by user
 feedback during the v2 ranked-preference loop. They should be enforced
 by `style_check`, not just penalized.
 
+### Helper placement: above the caller, in the right file
+
+Source: Q14 (2026-05-20).
+
+Helper-function placement is two decisions stacked.
+
+**Decision 1 -- which file?** Each function should live in the file
+where it conceptually belongs:
+
+  - Truly private to a single caller, no broader interface ->
+    in the same .c as the caller (as `static`).
+  - Part of a broader interface used by multiple callers or
+    multiple files -> in the appropriate .c with a declaration
+    in the matching .h. "Each function should be placed in the
+    right file, not at random."
+
+Claude's bias: defaulting to "same file as the current caller" for
+all helpers. That's wrong when the helper has conceptual
+applicability beyond one site.
+
+**Decision 2 -- where in the file?** When a helper lives in the
+same .c as its caller, place it ABOVE the caller. Forward
+declarations to allow caller-above-helper layout are forbidden
+unless mutual recursion (or another language-imposed forcing
+function) makes the forward decl genuinely unavoidable.
+
+  - Helper above caller: preferred.
+  - Caller above helper with forward decl: HARD RULE violation
+    if reordering would work. "Placing a helper below its caller
+    is very bad."
+
+**Linter implication:** detect `static FUNC_DECL` forward
+declarations at the top of a file. For each, check whether the
+corresponding definition appears below ALL its callers. If yes
+AND the call graph has no mutual recursion involving this
+function, flag as a forward-decl-avoidance violation.
+
 ### `#include` ordering: tilck_gen_headers first, then grouped by subtree
 
 Source: Q13 (2026-05-20).
