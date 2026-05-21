@@ -439,3 +439,37 @@ questions:
       AND avoids over-commenting -- both at once, calibrated to the
       rationale's actual complexity.
     weight: 1.0
+
+  - id: q8-decl-const-verbose-type
+    topic: declarations
+    date: 2026-05-20
+    prompt: >
+      A single function-scope local with a verbose type
+      (`enum task_state` -- 15 chars). Read-only by intent.
+      Three variants on const + name length.
+    snippets:
+      - label: "1"
+        desc: Full const, descriptive name
+        code: |
+          const enum task_state state = atomic_load(&ti->state);
+      - label: "2"
+        desc: No const, descriptive name
+        code: |
+          enum task_state state = atomic_load(&ti->state);
+      - label: "3"
+        desc: Full const, short name to offset type's visual weight
+        code: |
+          const enum task_state s = atomic_load(&ti->state);
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Confirms the visual-weight rule for const: above
+      some type-spelling threshold (~15 chars, hit by `enum X`,
+      multi-word types), the const decoration's positive value flips
+      to a net negative. V3 (rename to offset) loses because it
+      addresses the wrong axis: the problem is type-weight, not
+      name-weight. Shortening the name doesn't reduce the
+      const-on-verbose-type cost. The right move is to drop const
+      and keep the descriptive name.
+    weight: 1.0
