@@ -213,6 +213,51 @@ These are rules promoted from "soft preference" to "hard rule" by user
 feedback during the v2 ranked-preference loop. They should be enforced
 by `style_check`, not just penalized.
 
+### Switch-case: case labels indented +3 from switch (no Linux-flush)
+
+Source: Q12 (2026-05-20).
+
+Case labels MUST be indented 3 spaces from `switch`; case bodies
+MUST be indented 3 spaces further (total 6 from switch). The
+Linux-kernel style of `case` flush with `switch` is forbidden.
+
+```c
+   switch (op) {
+      case OP_READ:        /* case at +3 */
+         rc = do_read();   /* body at +6 */
+         break;
+      ...
+   }
+```
+
+**Linter implication:** detect SWITCH_STMT cursors and verify each
+case label's column matches `switch_col + 3`. The Linux-flush
+style is a hard violation, not a soft preference.
+
+### Switch-case: per-case braces mandatory when case has locals
+
+Source: Q12 (2026-05-20).
+
+When a case body declares its own locals, the case MUST be braced:
+
+```c
+   case OP_READ: {
+      int len = ...;     /* per-case local */
+      rc = do_read(len);
+      break;
+   }
+```
+
+Without braces, the local declaration is technically broken in C
+(case labels don't introduce scope) -- so the braces are required
+by language semantics, not just style. The choice "brace this case
+or not" reduces to "does this case have its own locals."
+
+**Linter implication:** for each CASE_STMT cursor, check whether
+its body contains VAR_DECL. If yes AND no braces, flag as
+violation. If no locals, prefer the unbraced form (braces in this
+case are stylistic noise).
+
 ### Call-site layout: no one-arg-per-line with `);` glued to last arg
 
 Source: Q1 (2026-05-20).

@@ -600,6 +600,94 @@ questions:
       linter.
     weight: 1.5
 
+  - id: q12-switch-case-layout
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      switch over an enum with three short case bodies + default.
+      Three layouts compared: case +3 from switch, case flush with
+      switch (Linux-kernel style), case bodies braced per-case.
+    snippets:
+      - label: "1"
+        desc: case +3 from switch, body +3 from case
+        code: |
+          switch (op) {
+             case OP_READ:
+                rc = do_read(buf, len);
+                break;
+             case OP_WRITE:
+                rc = do_write(buf, len);
+                break;
+             case OP_FLUSH:
+                rc = do_flush();
+                break;
+             default:
+                return -EINVAL;
+          }
+      - label: "2"
+        desc: case flush with switch (Linux-kernel style)
+        code: |
+          switch (op) {
+          case OP_READ:
+             rc = do_read(buf, len);
+             break;
+          case OP_WRITE:
+             rc = do_write(buf, len);
+             break;
+          case OP_FLUSH:
+             rc = do_flush();
+             break;
+          default:
+             return -EINVAL;
+          }
+      - label: "3"
+        desc: braced case bodies (per-case scope blocks)
+        code: |
+          switch (op) {
+             case OP_READ: {
+                rc = do_read(buf, len);
+                break;
+             }
+             case OP_WRITE: {
+                rc = do_write(buf, len);
+                break;
+             }
+             case OP_FLUSH: {
+                rc = do_flush();
+                break;
+             }
+             default:
+                return -EINVAL;
+          }
+    guess: ["1", "2", "3"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V1 default. V3 is required (not optional) when per-case
+      variables are needed. V2 is forbidden -- hard rule.
+    notes: >
+      Two corrections to Claude's model:
+
+      1. V2 (Linux-kernel-style case-flush-with-switch) is a HARD
+         rule violation. Not "less preferred" -- forbidden.
+         Probably the same family-deviation as Tilck's 3-space
+         indent vs Linux's tab/8-space: the case-flush form
+         belongs to that other style family and is rejected as a
+         unit.
+
+      2. V3 is NOT a stylistic alternative to V1 -- it is a
+         MANDATORY escalation when a case has its own local
+         declarations. Without braces, declaring a local inside a
+         case is broken (case labels don't introduce scope in C).
+         The choice "V1 or V3" is decided by language semantics,
+         not aesthetics.
+
+      Revised model: switch-case has a hard rule (case must be
+      indented +3 from switch) and a conditional rule (per-case
+      braces required iff case has locals). Linter should flag V2
+      shape as a hard violation and verify the brace presence
+      matches the locals-present condition.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
