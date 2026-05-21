@@ -519,3 +519,83 @@ questions:
       trailing is the worst because it sacrifices the visual-
       alignment property for no gain.
     weight: 1.0
+
+  - id: q10-extract-vs-inline-vs-helper
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      Test whether a task's state is in a set of three values
+      (sleeping / stopped / traced). Compare three approaches:
+      inline OR-chain, extract `ti->state` to local then OR-chain,
+      or define a `task_is_blocked()` helper. Context-sensitive: how
+      does the answer change with number of call sites (1, 2, 3+)?
+    snippets:
+      - label: "1"
+        desc: Inline OR-chain, brace on own line
+        code: |
+          if (ti->state == TASK_STATE_SLEEPING ||
+              ti->state == TASK_STATE_STOPPED  ||
+              ti->state == TASK_STATE_TRACED)
+          {
+             do_thing(ti);
+          }
+      - label: "2"
+        desc: Extract ti->state to a local, then OR-chain
+        code: |
+          enum task_state state = ti->state;
+
+          if (state == TASK_STATE_SLEEPING ||
+              state == TASK_STATE_STOPPED  ||
+              state == TASK_STATE_TRACED)
+          {
+             do_thing(ti);
+          }
+      - label: "3"
+        desc: Introduce a `task_is_blocked()` helper and call it
+        code: |
+          /* helper defined elsewhere in the same file: */
+          static bool
+          task_is_blocked(struct task *ti)
+          {
+             enum task_state state = ti->state;
+             return state == TASK_STATE_SLEEPING ||
+                    state == TASK_STATE_STOPPED  ||
+                    state == TASK_STATE_TRACED;
+          }
+
+          /* call site: */
+          if (task_is_blocked(ti))
+             do_thing(ti);
+    guess: ["3", "1", "2"]
+    ranking: ["3", "2", "1"]
+    comment: >
+      Three rankings by call-site count:
+      - 1 site:  [2, 1, 3] -- V3 overkill, V2 best (1 local saves
+        3 repeated references)
+      - 2 sites: [3, 2, 1] -- V3 wins but V2 close
+      - 3+ sites: [3, 2, 1] -- V3 a strong preference
+
+      Also: `||` (and presumably `&&`) operators on consecutive
+      lines should be COLUMN-ALIGNED, padding with extra space if
+      needed. My snippets had unaligned `||` -- corrected above.
+    notes: >
+      The 2-site case is recorded as canonical ranking since the
+      question stated "1-2 sites."
+
+      Major model correction: extraction is justified when
+      SAVINGS > COST. Cost = number of new locals introduced.
+      Savings = number of use sites where the local replaces a
+      repeated expression. This unifies Q2 (cost 2, savings 2 ->
+      loses to brace-on-own-line) and Q10 single-site (cost 1,
+      savings 3 -> beats brace-on-own-line).
+
+      Helper-function abstraction has a different cost shape:
+      one-time definition cost amortized across call sites. At
+      1 site it's overkill; at 2 sites it ties extract-local; at
+      3+ sites it dominates strongly.
+
+      New concrete rule surfaced: align `||` and `&&` operators
+      column-wise across multi-line boolean expressions. This is
+      a formatting rule that could eventually be enforced by the
+      linter.
+    weight: 1.5

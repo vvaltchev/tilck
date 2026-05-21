@@ -156,6 +156,32 @@ Order of preference (for the same alias):
 This applies only to TIGHT scope. As scope widens, longer names
 become preferable to keep the referent clear at distance.
 
+## Concrete formatting rules surfaced
+
+### Multi-line boolean operators (`||`, `&&`) are column-aligned
+
+Source: Q10 (2026-05-20), user-volunteered.
+
+When a boolean expression wraps across multiple lines, the connecting
+operators (`||`, `&&`) should be COLUMN-ALIGNED across the wrapped
+lines. Pad with extra space before the operator if needed.
+
+```c
+   if (ti->state == TASK_STATE_SLEEPING ||
+       ti->state == TASK_STATE_STOPPED  ||      /* extra space to align */
+       ti->state == TASK_STATE_TRACED)
+```
+
+Same principle as `#define` value alignment, struct field comment
+alignment, and ternary `?` / `:` alignment: visual alignment is a
+form of prettiness in this codebase. Not a hard rule yet (no
+explicit "this is a hard rule" statement), but a clear preference.
+
+**Linter implication:** detect multi-line boolean expressions and
+verify the operator columns match. Penalty applied per misaligned
+operator. Cheap to detect once the multi-line expression is
+identified.
+
 ## Hard rules surfaced by ranked-preference questions
 
 These are rules promoted from "soft preference" to "hard rule" by user
@@ -190,38 +216,68 @@ inner-wrapping case.
 
 ## Cross-cutting observations
 
-### Extraction cost grows fast with local count and name blandness
+### Extraction calculus: savings > cost
 
-Source: Q2 (2026-05-20).
+Source: Q2 + Q10 (2026-05-20), reconciled.
 
-When the choice is between (a) extracting N sub-expressions to named
-locals, (b) introducing a single convenience pointer that flattens
-the parent reference, or (c) accepting brace-on-own-line, the
-preference order is **(b) > (c) > (a)** even when N is as small as 2.
+The rule for "should I extract this expression to a local?" is a
+trade between savings and cost:
 
-Two cost factors making (a) lose to (c):
+  **savings** = number of use sites where the new local replaces a
+                repeated expression.
 
-1. **Local count cost**: each extracted local adds to the function's
-   local-count budget, which is a per-function prettiness penalty.
-   N=2 is already enough to tip (a) below (c) when the alternative
-   is one layout artifact (brace-on-own-line).
-2. **Semantic anchor cost**: extracting `sess->conn->state` to a
-   bare `state` local loses the semantic chain. The reader now has
-   to look up the decl to know what `state` is, whereas the inline
-   form was self-describing. This is amplified when the leaf field
-   names are generic (`state`, `kind`, `count`).
+  **cost**    = 1 per new local introduced, plus a small surcharge
+                if the proposed local name is short / generic (the
+                "name blandness" cost).
 
-(b) wins because it is the minimal-disturbance refactor: the leaf
-references retain their original names, only the parent is renamed
-to a short alias. The semantic chain is preserved.
+Extract when **savings > cost**.
 
-**Linter implication:** when the v2 prettiness model considers an
-extraction, the cost should include (i) a per-local penalty that
-accumulates against the function's local budget, and (ii) a
-"name-genericness" penalty that's higher when the proposed local
-name is short/generic (a tunable feature, hard to evaluate
-mechanically -- start with: penalty rises sharply for names <= 5
-chars).
+Concrete cases observed:
+
+- **Q2** (2 different fields, each used once): cost 2, savings 2.
+  Net ~zero, plus name-blandness penalty -> extract LOSES to
+  brace-on-own-line. The convenience-pointer alternative (1 local,
+  shortens 2 different references) flips the math: cost 1, savings
+  2 -> WINS.
+
+- **Q10 V2** (1 field used 3 times): cost 1, savings 3 -> extract
+  WINS even at a single call site, beating brace-on-own-line.
+
+(b) above (convenience pointer) wins in Q2 because it is the
+minimal-disturbance refactor: the leaf references retain their
+original names, only the parent is renamed to a short alias. The
+semantic chain is preserved.
+
+**Linter implication:** the v2 prettiness model's "extract-to-local"
+suggestion should weigh (i) per-local cost, (ii) name-blandness
+surcharge (penalty rises for names <= 5 chars), and (iii) use-site
+count at the proposed extraction's location. Only suggest extract
+when savings strictly exceed cost.
+
+### Helper-function amortization
+
+Source: Q10 (2026-05-20).
+
+Introducing a new helper function (e.g., `task_is_blocked()`)
+imposes a fixed one-time cost: the helper's definition adds lines,
+and the helper becomes a name to maintain.
+
+This fixed cost is amortized across call sites:
+
+- **1 site**: helper is overkill; inline or extract-local wins.
+- **2 sites**: helper ties with extract-local; close call.
+- **3+ sites**: helper dominates strongly. Cleaner call sites, the
+  conceptual identity ("is blocked") becomes named, the
+  duplication is gone.
+
+The cost shape is different from extract-local (which has a per-use
+cost) -- helpers have a per-helper fixed cost plus a tiny per-call-
+site cost (the call itself, vs. the inline expression).
+
+**Linter implication:** when 3+ near-identical OR-chains exist on
+the same operand pattern, suggest extracting them to a single
+helper. Below that threshold, suggest extract-local or do nothing
+based on the extraction-calculus rule above.
 
 ### const is monotonically valuable; no consistency penalty
 
