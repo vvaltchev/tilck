@@ -42,15 +42,30 @@ fitting.
       Use when H2 doesn't fit but all args fit on a single indented
       line.
 
-  H4. Args spilling across multiple lines. Sub-ranking applies (Q1):
-      - H4a (best): Style 2 strict -- one arg per line, `);` on own
-        line. Documented as Q1 V2.
-      - H4b: Style 1 one-per-line -- args aligned under opening
-        paren. Documented as Q1 V4.
-      - H4c: Style 1 packed -- multiple args per wrapped line.
-        Documented as Q1 V1.
-      - HARD-NO: one-arg-per-line with `);` glued to last arg
-        (Q1 V3).
+  H4. Args spilling across multiple lines. Sub-ranking applies (Q1)
+      WITH a callee-length-conditional twist surfaced in Q30:
+
+      For SHORT callees (~<= 10 chars, e.g. `printk`):
+        - H4a (best): Style 1 -- args aligned under opening
+          paren. Q1 V4 form (one arg per line) or Q1 V1 form
+          (packed) depending on density.
+        - H4b: Style 2 strict -- `(` ends line, args +3
+          indented, `);` own line.
+
+      For LONG callees:
+        - H4a (best): Style 2 strict -- `(` ends line, args
+          +3 indented, `);` own line. Doesn't waste horizontal
+          space on alignment.
+        - H4b: Style 1 -- valid but indents args too far right.
+
+      Common across both:
+        - HARD-NO: one-arg-per-line with `);` glued to last arg
+          (Q1 V3 form).
+
+      The threshold: at what column does the opening paren land?
+      If that column is past ~25-30 from the line start,
+      Style 2 wins (callee is "long"). Otherwise Style 1 wins
+      (callee is "short").
 
 **Modeling implication:** the v2 prettiness score for a call-site is
 not a single ranking but a CASCADE. Each level scores higher than the

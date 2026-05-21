@@ -1997,6 +1997,71 @@ questions:
       accepted, with TODO being more common.
     weight: 1.0
 
+  - id: q30-printk-long-format
+    topic: call-site
+    date: 2026-05-20
+    prompt: >
+      `printk`-style call with a long format string that doesn't
+      fit on one line. Three layouts: adjacent-literal split
+      with Style 1 alignment, Style 2 strict, format extracted
+      to a `static const` local.
+    snippets:
+      - label: "1"
+        desc: Split format string across adjacent literals; args Style 1
+        code: |
+          printk("first part of the long format string %d "
+                 "second part with more args %s and %s\n",
+                 val, str1, str2);
+      - label: "2"
+        desc: Style 2 strict (`(` ends line, args indented +3, `);` own line)
+        code: |
+          printk(
+             "first part of the long format string %d "
+             "second part with more args %s and %s\n",
+             val, str1, str2
+          );
+      - label: "3"
+        desc: Extract format to a `static const` local; single-line call
+        code: |
+          static const char fmt[] = "first part of the long format string %d "
+                                    "second part with more args %s and %s\n";
+          printk(fmt, val, str1, str2);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V3 is not used in this codebase. Avoid.
+
+      V1 vs V2 depends on the LENGTH of the callee expression.
+      Short callee (`printk`, ~6 chars): V1 wins -- args align
+      cleanly under the opening paren without much horizontal
+      padding. Long callee (e.g. `tracer_emit_event_with_full_
+      context`): V2 strict wins, because V1's alignment would
+      push args to the right margin, wasting horizontal space
+      and crowding line widths.
+    notes: >
+      Important refinement of the Q1b call-site hierarchy. I
+      had recorded the H4 sub-ranking as
+      "Style 2 strict > Style 1 one-per-line > Style 1 packed"
+      based on a moderately-long-callee example. The actual
+      rule is callee-length-conditional within H4:
+
+        Short callee (~<= 10 chars):  Style 1 wins.
+        Long callee:                  Style 2 strict wins.
+
+      The reason: Style 1's "args aligned to opening paren"
+      becomes wasteful when the opening paren is far to the
+      right. Style 2's "+3 indent" stays at column 6 regardless
+      of callee width.
+
+      Linter implication: when ranking H4 forms, the threshold
+      between Style 1 and Style 2 should be tied to the column
+      position of the opening paren. If that column is past
+      some threshold (rough cutoff around col 25-30 from line
+      start), Style 2 wins; otherwise Style 1.
+
+      Cross-cutting note updated in preferences-notes.md.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
