@@ -864,6 +864,119 @@ questions:
       carry conceptual weight.
     weight: 1.5
 
+  - id: q15-phase-local-scope
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      A two-phase function with a temp variable `h` used only in
+      phase 1. Three placements for h's declaration: function-top
+      (C89), mid-block at point of use (C99), and explicit `{ }`
+      sub-block.
+    snippets:
+      - label: "1"
+        desc: Declare h at function top; stays in scope through phase 2
+        code: |
+          static int
+          do_work(struct task *ti)
+          {
+             struct fs_handle *h;
+             int rc;
+
+             /* phase 1: open file, parse config */
+             h = open_file(ti, "/etc/config");
+             if (!h)
+                return -ENOENT;
+             parse_config(h);
+             close_handle(h);
+
+             /* phase 2: apply config (h not used) */
+             rc = apply_config();
+             return rc;
+          }
+      - label: "2"
+        desc: Declare h mid-function at the point of use (C99 style)
+        code: |
+          static int
+          do_work(struct task *ti)
+          {
+             int rc;
+
+             /* phase 1: open file, parse config */
+             struct fs_handle *h = open_file(ti, "/etc/config");
+             if (!h)
+                return -ENOENT;
+             parse_config(h);
+             close_handle(h);
+
+             /* phase 2: apply config */
+             rc = apply_config();
+             return rc;
+          }
+      - label: "3"
+        desc: Scope h to an explicit `{ ... }` sub-block
+        code: |
+          static int
+          do_work(struct task *ti)
+          {
+             int rc;
+
+             /* phase 1 -- h scoped to this block */
+             {
+                struct fs_handle *h = open_file(ti, "/etc/config");
+                if (!h)
+                   return -ENOENT;
+                parse_config(h);
+                close_handle(h);
+             }
+
+             /* phase 2: apply config */
+             rc = apply_config();
+             return rc;
+          }
+    guess: ["2", "3", "1"]
+    ranking: ["3", "1", "2"]
+    comment: >
+      V3 is the most elegant when scope-narrowing pays off. V1 is
+      acceptable when phase 2 is minimal (V3 ~= V1 in such cases).
+      V2 (mid-function decls) is UGLY and should be avoided.
+
+      Escalation when the sub-block grows too large or would need
+      its own nested sub-block: extract to a separate function.
+    notes: >
+      Three model corrections relative to Claude's guess [2, 3, 1]:
+
+      1. V2 (C99 mid-block decl) is ugly and should be avoided.
+         The corpus has cases of it (kernel/signal.c:21-33,
+         kernel/poll.c:21) but those are unpolished/rushed code,
+         NOT a style endorsement. The CLAUDE.md-documented rule
+         "non-const locals at top of enclosing block" IS the rule.
+         My earlier inference (dropping the linter rule based on
+         corpus drift) was wrong; revisit re-enabling it.
+
+      2. V3 (explicit `{ }` sub-block) is the most elegant form,
+         not overkill. It's the user-endorsed escape valve for
+         narrowing scope without mid-block decls.
+
+      3. V1 is acceptable when phase 2 is minimal -- the "wasted
+         scope" cost is proportional to how much of the function
+         doesn't use the variable.
+
+      Refined rule: declare at top of ENCLOSING SCOPE (function
+      body, control-flow body, or sub-block) -- never mid-scope.
+      The sub-block exists precisely to enable narrowing without
+      breaking the top-of-scope rule.
+
+      Escalation cascade from Q15:
+        phase sizes minimal       -> V1 ~= V3 (V3 nicer but V1 ok)
+        phases non-trivial         -> V3 strongly preferred
+        sub-block becomes too big  -> EXTRACT to a helper function
+        would need nested sub-block-> also extract
+
+      This is the function-shape rule the user has been pointing
+      at: scope locals as narrowly as practical, but escalate to
+      function extraction before nesting gets deep.
+    weight: 2.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

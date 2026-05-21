@@ -351,6 +351,56 @@ inner-wrapping case.
 
 ## Cross-cutting observations
 
+### Locals at top of *enclosing scope* (not just function-top)
+
+Source: Q15 (2026-05-20). REVISES the earlier dropped-rule note.
+
+**Non-const locals MUST be declared at the top of their enclosing
+SCOPE.** That scope can be:
+
+  - The function body (C89 top-of-function style), OR
+  - A control-flow body (`if`/`for`/`while` body), OR
+  - An explicit `{ ... }` sub-block deliberately introduced to
+    narrow the local's visibility.
+
+C99 mid-block declarations (decl interleaved with statements at
+the same brace depth) are UGLY and should be avoided. The
+corpus contains such cases (kernel/signal.c:21-33,
+kernel/poll.c:21, kernel/sched.c:443) but the user has confirmed
+these are unpolished/rushed code, not a style endorsement.
+
+**Important reversal of an earlier wrong call.** In an earlier
+note in this file I documented `non_const_locals_top_of_block` as
+having been "dropped from the linter because the corpus
+contradicts the hard-rule reading." That inference was wrong: the
+rule documented in CLAUDE.md is the rule; the corpus drift is the
+violation. The linter rule should be re-enabled (with the
+sub-block scope-narrowing exception correctly implemented).
+
+**The sub-block is the escape valve.** When a local is only
+relevant to part of the function, the right move is NOT to
+declare it mid-block but to wrap that part in `{ ... }` and
+declare at the top of the sub-block. This keeps the
+"top-of-scope" rule intact while narrowing the local's lifetime.
+
+**Escalation when the sub-block grows.** If the sub-block becomes
+"too large" (no precise threshold yet; rough guidance is when the
+sub-block becomes harder to scan than a small standalone
+function) OR if it would need its own nested sub-block, EXTRACT
+the sub-block's content to a helper function instead of nesting.
+
+**Linter implication:** re-enable `non_const_locals_top_of_block`
+with the corrected semantics:
+
+  - Walk every COMPOUND_STMT cursor.
+  - Within each, find all VAR_DECL children that are non-const.
+  - For each, check whether any non-DECL_STMT child precedes it
+    in the same block. If yes -> violation (the local is being
+    declared after non-declaration statements in its scope).
+  - This naturally allows the sub-block escape valve: the local
+    in the sub-block has the sub-block as its enclosing
+    COMPOUND_STMT, not the function body.
+
 ### Extraction calculus: savings > cost
 
 Source: Q2 + Q10 (2026-05-20), reconciled.
