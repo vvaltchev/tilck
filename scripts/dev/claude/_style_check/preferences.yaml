@@ -473,3 +473,49 @@ questions:
       const-on-verbose-type cost. The right move is to drop const
       and keep the descriptive name.
     weight: 1.0
+
+  - id: q9-struct-field-comments
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      A small struct with three fields, each needing a brief
+      explanatory comment that fits as a trailing inline. Three
+      layouts.
+    snippets:
+      - label: "1"
+        desc: Aligned trailing comments (all at same column)
+        code: |
+          struct sched_ticks {
+             atomic_u64_t vruntime;        /* virtual runtime */
+             atomic_u64_t deadline;        /* absolute deadline */
+             u32 slice_remaining;          /* unused ticks left */
+          };
+      - label: "2"
+        desc: Unaligned trailing (one space after `;`)
+        code: |
+          struct sched_ticks {
+             atomic_u64_t vruntime; /* virtual runtime */
+             atomic_u64_t deadline; /* absolute deadline */
+             u32 slice_remaining; /* unused ticks left */
+          };
+      - label: "3"
+        desc: Comment above each field
+        code: |
+          struct sched_ticks {
+             /* virtual runtime */
+             atomic_u64_t vruntime;
+             /* absolute deadline */
+             atomic_u64_t deadline;
+             /* unused ticks left */
+             u32 slice_remaining;
+          };
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH (fourth in a row). Aligned trailing comments are
+      the corpus standard for struct field annotations. Above-the-
+      line is the fallback when trailing doesn't fit. Unaligned
+      trailing is the worst because it sacrifices the visual-
+      alignment property for no gain.
+    weight: 1.0
