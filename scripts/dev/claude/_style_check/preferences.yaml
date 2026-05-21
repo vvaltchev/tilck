@@ -1236,6 +1236,64 @@ questions:
           object across statements as a boundary signal).
     weight: 1.5
 
+  - id: q19-function-naming-predicate
+    topic: naming
+    date: 2026-05-20
+    prompt: >
+      Function name for a task-runnable predicate. Three forms:
+      subsystem prefix + is_, is_ prefix first, no `is_` at all.
+    snippets:
+      - label: "1"
+        desc: subsystem prefix + `is_` (`task_is_runnable`)
+        code: |
+          if (task_is_runnable(ti))
+             wake(ti);
+      - label: "2"
+        desc: `is_` predicate-first (`is_task_runnable`)
+        code: |
+          if (is_task_runnable(ti))
+             wake(ti);
+      - label: "3"
+        desc: subsystem prefix, no `is_` (`task_runnable`)
+        code: |
+          if (task_runnable(ti))
+             wake(ti);
+    guess: ["2", "1", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      Very soft ranking. The choice depends on whether `task_*`
+      already exists as a subsystem with multiple `task_is_*`
+      predicates -- if yes, V1. For one-off cases, V2 is also
+      good. V3 is less common in Tilck but not a hard rule.
+
+      Important scope note: this is a SEMANTIC question, not a
+      cosmetic one. The user explicitly says: "I don't think the
+      tool should try to understand that. That's our job (you and
+      me)." Naming-content decisions are out of the v2 tool's
+      scope.
+    notes: >
+      Two takeaways:
+
+      1. My guess [2, 1, 3] was wrong on V1 vs V2 ordering. I had
+         been reading `is_kernel_thread` / `is_preemption_enabled`
+         as evidence for V2-form dominance for predicates. The
+         user's actual preference is V1-form when a subsystem
+         convention exists, V2-form for one-off cases.
+
+      2. SCOPE BOUNDARY: this kind of question (name choice --
+         which subsystem prefix, which verb, semantic carving) is
+         OUT OF v2 tool scope. The tool should focus on
+         FORMATTING / LAYOUT / STRUCTURAL choices, not on the
+         content of identifier names.
+
+         Distinction from Q6 (which IS in scope): Q6 was about
+         name SHAPE (length, suffix conventions, capitalization).
+         Cosmetic. Q19 is about name CHOICE (semantic content).
+         Out of scope.
+
+         Going forward, only ask cosmetic/formatting questions.
+    weight: 0.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

@@ -64,6 +64,47 @@ not flag them (good). When the rule fires on H4c-style violations,
 the suggested alternative should be the HIGHEST-fitting form (H1 if
 possible, else H2, etc.) -- not just "use Style 2 strict."
 
+## v2 tool scope
+
+### What the tool should and should not try to enforce
+
+Source: Q19 (2026-05-20), user-volunteered scope boundary.
+
+The v2 tool's domain is **cosmetic / formatting / layout /
+structural** choices about code shape. It should NOT try to
+enforce semantic decisions about identifier content.
+
+**In scope (cosmetic/formatting):**
+
+  - Layout (indentation, brace placement, wrap style, alignment)
+  - Whitespace (blank lines, trailing whitespace, operator spacing)
+  - Comment shape and placement (prologue vs inline, alignment)
+  - Const usage and qualifier placement
+  - Structural choices (sub-blocks, helper extraction thresholds)
+  - Name SHAPE (length conventions, suffix patterns -- e.g. Q6's
+    `c` vs `conn` vs `conn_ptr` choice for an alias)
+
+**Out of scope (semantic):**
+
+  - Identifier CONTENT choices (subsystem prefix to use, verb to
+    pick, conceptual carving of a name) -- e.g. Q19's
+    `task_is_runnable` vs `is_task_runnable` decision.
+  - Whether a particular abstraction is the right one.
+  - Whether a function's behavior is correct.
+
+The line between "name shape" and "name content" can be blurry
+in practice. Rule of thumb from the user: "if it requires
+understanding the semantics of the code to answer, it's our job
+(human + Claude in conversation), not the tool's job."
+
+**Linter implication:** v2 should not include rules that try to
+penalize specific identifier-content patterns (e.g. "prefer
+`is_X` over `X_is`"). It MAY include rules about identifier
+shape that are syntactically detectable without semantic
+understanding (e.g. "single-letter aliases acceptable in scopes
+of <= N lines"). Even the latter should be soft suggestions, not
+hard rules.
+
 ## Meta-principles
 
 ### Restructure rather than scaffold
