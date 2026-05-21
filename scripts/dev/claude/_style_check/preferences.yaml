@@ -27,4 +27,53 @@
 # entries after they're recorded (immutable history).
 
 version: 1
-questions: []
+questions:
+
+  - id: q1-call-site-4arg-wrap
+    topic: call-site
+    date: 2026-05-20
+    prompt: >
+      How to wrap a 4-arg function call that exceeds 80 cols on one
+      line. Args are independent (no semantic grouping).
+    snippets:
+      - label: "1"
+        desc: Style 1 (aligned to opening paren), args packed
+        code: |
+          result = compute_with_context(curr_session, the_buffer_ptr,
+                                        buffer_length, flags);
+      - label: "2"
+        desc: Style 2 strict -- `);` on its own line, one arg per line
+        code: |
+          result = compute_with_context(
+             curr_session,
+             the_buffer_ptr,
+             buffer_length,
+             flags
+          );
+      - label: "3"
+        desc: Style 2 hybrid -- `);` at end of last arg, one arg per line
+        code: |
+          result = compute_with_context(
+             curr_session,
+             the_buffer_ptr,
+             buffer_length,
+             flags);
+      - label: "4"
+        desc: Style 1 (aligned to opening paren), one arg per line
+        code: |
+          result = compute_with_context(curr_session,
+                                        the_buffer_ptr,
+                                        buffer_length,
+                                        flags);
+    guess: ["4", "1", "3", "2"]
+    ranking: ["2", "4", "1", "3"]
+    comment: >
+      Variants 2 and 4 are close, with a slight preference for 2.
+      Variant 3 is completely unacceptable and should be a HARD rule.
+    notes: >
+      Claude's guess was significantly wrong (V2 ranked last, actually
+      first). I had judged Style 2 strict as ceremonial overhead, but
+      the user values the closing-paren-on-its-own-line symmetry. V3
+      promoted from "acceptable Style 2 variant" to "hard-no": the
+      one-arg-per-line layout REQUIRES `);` on its own line.
+    weight: 1.0
