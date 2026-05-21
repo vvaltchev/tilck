@@ -318,6 +318,48 @@ become preferable to keep the referent clear at distance.
 
 ## Concrete formatting rules surfaced
 
+### Blank lines inside function bodies
+
+Source: Q18 (2026-05-20).
+
+Three concrete rules:
+
+1. **Blank line after the declaration block.** When a function (or
+   sub-block) starts with a run of declarations, an empty line MUST
+   follow the last decl before the first non-declaration statement.
+   This is a hard rule, not a soft preference.
+
+2. **Blank line after every `return` statement except the last
+   one in the function body.** A return mid-body is the end of a
+   logical chunk; the blank line separates it visually from what
+   comes next. The final return at function end is followed by
+   `}` and needs no blank.
+
+3. **Group statements by topic with blank lines between groups.**
+   General principle: blanks delimit logical sections the same way
+   comment alignment delimits visual columns. Adjacent statements
+   that operate on the same object / topic stay together; a
+   blank line marks a topic change.
+
+The dense "no blanks" form is **totally unacceptable** -- not
+just less preferred. The minimal "only after decls" form is
+**very ugly** -- strong preference against but not a hard
+violation in itself.
+
+**Linter implication:**
+
+  - Rule 1 is mechanically detectable: find each COMPOUND_STMT
+    cursor; check whether the first non-DECL_STMT is preceded
+    by a blank line.
+  - Rule 2 is mechanically detectable: for each RETURN_STMT
+    cursor that is not the last statement in its enclosing
+    COMPOUND_STMT, check that the next physical line is blank.
+  - Rule 3 (topic grouping) is fuzzier; defer to a v3 heuristic
+    that could use object-of-reference changes between
+    statements as a signal.
+
+
+
 ### Free functions must accept NULL (no guards before free)
 
 Source: Q11 (2026-05-20).

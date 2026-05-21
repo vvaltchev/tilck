@@ -1140,6 +1140,102 @@ questions:
       question.
     weight: 2.0
 
+  - id: q18-blank-line-placement
+    topic: whitespace
+    date: 2026-05-20
+    prompt: >
+      Function body with declarations and three short phases.
+      Three blank-line patterns compared: dense, blank only after
+      decl block, blank after decl block + between phases.
+    snippets:
+      - label: "1"
+        desc: Dense -- no blank lines
+        code: |
+          static int
+          process_event(struct event *e)
+          {
+             struct task *ti;
+             int rc;
+             if (!e || e->kind == EV_INVALID)
+                return -EINVAL;
+             ti = e->target;
+             if (!ti)
+                return -ESRCH;
+             rc = deliver(ti, e);
+             return rc;
+          }
+      - label: "2"
+        desc: Blank line only after the declaration block
+        code: |
+          static int
+          process_event(struct event *e)
+          {
+             struct task *ti;
+             int rc;
+
+             if (!e || e->kind == EV_INVALID)
+                return -EINVAL;
+             ti = e->target;
+             if (!ti)
+                return -ESRCH;
+             rc = deliver(ti, e);
+             return rc;
+          }
+      - label: "3"
+        desc: Blank after declarations + between phases
+        code: |
+          static int
+          process_event(struct event *e)
+          {
+             struct task *ti;
+             int rc;
+
+             if (!e || e->kind == EV_INVALID)
+                return -EINVAL;
+
+             ti = e->target;
+             if (!ti)
+                return -ESRCH;
+
+             rc = deliver(ti, e);
+             return rc;
+          }
+    guess: ["3", "2", "1"]
+    ranking: ["3", "2", "1"]
+    comment: >
+      Big gap between V3 and the others. V1 is totally
+      unacceptable (hard rule). V2 is very ugly (strong
+      preference against). V3 is perfect.
+
+      Concrete sub-rules surfaced:
+        - Blank line after the initial declaration block: required.
+        - Blank line after every `return` statement except the
+          last one in a function body.
+        - General principle: group by topic; blanks delimit
+          logical sections.
+    notes: >
+      EXACT MATCH on the ranking, but the value is in the
+      hard-rule promotions. Blank-line patterns are not soft
+      preferences here -- they are mechanically enforceable
+      rules:
+
+        1. Empty line after the declaration block at the top of
+           a function (or sub-block).
+        2. Empty line after each non-final return statement.
+        3. Group statements by topic with blank lines between
+           groups.
+
+      All three are detectable mechanically:
+        - Rule 1: find the first non-DECL_STMT child of a
+          COMPOUND_STMT; check whether the line above is blank.
+        - Rule 2: find every RETURN_STMT cursor; if not the last
+          statement in its enclosing COMPOUND_STMT, check that
+          the next line is blank.
+        - Rule 3: harder; "topic boundaries" is fuzzy. Defer to
+          a future heuristic (e.g. detect changes in target
+          object across statements as a boundary signal).
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
