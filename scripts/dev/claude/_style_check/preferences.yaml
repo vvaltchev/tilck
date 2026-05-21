@@ -291,3 +291,63 @@ questions:
       lines without earning its keep. Function defs use Style 1 only;
       within Style 1, one-arg-per-line beats packed.
     weight: 1.0
+
+  - id: q5-multiline-ternary
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      RHS of an assignment is a ternary between two long function
+      calls. Single-line doesn't fit. How to lay out the ternary.
+    snippets:
+      - label: "1"
+        desc: >
+          Assignment alone on first line, condition + branches each
+          on its own indented line (CLAUDE.md-documented form).
+        code: |
+          new_term =
+             serial_port_fwd
+                ? tty_allocate_and_init_new_serial_term(serial_port_fwd)
+                : tty_allocate_and_init_new_video_term(rows_buf);
+      - label: "2"
+        desc: Condition on the assignment line, `?` and `:` branches indented
+        code: |
+          new_term = serial_port_fwd
+             ? tty_allocate_and_init_new_serial_term(serial_port_fwd)
+             : tty_allocate_and_init_new_video_term(rows_buf);
+      - label: "3"
+        desc: Flatten to `if`/`else` instead of using a ternary
+        code: |
+          if (serial_port_fwd)
+             new_term = tty_allocate_and_init_new_serial_term(serial_port_fwd);
+          else
+             new_term = tty_allocate_and_init_new_video_term(rows_buf);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 is technically best because `?` is one indent away from
+      `serial_port_fwd`. V2 and V3 are both a bit ugly. User
+      generally tries to avoid full if/else when possible.
+
+      Important higher-order alternative the user volunteered:
+      when the initialization is constant (cheap default), prefer
+      to declare with the common choice and conditionally override
+      the deviation:
+
+         int val = common_choice;
+         if (choice != expected)
+            val = other_choice;
+
+      This sidesteps the ternary entirely. Not applicable here
+      because both ternary branches are non-trivial calls.
+    notes: >
+      Claude's guess [1, 2, 3] mostly correct on top (V1 wins) but
+      had V2 and V3 in strict order; user treats them as roughly
+      tied ("both a bit ugly"). The structural argument for V1: `?`
+      is one indent step away from the condition `serial_port_fwd`,
+      yielding visual symmetry between condition / true-branch /
+      false-branch. V2 and V3 lose that.
+
+      The volunteered fourth variant (init-with-default + override)
+      is recorded as a cross-cutting pattern, not a Q5-internal
+      ranking option.
+    weight: 1.0

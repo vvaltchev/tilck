@@ -64,6 +64,44 @@ not flag them (good). When the rule fires on H4c-style violations,
 the suggested alternative should be the HIGHEST-fitting form (H1 if
 possible, else H2, etc.) -- not just "use Style 2 strict."
 
+## Higher-order alternatives
+
+### Init-with-default + conditional override
+
+Source: Q5 (2026-05-20), user-volunteered.
+
+When you're tempted to write a multi-line ternary OR an if/else that
+sets the same variable to one of two values, consider this third
+form:
+
+```c
+   int val = common_choice;       /* the usual case */
+
+   if (choice != expected)
+      val = other_choice;
+```
+
+This works when **the default value is cheap to evaluate** (no
+side effects, no expensive call, no allocation). It dominates both
+the ternary and the if/else when applicable, because:
+
+- The decl line carries the "what is this variable usually" semantic
+  anchor for the reader. The most common case is immediately visible.
+- The override is visually subordinate -- short, single-statement,
+  only mentions the deviation.
+- The symmetric-but-heavy `if (cond) ... else ...` framing
+  disappears entirely.
+
+The user generally tries to avoid full if/else when this pattern
+applies.
+
+**Linter implication:** when the v2 model encounters a multi-line
+ternary OR a 2-arm if/else that assigns the same LHS in both arms,
+it should check whether one arm is "trivially cheap" (constant
+literal, simple field access, etc.) and -- if so -- suggest the
+default+override rewrite. This is a *rewrite suggestion* (level c
+of the original end-state options), not a flat ranking entry.
+
 ## Asymmetries
 
 ### Function calls vs function definitions: different Style 2 rules
