@@ -1945,6 +1945,58 @@ questions:
       is forbidden.
     weight: 1.5
 
+  - id: q29-comment-tag-choice
+    topic: comments
+    date: 2026-05-20
+    prompt: >
+      Tag choice for marking a known issue or pending work.
+      Three common conventions: TODO, FIXME, XXX.
+    snippets:
+      - label: "1"
+        desc: TODO
+        code: |
+          /* TODO: handle the case where the device disappears mid-init */
+          init_device(dev);
+      - label: "2"
+        desc: FIXME
+        code: |
+          /* FIXME: handle the case where the device disappears mid-init */
+          init_device(dev);
+      - label: "3"
+        desc: XXX
+        code: |
+          /* XXX: handle the case where the device disappears mid-init */
+          init_device(dev);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 (TODO) preferred. V2 (FIXME) acceptable. V3 (XXX)
+      NOT used in this project and should be avoided.
+
+      Tag taxonomy in this codebase: TODO, FIXME, NOTE, HACK.
+      Each has distinct semantic weight:
+        - TODO: things to do later.
+        - FIXME: accepted (used in corpus).
+        - NOTE: informational, no action required.
+        - HACK: known workaround / not the right solution.
+        - XXX: not used; don't introduce.
+    notes: >
+      Got the order right; the value is in the tag taxonomy
+      the user volunteered. Each tag has DIFFERENT semantics
+      and they're not interchangeable. The project-specific
+      consistency reason for avoiding XXX: it's not part of
+      the existing vocabulary, so introducing it would break
+      grep-ability and convention.
+
+      For the linter: detect `XXX:` comments and flag with
+      suggestion "use TODO/FIXME/NOTE/HACK instead." For
+      Claude-process: never generate XXX comments.
+
+      The TODO/FIXME distinction is fuzzy enough that the tool
+      shouldn't try to enforce one over the other; both are
+      accepted, with TODO being more common.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
