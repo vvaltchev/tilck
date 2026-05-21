@@ -1049,6 +1049,97 @@ questions:
          is an intentional exception, not drift.
     weight: 1.0
 
+  - id: q17-function-prologue-comment
+    topic: comments
+    date: 2026-05-20
+    prompt: >
+      Function with slightly non-obvious return-code behavior.
+      Three prologue-comment shapes: none, brief one-liner, full
+      block with purpose/params/return-codes.
+    snippets:
+      - label: "1"
+        desc: No prologue comment
+        code: |
+          static int
+          parse_config_file(struct task *ti, const char *path)
+          {
+             /* ... */
+          }
+      - label: "2"
+        desc: Brief one-line comment above (paraphrase of the name)
+        code: |
+          /* Parse the config file at `path` for task `ti` */
+          static int
+          parse_config_file(struct task *ti, const char *path)
+          {
+             /* ... */
+          }
+      - label: "3"
+        desc: Full block documenting purpose, params, return-codes
+        code: |
+          /*
+           * Parse the config file at `path` for the given task.
+           *
+           * Returns 0 on success, -ENOENT if the file is missing,
+           * -EINVAL if the file is malformed.
+           */
+          static int
+          parse_config_file(struct task *ti, const char *path)
+          {
+             /* ... */
+          }
+    guess: null
+    ranking: null
+    comment: >
+      V2 is dismissed as "pro-forma" -- a one-liner that just
+      restates the function name adds no value. The fix is to
+      improve the name, not to add a paraphrase.
+
+      Interface vs implementation are distinct concerns. Interface
+      clarification (return-codes, preconditions, why-to-use)
+      goes in a V3-style prologue if needed (rare). Implementation
+      details go inside the function body. A prologue that mixes
+      both is wrong shape.
+
+      Escalation when implementation comments make the function
+      too long: SPLIT the function, then add V3-style prologues
+      on the split pieces.
+    notes: >
+      Major reframe. Claude had V2 modeled as the sweet spot for
+      simple functions. The user rejects V2 categorically:
+
+        - A one-liner that paraphrases the function name carries
+          no information beyond the name itself. The function
+          name is the primary documentation channel for purpose.
+          Comments are for things the name CAN'T carry.
+
+        - When the function NAME doesn't convey purpose, the
+          right move is to RENAME, not to add a V2 comment.
+
+      The user-corrected decision tree (NOT a flat ranking):
+
+        function needs commenting?
+          name doesn't convey purpose     -> fix the name (no V2)
+          interface has non-obvious bits  -> V3 prologue
+          implementation tricky details   -> inline body comments
+          too much to explain inline      -> SPLIT, then V3 prologues
+
+      This unifies with:
+        - Q14's "place functions in the right file/place"
+        - Q15's "extract to helper when sub-block grows"
+        - Q11's "if unsure, pick V3 (always safe)"
+
+      The recurring meta-principle: when a piece of code's shape
+      is fighting the desired comment/structure, the right
+      response is often to RESTRUCTURE (rename, split, move)
+      rather than to add scaffolding (V2-style comments, deep
+      nesting, mid-block decls).
+
+      Note: ranking field is null because the user's answer
+      structurally rejects the flat-ranking framing for this
+      question.
+    weight: 2.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

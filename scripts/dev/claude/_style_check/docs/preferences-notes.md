@@ -64,6 +64,93 @@ not flag them (good). When the rule fires on H4c-style violations,
 the suggested alternative should be the HIGHEST-fitting form (H1 if
 possible, else H2, etc.) -- not just "use Style 2 strict."
 
+## Meta-principles
+
+### Restructure rather than scaffold
+
+Source: emergent across Q11, Q14, Q15, Q17 (2026-05-20).
+
+When code's shape resists the natural commenting or structural
+choice, the user's recurring response is to RESTRUCTURE rather
+than add scaffolding. Concrete instances of this principle:
+
+  - Function name doesn't convey purpose  → rename it; don't add
+    a one-liner comment that paraphrases (Q17).
+  - Sub-block grows too large or needs    → extract to a helper
+    nesting                                  function (Q15).
+  - Helper used by multiple callers in    → move to the right
+    different files                          file/header (Q14).
+  - Implementation comments make the      → split the function
+    function too long                        (Q17).
+  - Multi-line ternary or symmetric       → rewrite as init-with-
+    if/else when default is cheap            default + override
+                                             (Q5).
+
+The pattern: rather than tolerate a deformed code shape, find
+the restructure that makes the shape natural. Comments,
+forward declarations, mid-block decls, and verbose names are
+all forms of scaffolding propping up a shape that should have
+been changed.
+
+**Linter implication:** when the v2 model detects a violation,
+the suggestion should often be a RESTRUCTURE rather than a
+direct rewrite of the violated shape. Examples:
+
+  - One-liner-prologue-comment detected: suggest improving the
+    function name, not removing the comment.
+  - Deep sub-block detected: suggest extracting to a helper, not
+    flattening the sub-block.
+  - Mid-block decl detected: suggest moving it to the top of a
+    new sub-block (introducing scope narrowing) OR extracting
+    the surrounding statements to a helper, not just hoisting
+    the decl to the function top.
+
+### Function name carries purpose
+
+Source: Q17 (2026-05-20).
+
+The function name is the PRIMARY documentation channel for what
+the function does. Comments are reserved for what the name CAN'T
+carry: interface contracts (return-code semantics, preconditions,
+ownership), implementation rationale, and non-obvious invariants.
+
+A comment that just paraphrases the function name is wrong on two
+counts:
+
+  - It adds no information beyond the name.
+  - It implies the name is insufficient, which means the name
+    should have been improved instead.
+
+**Linter implication:** detect prologue comments that closely
+mirror the function name (high token overlap, no return-code
+detail, no precondition detail). Flag as candidates for either
+removal (if function is simple enough that the name is
+self-explanatory) or expansion (if the comment is trying to do
+real work but doing it poorly).
+
+### Interface comments vs implementation comments live in different places
+
+Source: Q17 (2026-05-20).
+
+Two distinct concerns, two distinct comment placements:
+
+| Concern                         | Where                |
+|---------------------------------|----------------------|
+| Interface (purpose, return-     | Prologue (above fn)  |
+| codes, preconditions, ownership)|                      |
+| Implementation (algorithm,      | Inline (inside fn,   |
+| invariants, tricky reasoning)   | at the relevant code)|
+
+Mixing them is wrong shape. A prologue trying to explain how the
+function works is putting commentary in the wrong place. An
+inline comment trying to document the function's interface is
+inviting drift (callers don't read inline comments).
+
+**Linter implication:** when a prologue block-comment contains
+implementation-style language ("we first ...", "this loop ...",
+"the trick is ..."), suggest moving that content inside the
+function body adjacent to the code it explains.
+
 ## Choice-of-form dimensions
 
 ### Macro vs inline: type-genericity and compiler-inlining
