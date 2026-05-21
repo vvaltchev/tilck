@@ -265,6 +265,49 @@ scan a small window above the violation for a comment. If a
 violation to a soft warning (or suppress entirely). Without
 the comment, treat as drift.
 
+## Semantic-shape principle
+
+### Code form matches conceptual shape
+
+Source: Q22b + Q26 (2026-05-20).
+
+A recurring principle across questions: the SHAPE of code should
+match the conceptual SHAPE of what it expresses. Same rules in
+two manifestations:
+
+- **Q22b -- per-level symmetry.** `call(foo(1,2,3), bar(1,2,3))`
+  works because foo and bar are PEERS at the same conceptual
+  level, so their spacing form matches. Mixing compact and
+  non-compact within one level breaks the conceptual peerage.
+
+- **Q26 -- error-precondition validation form.** Combined OR
+  check (V1) groups validations under "any precondition
+  failed." Sequential early-returns (V2) make each validation
+  a visible step of its own. The right form depends on whether
+  the conditions are semantic peers or heterogeneous kinds:
+
+  Heterogeneous (null + flags + state + refcount -- different
+  KINDS of validations): V2 wins, because each check is its
+  own conceptual thing and deserves its own visible name.
+  Lumping them under one OR is "mix-and-match" and not nice.
+
+  Homogeneous / semantically related (all range checks, all
+  auth checks, all membership checks): V1 wins, because the
+  OR is the natural grouping of peers under one umbrella.
+
+**Linter implication:** the semantic-shape principle is
+inherently fuzzy. The tool cannot mechanically determine whether
+two conditions are "semantically related." The right move is to
+emit BOTH forms as suggestions when V1/V2 are structurally
+equivalent for a multi-clause condition, with the choice text:
+"V2 if conditions are heterogeneous (different kinds); V1 if
+they are homogeneous / semantically related."
+
+This is a case where the v2 model produces a *suggestion list*
+rather than a single recommendation. The model's job is to
+identify the choice point; the human (or future Claude making
+the call) selects based on semantic judgment.
+
 ## Higher-order alternatives
 
 ### Init-with-default + conditional override

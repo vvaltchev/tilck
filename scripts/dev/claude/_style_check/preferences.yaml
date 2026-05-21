@@ -1729,6 +1729,98 @@ questions:
       scoring -- not a flat ranking.
     weight: 2.0
 
+  - id: q26-precondition-validation-form
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      An API function validates four heterogeneous preconditions
+      at entry. Any failure -> return -EINVAL. Three forms:
+      combined OR check, sequential early returns, nested ifs.
+    snippets:
+      - label: "1"
+        desc: Combined OR check, brace-on-own-line, single return
+        code: |
+          if (!dev                                ||
+              (flags & ~DEV_FLAGS_MASK) != 0      ||
+              dev->status == DEV_BUSY             ||
+              dev->refcount > MAX_REFCOUNT)
+          {
+             return -EINVAL;
+          }
+      - label: "2"
+        desc: Sequential early-return guards
+        code: |
+          if (!dev)
+             return -EINVAL;
+
+          if ((flags & ~DEV_FLAGS_MASK) != 0)
+             return -EINVAL;
+
+          if (dev->status == DEV_BUSY)
+             return -EINVAL;
+
+          if (dev->refcount > MAX_REFCOUNT)
+             return -EINVAL;
+      - label: "3"
+        desc: Nested ifs around the "happy path"
+        code: |
+          if (dev && (flags & ~DEV_FLAGS_MASK) == 0) {
+             if (dev->status != DEV_BUSY) {
+                if (dev->refcount <= MAX_REFCOUNT) {
+                   /* proceed */
+                   return 0;
+                }
+             }
+          }
+          return -EINVAL;
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      Ranking [2, 1, 3]. The user's qualifier (after a typo
+      correction): V2 is the STRONG preference for error
+      preconditions. V1 ("mix & match" applied to heterogeneous
+      conditions like Q26's) is "not very nice." V1 has a
+      narrow applicability window: when conditions are
+      SEMANTICALLY RELATED (peers of the same kind -- all range
+      checks, all auth checks), V1 reflects their conceptual
+      peerage. In Q26 the conditions are heterogeneous (null +
+      flags + state + refcount), so V1 is mix-and-match here.
+
+      V3 with this many nested cases is "pretty bad."
+    notes: >
+      Form choice for error-precondition validations:
+
+        Heterogeneous conditions (different KINDS -- null check,
+        flag check, state check, refcount check) -> V2
+        (sequential early-returns); each check stands as its
+        own visible step. STRONG preference.
+
+        Semantically related / homogeneous conditions (peers of
+        the same kind -- all range checks, all auth checks, all
+        type checks) -> V1 (combined OR); the natural grouping
+        of peers under one umbrella reflects their conceptual
+        unity.
+
+      Generalises: code SHAPE should match the conceptual
+      shape of what it expresses. Same principle as Q22's
+      per-level symmetry -- structure mirrors semantics.
+
+      IMPORTANT history correction: Claude's first interpretation
+      of this answer (before the user's typo correction) had the
+      direction REVERSED -- claimed V1 was for heterogeneous and
+      V2 for homogeneous. That was wrong; the user's typo
+      ("1 is my strong preference" should have been "2") had
+      caused me to invert the rule. Direction recorded here is
+      the corrected one.
+
+      For the linter: the V1-vs-V2 choice has a semantic
+      component the tool cannot mechanically determine. Emit
+      both as alternatives when a multi-clause condition is
+      detected, with the rule stated in the suggestion text:
+      "V2 if the conditions are heterogeneous (different kinds);
+      V1 if they are homogeneous / semantically related."
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
