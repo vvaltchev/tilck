@@ -133,6 +133,29 @@ without earning its keep.
 
 These are two separate rules with different cursor kinds.
 
+## Naming patterns
+
+### Tight-scope aliases: 1-2 letter abbreviation of purpose
+
+Source: Q6 (2026-05-20), confirmed corpus pattern.
+
+For a local alias that exists only within a small block (~5 lines or
+fewer), the name should be a **1-2 letter abbreviation of the
+variable's purpose**, not of its type and not with a descriptive
+suffix. Examples from the corpus: `ti` (task), `pi` (process), `h`
+(handle), `c` (conn), `ct` (curr ticks), `st` (selected ticks).
+
+Order of preference (for the same alias):
+
+  1. Single-letter initial of purpose -- `c` for conn, `h` for handle.
+  2. Multi-letter abbrev / type-tag-matching name -- `conn`, `cn`.
+     Acceptable as a second-best; the type-tag shadowing is fine.
+  3. Descriptive name with `_ptr` (or similar) suffix -- `conn_ptr`.
+     Anti-pattern. Verbose without earning its keep in tight scope.
+
+This applies only to TIGHT scope. As scope widens, longer names
+become preferable to keep the referent clear at distance.
+
 ## Hard rules surfaced by ranked-preference questions
 
 These are rules promoted from "soft preference" to "hard rule" by user

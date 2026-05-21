@@ -351,3 +351,55 @@ questions:
       is recorded as a cross-cutting pattern, not a Q5-internal
       ranking option.
     weight: 1.0
+
+  - id: q6-naming-tight-scope-alias
+    topic: naming
+    date: 2026-05-20
+    prompt: >
+      Convenience pointer alias for a nested struct reference,
+      used in ~5 statements in a small block; scope ends right
+      after. Three name choices.
+    snippets:
+      - label: "1"
+        desc: Single-letter, initial of purpose (`c` for conn)
+        code: |
+          const struct conn *const c = sess->conn;
+          if (c->state != OPEN)
+             return -EINVAL;
+          rc = conn_lock(c);
+          write_to_conn(c, buf, len);
+          c->last_used = now;
+          conn_unlock(c);
+      - label: "2"
+        desc: Name matches the type tag (`conn` shadowing struct conn)
+        code: |
+          const struct conn *const conn = sess->conn;
+          if (conn->state != OPEN)
+             return -EINVAL;
+          rc = conn_lock(conn);
+          write_to_conn(conn, buf, len);
+          conn->last_used = now;
+          conn_unlock(conn);
+      - label: "3"
+        desc: Descriptive with `_ptr` suffix (`conn_ptr`)
+        code: |
+          const struct conn *const conn_ptr = sess->conn;
+          if (conn_ptr->state != OPEN)
+             return -EINVAL;
+          rc = conn_lock(conn_ptr);
+          write_to_conn(conn_ptr, buf, len);
+          conn_ptr->last_used = now;
+          conn_unlock(conn_ptr);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH on first try. In tight scope where the referent is
+      unambiguous, the name should be a 1-2 letter abbreviation of
+      PURPOSE, not of type. The `_ptr` suffix is anti-pattern. Type-
+      matching name (V2) is acceptable as second-best (the
+      shadowing doesn't bother the user) but loses to the
+      single-letter purpose-initial. Pattern confirmed across
+      corpus: `ti` (task), `pi` (process), `h` (handle), `c`
+      (conn), `ct` (curr ticks), `st` (selected ticks).
+    weight: 1.0
