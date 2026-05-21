@@ -2062,6 +2062,52 @@ questions:
       Cross-cutting note updated in preferences-notes.md.
     weight: 1.5
 
+  - id: q31-infinite-loop-form
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Infinite loop idiom. Three forms: while (true), while (1),
+      for (;;).
+    snippets:
+      - label: "1"
+        desc: while (true)
+        code: |
+          while (true) {
+             handle_event();
+             schedule_yield();
+          }
+      - label: "2"
+        desc: while (1)
+        code: |
+          while (1) {
+             handle_event();
+             schedule_yield();
+          }
+      - label: "3"
+        desc: for (;;)
+        code: |
+          for (;;) {
+             handle_event();
+             schedule_yield();
+          }
+    guess: ["2", "1", "3"]
+    ranking: ["1", "2", "3"]
+    comment: V1 is the only allowed form. V2 and V3 forbidden.
+    notes: >
+      Wrong on V1 vs V2. I had `while (1)` ahead of
+      `while (true)` based on Agent B's corpus inventory which
+      said "while (1) vs for (;;): only while (1) observed
+      (main.c:183)." Either the corpus has drift in main.c:183
+      or the agent's inventory was wrong. The user-canonical
+      form is `while (true)`.
+
+      Hard rule. Clean to enforce: detect WHILE_STMT cursors
+      with constant-1 / non-zero condition tokens; flag forms
+      other than `while (true)`. Also detect FOR_STMT with
+      empty init/cond/incr (the `for (;;)` form) and flag as a
+      violation.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
