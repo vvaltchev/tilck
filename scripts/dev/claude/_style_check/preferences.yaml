@@ -1499,6 +1499,62 @@ questions:
       limit. Recorded as its own section in preferences-notes.md.
     weight: 2.0
 
+  - id: q23-enum-layout
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      A small enum representing severity levels. Numeric values
+      don't matter for this specific case. Three layouts.
+    snippets:
+      - label: "1"
+        desc: One per line, no values
+        code: |
+          enum log_level {
+             LOG_DEBUG,
+             LOG_INFO,
+             LOG_WARN,
+             LOG_ERROR,
+             LOG_FATAL
+          };
+      - label: "2"
+        desc: One per line, explicit aligned values
+        code: |
+          enum log_level {
+             LOG_DEBUG = 0,
+             LOG_INFO  = 1,
+             LOG_WARN  = 2,
+             LOG_ERROR = 3,
+             LOG_FATAL = 4
+          };
+      - label: "3"
+        desc: Packed, multiple enumerators per line
+        code: |
+          enum log_level {
+             LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL
+          };
+    guess: ["1", "2", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      V3 forbidden. V1 and V2 both OK. V2 preferred whenever
+      there is ANY value in having the numbers explicit; V1 only
+      when you're SURE numbers won't matter.
+    notes: >
+      Claude had V1 ahead of V2 in strict order; user signals a
+      LOW THRESHOLD preference for V2. The principle generalizes:
+      when explicit-X (here, explicit enum values) adds
+      information a future reader might use, prefer explicit-X
+      even at the cost of a few characters. This rhymes with the
+      Q3 const-monotonically-positive rule -- same shape: const
+      is monotonically positive when correct; explicit values are
+      monotonically positive when numbers might ever matter.
+
+      For the linter: default-toward-V2-style explicit values is
+      a soft preference. The threshold for "any value in explicit
+      numbers" is fuzzy (bitmask flags, protocol constants,
+      stable ABI numbers are all clear V2 cases; ordering-only
+      enums are V1). When in doubt, suggest V2.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
