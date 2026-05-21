@@ -403,3 +403,39 @@ questions:
       corpus: `ti` (task), `pi` (process), `h` (handle), `c`
       (conn), `ct` (curr ticks), `st` (selected ticks).
     weight: 1.0
+
+  - id: q7-comment-magic-constant
+    topic: comments
+    date: 2026-05-20
+    prompt: >
+      A magic constant with a rationale. Three comment shapes:
+      no comment, brief one-line above, full block above.
+    snippets:
+      - label: "1"
+        desc: No comment
+        code: |
+          const u32 max_retries = 5;
+      - label: "2"
+        desc: Brief one-line comment above
+        code: |
+          /* Tuned empirically; 5 retries covers ~30s with default backoff */
+          const u32 max_retries = 5;
+      - label: "3"
+        desc: Full block comment above
+        code: |
+          /*
+           * Tuned empirically: 5 retries with the default TCP backoff
+           * gives ~30 seconds total wait before giving up.
+           */
+          const u32 max_retries = 5;
+    guess: ["2", "3", "1"]
+    ranking: ["2", "3", "1"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Comments are appropriately sized: brief above-the-
+      line for one-sentence rationale (sweet spot); full block when
+      the explanation has genuine nuance; no comment is the worst
+      because it loses the "why" entirely. The user values comments
+      AND avoids over-commenting -- both at once, calibrated to the
+      rationale's actual complexity.
+    weight: 1.0
