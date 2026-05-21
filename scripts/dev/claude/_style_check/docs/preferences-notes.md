@@ -359,6 +359,33 @@ become preferable to keep the referent clear at distance.
 
 ## Concrete formatting rules surfaced
 
+### Pointer `*` attached to the variable name (hard rule)
+
+Source: Q21 (2026-05-20).
+
+Pointer declarations and parameters MUST use the `Type *var` form:
+a single `*` immediately preceding the variable name, with
+whitespace BEFORE the `*` and no whitespace AFTER. Both
+alternatives are hard-rule violations:
+
+  - `Type* var` (attached to type) -- FORBIDDEN.
+  - `Type * var` (spaces both sides) -- FORBIDDEN.
+
+The same shape applies to all pointer contexts: variable
+declarations, function parameters, struct field declarations,
+return types of pointer-returning functions, etc.
+
+**Linter implication:** detect every VAR_DECL / PARM_DECL whose
+type is a pointer. Walk the token stream between the type and
+the variable name. The required pattern is:
+
+  `<type tokens> WS+ * <name>`
+
+i.e. whitespace before `*`, no whitespace after, name follows
+directly. Any other shape is a violation. Likewise for return
+types of pointer-returning functions and pointer field
+declarations.
+
 ### Multi-line `#define` continuation backslashes go at column 80
 
 Source: Q20 (2026-05-20).

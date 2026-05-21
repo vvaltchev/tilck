@@ -1356,6 +1356,46 @@ questions:
       is a hard violation.
     weight: 1.5
 
+  - id: q21-pointer-asterisk-placement
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Asterisk placement in pointer declarations: attached to
+      variable name, attached to type, or with spaces both sides.
+    snippets:
+      - label: "1"
+        desc: Attached to variable name (`Type *var`)
+        code: |
+          struct task *ti = get_curr_task();
+          char *name = "hello";
+          int *count_ptr = &n;
+      - label: "2"
+        desc: Attached to type (`Type* var`)
+        code: |
+          struct task* ti = get_curr_task();
+          char* name = "hello";
+          int* count_ptr = &n;
+      - label: "3"
+        desc: Spaces on both sides (`Type * var`)
+        code: |
+          struct task * ti = get_curr_task();
+          char * name = "hello";
+          int * count_ptr = &n;
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 is the only acceptable form. V2 and V3 are both
+      forbidden as hard rules.
+    notes: >
+      Order matches pre-guess; the value is in the hard-rule
+      promotion. Linter implementation: walk VAR_DECL and
+      PARM_DECL cursors with pointer type; check the token
+      stream between the type and the variable name. Required
+      pattern: a single `*` immediately preceding the
+      variable-name token, with whitespace BEFORE the `*` and no
+      whitespace AFTER. Any other shape is a violation.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
