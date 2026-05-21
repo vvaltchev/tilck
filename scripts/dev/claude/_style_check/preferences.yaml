@@ -1821,6 +1821,62 @@ questions:
       V1 if they are homogeneous / semantically related."
     weight: 1.5
 
+  - id: q27-header-section-divider
+    topic: file-org
+    date: 2026-05-20
+    prompt: >
+      Section dividers between API groups in a header file.
+      Three styles: long banner, short comment label, no label.
+    snippets:
+      - label: "1"
+        desc: Long banner divider (3-line "===" style)
+        code: |
+          /* ==========================================================
+           *
+           * Locking API
+           *
+           * ========================================================== */
+          void lock_init(struct lock *l);
+          void lock_acquire(struct lock *l);
+          void lock_release(struct lock *l);
+
+          /* ==========================================================
+           *
+           * Allocation API
+           *
+           * ========================================================== */
+          void *kalloc(size_t n);
+          void kfree(void *p);
+      - label: "2"
+        desc: Short one-line comment label
+        code: |
+          /* Locking API */
+          void lock_init(struct lock *l);
+          void lock_acquire(struct lock *l);
+          void lock_release(struct lock *l);
+
+          /* Allocation API */
+          void *kalloc(size_t n);
+          void kfree(void *p);
+      - label: "3"
+        desc: Blank lines only, no labels
+        code: |
+          void lock_init(struct lock *l);
+          void lock_acquire(struct lock *l);
+          void lock_release(struct lock *l);
+
+          void *kalloc(size_t n);
+          void kfree(void *p);
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Short one-line section labels are the
+      preferred form; long banner dividers are acceptable but
+      heavy-handed; unlabeled blank-line separation loses
+      navigability.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
