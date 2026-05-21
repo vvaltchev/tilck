@@ -379,14 +379,24 @@ would make the code uglier, these spacing rules MAY be tightened
   - Argument lists: `foo(a,b,c)` -- drop comma-after spaces.
   - Binary operators: `a+b` -- drop spaces around operator.
 
-**Symmetry rule (hard):** if you tighten, you tighten the *whole*
-expression. Mixing forms is forbidden:
+**Symmetry rule (hard) -- PER NESTING LEVEL, not global.**
+Compactness applies to each argument-list / parenthesized group
+independently. Within one level, all peers must use the same
+form. The decision does NOT propagate up or down the nesting
+tree.
 
 ```c
-call(foo(1,2,3), bar(1, 2, 3))   /* FORBIDDEN: asymmetric */
+call(foo(1,2,3), bar(1,2,3))       /* OK: inner level symmetric */
+call(foo(1,2,3), bar(1, 2, 3))     /* FORBIDDEN: asymmetric inner */
+something_else(call(foo(1,2,3), bar(1,2,3)), 42)
+   /* OK: outer level (something_else's args) keeps default
+    * spacing; inner level (call's args) decides separately. */
 ```
 
-The mixed form is uglier than either pure form would have been.
+So the rule is "each level decides its own form; that decision
+must be uniform across that level's peers." Mixing peers
+asymmetrically within one level is the violation; mixing
+LEVELS (default outside, compact inside) is normal and fine.
 
 **Meta-rule -- compact form is a last resort.** The user prefers
 to break the line and accept the wrap over deploying the compact
@@ -417,6 +427,44 @@ around it.
     soft-penalty (compact-form is a hack, not the default). When
     the same expression has mixed compact and default forms,
     flag as a symmetry violation regardless of line length.
+
+### Visual harmony with surrounding lines
+
+Source: Q22 clarification (2026-05-20).
+
+The 80-column limit is a HARD upper bound, but staying under it
+is not sufficient for prettiness. Lines that DO fit in 80 cols
+may still need to be wrapped if they stand out from the visual
+rhythm of the surrounding region.
+
+**Rule:** "If there is too much difference between the length of
+a line and the one below... break the line even if it does fit
+in 80 columns, simply because visually the code would look ugly.
+There must be harmony."
+
+Concrete consequences:
+
+  - A 79-col line surrounded by 30-40-col lines is *ugly* even
+    though it complies with the column limit.
+  - A small block where every line is roughly the same width is
+    pretty; a block with one outlier-long line is not.
+  - Wrapping decisions should consider the local neighbourhood,
+    not just the line in question.
+
+**Meta-rule for compact-form-vs-wrap:** when in doubt between
+"squeeze with compact form to fit 80" and "wrap to maintain
+harmony," prefer the WRAP, "in a beautiful way." Compact form
+is a save-the-line hack; wrapping for harmony is style.
+
+**Linter implication:** this rule is fuzzy and hard to encode
+mechanically. A v2 heuristic: for each line in a basic block,
+compute the distribution of line lengths. Flag lines whose
+length deviates significantly from the local mean as
+"harmony-violations" -- a soft penalty, not a hard rule. The
+threshold and the local-window definition are tunable. This
+is the kind of rule where the v2 model should emit a hint
+(level c -- a suggested alternative) rather than a hard
+violation.
 
 ### Pointer `*` attached to the variable name (hard rule)
 

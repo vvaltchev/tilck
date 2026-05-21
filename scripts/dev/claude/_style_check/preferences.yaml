@@ -1460,6 +1460,45 @@ questions:
       Cross-cutting rules added to preferences-notes.md.
     weight: 2.0
 
+  - id: q22b-compact-form-per-level-symmetry
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Supplements Q22. Claude initially recorded the compact-form
+      symmetry rule as "tighten the whole expression"; the user
+      clarified that symmetry is PER NESTING LEVEL, not global.
+    snippets:
+      - label: "ok"
+        desc: Symmetric within `call`'s args -- both foo/bar compact
+        code: |
+          call(foo(1,2,3), bar(1,2,3));
+      - label: "bad"
+        desc: Asymmetric within `call`'s args -- foo compact, bar not
+        code: |
+          call(foo(1,2,3), bar(1, 2, 3));   /* FORBIDDEN */
+      - label: "ok-nested"
+        desc: >
+          Outer-level keeps default spacing even though inner
+          args are compact. Each level decides independently.
+        code: |
+          something_else(call(foo(1,2,3), bar(1,2,3)), 42);
+    guess: null
+    ranking: null
+    comment: >
+      Clarification: compact-form symmetry is a per-argument-list
+      / per-paren-group property. Each level makes its own
+      compact-or-not decision; the choice must be uniform across
+      that level's peers but doesn't propagate up or down the
+      nesting tree.
+    notes: >
+      New cross-cutting principle also surfaced in this clarification:
+      VISUAL HARMONY. Line length isn't a binary "<=80 OK / >80 wrap" --
+      even an 80-col line that fits should be wrapped if it visually
+      stands out among shorter neighbors. The code wants rhythm with
+      the surrounding region, not just compliance with the column
+      limit. Recorded as its own section in preferences-notes.md.
+    weight: 2.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
