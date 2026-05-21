@@ -12,6 +12,37 @@ broad to attach to one question.
 
 ---
 
+## Asymmetries
+
+### Function calls vs function definitions: different Style 2 rules
+
+Source: Q1 (calls) + Q4 (defs), 2026-05-20.
+
+For a multi-line **function call** with one arg per line, Style 2
+strict (`);` on its own line) is the *preferred* form.
+
+For a multi-line **function definition** with one arg per line,
+Style 2 in any form is a *hard-no*; Style 1 (args aligned under the
+opening paren) is the only acceptable shape.
+
+The asymmetry is structural: in a call, `);` provides statement-
+level closure that benefits from being on its own line; in a
+definition, the `{` of the body already provides closure, so a
+separate `)` line just creates two adjacent single-character lines
+without earning its keep.
+
+**Linter implication:** `multiline_call_style` should branch on
+`CALL_EXPR` vs `FUNCTION_DECL` cursors and apply different rules:
+
+- Call: `);` MUST be on its own line when each arg is on its own
+  line (the existing v1 narrow Style 3 detector should be widened
+  per Q1's hard rule).
+- Def: open `(` MUST be on the same line as the function name;
+  Style 2 (open `(` at end of name line, args indented +3) is
+  forbidden regardless of whether `)` is on its own line or glued.
+
+These are two separate rules with different cursor kinds.
+
 ## Hard rules surfaced by ranked-preference questions
 
 These are rules promoted from "soft preference" to "hard rule" by user

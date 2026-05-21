@@ -163,3 +163,72 @@ questions:
       application. The visual-weight exception only fires at higher
       type-spelling thresholds (e.g. `enum task_state`).
     weight: 1.0
+
+  - id: q4-function-def-signature-wrap
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      A 4-parameter function definition with a signature too long for
+      one line. Return type is on its own line per existing rule;
+      question is how to lay out the parameter list itself.
+    snippets:
+      - label: "1"
+        desc: Style 1 packed (aligned to opening paren)
+        code: |
+          static int
+          load_segment(fs_handle *elf_h, pdir_t *pdir,
+                       Elf_Phdr *phdr, ulong *end_vaddr_ref)
+          {
+             /* ... */
+          }
+      - label: "2"
+        desc: Style 1 one arg per line (aligned to opening paren)
+        code: |
+          static int
+          load_segment(fs_handle *elf_h,
+                       pdir_t *pdir,
+                       Elf_Phdr *phdr,
+                       ulong *end_vaddr_ref)
+          {
+             /* ... */
+          }
+      - label: "3"
+        desc: Style 2 strict (`(` ends line, args indented +3, `)` on own line)
+        code: |
+          static int
+          load_segment(
+             fs_handle *elf_h,
+             pdir_t *pdir,
+             Elf_Phdr *phdr,
+             ulong *end_vaddr_ref
+          )
+          {
+             /* ... */
+          }
+      - label: "4"
+        desc: Style 2 with `)` glued to last arg (one arg per line)
+        code: |
+          static int
+          load_segment(
+             fs_handle *elf_h,
+             pdir_t *pdir,
+             Elf_Phdr *phdr,
+             ulong *end_vaddr_ref)
+          {
+             /* ... */
+          }
+    guess: ["2", "1", "3", "4"]
+    ranking: ["2", "1", "3", "4"]
+    comment: >
+      V3 and V4 are equally ugly and unacceptable. HARD RULE.
+    notes: >
+      Claude got the top exactly right (V2 > V1) but had a slight
+      preference for V3 over V4 -- user ties them as equally
+      unacceptable. Key asymmetry with Q1: for CALLS, Style 2 strict
+      was the user's TOP pick (the `);` on its own line gives
+      statement-level closure); for DEFINITIONS, Style 2 in any form
+      is hard-no because the `{` of the body already provides closure
+      and a separate `)` line creates two adjacent single-character
+      lines without earning its keep. Function defs use Style 1 only;
+      within Style 1, one-arg-per-line beats packed.
+    weight: 1.0
