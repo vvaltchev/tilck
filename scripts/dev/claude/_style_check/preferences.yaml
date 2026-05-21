@@ -1555,6 +1555,78 @@ questions:
       enums are V1). When in doubt, suggest V2.
     weight: 1.0
 
+  - id: q24-struct-initializer-layout
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Struct initializer via compound literal with four named
+      fields. Three layouts: designators value-aligned,
+      designators with single space, or positional (no
+      designators).
+    snippets:
+      - label: "1"
+        desc: Designators with values column-aligned
+        code: |
+          *ctx = (struct request_ctx) {
+             .req       = r,
+             .session   = sess,
+             .flags     = flags,
+             .timestamp = now,
+          };
+      - label: "2"
+        desc: Designators with single-space, no alignment
+        code: |
+          *ctx = (struct request_ctx) {
+             .req = r,
+             .session = sess,
+             .flags = flags,
+             .timestamp = now,
+          };
+      - label: "3"
+        desc: Positional initializers (no designators)
+        code: |
+          *ctx = (struct request_ctx) {
+             r,
+             sess,
+             flags,
+             now,
+          };
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 is by far the best (strong default). V2 acceptable when
+      alignment forces lines too long. V3 acceptable ONLY when
+      all of:
+        a) the formatting helps fit each field init on a single
+           line,
+        b) the struct has 2-3 fields max,
+        c) the values are self-evident from position (NOT
+           multiple booleans).
+      Otherwise V3 is forbidden; fall back to V1 with line
+      splitting.
+    notes: >
+      EXACT MATCH on ordering. The valuable data is the cascade
+      and the "no multiple booleans" caveat.
+
+      Specialized compact-form-for-line-fit:
+        Default:        V1 (aligned designators).
+        Compact step 1: V2 (drop alignment to save width).
+        Compact step 2: V3 (drop designators entirely; tiny
+                        struct + self-identifying values).
+        Beyond:         V1 + wrap fields to multiple lines.
+
+      The "no multiple booleans" rule generalizes: positional
+      init only works when values are SELF-IDENTIFYING. Distinct
+      types or clearly distinguishable literals are OK; multiple
+      booleans, multiple ints with similar shapes, multiple
+      pointers of the same type -- all force back to designators.
+
+      For the linter: detect compound-literal initializers; rank
+      by alignment quality. Positional-init suggestions only when
+      field count <= 3 AND field types are heterogeneous /
+      self-identifying.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
