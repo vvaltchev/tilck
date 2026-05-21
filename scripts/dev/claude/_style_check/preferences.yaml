@@ -77,3 +77,51 @@ questions:
       promoted from "acceptable Style 2 variant" to "hard-no": the
       one-arg-per-line layout REQUIRES `);` on its own line.
     weight: 1.0
+
+  - id: q2-control-flow-nested-struct-cond
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Two-clause if-condition that reads two fields of the same
+      nested struct. Single-line braced form exceeds 80 cols.
+    snippets:
+      - label: "1"
+        desc: Accept brace-on-own-line, keep condition as-is
+        code: |
+          if (sess->conn->state != STATE_OPEN ||
+              sess->conn->kind != KIND_TCP)
+          {
+             return -EINVAL;
+          }
+      - label: "2"
+        desc: Extract each sub-expression to a named local
+        code: |
+          const int state = sess->conn->state;
+          const int kind = sess->conn->kind;
+
+          if (state != STATE_OPEN || kind != KIND_TCP) {
+             return -EINVAL;
+          }
+      - label: "3"
+        desc: Introduce a convenience pointer one level up
+        code: |
+          const struct conn *const c = sess->conn;
+
+          if (c->state != STATE_OPEN || c->kind != KIND_TCP) {
+             return -EINVAL;
+          }
+    guess: ["3", "2", "1"]
+    ranking: ["3", "1", "2"]
+    comment: ""
+    notes: >
+      Claude got V3 right (top) but had V2 over V1 -- user has V1 over
+      V2. The "1-2 exprs" guidance in CLAUDE.md is the UPPER BOUND for
+      when individual-extract is acceptable, not the preferred form.
+      Two extracted locals (`state`, `kind`) lose semantic anchoring
+      and add to function-local count; accepting brace-on-own-line
+      preserves meaning at a single layout cost. Convenience pointer
+      wins because it is the minimal-disturbance refactor: shortens
+      the parent reference without renaming the leaf fields, so the
+      original semantic shape is preserved while the wrapping
+      disappears.
+    weight: 1.0
