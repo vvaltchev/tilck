@@ -128,11 +128,14 @@ Run `./scripts/cmake_run && make` in the repo first to populate
 ## Usage
 
 ```bash
-# Check files (default output: JSONL)
+# Check files (default output: human-readable text)
 ./scripts/dev/claude/style_check check kernel/poll.c
 
-# Human-readable output
-./scripts/dev/claude/style_check check --format text kernel/poll.c
+# Machine-readable JSONL (for Claude to consume)
+./scripts/dev/claude/style_check check --json kernel/poll.c
+
+# (Equivalent long form)
+./scripts/dev/claude/style_check check --format jsonl kernel/poll.c
 
 # Check files changed since a git ref
 ./scripts/dev/claude/style_check check --since HEAD~10

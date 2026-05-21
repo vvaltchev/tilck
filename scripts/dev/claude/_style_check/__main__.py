@@ -175,7 +175,8 @@ def cmd_check(args) -> int:
 
          all_diags.extend(diags)
 
-   reporter.emit(all_diags, fmt=args.format)
+   fmt = 'jsonl' if args.json else args.format
+   reporter.emit(all_diags, fmt=fmt)
    return 0
 
 
@@ -228,8 +229,14 @@ def build_argparser():
    check_p.add_argument(
       '--format',
       choices=['jsonl', 'text'],
-      default='jsonl',
-      help='Output format (default: jsonl)'
+      default='text',
+      help='Output format (default: text -- human-friendly)'
+   )
+
+   check_p.add_argument(
+      '--json',
+      action='store_true',
+      help='Shortcut for --format jsonl (machine-readable output)'
    )
 
    check_p.add_argument(
