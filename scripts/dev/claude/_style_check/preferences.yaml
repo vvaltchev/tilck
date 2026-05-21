@@ -599,3 +599,140 @@ questions:
       a formatting rule that could eventually be enforced by the
       linter.
     weight: 1.5
+
+  - id: q11-error-handling-cleanup
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      A function allocates two resources sequentially and must free
+      both on every exit path. Three control-flow shapes for the
+      error-handling structure.
+    snippets:
+      - label: "1"
+        desc: Nested ifs with cleanup inline in each branch
+        code: |
+          static int
+          do_work(void)
+          {
+             struct foo *a;
+             int rc = -ENOMEM;
+
+             a = alloc_foo();
+
+             if (a) {
+
+                struct bar *b = alloc_bar();
+
+                if (b) {
+                   rc = work(a, b);
+                   free_bar(b);
+                }
+
+                free_foo(a);
+             }
+
+             return rc;
+          }
+      - label: "2"
+        desc: >
+          Early returns with cleanup duplicated. Locals declared at
+          the top (NULL-initialised where the real assignment is
+          deferred) so we don't introduce mid-block decls that are
+          orthogonal to the variant being tested.
+        code: |
+          static int
+          do_work(void)
+          {
+             struct foo *a = NULL;
+             struct bar *b = NULL;
+             int rc;
+
+             a = alloc_foo();
+             if (!a)
+                return -ENOMEM;
+
+             b = alloc_bar();
+             if (!b) {
+                free_foo(a);
+                return -ENOMEM;
+             }
+
+             rc = work(a, b);
+             free_bar(b);
+             free_foo(a);
+             return rc;
+          }
+      - label: "3"
+        desc: >
+          goto-out with consolidated cleanup. free_X(NULL) is a
+          no-op in this codebase, so no `if (ptr)` guards before
+          the frees -- they are not needed.
+        code: |
+          static int
+          do_work(void)
+          {
+             struct foo *a = NULL;
+             struct bar *b = NULL;
+             int rc = -ENOMEM;
+
+             a = alloc_foo();
+             if (!a)
+                goto out;
+
+             b = alloc_bar();
+             if (!b)
+                goto out;
+
+             rc = work(a, b);
+
+          out:
+             free_bar(b);
+             free_foo(a);
+             return rc;
+          }
+    guess: ["3", "2", "1"]
+    ranking: ["3", "2", "1"]
+    comment: >
+      Default ranking for long fn with many allocations: [3, 2, 1].
+      For 2 resources only (this case), V3 ~= V2 -- V2 is maybe a
+      bit nicer than V3 because we avoid a goto. For a VERY short
+      function whose body essentially boils down to `work(a, b)`,
+      V1 becomes elegant -- could be the preferred form.
+
+      Meta-rule: "if you're unsure, always pick variant 3, as it's
+      never wrong."
+
+      Two snippet corrections relative to what Claude originally
+      posed: (a) V3 had `if (b)` / `if (a)` guards before the frees
+      -- removed, because free_X(NULL) must be a no-op in this
+      codebase; (b) V2 had mid-block declarations which are an
+      orthogonal style issue -- locals moved to the top with NULL
+      initialisation where the real assignment is deferred.
+    notes: >
+      Default ranking [3, 2, 1] matches my pre-guess. The richer
+      picture is a context-dependent cascade:
+
+        Function shape          | Preferred ranking
+        ------------------------|------------------
+        Very short body (V1 ~=  | [1, ...]    V1 best
+          single call)          |
+        Medium fn, 2 resources  | [3, 2, ...] or [2, 3, ...] (close)
+        Long fn, many alloc     | [3, 2, 1]    V3 dominant
+
+      The meta-rule "if unsure pick V3" works as a safe default --
+      V3 is never WRONG even when V1 or V2 would be slightly
+      nicer.
+
+      Two new concrete rules surfaced from this question (recorded
+      separately in preferences-notes.md):
+
+      1. free_X(NULL) must be a no-op in this codebase. Cleanup
+         code never needs `if (ptr)` guards before calling free.
+         Variants that include such guards have an idiom error.
+
+      2. For V2-style early-return-with-duplicated-cleanup, locals
+         that get assigned later should be declared at the top
+         with NULL initialisation, NOT introduced mid-block. The
+         orthogonal C99/mixed-decl question doesn't justify
+         propagating that pattern in error-handling examples.
+    weight: 1.5

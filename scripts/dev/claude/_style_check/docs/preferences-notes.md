@@ -158,6 +158,31 @@ become preferable to keep the referent clear at distance.
 
 ## Concrete formatting rules surfaced
 
+### Free functions must accept NULL (no guards before free)
+
+Source: Q11 (2026-05-20).
+
+All `free_*` functions in this codebase are required to be no-ops on
+NULL input. As a consequence, cleanup code (especially under a
+goto-out label) **never** needs an `if (ptr)` guard before the call.
+
+```c
+out:
+   free_bar(b);   /* b may be NULL -- free_bar handles it */
+   free_foo(a);   /* a may be NULL -- free_foo handles it */
+   return rc;
+```
+
+Code that includes such guards has an *idiom error*: it betrays a
+misunderstanding of the free contract or an over-defensive habit
+from libraries that don't have this guarantee.
+
+**Linter implication:** detect `if (ptr) free_X(ptr);` patterns and
+flag them as candidates for unguarded calls. Need to know which
+identifiers are project free functions (heuristic: any function
+matching `*free*`, `kfree*`, or that takes one pointer arg and
+returns void -- with allowlist tuning).
+
 ### Multi-line boolean operators (`||`, `&&`) are column-aligned
 
 Source: Q10 (2026-05-20), user-volunteered.
@@ -253,6 +278,42 @@ suggestion should weigh (i) per-local cost, (ii) name-blandness
 surcharge (penalty rises for names <= 5 chars), and (iii) use-site
 count at the proposed extraction's location. Only suggest extract
 when savings strictly exceed cost.
+
+### Error-handling shape: context-dependent cascade
+
+Source: Q11 (2026-05-20).
+
+There is no single "best" error-handling shape; the preferred form
+depends on the function's overall size and the number of resources
+that need cleanup.
+
+  Function shape                  | Preferred shape
+  --------------------------------|-----------------------------
+  Very short body (the work       | Nested ifs (V1). Elegant
+    function is literally one     | when there's effectively one
+    call: `rc = work(a, b)`)      | level of nesting and no
+                                  | duplication exists yet.
+  Medium fn, exactly 2 resources  | Either goto-out (V3) or
+                                  | early-return-with-duplicate-
+                                  | cleanup (V2). V2 is a bit
+                                  | nicer for avoiding the goto;
+                                  | the choice is close.
+  Long fn, 3+ resources           | goto-out (V3) dominates.
+                                  | Consolidated cleanup at a
+                                  | single label is the kernel
+                                  | idiom.
+
+**Meta-rule for Claude:** when in doubt about which shape to use,
+pick goto-out (V3). It is never *wrong* even when V1 or V2 would
+be slightly nicer. The other two have narrower applicability
+windows.
+
+**Linter implication:** the v2 prettiness model should score
+goto-out as the always-acceptable baseline (small fixed
+penalty for the goto itself), while V1 and V2 each carry a
+context-conditional bonus that activates only in their narrow
+applicability windows. Without per-function context, the safe
+ranking is V3 > V2 > V1.
 
 ### Helper-function amortization
 
