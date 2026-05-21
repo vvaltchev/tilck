@@ -1,0 +1,30 @@
+# Tilck style_check -- ranked-preference data for v2 prettiness scoring.
+#
+# This file is the machine-readable record of the ranked-preference Q&A
+# loop. The style_check tool reads it to fit prettiness coefficients
+# per topic. Each entry is one question.
+#
+# Schema for each entry under `questions:`:
+#
+#   id:        short kebab-case identifier, unique within this file
+#   topic:     one of the v2 categories (call-site / declarations /
+#              control-flow / function-shape / expressions / comments /
+#              naming / macros / whitespace / file-org / structs)
+#   date:      YYYY-MM-DD when the question was asked
+#   prompt:    one-line summary of the trade-off the question explores
+#   snippets:  list of code variants. Each:
+#                label:  "1" / "2" / ...
+#                code:   C source (literal, multi-line OK)
+#                desc:   one-line note on what makes this variant distinct
+#   guess:     Claude's pre-revealed ranking (e.g. [1, 3, 2])
+#   ranking:   user's actual ranking (same format)
+#   comment:   optional free-form user note
+#   notes:     optional Claude observations after seeing the ranking
+#   weight:    optional double; rough indication of how strongly the
+#              user felt about this ranking (default 1.0)
+#
+# Coefficient fitting consumes this file; Claude does not edit
+# entries after they're recorded (immutable history).
+
+version: 1
+questions: []
