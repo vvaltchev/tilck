@@ -78,6 +78,65 @@ questions:
       one-arg-per-line layout REQUIRES `);` on its own line.
     weight: 1.0
 
+  - id: q1b-call-site-wrap-hierarchy
+    topic: call-site
+    date: 2026-05-20
+    prompt: >
+      Supplements Q1. The user surfaced a hierarchical decision tree
+      for call-site wrapping that Q1 missed: there are intermediate
+      preferred forms BEFORE you start spreading args across multiple
+      lines. Q1's ranking only applies as the sub-ranking once even
+      those intermediates don't fit.
+    snippets:
+      - label: "h1"
+        desc: Single line (always tried first)
+        code: |
+          context->result = very_long_function_name(arg1, arg2, arg3);
+      - label: "h2"
+        desc: >
+          Break at `=`. Assignment ends first line; full call (still
+          single-line) on the next line at +3 indent. Same shape as
+          the elf.c fix (`const ulong stack_top = ...`).
+        code: |
+          context->result =
+             very_long_function_name(arg1, arg2, arg3);
+      - label: "h3"
+        desc: >
+          `(` at end of name-line, ALL args on one indented line,
+          `)` on its own line aligned with statement start. Used
+          when h2 still doesn't fit but all args fit on one indented
+          line.
+        code: |
+          context->result = very_long_function_name(
+             arg1, arg2, arg3, arg4, arg5
+          );
+      - label: "h4"
+        desc: >
+          Args spill across multiple lines -- Q1's domain. Sub-
+          ranking applies: V2 > V4 > V1 > V3 (hard-no).
+        code: |
+          /* see Q1 entry for the four sub-variants */
+    guess: ["h1", "h2", "h3", "h4"]
+    ranking: ["h1", "h2", "h3", "h4"]
+    comment: >
+      User-directed correction to Q1. The full hierarchy is strictly
+      monotonic in this order; Q1's ranking is the sub-tree applied
+      at level h4 when level h3 cannot fit.
+    notes: >
+      Crucial v2 modeling implication: the call-site prettiness score
+      is not a single ranking over layouts but a *cascade* where each
+      level scores higher than the next, and the active level depends
+      on what fits given the line width, arg count, and surrounding
+      indent. The score function walks the hierarchy top-down and
+      returns the highest-fitting form's score.
+
+      The break-at-= pattern (h2) was already recorded as a
+      style-fix-strategy in memory (feedback_style_fix_strategies)
+      from the elf.c fix, but I had not generalized it from
+      "assignment wrapping" to "call-site layout." It is the same
+      pattern at a different abstraction.
+    weight: 1.5
+
   - id: q2-control-flow-nested-struct-cond
     topic: control-flow
     date: 2026-05-20

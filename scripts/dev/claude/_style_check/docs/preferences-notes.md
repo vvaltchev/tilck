@@ -12,6 +12,58 @@ broad to attach to one question.
 
 ---
 
+## Decision trees (cascading preferences)
+
+### Call-site layout: hierarchy of wrapping forms
+
+Source: Q1 + Q1b clarification, 2026-05-20.
+
+For an assignment of the form `lhs = func(args);` that's too long for
+80 cols, the user picks the highest-fitting form from this strictly-
+ordered cascade. Each step is a fallback for the previous step not
+fitting.
+
+  H1. Single line:
+        `lhs = func(args);`
+      Always tried first. If it fits in 80 cols, stop.
+
+  H2. Break at `=`:
+        lhs =
+           func(args);
+      Use when H1 doesn't fit but the call alone (`func(args);`) on
+      one indented line does. Same shape as the elf.c fix for
+      `const ulong stack_top = ...`.
+
+  H3. Open `(` at end of name-line, all args on one indented line,
+      `)` on its own line aligned with statement start:
+        lhs = func(
+           arg1, arg2, arg3, arg4
+        );
+      Use when H2 doesn't fit but all args fit on a single indented
+      line.
+
+  H4. Args spilling across multiple lines. Sub-ranking applies (Q1):
+      - H4a (best): Style 2 strict -- one arg per line, `);` on own
+        line. Documented as Q1 V2.
+      - H4b: Style 1 one-per-line -- args aligned under opening
+        paren. Documented as Q1 V4.
+      - H4c: Style 1 packed -- multiple args per wrapped line.
+        Documented as Q1 V1.
+      - HARD-NO: one-arg-per-line with `);` glued to last arg
+        (Q1 V3).
+
+**Modeling implication:** the v2 prettiness score for a call-site is
+not a single ranking but a CASCADE. Each level scores higher than the
+next; the active level is selected by what fits given the surrounding
+context (line width, arg count, indent depth). Score function walks
+the hierarchy top-down and returns the highest-fitting form's score.
+
+**Linter implication:** levels H2 and H3 are positive shapes
+(legitimate corpus precedent). Existing `multiline_call_style` does
+not flag them (good). When the rule fires on H4c-style violations,
+the suggested alternative should be the HIGHEST-fitting form (H1 if
+possible, else H2, etc.) -- not just "use Style 2 strict."
+
 ## Asymmetries
 
 ### Function calls vs function definitions: different Style 2 rules
