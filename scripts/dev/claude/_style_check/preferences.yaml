@@ -2192,6 +2192,101 @@ questions:
       when the same sub-pattern appears in 2+ places.
     weight: 2.0
 
+  - id: q33-decl-init-at-decl-vs-deferred
+    topic: declarations
+    date: 2026-05-20
+    prompt: >
+      Toy function with two read-only locals whose values are
+      known at the top. Three init patterns: at decl, deferred,
+      default-then-overwrite.
+    snippets:
+      - label: "1"
+        desc: Initialize at declaration
+        code: |
+          const int base = ti->priority;
+          const int weight = ti->nice;
+      - label: "2"
+        desc: Declare uninitialized, assign in body
+        code: |
+          int base;
+          int weight;
+
+          base = ti->priority;
+          weight = ti->nice;
+      - label: "3"
+        desc: Initialize to default then overwrite
+        code: |
+          int base = 0;
+          int weight = 0;
+
+          base = ti->priority;
+          weight = ti->nice;
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      User flagged the question as malformed: the example is
+      "way too small and unrealistic," and the const trade-off
+      was already covered in Q3 + Q8. Ranking [1, 2, 3] holds
+      for this specific example but the user warned not to
+      infer the general rule from this question.
+
+      The general rule remains: prefer const + init-at-decl
+      when type isn't too verbose; skip const (or skip init-at-
+      decl) only when the visual weight tips it over.
+    notes: >
+      Important Claude self-correction: this question was a
+      bad one. It re-covered ground from Q3/Q8 with an even
+      smaller, more artificial example. The user's feedback
+      ("you cannot infer so easily the general rule, just
+      from this question") flags that future questions should
+      use realistic functions, not toys, and should avoid
+      re-asking what's already in the YAML.
+
+      Recording with weight 0.5 -- the question is not a
+      reliable data point on its own.
+    weight: 0.5
+
+  - id: q34-do-while-vs-alternatives
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Poll loop -- do the work once, check, repeat. Three loop
+      shapes: do-while, while-true with break, pre-check-then-
+      while.
+    snippets:
+      - label: "1"
+        desc: do { ... } while (cond)
+        code: |
+          do {
+             poll_status();
+          } while (!is_ready());
+      - label: "2"
+        desc: while (true) with explicit break
+        code: |
+          while (true) {
+
+             poll_status();
+
+             if (is_ready())
+                break;
+          }
+      - label: "3"
+        desc: Pre-check then while (duplicated work)
+        code: |
+          poll_status();
+
+          while (!is_ready())
+             poll_status();
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. do-while is the natural shape for "do once
+      then check"; while-true-break is functionally equivalent
+      but more verbose; pre-check-then-while has duplicated
+      work and is the worst.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
