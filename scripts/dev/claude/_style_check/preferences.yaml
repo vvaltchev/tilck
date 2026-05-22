@@ -2404,6 +2404,62 @@ questions:
       of the function's purpose. Soft suggestion only.
     weight: 2.0
 
+  - id: q36-midfunction-ifdef-placement
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      Arch-specific code inside a mostly-arch-neutral function.
+      Three approaches: #ifdef flush-left, #ifdef indented,
+      extract dispatch to arch-specific helper headers.
+    snippets:
+      - label: "1"
+        desc: "#ifdef flush left inside function body"
+        code: |
+          #ifdef ARCH_x86
+             x86_specific_init(ti);
+          #endif
+      - label: "2"
+        desc: "#ifdef indented to match surrounding code"
+        code: |
+             #ifdef ARCH_x86
+             x86_specific_init(ti);
+             #endif
+      - label: "3"
+        desc: >
+          Extract dispatch to arch-specific helper headers; main
+          function is preprocessor-free
+        code: |
+          /* arch-specific header */
+          #ifdef ARCH_x86
+          static inline void arch_specific_init(...) { x86_specific_init(...); }
+          #else
+          static inline void arch_specific_init(...) { }
+          #endif
+
+          /* main function calls `arch_specific_init(ti)` directly */
+    guess: ["3", "1", "2"]
+    ranking: ["3", "1", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. V3 wins decisively -- the canonical pattern
+      is to extract arch dispatch to arch-specific helpers in
+      the appropriate header/file so the main function stays
+      preprocessor-free. This is another instance of
+      "restructure rather than scaffold": preprocessor
+      conditionals inside function bodies are scaffolding;
+      the structural move is to lift the dispatch into a
+      cleaner abstraction layer.
+
+      When #ifdef inside a function body is genuinely
+      unavoidable (rare), flush-left beats indented.
+
+      For the linter: detect #ifdef directives inside function
+      bodies; flag with a suggestion to consider arch-helper
+      extraction. Soft suggestion -- some legitimate cases
+      remain. When the suggestion can't be taken, ensure the
+      #ifdef directive starts at column 1.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
