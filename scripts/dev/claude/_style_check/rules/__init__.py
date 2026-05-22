@@ -34,6 +34,10 @@ from . import blank_line_after_non_final_return  # Q18
 from . import non_const_locals_top_of_block    # Q15
 from . import function_def_no_style2           # Q4
 from . import no_packed_case_labels            # Q42
+from . import break_before_operator_forbidden  # Q25
+from . import include_order                    # Q13
+from . import cast_no_asymmetric_form          # Q22
+from . import per_case_braces_when_locals      # Q12
 
 from . import multiline_call_style
 
@@ -87,6 +91,10 @@ ALL_RULES = [
    non_const_locals_top_of_block.RULE,
    function_def_no_style2.RULE,
    no_packed_case_labels.RULE,
+   break_before_operator_forbidden.RULE,
+   include_order.RULE,
+   cast_no_asymmetric_form.RULE,
+   per_case_braces_when_locals.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }
