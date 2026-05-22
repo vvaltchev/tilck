@@ -2108,6 +2108,90 @@ questions:
       violation.
     weight: 1.5
 
+  - id: q32-function-size-threshold
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      An ~18-line function with three phases. Three layouts:
+      monolithic, extract buffer-prep helper, extract both
+      validation and buffer-prep helpers.
+    snippets:
+      - label: "1"
+        desc: Monolithic (~18 lines, three phases inline)
+        code: |
+          static int
+          process_request(struct request *req)
+          {
+             struct task *target;
+             void *buf;
+             int rc;
+
+             if (!req || req->size > MAX_REQ_SIZE)
+                return -EINVAL;
+
+             target = find_task_by_pid(req->target_pid);
+             if (!target)
+                return -ESRCH;
+
+             buf = kalloc(req->size);
+             if (!buf)
+                return -ENOMEM;
+
+             memcpy(buf, req->payload, req->size);
+             rc = dispatch_op(target, req->op, buf, req->size);
+             kfree(buf);
+             return rc;
+          }
+      - label: "2"
+        desc: Extract the buffer-prep step into a helper
+        code: |
+          /* prepare_buffer helper + caller (see question) */
+      - label: "3"
+        desc: Extract both validation and buffer-prep
+        code: |
+          /* validate_request + prepare_buffer helpers + caller (see question) */
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 wins for this size. The principle the user articulated:
+      "smaller" is context-dependent, but at THIS size all
+      variants are small enough; V1 wins because there's nothing
+      big enough to be worth extracting.
+
+      Threshold for extraction isn't a line count -- it's
+      "can the sub-piece be shared, or is it just being pulled
+      out for its own sake?" If extraction doesn't unlock reuse,
+      it's over-engineering.
+
+      Over-splitting (too many helpers, each used once) is as
+      bad as 500+ LoC monoliths. Both anti-patterns.
+    notes: >
+      EXACT MATCH on ranking. The valuable extraction is the
+      generalization of the "restructure rather than scaffold"
+      meta-principle:
+
+      NOT EVERY RESTRUCTURE IS GOOD. Splitting also requires
+      justification. Default: write a function the size of the
+      work it does; extract a helper only when:
+        (a) the sub-piece has a name worth giving, AND
+        (b) the sub-piece is reusable (multiple callers, or
+            likely to be).
+
+      Without both signals, extraction is over-engineering and
+      should be skipped.
+
+      For the linter: any extraction-suggestion the v2 model
+      makes should pass these two gates. Don't suggest
+      extracting a sub-block to a helper unless there's some
+      indication it would be reused. "It's getting long" alone
+      is not enough -- a long function that does one cohesive
+      thing is fine.
+
+      Implementing this in the linter is hard because reuse-
+      potential is semantic. A safe heuristic: extract only
+      when the same sub-pattern appears in 2+ places.
+    weight: 2.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

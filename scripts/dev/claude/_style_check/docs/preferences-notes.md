@@ -190,6 +190,22 @@ forward declarations, mid-block decls, and verbose names are
 all forms of scaffolding propping up a shape that should have
 been changed.
 
+**Important counter-balance (Q32):** not every restructure is
+good. Splitting also requires justification. A function in the
+20-30 line range with cohesive inline phases is at the right
+size; splitting it into helpers each used by only one caller
+is over-engineering. Extract a helper only when:
+
+  - The sub-piece has a name worth giving, AND
+  - The sub-piece is REUSABLE (multiple callers, or clear
+    likelihood of future reuse).
+
+Without both signals, "extract the sub-block to a helper" is
+the wrong response to "this function is getting long." A long
+function that does ONE cohesive thing is fine. Over-splitting
+(too many helpers, each used once) is as bad as 500+ LoC
+monoliths -- both anti-patterns at opposite extremes.
+
 **Linter implication:** when the v2 model detects a violation,
 the suggestion should often be a RESTRUCTURE rather than a
 direct rewrite of the violated shape. Examples:
