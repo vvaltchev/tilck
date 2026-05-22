@@ -2719,6 +2719,75 @@ questions:
       keep the inline form.
     weight: 1.0
 
+  - id: q42-switch-multiple-case-labels
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Three case labels share a single body (no per-case work).
+      Three layouts: each label own line, packed on one line,
+      each with /* fallthrough */ annotation.
+    snippets:
+      - label: "1"
+        desc: Each case label on its own line, then shared body
+        code: |
+          switch (event) {
+             case EV_TIMEOUT:
+             case EV_CANCEL:
+             case EV_ERROR:
+                abort_request();
+                break;
+          }
+      - label: "2"
+        desc: Case labels packed on one line
+        code: |
+          switch (event) {
+             case EV_TIMEOUT: case EV_CANCEL: case EV_ERROR:
+                abort_request();
+                break;
+          }
+      - label: "3"
+        desc: Each case with `/* fallthrough */` annotation
+        code: |
+          switch (event) {
+             case EV_TIMEOUT:
+                /* fallthrough */
+             case EV_CANCEL:
+                /* fallthrough */
+             case EV_ERROR:
+                abort_request();
+                break;
+          }
+    guess: ["1", "2", "3"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V2 (packed) is FORBIDDEN.
+
+      Fallthrough rule conditional on case body content:
+        - Cases all empty (shared body only): NO fallthrough
+          comment; V1 is perfectly clear without it.
+        - Each case has its own body and falls through:
+          /* fallthrough */ comment is MANDATORY between each.
+    notes: >
+      Two corrections to Claude's model:
+
+      1. V2 (packed case labels) is hard rule violation.
+
+      2. The /* fallthrough */ comment has a CONDITIONAL
+         requirement -- not "always use" or "never use," but
+         based on whether intermediate cases have bodies:
+
+           empty cases -> NO comment (V3 here is over-decoration)
+           non-empty cases that fall through -> comment mandatory
+
+      This is mechanically detectable: walk CASE_STMT cursors;
+      if a case's body is non-empty AND ends without
+      break/return/goto AND falls through to the next case,
+      check that a /* fallthrough */ (or fallthrough)
+      comment appears immediately before the next case label.
+      Empty cases (no body between this case label and the
+      next) should NOT have such a comment.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
