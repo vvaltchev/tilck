@@ -197,10 +197,10 @@ class TestRulesOnFixtures(unittest.TestCase):
 
 
 class TestRulesOnGoldenFiles(unittest.TestCase):
-   """Canonical files in the kernel must report zero diagnostics. Files
-   with known legacy drift (kernel/exit.c:244 over 80 cols,
-   kernel/elf.c:446 over 80 cols) are excluded from this list -- they
-   would be real-world cleanup tasks for the user, not bugs in the tool."""
+   """Canonical files in the kernel must report zero diagnostics for
+   each rule, EXCEPT for known-drift combinations enumerated below.
+   Drift exceptions are real-world cleanup candidates, not bugs in
+   the tool."""
 
    GOLDEN = [
       'kernel/poll.c',
@@ -220,6 +220,16 @@ class TestRulesOnGoldenFiles(unittest.TestCase):
       'userapps/devshell/devshell.c',
    ]
 
+   # Map of (file, rule_id) -> "drift comment". The test allows the
+   # rule to fire on this file without failing. These are real
+   # cleanup candidates the user can address separately.
+   KNOWN_DRIFT = {
+      ('userapps/tracer/screen_tracing.c', 'while_true_only'):
+         '4x `while (1)` -- v2 Q31 rule requires `while (true)`',
+      ('userapps/dp/dp_main.c', 'while_true_only'):
+         '1x `while (1)` -- v2 Q31 rule requires `while (true)`',
+   }
+
    def setUp(self):
 
       build_dir = _parser_mod.resolve_build_dir('build/compile_db')
@@ -237,6 +247,9 @@ class TestRulesOnGoldenFiles(unittest.TestCase):
          ]
 
          for r in applicable:
+
+            if (rel, r.id) in self.KNOWN_DRIFT:
+               continue  # allowed drift -- see KNOWN_DRIFT map
 
             diags = _run_rule(r, p, self.parser)
             self.assertEqual(

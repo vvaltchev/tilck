@@ -23,6 +23,13 @@ from . import one_stmt_per_line
 from . import else_same_line_as_brace
 from . import fn_body_brace_own_line
 
+# v2 (post Q1-Q50) -- new mechanical rules surfaced by the
+# ranked-preference loop. See _style_check/preferences.yaml for
+# the question/ranking each rule was extracted from.
+from . import while_true_only           # Q31
+from . import pointer_asterisk_attached # Q21
+from . import switch_case_indent        # Q12
+
 from . import multiline_call_style
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
@@ -67,6 +74,9 @@ ALL_RULES = [
    else_same_line_as_brace.RULE,
    fn_body_brace_own_line.RULE,
    multiline_call_style.RULE,
+   while_true_only.RULE,
+   pointer_asterisk_attached.RULE,
+   switch_case_indent.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

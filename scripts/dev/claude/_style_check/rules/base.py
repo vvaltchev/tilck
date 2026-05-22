@@ -16,6 +16,14 @@ LAYER_TOKENS = 'T'
 LAYER_STRUCTURAL = 'S'
 LAYER_COMMENTS = 'C'
 
+# Default per-rule prettiness penalties (signed doubles, unbounded).
+# Negative values are "ugly"; positive values would mean "actively
+# pretty" (not yet used). A "very bad statement" can carry a large
+# negative score that drags down the function-level aggregate.
+SCORE_HARD_RULE = -10.0     # hard rule violation
+SCORE_STRONG_PREF = -3.0    # strong but soft preference
+SCORE_SOFT = -1.0           # mild soft preference / cosmetic nit
+
 
 @dataclass
 class Diagnostic:
@@ -28,6 +36,8 @@ class Diagnostic:
    severity: str
    message: str
    snippet: Optional[str] = None
+   score: float = 0.0          # v2 prettiness penalty for this issue
+   suggestion: Optional[str] = None   # v2 alternative snippet, if any
 
 
 @dataclass
@@ -56,6 +66,10 @@ class Rule:
    description: str = ''
    layers: str = ''
    severity: str = SEVERITY_ERROR
+
+   # Default prettiness penalty applied per diagnostic. Rules may
+   # override per-diagnostic by setting `score` explicitly.
+   default_score: float = SCORE_HARD_RULE
 
    # Capability requirements
    needs_tu: bool = False

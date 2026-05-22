@@ -173,6 +173,12 @@ def cmd_check(args) -> int:
             )
             continue
 
+         # Backfill prettiness score from the rule's default if a
+         # rule didn't set it explicitly per-diagnostic.
+         for d in diags:
+            if d.score == 0.0:
+               d.score = r.default_score
+
          all_diags.extend(diags)
 
    fmt = 'jsonl' if args.json else args.format

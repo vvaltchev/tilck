@@ -26,17 +26,33 @@ def emit_text(diags: List[Diagnostic], stream=None) -> None:
 
    for d in diags:
 
-      out.write("{}:{}:{}: [{}] {} -- {}\n".format(
+      score_part = ""
+
+      if d.score != 0.0:
+         score_part = "  (score: {:+.1f})".format(d.score)
+
+      out.write("{}:{}:{}: [{}] {} -- {}{}\n".format(
          d.file,
          d.line,
          d.col,
          d.severity,
          d.rule,
          d.message,
+         score_part,
       ))
 
       if d.snippet:
          out.write("    {}\n".format(d.snippet))
+
+      if d.suggestion:
+         out.write("    suggest: {}\n".format(d.suggestion))
+
+   total = sum(d.score for d in diags)
+
+   if total != 0.0 and len(diags) > 1:
+      out.write("\n  total prettiness: {:+.1f} across {} diagnostic(s)\n".format(
+         total, len(diags)
+      ))
 
    out.flush()
 
