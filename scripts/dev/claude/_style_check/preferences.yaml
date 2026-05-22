@@ -2654,6 +2654,71 @@ questions:
       signal in this codebase.
     weight: 1.0
 
+  - id: q41-long-arg-types-function-decl
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      Function declaration with verbose struct-pointer arg types.
+      Single-line signature too long. Three approaches: Style 1
+      packed, Style 1 one-per-line, typedef the types to shorten.
+    snippets:
+      - label: "1"
+        desc: Style 1 packed
+        code: |
+          static int
+          register_handler(struct event_handler *h, struct subscription_filter *f,
+                           struct dispatch_context *ctx, int flags);
+      - label: "2"
+        desc: Style 1 one arg per line
+        code: |
+          static int
+          register_handler(struct event_handler *h,
+                           struct subscription_filter *f,
+                           struct dispatch_context *ctx,
+                           int flags);
+      - label: "3"
+        desc: Introduce typedefs to shorten types
+        code: |
+          typedef struct event_handler *evt_handler_t;
+          typedef struct subscription_filter *sub_filter_t;
+          typedef struct dispatch_context *disp_ctx_t;
+
+          static int
+          register_handler(evt_handler_t h, sub_filter_t f, disp_ctx_t ctx, int flags);
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      Introducing typedefs JUST to shorten a single function's
+      signature is usually not a good idea -- with the exception
+      of function-pointer typedefs (Q39), which have their own
+      rationale.
+
+      For struct-pointer types like the example, the types are
+      not THAT long; just format the signature with Style 1
+      one-per-line.
+    notes: >
+      EXACT MATCH. The principle: typedefs are for ABSTRACTION,
+      not for cosmetic line-fit hacks. A struct-pointer typedef
+      earns its keep when:
+
+        (a) reused widely across the codebase, OR
+        (b) hides implementation details for a stable API.
+
+      Introducing a typedef just to shorten one function's
+      signature is the same anti-pattern as extracting a helper
+      just to make a function smaller (Q32) -- restructure
+      without justification.
+
+      Function-pointer typedefs (Q39) clear this bar because
+      function-pointer syntax in C is hard to read inline; the
+      typedef provides real readability gain.
+
+      Linter implication: when v2 considers a typedef-introduction
+      suggestion, check whether the typedef would be reused 2+
+      times or hides genuine implementation detail. Otherwise
+      keep the inline form.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
