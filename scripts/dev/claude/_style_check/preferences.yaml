@@ -2788,6 +2788,71 @@ questions:
       next) should NOT have such a comment.
     weight: 1.5
 
+  - id: q43-multi-clause-assert
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Multi-clause ASSERT condition checking heterogeneous task
+      invariants. Doesn't fit on one line. Three approaches:
+      combined wrap, extract to local, split into multiple
+      ASSERTs.
+    snippets:
+      - label: "1"
+        desc: Combined condition wrapped, single ASSERT
+        code: |
+          ASSERT(ti->state == TASK_STATE_RUNNING  &&
+                 ti->process != NULL              &&
+                 ti->ref_count > 0                &&
+                 is_preemption_enabled());
+      - label: "2"
+        desc: Extract combined condition to a local
+        code: |
+          const bool task_runnable_with_owner =
+             ti->state == TASK_STATE_RUNNING  &&
+             ti->process != NULL              &&
+             ti->ref_count > 0                &&
+             is_preemption_enabled();
+
+          ASSERT(task_runnable_with_owner);
+      - label: "3"
+        desc: Split into multiple separate ASSERTs
+        code: |
+          ASSERT(ti->state == TASK_STATE_RUNNING);
+          ASSERT(ti->process != NULL);
+          ASSERT(ti->ref_count > 0);
+          ASSERT(is_preemption_enabled());
+    guess: ["3", "1", "2"]
+    ranking: ["3", "1", "2"]
+    comment: >
+      V2 "makes no sense" -- the local doesn't help anything;
+      ASSERT failure on a combined bool gives even less info
+      than V1.
+
+      V3 is much better because when an ASSERT fires you know
+      EXACTLY which case triggered it; V1 forces additional
+      debugging to identify the failing clause.
+    notes: >
+      EXACT MATCH on ordering. V2 promoted from "less
+      preferred" to "makes no sense" -- effectively forbidden
+      because it strictly loses information vs V1.
+
+      Principle: defensive checks should preserve DIAGNOSTIC
+      SPECIFICITY on failure. Same flavor as Q26 (heterogeneous
+      preconditions -> separate early-returns with specific
+      error codes): when a check fires, knowing which sub-
+      condition failed is high-value; collapsing them loses
+      that for nothing.
+
+      For the linter: detect ASSERT() with `&&`-conjoined
+      operands of heterogeneous shape (different fields of the
+      argument struct, different function calls, etc.); flag
+      with suggestion to split into multiple ASSERTs.
+
+      Homogeneous conjunctions (all range checks on the same
+      variable: `0 <= x && x < N`) stay combined -- that's
+      a single semantic check.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
