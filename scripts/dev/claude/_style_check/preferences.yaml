@@ -3021,6 +3021,35 @@ questions:
       earlier entry directly with a clear note.
     weight: 1.5
 
+  - id: q47-explicit-type-constant
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      32-bit hex constant carrying explicit type info. Three
+      forms: literal with suffix, cast, type-specifying macro.
+    snippets:
+      - label: "1"
+        desc: Literal with type suffix
+        code: |
+          const u32 mask = 0x1000u;
+      - label: "2"
+        desc: Cast to desired type
+        code: |
+          const u32 mask = (u32)0x1000;
+      - label: "3"
+        desc: Portable type-specifying macro
+        code: |
+          const u32 mask = UINT32_C(0x1000);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Type-carrying literals (suffix style) are
+      the most natural way to express typed constants. Casts
+      work but add verbose noise. Standard-library type
+      macros (UINT32_C) are overkill for kernel-internal code.
+    weight: 0.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
