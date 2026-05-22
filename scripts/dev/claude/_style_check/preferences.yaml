@@ -2577,32 +2577,37 @@ questions:
         code: |
           typedef int (*event_handler_t)(struct event *ev);
     guess: ["1", "2", "3"]
-    ranking: ["3", "1", "2"]
-    comment: ""
+    ranking: ["1", "3", "2"]
+    comment: >
+      Revised at Q46 time (user-requested). The original
+      recorded ranking was [3, 1, 2] (_t preferred). At Q46,
+      the user revised: "_func" is actually preferred for
+      function-pointer typedefs; "_t" is reserved for other
+      (value) types. Updated ranking [1, 3, 2] reflects the
+      revision.
     notes: >
-      Got it wrong. Pre-guess had V3 (_t) last because Agent A's
-      corpus inventory listed _func / _cb / _handler_t as the
-      observed forms; I extrapolated that bare _t was reserved
-      for value-type typedefs. The user's actual preference is
-      _t even for function-pointer typedefs.
+      ORIGINAL (pre-revision) interpretation: _t suffix was
+      reported as preferred. Claude's pre-guess [1, 2, 3] was
+      filed as "wrong on V3 (_t)."
 
-      Useful meta-correction: Agent A's frequency-based
-      reporting tells me what EXISTS in the corpus, not what
-      the user PREFERS. Frequency != preference.
+      AT Q46, the user revised: _func is actually preferred
+      for function pointers. _t reserved for value-type
+      typedefs (atomics, etc.). _cb (abbreviation) remains
+      dispreferred.
 
-      The general rule clarified: _t is the generic "this is a
-      typedef" suffix in this codebase, regardless of what the
-      underlying type is (value, struct pointer, function
-      pointer). _func acceptable as a second-best. _cb
-      (abbreviation) dispreferred.
+      Final ranking: _func > _t > _cb = [1, 3, 2].
 
-      Whether this is a "linter rule" or a "Claude-process
-      rule" depends on Q19's scope boundary -- name-content
-      decisions are typically out of v2 tool scope. The
-      `_t`-as-suffix convention is fuzzy: when generating new
-      function-pointer typedefs, Claude should use `_t`; the
-      linter shouldn't flag existing `_func`/`_cb` typedefs as
-      violations.
+      Claude's original pre-guess [1, 2, 3] was actually
+      closer to the revised answer than I credited at the
+      time.
+
+      Meta-observation: PREFERENCES CAN EVOLVE THROUGH THE
+      LOOP. The act of articulating a preference in one
+      context (Q39 in isolation) and then re-evaluating it
+      in a related context (Q46's typedef-for-function-
+      pointer question) can sharpen the user's underlying
+      intuition. YAML entries should be treated as "recorded
+      thought as of [date]" rather than immutable.
     weight: 1.0
 
   - id: q40-bitfield-struct-layout
@@ -2953,6 +2958,67 @@ questions:
       serves the navigation pattern of the consumer. The
       "Restructure to match conceptual shape" meta-principle
       extends: structure also matches USAGE.
+    weight: 1.5
+
+  - id: q46-function-pointer-field
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Struct with two function-pointer fields. Two layouts:
+      inline function-pointer types in the struct, or typedef
+      the function-pointer types first.
+    snippets:
+      - label: "1"
+        desc: Inline function-pointer types
+        code: |
+          struct event_ops {
+             int (*on_open)(struct event *ev, int flags);
+             void (*on_close)(struct event *ev);
+          };
+      - label: "2"
+        desc: Typedef the function pointers first, then use the typedefs
+        code: |
+          typedef int (*ev_open_func)(struct event *ev, int flags);
+          typedef void (*ev_close_func)(struct event *ev);
+
+          struct event_ops {
+             ev_open_func on_open;
+             ev_close_func on_close;
+          };
+    guess: ["2", "1"]
+    ranking: ["1", "2"]
+    comment: >
+      Context-dependent:
+        - Single-use (signature only here): [1, 2]. Inline
+          wins -- same rule as Q41 ("typedefs for abstraction,
+          not line-fit / single-use shortening").
+        - Multi-use (signature appears elsewhere): [2, 1].
+          Typedef wins because the abstraction earns its keep.
+
+      Also at this question time the user revised Q39: `_func`
+      is the preferred function-pointer typedef suffix, not
+      `_t`. Q39 entry updated to reflect the revision.
+    notes: >
+      The Q39 "function pointers always clear the typedef bar"
+      reading I had recorded was too strong. The actual rule
+      is uniform with Q41: typedefs (including function-
+      pointer typedefs) need REUSE justification. Single-use
+      function-pointer types stay inline.
+
+      Generalisation: the "typedef for abstraction not line-
+      fit" rule from Q41 extends to function pointers too.
+      The difference is the THRESHOLD: function-pointer
+      typedefs clear the bar at lower reuse counts because
+      inline function-pointer syntax is genuinely hard to
+      parse, whereas struct-pointer typedefs need stronger
+      justification to clear (the inline `struct foo *` form
+      is already readable).
+
+      Meta-observation surfaced (recorded on the Q39 entry
+      revision): preferences CAN evolve through the loop. The
+      YAML is "recorded thought as of [date]," not immutable.
+      When a later question prompts a revision, update the
+      earlier entry directly with a clear note.
     weight: 1.5
 
   - id: q11-error-handling-cleanup

@@ -435,6 +435,37 @@ candidate for refactor to `static T *find_X(args)`. Soft
 suggestion -- the linter can't always tell whether the
 existing out-param pattern is justified.
 
+## Process notes
+
+### Preferences can evolve through the loop
+
+Source: Q39 -> Q46 revision (2026-05-20).
+
+The ranked-preference loop itself can sharpen the user's
+underlying intuition about a style choice. At Q39 the user
+ranked `_t` first as the function-pointer typedef suffix; at
+Q46 (a related but different question about function-pointer
+fields) the user revised: `_func` is actually preferred, and
+`_t` is reserved for value-type typedefs.
+
+This isn't a contradiction or an error -- it's the natural
+evolution of an articulated preference. The Q39 answer was
+true for the user's intuition at the time; Q46's framing
+sharpened it.
+
+**How to handle revisions:** when the user explicitly asks to
+update an earlier answer, update the YAML entry directly with
+a clear note of the revision date and triggering question.
+The history is in commit messages, so the YAML file itself
+should reflect the current best understanding. Do NOT keep a
+stale ranking with a separate "but actually..." entry --
+that confuses future fitting.
+
+**Meta-principle:** treat `preferences.yaml` as "recorded
+thought as of [date]" rather than immutable history. Allow
+revisions when prompted; mark them clearly in the affected
+entry's `comment` and `notes` fields.
+
 ## Layout serves usage
 
 ### Choose ordering axis based on the lookup pattern
