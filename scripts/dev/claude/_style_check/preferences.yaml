@@ -2460,6 +2460,51 @@ questions:
       #ifdef directive starts at column 1.
     weight: 1.0
 
+  - id: q37-arithmetic-paren-explicitness
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Bit-twiddle expression: mask the result of a left shift.
+      C operator precedence makes the parens optional, but
+      relying on that is fragile.
+    snippets:
+      - label: "1"
+        desc: Explicit parens around each sub-expression
+        code: |
+          const ulong addr = ((base << SHIFT) & MASK) | flag_bits;
+      - label: "2"
+        desc: Minimal parens (rely on precedence)
+        code: |
+          const ulong addr = base << SHIFT & MASK | flag_bits;
+      - label: "3"
+        desc: Extract intermediate to a named local
+        code: |
+          const ulong shifted = base << SHIFT;
+          const ulong addr = (shifted & MASK) | flag_bits;
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Clarity beats brevity for operator
+      precedence. The unifying principle across Q3 (const),
+      Q23 (enum values), and Q37 (parens): when an EXPLICIT
+      form costs only a few characters and prevents a misread,
+      the explicit form wins. Don't rely on the reader
+      recalling exact precedence between `<<`, `&`, `|`.
+
+      V3 (extract intermediate) is acceptable when the
+      intermediate has a name worth giving, but for a single-
+      use expression it's over-extraction per Q32.
+
+      For the linter: detect bit-twiddle expressions with
+      mixed `<<` / `&` / `|` operators (or other low-recall
+      precedence pairs like `&` / `&&`). If no parens around
+      the sub-expressions, flag with suggestion to
+      parenthesize. Soft suggestion -- some readers will know
+      the precedence; the rule is a clarity aid, not a hard
+      rule.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
