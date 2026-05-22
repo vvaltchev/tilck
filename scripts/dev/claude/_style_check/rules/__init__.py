@@ -26,9 +26,12 @@ from . import fn_body_brace_own_line
 # v2 (post Q1-Q50) -- new mechanical rules surfaced by the
 # ranked-preference loop. See _style_check/preferences.yaml for
 # the question/ranking each rule was extracted from.
-from . import while_true_only           # Q31
-from . import pointer_asterisk_attached # Q21
-from . import switch_case_indent        # Q12
+from . import while_true_only                  # Q31
+from . import pointer_asterisk_attached        # Q21
+from . import switch_case_indent               # Q12
+from . import blank_line_after_decl_block      # Q18
+from . import blank_line_after_non_final_return  # Q18
+from . import non_const_locals_top_of_block    # Q15
 
 from . import multiline_call_style
 
@@ -77,6 +80,9 @@ ALL_RULES = [
    while_true_only.RULE,
    pointer_asterisk_attached.RULE,
    switch_case_indent.RULE,
+   blank_line_after_decl_block.RULE,
+   blank_line_after_non_final_return.RULE,
+   non_const_locals_top_of_block.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }
