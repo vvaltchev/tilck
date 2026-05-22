@@ -2287,6 +2287,123 @@ questions:
       work and is the worst.
     weight: 1.0
 
+  - id: q35-break-out-of-nested-loops
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Search a 2D grid for the first match and process the
+      indices. Three escape approaches: goto out of loops,
+      bool flag threaded through loop conditions, extract
+      inner row search to a helper.
+    snippets:
+      - label: "1"
+        desc: goto out of both loops
+        code: |
+          for (int i = 0; i < ROWS; i++) {
+             for (int j = 0; j < COLS; j++) {
+
+                if (matches(grid[i][j])) {
+                   found_i = i;
+                   found_j = j;
+                   goto found;
+                }
+             }
+          }
+          found:
+             process(found_i, found_j);
+      - label: "2"
+        desc: bool flag threaded through both loop conditions
+        code: |
+          bool done = false;
+
+          for (int i = 0; i < ROWS && !done; i++) {
+             for (int j = 0; j < COLS && !done; j++) {
+
+                if (matches(grid[i][j])) {
+                   found_i = i;
+                   found_j = j;
+                   done = true;
+                }
+             }
+          }
+
+          process(found_i, found_j);
+      - label: "3"
+        desc: Extract inner row search to helper, return j
+        code: |
+          static int
+          find_in_row(int *row, int cols)
+          {
+             for (int j = 0; j < cols; j++) {
+
+                if (matches(row[j]))
+                   return j;
+             }
+
+             return -1;
+          }
+
+          /* in caller: */
+          for (int i = 0; i < ROWS; i++) {
+
+             int j = find_in_row(grid[i], COLS);
+
+             if (j >= 0) {
+                found_i = i;
+                found_j = j;
+                break;
+             }
+          }
+
+          process(found_i, found_j);
+    guess: ["1", "3", "2"]
+    ranking: ["3", "1", "2"]
+    comment: >
+      For this specific example, [3, 1, 2]. But the IDEAL form
+      (not shown as a variant) is V1's shape with `return
+      result` instead of `goto`, and the WHOLE 2D search
+      extracted to a function. The caller checks the returned
+      result for NULL and processes:
+
+         static struct match *
+         find_match(int rows, int cols, int **grid) {
+            for (int i = 0; i < rows; i++)
+               for (int j = 0; j < cols; j++)
+                  if (matches(grid[i][j]))
+                     return make_match(i, j);
+            return NULL;
+         }
+
+      V3 wins this question only because it's the closest of
+      the three to that ideal V4 form.
+    notes: >
+      Two new principles articulated:
+
+      1. PREFER `return` OVER `goto` when the function can be
+         restructured to allow a direct return. Goto-for-
+         cleanup (Q11) is the canonical use of goto;
+         goto-for-flow-control out of nested loops is a sign
+         the function should be split so the nested loops can
+         `return` directly. The V4-style refactor turns "goto
+         + post-loop processing" into "extract search to
+         function + return result".
+
+      2. PREFER RETURN-VALUE OVER OUT-PARAM for a search's
+         answer. A function that finds something should
+         RETURN it (or NULL if not found). The caller checks
+         the return value. V3 in this question had the caller
+         maintaining `found_i/found_j` state; the V4 ideal
+         collapses that into a single returned pointer or
+         struct.
+
+      For the linter: these are semantic / structural
+      preferences, not mechanical. The "goto out of nested
+      loops" pattern can be DETECTED (look for goto labels
+      placed immediately after a nested loop end), but the
+      restructure to V4 form requires semantic understanding
+      of the function's purpose. Soft suggestion only.
+    weight: 2.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

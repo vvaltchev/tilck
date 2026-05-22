@@ -381,6 +381,60 @@ rather than a single recommendation. The model's job is to
 identify the choice point; the human (or future Claude making
 the call) selects based on semantic judgment.
 
+## Control-flow preferences
+
+### Prefer `return` over `goto` when restructuring allows it
+
+Source: Q35 (2026-05-20).
+
+`goto` is canonical for cleanup-at-out (Q11) when there are
+resources to release across multiple failure points. Outside
+of that, the user prefers to RESTRUCTURE the function so the
+control flow can use `return` directly:
+
+  - `goto`-out-of-nested-loops -> extract the loop body (or
+    the entire search) to a function that `return`s on the
+    match condition. Caller checks the return value.
+
+  - `goto`-for-error-handling beyond cleanup -> usually a sign
+    the function is doing too much; split it.
+
+The remaining canonical `goto` use case is multi-resource
+cleanup (Q11 V3): one goto target, releases everything,
+returns. Single-purpose, well-bounded.
+
+**Linter implication:** detect `goto` labels and check whether
+they are followed only by cleanup-shaped code (frees /
+unrefs / unlocks). If a goto label is followed by
+substantive post-loop processing OR the goto exits nested
+loops just to do more work, flag as a refactor candidate
+(soft suggestion -- restructure to use `return`).
+
+### Prefer return-value over out-param for "find" / "compute" functions
+
+Source: Q35 (2026-05-20).
+
+A function that finds or computes something should RETURN
+that thing (or NULL / sentinel if not found / undefined).
+Out-params force the caller to maintain pre-declared state
+that the function then mutates, which adds friction at every
+call site.
+
+Out-params remain appropriate when:
+  - Multiple values genuinely need to flow back (and a
+    struct return doesn't fit), OR
+  - The function returns a status code (`int rc`) and the
+    "result" is secondary.
+
+But the default for "find X" / "compute X" / "lookup X" is:
+return X, not (status, X-via-out-param).
+
+**Linter implication:** detect function signatures of the
+shape `static int find_X(args, T **out)` and flag as a
+candidate for refactor to `static T *find_X(args)`. Soft
+suggestion -- the linter can't always tell whether the
+existing out-param pattern is justified.
+
 ## Higher-order alternatives
 
 ### Init-with-default + conditional override
