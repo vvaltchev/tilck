@@ -3122,6 +3122,71 @@ questions:
       keep V1; above, suggest V3.
     weight: 1.5
 
+  - id: q49-function-many-args
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      Function with 6 parameters covering different aspects.
+      Three approaches: flat one-per-line, bundle into config
+      struct, split into smaller functions.
+    snippets:
+      - label: "1"
+        desc: Flat parameter list, Style 1 one-per-line
+        code: |
+          int register_event_handler(struct task *ti,
+                                     int event_type,
+                                     int priority,
+                                     int flags,
+                                     event_handler_func handler,
+                                     void *user_data);
+      - label: "2"
+        desc: Bundle related args into a config struct
+        code: |
+          struct event_handler_config { ... };
+          int register_event_handler(const struct event_handler_config *cfg);
+      - label: "3"
+        desc: Split into smaller cohesive functions
+        code: |
+          int create_event_handler(...);
+          int set_handler_priority(...);
+          int set_handler_flags(...);
+          int set_handler_user_data(...);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      Context-dependent:
+
+        Default (no need to store / pass the param set):
+          [1, 2, 3]. Flat args win.
+
+        Need to store the param set OR pass it across multiple
+        functions (even if some don't use all fields):
+          V2 wins -- the bundling earns its keep.
+
+        V3 (split into many small functions) is usually
+        AVOIDED -- too API-fragmenting.
+
+      META: this is interface-design, not coding style. Out
+      of the v2 tool's scope per Q19's boundary (extends it).
+    notes: >
+      Scope clarification recorded: API-design decisions
+      (function decomposition, parameter bundling) are OUT
+      of the v2 tool's scope. The tool sees the SHAPE of
+      code, not the DESIGN of interfaces.
+
+      This extends Q19's "naming-content out of scope" rule:
+      both naming-content AND API-design are semantic
+      decisions that depend on intent/usage the linter
+      cannot mechanically determine.
+
+      Linter implication: when the v2 model sees a function
+      with many parameters, do NOT suggest "consider
+      bundling these into a struct" -- that's a design call.
+      The tool can verify the FORMATTING of the parameter
+      list (Style 1 one-per-line per Q4) but not the choice
+      of whether to bundle.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20

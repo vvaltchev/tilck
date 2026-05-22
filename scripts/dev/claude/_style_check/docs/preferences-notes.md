@@ -146,6 +146,11 @@ enforce semantic decisions about identifier content.
   - Identifier CONTENT choices (subsystem prefix to use, verb to
     pick, conceptual carving of a name) -- e.g. Q19's
     `task_is_runnable` vs `is_task_runnable` decision.
+  - **API-design choices** (Q49): function decomposition,
+    parameter bundling into config structs vs flat args,
+    splitting one function into many or merging many into one.
+    These depend on usage patterns and storage requirements
+    the linter cannot infer mechanically.
   - Whether a particular abstraction is the right one.
   - Whether a function's behavior is correct.
 
