@@ -3187,6 +3187,69 @@ questions:
       of whether to bundle.
     weight: 1.0
 
+  - id: q50-if-body-line-layout
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Single-statement if body. Three layouts: condition and
+      body on same line, body on own indented line, braced.
+    snippets:
+      - label: "1"
+        desc: Condition and body on one line
+        code: |
+          if (rc < 0) return rc;
+      - label: "2"
+        desc: Body on its own indented line
+        code: |
+          if (rc < 0)
+             return rc;
+      - label: "3"
+        desc: Braced
+        code: |
+          if (rc < 0) {
+             return rc;
+          }
+    guess: ["2", "1", "3"]
+    ranking: ["2", "3", "1"]
+    comment: >
+      V2 is the standard form. V3 (braced) is acceptable as
+      a "defensive" alternative. V1 (one-line) is to be
+      avoided in general -- with one specific exception: an
+      if-else-if chain emulating a switch-case where the
+      case values cannot be constants (e.g. comparison-based
+      dispatch).
+    notes: >
+      Wrong on V1 vs V3. I had V1 (one-line) second on the
+      theory that compactness wins for short cases. The
+      user puts V1 last with "avoid" and V3 second.
+
+      Principle: an if body belongs on its own line. The
+      body never shares a line with the condition, with one
+      narrow exception:
+
+        SWITCH-CASE EMULATION via if-else-if chain when the
+        case values aren't constants. Example:
+
+          if (op == OP_READ)       handle_read();
+          else if (op == OP_WRITE) handle_write();
+          else if (op == OP_CLOSE) handle_close();
+          else                     handle_unknown();
+
+        The visual table-of-dispatches earns the one-line
+        form.
+
+      V3 (braces) being acceptable here is interesting --
+      CLAUDE.md "omit braces for single-statement" is a
+      preference, not a hard rule. Braced single-statement
+      bodies are tolerated as "defensive" without being
+      anti-pattern.
+
+      For the linter: detect `if (cond) stmt;` on one line.
+      Soft-flag with suggestion to use V2, EXCEPT when part
+      of an if-else-if chain with multiple peer-clauses on
+      consecutive lines (the switch-emulation pattern).
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
