@@ -1098,6 +1098,34 @@ with the corrected semantics:
     in the sub-block has the sub-block as its enclosing
     COMPOUND_STMT, not the function body.
 
+### Extraction justifications (Q10, Q32, Q48)
+
+Three distinct justifications for extracting to a local, all
+of which must be examined when considering an extraction:
+
+  1. **Reuse (Q32):** the extracted sub-piece appears in
+     multiple places. Extract enables sharing.
+
+  2. **Dedup (Q10):** a single local replaces multiple
+     references to the same expression within one function.
+     Cost 1 (local), savings = number of references.
+
+  3. **Simplification via decomposition (Q48):** the
+     extracted sub-expressions are simpler / better-named
+     than the inline original. Even with a single use, the
+     decomposition pays for itself in readability.
+
+An extraction that satisfies NONE of these three is
+anti-pattern -- Q48 V2-style ("very bad"): relocating an
+expression to a local without simplifying it, just adding a
+line and a name for no benefit.
+
+Linter implication: when suggesting `extract-to-local`,
+check that the suggestion satisfies at least one of the
+three. The simplification check is the fuzziest -- proxy
+metrics include operator count, nesting depth, distinct
+identifier count.
+
 ### Extraction calculus: savings > cost
 
 Source: Q2 + Q10 (2026-05-20), reconciled.

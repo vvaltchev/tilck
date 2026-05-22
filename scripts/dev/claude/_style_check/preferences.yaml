@@ -3050,6 +3050,78 @@ questions:
       macros (UINT32_C) are overkill for kernel-internal code.
     weight: 0.5
 
+  - id: q48-return-computation
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      A function computes and returns a moderately complex
+      result. Three forms: inline in return, single local for
+      the result, multiple intermediate locals.
+    snippets:
+      - label: "1"
+        desc: Compute inline in the return
+        code: |
+          return base + offset * stride + (flag ? bonus : 0);
+      - label: "2"
+        desc: Single local for the result, then return
+        code: |
+          const int result = base + offset * stride + (flag ? bonus : 0);
+
+          return result;
+      - label: "3"
+        desc: Split into named intermediate locals
+        code: |
+          const int scaled_offset = offset * stride;
+          const int bonus_value = flag ? bonus : 0;
+
+          return base + scaled_offset + bonus_value;
+    guess: ["1", "2", "3"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V2 adds no value -- it moves the same complex expression
+      to a different line and pays the cost of an extra local
+      without earning any simplification. "Very bad."
+
+      V3 is acceptable because the COMPONENTS are simpler;
+      named intermediate locals decompose the complex
+      expression into smaller named parts.
+
+      V1 vs V3 is a SOFT preference for this specific case
+      (the expression isn't that complex). V3 strongly wins as
+      the expression gets harder to parse.
+    notes: >
+      Wrong on V2 vs V3. Had V2 second; user puts V2 last
+      with "very bad."
+
+      Principle to add to extraction calculus: extraction
+      needs SUBSTANTIVE justification. The forms identified
+      so far:
+
+        1. Reuse (Q32): extract when the sub-piece is used in
+           multiple places.
+        2. Dedup (Q10): extract when a single local replaces
+           multiple references to the same expression.
+        3. SIMPLIFICATION VIA DECOMPOSITION (NEW, Q48):
+           extract when the resulting sub-expressions are
+           simpler / better-named than the inline form.
+
+      The Q48 V2 form fails ALL three -- it just relocates
+      the same expression without dedup, reuse, or
+      decomposition. That's why it ranks last as "very bad."
+
+      For the linter: when ranking extract-to-local
+      suggestions, check whether each proposed extraction
+      yields a SIMPLER named sub-expression (V3-style) or
+      just relocates the original (V2-style). Only the
+      former is worth suggesting.
+
+      Calibration of V1 vs V3 is fuzzy ("soft preference"
+      depending on expression complexity). The linter can
+      use rough proxies: number of operators, nesting depth,
+      number of distinct identifiers. Below some threshold,
+      keep V1; above, suggest V3.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
