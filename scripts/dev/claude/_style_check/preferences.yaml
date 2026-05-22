@@ -2853,6 +2853,35 @@ questions:
       a single semantic check.
     weight: 1.5
 
+  - id: q44-empty-body-poll-loop
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      A polling loop where work happens inside the condition;
+      body is empty. Three empty-body forms.
+    snippets:
+      - label: "1"
+        desc: Explicit empty braces
+        code: |
+          while (poll_status() != READY) { }
+      - label: "2"
+        desc: Bare semicolon
+        code: |
+          while (poll_status() != READY);
+      - label: "3"
+        desc: Explicit `continue;`
+        code: |
+          while (poll_status() != READY)
+             continue;
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. V1 (`{ }`) per CLAUDE.md rule.
+      V3 (`continue;`) acceptable as an explicit alternative.
+      V2 (bare `;`) forbidden.
+    weight: 0.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
