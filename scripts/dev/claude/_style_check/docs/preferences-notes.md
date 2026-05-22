@@ -435,6 +435,44 @@ candidate for refactor to `static T *find_X(args)`. Soft
 suggestion -- the linter can't always tell whether the
 existing out-param pattern is justified.
 
+## Layout serves usage
+
+### Choose ordering axis based on the lookup pattern
+
+Source: Q45 (2026-05-20).
+
+For collections with multiple plausible organizing axes
+(e.g. semantic categories AND numeric value, or alphabetical
+AND grouping by purpose), the right axis is the one that
+matches how the collection will be *searched*. Examples:
+
+- **Flexible-value enum (numbers reassignable):** group by
+  semantic category, then assign sequential per-group values.
+  This serves "find SYS_OPEN in the file-I/O group" while
+  also keeping numbers monotonic.
+
+- **Fixed-value enum (ABI / protocol numbers):** order by
+  numeric value. This serves "find the entry for value 42"
+  and "spot a missing value in a range" -- the two main
+  searches when numbers are externally meaningful.
+
+- **`#include` list (Q13):** group by subtree (gen_headers,
+  common, kernel, mods). Searches are by source layer.
+
+- **Struct field order:** group fields related to the same
+  sub-aspect together. Searches are by purpose.
+
+**General principle:** prettiness isn't only visual rhythm
+or conceptual fit; it also serves the *intended lookup
+pattern of the consumer.* When two axes compete (semantic
+grouping vs numeric order), pick the one that matches how
+people actually find things in this collection.
+
+**Linter implication:** the linter can't reliably determine
+lookup pattern from source alone (ABI-fixed vs flexible is
+a semantic distinction). Surface both options as soft
+suggestions, deferring the final choice to the human.
+
 ## Higher-order alternatives
 
 ### Init-with-default + conditional override

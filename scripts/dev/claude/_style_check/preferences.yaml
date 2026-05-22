@@ -2882,6 +2882,79 @@ questions:
       V2 (bare `;`) forbidden.
     weight: 0.5
 
+  - id: q45-large-enum-categorical
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Large enum (~11 entries) with explicit ABI-fixed values
+      and three semantic categories. Three layouts: one-block
+      unordered, grouped by category, ordered by numeric value.
+    snippets:
+      - label: "1"
+        desc: One block, value-aligned, no grouping
+        code: |
+          /* unordered list -- numbers as given, no category grouping */
+      - label: "2"
+        desc: Grouped by category with section comments
+        code: |
+          /* groups: File I/O, Process mgmt, Network */
+      - label: "3"
+        desc: Ordered by numeric value (regardless of category)
+        code: |
+          /* sorted strictly by syscall number */
+    guess: ["2", "1", "3"]
+    ranking: ["2", "3", "1"]
+    comment: >
+      Layout choice depends on the LOOKUP PATTERN.
+
+      If numbers are flexible (can be assigned at will): a
+      hybrid V2-prime wins by far -- grouped by category AND
+      sequential per group. This wasn't a posed variant.
+
+      If numbers are fixed (ABI/protocol like the syscall
+      case): the ranking shifts to [3, 2, 1]. V3 wins because
+      the primary search axis becomes "find the syscall by
+      number" or "spot a missing number in a range," and
+      value-order serves that directly.
+
+      V1 (unordered without grouping) is the worst in all
+      cases -- provides neither semantic navigation nor
+      numeric navigation.
+    notes: >
+      Wrong on V3 vs V1. I had V1 second; user puts V3 above
+      V1 universally.
+
+      NEW PRINCIPLE: prettiness for enums (and similar
+      ordered collections) serves the INTENDED LOOKUP
+      PATTERN. The layout's job is to match how the
+      collection will actually be searched:
+
+        Lookup by concept   (find X among the file-I/O ones)
+                            -> semantic grouping wins.
+        Lookup by number    (what is value 42? Is value 51
+                            missing?)
+                            -> numeric ordering wins.
+
+      For flexible-numbering enums, the hybrid V2-prime
+      (grouped semantically AND assigned sequential per-group
+      values) is the global optimum.
+
+      Linter implication: for large enums, the lookup-pattern
+      signal is semantic (the linter can't tell whether
+      numbers are ABI-fixed). Surface this as a soft
+      suggestion only -- emit BOTH "consider grouping by
+      category" and "consider value-ordering" depending on
+      the visible numeric pattern, but defer the final choice
+      to the human.
+
+      Generalisation: this is a new dimension to the v2 model.
+      Beyond visual rhythm (Q22b harmony), conceptual shape
+      (Q22b/Q26), and semantic relatedness, layout also
+      serves the navigation pattern of the consumer. The
+      "Restructure to match conceptual shape" meta-principle
+      extends: structure also matches USAGE.
+    weight: 1.5
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
