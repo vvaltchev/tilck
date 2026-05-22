@@ -2557,6 +2557,54 @@ questions:
       style nudge but neither flagged for the long case.
     weight: 1.0
 
+  - id: q39-function-pointer-typedef-suffix
+    topic: naming
+    date: 2026-05-20
+    prompt: >
+      Typedef for a callback function pointer. Three suffix
+      conventions: _func, _cb, _t.
+    snippets:
+      - label: "1"
+        desc: _func suffix
+        code: |
+          typedef int (*event_handler_func)(struct event *ev);
+      - label: "2"
+        desc: _cb suffix
+        code: |
+          typedef int (*event_handler_cb)(struct event *ev);
+      - label: "3"
+        desc: _t suffix
+        code: |
+          typedef int (*event_handler_t)(struct event *ev);
+    guess: ["1", "2", "3"]
+    ranking: ["3", "1", "2"]
+    comment: ""
+    notes: >
+      Got it wrong. Pre-guess had V3 (_t) last because Agent A's
+      corpus inventory listed _func / _cb / _handler_t as the
+      observed forms; I extrapolated that bare _t was reserved
+      for value-type typedefs. The user's actual preference is
+      _t even for function-pointer typedefs.
+
+      Useful meta-correction: Agent A's frequency-based
+      reporting tells me what EXISTS in the corpus, not what
+      the user PREFERS. Frequency != preference.
+
+      The general rule clarified: _t is the generic "this is a
+      typedef" suffix in this codebase, regardless of what the
+      underlying type is (value, struct pointer, function
+      pointer). _func acceptable as a second-best. _cb
+      (abbreviation) dispreferred.
+
+      Whether this is a "linter rule" or a "Claude-process
+      rule" depends on Q19's scope boundary -- name-content
+      decisions are typically out of v2 tool scope. The
+      `_t`-as-suffix convention is fuzzy: when generating new
+      function-pointer typedefs, Claude should use `_t`; the
+      linter shouldn't flag existing `_func`/`_cb` typedefs as
+      violations.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
