@@ -32,6 +32,8 @@ from . import switch_case_indent               # Q12
 from . import blank_line_after_decl_block      # Q18
 from . import blank_line_after_non_final_return  # Q18
 from . import non_const_locals_top_of_block    # Q15
+from . import function_def_no_style2           # Q4
+from . import no_packed_case_labels            # Q42
 
 from . import multiline_call_style
 
@@ -83,6 +85,8 @@ ALL_RULES = [
    blank_line_after_decl_block.RULE,
    blank_line_after_non_final_return.RULE,
    non_const_locals_top_of_block.RULE,
+   function_def_no_style2.RULE,
+   no_packed_case_labels.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }
