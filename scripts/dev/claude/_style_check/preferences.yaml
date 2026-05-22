@@ -2505,6 +2505,58 @@ questions:
       rule.
     weight: 1.0
 
+  - id: q38-endif-trailing-annotation
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      `#endif` for a multi-line `#ifdef` block. Three forms:
+      bare, block-comment annotation, line-comment annotation.
+    snippets:
+      - label: "1"
+        desc: Bare `#endif`
+        code: |
+          #endif
+      - label: "2"
+        desc: "`#endif` with trailing block comment"
+        code: |
+          #endif /* KRN_HANG_DETECTION */
+      - label: "3"
+        desc: "`#endif` with trailing line comment"
+        code: |
+          #endif // KRN_HANG_DETECTION
+    guess: ["2", "1", "3"]
+    ranking: ["2", "3", "1"]
+    comment: >
+      For ~15 line blocks like the example, even V1 (bare) is
+      acceptable. For ~100+ line blocks, the annotation
+      becomes mandatory (V2 or V3 required).
+
+      V3 (`//` line comment) is acceptable -- it fits the
+      "brief one-liner" pattern from Q17. V2 still wins for
+      being the canonical block-comment form.
+    notes: >
+      Wrong on V3 -- I had it last (assumed `//` dispreferred)
+      but it's actually second. `//` for `#endif` annotations
+      is acceptable in .c files because the annotation is a
+      brief one-liner.
+
+      Length-based escalation:
+
+        Block length   | Required form
+        ---------------+-------------------
+        Short (<~30)   | V1/V2/V3 all OK; V2 preferred
+        Long (~100+)   | V2 or V3 mandatory (annotation
+                       | required); V1 forbidden
+
+      For the linter: detect `#ifdef` blocks. Measure the
+      span (lines from `#ifdef` to `#endif`). If span > some
+      threshold (~50 lines, conservatively), the `#endif`
+      MUST have a trailing annotation matching the `#ifdef`
+      condition. Soft suggestion for shorter blocks. V2
+      (block comment) preferred over V3 (line comment) as a
+      style nudge but neither flagged for the long case.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
