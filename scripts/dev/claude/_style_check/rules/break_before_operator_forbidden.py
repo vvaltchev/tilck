@@ -19,7 +19,7 @@ from .. import tokens as _tokens_mod
 # Q25 hard rule: multi-line conditions break AFTER the operator,
 # never BEFORE. A continuation line that starts (after indentation)
 # with `&&` or `||` is the forbidden break-before form.
-_PAT = re.compile(r'^[ \t]+(&&|\|\|)\b')
+_PAT = re.compile(r'^[ \t]+(&&|\|\|)(?=\s)')
 
 
 class BreakBeforeOperatorForbidden(Rule):

@@ -195,6 +195,146 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(len(diags), 1)
       self.assertEqual(diags[0].rule, 'multiline_call_style')
 
+   # ----- v2 rules -----
+
+   def test_bad_while_true_only(self):
+
+      r = RULES_BY_ID['while_true_only']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_while_true_only.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(all(d.rule == 'while_true_only' for d in diags))
+
+   def test_bad_pointer_asterisk_attached(self):
+
+      r = RULES_BY_ID['pointer_asterisk_attached']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_pointer_asterisk_attached.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'pointer_asterisk_attached' for d in diags)
+      )
+
+   def test_bad_switch_case_indent(self):
+
+      r = RULES_BY_ID['switch_case_indent']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_switch_case_indent.c', self.parser
+      )
+      self.assertEqual(len(diags), 3)
+      self.assertTrue(all(d.rule == 'switch_case_indent' for d in diags))
+
+   def test_bad_blank_line_after_decl_block(self):
+
+      r = RULES_BY_ID['blank_line_after_decl_block']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_blank_line_after_decl_block.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'blank_line_after_decl_block')
+
+   def test_bad_blank_line_after_non_final_return(self):
+
+      r = RULES_BY_ID['blank_line_after_non_final_return']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_blank_line_after_non_final_return.c',
+         self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'blank_line_after_non_final_return' for d in diags)
+      )
+
+   def test_bad_non_const_locals_top_of_block(self):
+
+      r = RULES_BY_ID['non_const_locals_top_of_block']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_non_const_locals_top_of_block.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'non_const_locals_top_of_block' for d in diags)
+      )
+
+   def test_bad_function_def_no_style2(self):
+
+      r = RULES_BY_ID['function_def_no_style2']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_function_def_no_style2.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'function_def_no_style2')
+
+   def test_bad_no_packed_case_labels(self):
+
+      r = RULES_BY_ID['no_packed_case_labels']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_no_packed_case_labels.c', self.parser
+      )
+      # `case 1: case 2:` = 1 packed pair; `case 3: case 4: case 5:` =
+      # 2 additional. Total: 3.
+      self.assertEqual(len(diags), 3)
+      self.assertTrue(
+         all(d.rule == 'no_packed_case_labels' for d in diags)
+      )
+
+   def test_bad_break_before_operator_forbidden(self):
+
+      r = RULES_BY_ID['break_before_operator_forbidden']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_break_before_operator_forbidden.c',
+         self.parser
+      )
+      self.assertEqual(len(diags), 3)
+      self.assertTrue(
+         all(d.rule == 'break_before_operator_forbidden' for d in diags)
+      )
+
+   def test_bad_include_order(self):
+
+      r = RULES_BY_ID['include_order']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_include_order.c', self.parser
+      )
+      # tilck_gen_headers/ not first AND kernel/ subtree interleaved.
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(all(d.rule == 'include_order' for d in diags))
+
+   def test_bad_cast_no_asymmetric_form(self):
+
+      r = RULES_BY_ID['cast_no_asymmetric_form']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_cast_no_asymmetric_form.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'cast_no_asymmetric_form' for d in diags)
+      )
+
+   def test_bad_per_case_braces_when_locals(self):
+
+      r = RULES_BY_ID['per_case_braces_when_locals']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_per_case_braces_when_locals.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'per_case_braces_when_locals')
+
+   def test_bad_multiline_call_style_broad(self):
+
+      r = RULES_BY_ID['multiline_call_style']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_multiline_call_style_broad.c',
+         self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'multiline_call_style')
+
 
 class TestRulesOnGoldenFiles(unittest.TestCase):
    """Canonical files in the kernel must report zero diagnostics for
@@ -228,6 +368,9 @@ class TestRulesOnGoldenFiles(unittest.TestCase):
          '4x `while (1)` -- v2 Q31 rule requires `while (true)`',
       ('userapps/dp/dp_main.c', 'while_true_only'):
          '1x `while (1)` -- v2 Q31 rule requires `while (true)`',
+      ('include/tilck/kernel/sched.h', 'break_before_operator_forbidden'):
+         '`is_task_stopped` (line 231-232) wraps `||` to continuation '
+         'line; v2 Q25 rule requires operator at end of previous line',
    }
 
    # Rules that surface enough corpus drift that listing every (file,
