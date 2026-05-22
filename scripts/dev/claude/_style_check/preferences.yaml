@@ -2605,6 +2605,55 @@ questions:
       violations.
     weight: 1.0
 
+  - id: q40-bitfield-struct-layout
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Bitfield struct with members of varying widths. Three
+      layouts: aligned colons no annotations, unaligned, aligned
+      + trailing field annotations.
+    snippets:
+      - label: "1"
+        desc: Colon column aligned, no annotations
+        code: |
+          struct status_flags {
+             unsigned ready    : 1;
+             unsigned active   : 1;
+             unsigned dirty    : 1;
+             unsigned reserved : 29;
+          };
+      - label: "2"
+        desc: Unaligned, single space after type
+        code: |
+          struct status_flags {
+             unsigned ready : 1;
+             unsigned active : 1;
+             unsigned dirty : 1;
+             unsigned reserved : 29;
+          };
+      - label: "3"
+        desc: Colon-aligned + trailing field annotations
+        code: |
+          struct status_flags {
+             unsigned ready    : 1;       /* set when initialized */
+             unsigned active   : 1;       /* set when actively in use */
+             unsigned dirty    : 1;       /* set when state has changed */
+             unsigned reserved : 29;
+          };
+    guess: ["3", "1", "2"]
+    ranking: ["3", "1", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Same pattern as Q9 (struct field comments):
+      aligned-with-annotations > aligned-no-annotations >
+      unaligned. The colon alignment is the same visual-column
+      principle that's been consistent across Q9, Q18 (blank
+      lines), Q20 (#define backslash col 80), Q23/Q24 (struct
+      init), Q40 (bitfields), and Q10's `||` / `&&` operator
+      alignment. Visual columns are a unified prettiness
+      signal in this codebase.
+    weight: 1.0
+
   - id: q11-error-handling-cleanup
     topic: control-flow
     date: 2026-05-20
