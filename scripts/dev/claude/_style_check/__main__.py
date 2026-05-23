@@ -152,12 +152,13 @@ def filter_rules(rules_list, args) -> list:
 
    selected = list(rules_list)
 
-   if args.rule:
-      wanted = set(args.rule)
+   wanted = _split_rule_args(args.rule)
+   banned = _split_rule_args(args.exclude_rule)
+
+   if wanted:
       selected = [r for r in selected if r.id in wanted]
 
-   if args.exclude_rule:
-      banned = set(args.exclude_rule)
+   if banned:
       selected = [r for r in selected if r.id not in banned]
 
    if args.severity == 'hard':
@@ -166,6 +167,24 @@ def filter_rules(rules_list, args) -> list:
       selected = [r for r in selected if r.severity == 'warning']
 
    return selected
+
+
+def _split_rule_args(raw_list) -> set:
+   """Each element of `raw_list` can be a single rule ID or a
+   comma-separated list. Flatten to a set."""
+
+   out = set()
+
+   for entry in raw_list:
+
+      for piece in entry.split(','):
+
+         piece = piece.strip()
+
+         if piece:
+            out.add(piece)
+
+   return out
 
 
 def _status_for(diags) -> str:
@@ -677,17 +696,23 @@ def build_argparser():
    )
 
    check_p.add_argument(
-      '--rule',
+      '-r', '--rule',
       action='append',
       default=[],
-      help='Only run this rule (repeatable)'
+      metavar='RULES',
+      help=('Only run this rule. Accepts a single rule ID or a '
+            'comma-separated list; repeatable. Examples: '
+            '`-r cols_80`, `-r cols_80,pragma_once`, '
+            '`-r cols_80 -r pragma_once`.')
    )
 
    check_p.add_argument(
-      '--exclude-rule',
+      '-x', '--exclude-rule',
       action='append',
       default=[],
-      help='Skip this rule (repeatable)'
+      metavar='RULES',
+      help=('Skip this rule. Accepts a single rule ID or a '
+            'comma-separated list; repeatable.')
    )
 
    check_p.add_argument(
