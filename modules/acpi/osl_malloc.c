@@ -100,9 +100,10 @@ AcpiOsAllocate(ACPI_SIZE Size)
 void
 AcpiOsFree(void *Memory)
 {
+   ulong var;
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   ulong var;
    disable_interrupts(&var);
    {
       acpi_osl_do_free(Memory);

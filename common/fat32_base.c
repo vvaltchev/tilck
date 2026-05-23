@@ -458,8 +458,9 @@ u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N)
 struct fat_entry *
 fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
 {
-   ASSERT(ft == fat16_type || ft == fat32_type);
    u32 sector;
+
+   ASSERT(ft == fat16_type || ft == fat32_type);
 
    if (ft == fat16_type) {
 

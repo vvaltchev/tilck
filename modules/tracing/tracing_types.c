@@ -105,8 +105,9 @@ const struct sys_param_type ptype_int32_pair = {
 static bool
 save_param_u64_ptr(void *data, long unused, char *dest_buf, size_t dest_bs)
 {
-   ASSERT(dest_bs >= 8);
    u64 val;
+
+   ASSERT(dest_bs >= 8);
 
    if (copy_from_user(&val, data, 8)) {
       snprintk(dest_buf, dest_bs, "<fault>");

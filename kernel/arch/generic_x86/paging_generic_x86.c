@@ -23,12 +23,12 @@ struct kmalloc_heap *hi_vmem_heap;
 
 void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 {
-   ASSERT(IS_PAGE_ALIGNED(vaddrp));
-   ASSERT(IS_PAGE_ALIGNED(len));
-
    ulong paddr;
    ulong vaddr = (ulong)vaddrp;
    const ulong vaddr_end = vaddr + len;
+
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
 
@@ -41,12 +41,12 @@ void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 
 void release_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 {
-   ASSERT(IS_PAGE_ALIGNED(vaddrp));
-   ASSERT(IS_PAGE_ALIGNED(len));
-
    ulong paddr;
    ulong vaddr = (ulong)vaddrp;
    const ulong vaddr_end = vaddr + len;
+
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
 

@@ -577,9 +577,10 @@ tracing_get_slot(struct trace_event *e,
                  char **buf,
                  size_t *size)
 {
+   s8 fmt;
+
    ASSERT(e->type == te_sys_enter || e->type == te_sys_exit);
    const s8 slot = (*params_slots)[e->sys_ev.sys][p_idx];
-   s8 fmt;
 
    if (slot == NO_SLOT)
       return false;

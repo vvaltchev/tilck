@@ -186,10 +186,10 @@ kill_task_now_or_later(struct task *ti, void *regs, int signum)
  */
 bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
 {
-   ASSERT(!is_preemption_enabled());
    struct task *ti = __ti;
    int sig;
 
+   ASSERT(!is_preemption_enabled());
    ASSERT(ti == get_curr_task() || sig_state == sig_in_usermode);
 
    /* Unmask the pending signals caused by HW faults */
@@ -750,9 +750,10 @@ sys_rt_sigprocmask(int how,
                    sigset_t *user_oldset,
                    size_t sigsetsize)
 {
-   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
    struct task *ti = get_curr_task();
    int rc;
+
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
    if (user_oldset) {
 
@@ -821,9 +822,10 @@ sys_rt_sigprocmask(int how,
 int
 sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
 {
-   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
    struct task *ti = get_curr_task();
    int rc;
+
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
    if (!u_set)
       return 0;
@@ -852,9 +854,10 @@ sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
 
 int sys_rt_sigsuspend(sigset_t *u_mask, size_t sigsetsize)
 {
-   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
    struct task *curr = get_curr_task();
    int rc;
+
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
    if (curr->nested_sig_handlers > 0) {
 
@@ -950,10 +953,11 @@ __sighandler_t sys_signal(int signum, __sighandler_t handler)
 
 ulong sys_rt_sigreturn(void)
 {
-   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
    struct task *curr = get_curr_task();
    regs_t *r = curr->state_regs;
    ulong user_sp;
+
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
    if (LIKELY(curr->nested_sig_handlers > 0)) {
 

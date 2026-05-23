@@ -15,8 +15,11 @@ from .base import (
    Rule,
    Diagnostic,
    CheckContext,
+   SEVERITY_ERROR,
    SEVERITY_WARNING,
+   SCORE_HARD_RULE,
    SCORE_STRONG_PREF,
+   SCORE_SOFT,
 )
 
 # Statement-shaped macros that the corpus treats as "diagnostic
@@ -34,6 +37,17 @@ _PRELUDE_MACROS = (
 
 _PRELUDE_PAT = re.compile(
    r'^\s*(?:' + '|'.join(_PRELUDE_MACROS) + r')\s*\('
+)
+
+# Decl-introducing prelude pattern: an UPPERCASE_MACRO_NAME(...)
+# at the start of a line. libclang represents the macro's
+# expansion as DECL_STMTs at the call-site line, so we recognise
+# these by source text and skip the decls they introduce.
+# Examples in Tilck: DEBUG_SAVE_ESP(), CREATE_SHADOW_STACK(...),
+# DECLARE_SHADOW_STACK(...), and similar macros that expand to
+# declarations at function top.
+_MACRO_DECL_PRELUDE_PAT = re.compile(
+   r'^\s*[A-Z_][A-Z0-9_]*\s*\('
 )
 
 
@@ -78,21 +92,50 @@ class NonConstLocalsTopOfBlock(Rule):
          except Exception:
             continue
 
-         # The sub-block-scope-narrowing exception is automatic: a
-         # sub-block has its own COMPOUND_STMT, where the local sits
-         # at the top of that nested scope and does not trigger this
-         # rule.
-         saw_non_decl = False
+         # Two-flag classifier walking down the compound statement:
+         #
+         #   saw_real_non_decl  -- a non-prelude statement was seen
+         #                         (function call, control flow, ...)
+         #   saw_prelude        -- an ASSERT-style prelude was seen
+         #                         but no other non-decl statement
+         #
+         # Decision matrix when a DECL_STMT is encountered:
+         #
+         #   neither seen          -> still in the leading decl block;
+         #                            this decl is fine.
+         #   saw_prelude only      -> init'd decl gets a small SOFT
+         #                            penalty (-0.5): never fully
+         #                            tolerated, but the line-savings
+         #                            argument applies so the cost is
+         #                            modest. The caller's judgment
+         #                            decides whether to move the
+         #                            decl up (with init) or split
+         #                            (bare up + assign below).
+         #                            BARE decl is HARD: no line-
+         #                            savings argument when there's
+         #                            no initializer.
+         #   saw_real_non_decl     -> any non-const decl is SOFT-
+         #                            STRONG drift (Q15 standard
+         #                            mid-block ban).
+         saw_real_non_decl = False
+         saw_prelude = False
 
          for child in cursor.get_children():
 
             if child.kind == CursorKind.DECL_STMT:
 
-               if not saw_non_decl:
+               if not (saw_real_non_decl or saw_prelude):
+                  continue   # still in the leading decl block
+
+               # Decl-introducing macro prelude: when the source
+               # line at the DECL_STMT's location is an uppercase
+               # macro call (DEBUG_SAVE_ESP(), CREATE_SHADOW_STACK,
+               # etc.), the decls came from the macro's expansion.
+               # Conceptually the whole macro is a prelude --
+               # skip the decls it introduces.
+               if _is_macro_decl_prelude(child, ctx.lines):
                   continue
 
-               # A DECL_STMT after a non-declaration statement: check
-               # whether any VAR_DECL inside it is non-const.
                for sub in child.get_children():
 
                   if sub.kind != CursorKind.VAR_DECL:
@@ -121,6 +164,57 @@ class NonConstLocalsTopOfBlock(Rule):
 
                   seen.add(key)
 
+                  has_init = _decl_has_init(child)
+
+                  # Classify the violation. Three flavors with
+                  # different severities / scores:
+                  #
+                  #   hard      = severity error,   score -10  -- bare decl after prelude only
+                  #   strong    = severity warning, score -3   -- any decl after real non-decl
+                  #   small     = severity warning, score -0.5 -- init'd decl after prelude only
+                  if saw_real_non_decl:
+
+                     severity = self.severity
+                     score = SCORE_STRONG_PREF
+                     msg = (
+                        'non-const local "{}" declared after non-'
+                        'declaration statements; move to top of '
+                        'enclosing scope (function body, control '
+                        'body, or a {{ }} sub-block)'
+                     ).format(sub.spelling)
+
+                  elif has_init:
+
+                     # init'd decl after prelude: small soft penalty.
+                     # Whether to actually move it is a judgment call
+                     # (dependency on the ASSERT'd state vs harmony
+                     # with the leading decl block).
+                     severity = self.severity
+                     score = SCORE_SOFT
+                     msg = (
+                        'init\'d local "{}" declared after a '
+                        'diagnostic-prelude (ASSERT/STATIC_ASSERT/...) '
+                        '-- consider moving this decl above the '
+                        'prelude (whole decl if the initializer does '
+                        'not depend on the asserted state; bare decl + '
+                        'assignment-after otherwise)'
+                     ).format(sub.spelling)
+
+                  else:
+
+                     # bare decl after prelude only -- the hard case.
+                     # No line-savings argument applies.
+                     severity = SEVERITY_ERROR
+                     score = SCORE_HARD_RULE
+                     msg = (
+                        'bare local "{}" declared after a diagnostic-'
+                        'prelude (ASSERT/STATIC_ASSERT/...) without an '
+                        'initializer -- move to top of the enclosing '
+                        'scope. The line-savings argument that allows '
+                        'init\'d decls after preludes does NOT apply '
+                        'when the decl has no initializer.'
+                     ).format(sub.spelling)
+
                   line_text = ctx.lines[sub_loc.line - 1] \
                      if sub_loc.line - 1 < len(ctx.lines) else ''
 
@@ -131,29 +225,80 @@ class NonConstLocalsTopOfBlock(Rule):
                      end_line=sub_loc.line,
                      end_col=sub_loc.column + len(sub.spelling),
                      rule=self.id,
-                     severity=self.severity,
-                     message=('non-const local "{}" declared after non-'
-                              'declaration statements; move to top of '
-                              'enclosing scope (function body, control '
-                              'body, or a {{ }} sub-block)').format(
-                        sub.spelling
-                     ),
+                     severity=severity,
+                     score=score,
+                     message=msg,
                      snippet=line_text.strip(),
                   ))
 
                continue
 
-            # Anything else: check whether this is a diagnostic
-            # prelude (ASSERT, STATIC_ASSERT, etc.). The corpus
-            # places these between the function prologue and the
-            # decl block; the user does NOT treat them as the
-            # "first non-decl statement" the rule cares about.
+            # Non-decl child. Classify: prelude or real statement.
             if _is_prelude_child(child, ctx.lines):
-               continue
-
-            saw_non_decl = True
+               saw_prelude = True
+            else:
+               saw_real_non_decl = True
 
       return out
+
+
+def _decl_has_init(decl_stmt) -> bool:
+   """True iff the DECL_STMT contains an initializer.
+
+   libclang's VAR_DECL extent only covers the declarator (`int x`)
+   -- the `= ...` initializer can be missing from the cursor's
+   tokens AND its children, especially for struct-init syntax
+   (`= { .field = ... }`). So we look at the PARENT DECL_STMT,
+   whose token stream does include the full declaration including
+   the initializer.
+
+   Limitation: multi-variable decls like `int a, b = 5;` are
+   treated as fully-initialized (the `=` is detected even though
+   only `b` has an init). This is rare in the Tilck corpus and
+   the user can split such decls if they want strict checking."""
+
+   depth_paren = 0
+   depth_brace = 0
+
+   try:
+      toks = list(decl_stmt.get_tokens())
+   except Exception:
+      return False
+
+   for t in toks:
+
+      sp = t.spelling
+
+      if sp == '(':
+         depth_paren += 1
+      elif sp == ')':
+         depth_paren -= 1
+      elif sp == '{':
+         depth_brace += 1
+      elif sp == '}':
+         depth_brace -= 1
+      elif sp == '=' and depth_paren == 0 and depth_brace == 0:
+         return True
+      elif sp == ';' and depth_paren == 0 and depth_brace == 0:
+         return False
+
+   return False
+
+
+def _is_macro_decl_prelude(decl_stmt, lines) -> bool:
+   """True iff the DECL_STMT's source line is an UPPERCASE_NAME(...)
+   macro call. The decls came from the macro's expansion and the
+   whole call is a prelude-style construct."""
+
+   try:
+      line_no = decl_stmt.location.line
+   except Exception:
+      return False
+
+   if line_no <= 0 or line_no > len(lines):
+      return False
+
+   return _MACRO_DECL_PRELUDE_PAT.match(lines[line_no - 1]) is not None
 
 
 def _is_prelude_child(child, lines) -> bool:

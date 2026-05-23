@@ -69,12 +69,14 @@ void vfs_close(fs_handle h)
  */
 int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
+   struct fs_handle_base *new_handle;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+   const struct fs_ops *fsops;
+   int rc;
+
    ASSERT(h != NULL);
 
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   const struct fs_ops *fsops = hb->fs->fsops;
-   struct fs_handle_base *new_handle;
-   int rc;
+   fsops = hb->fs->fsops;
 
    if (!hb)
       return -EBADF;

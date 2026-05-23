@@ -135,13 +135,13 @@ static void post_mtrr_change(struct mtrr_change_ctx *ctx)
 
 void set_mtrr(u32 num, u64 paddr, u32 pow2size, u8 mem_type)
 {
+   struct mtrr_change_ctx ctx;
+
    ASSERT(num < get_var_mttrs_count());
    ASSERT(pow2size > 0);
    ASSERT(roundup_next_power_of_2(pow2size) == pow2size);
    ASSERT(pow2_round_up_at64(paddr, pow2size) == paddr);
    ASSERT(x86_cpu_features.edx1.mtrr);
-
-   struct mtrr_change_ctx ctx;
 
    pre_mtrr_change(&ctx);
    {
