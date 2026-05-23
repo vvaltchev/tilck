@@ -1,18 +1,19 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_kmalloc.h>
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <tilck/common/basic_defs.h>
+
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/sched.h>
-
-#include <tilck_gen_headers/config_kmalloc.h>
-
 #include <tilck/kernel/kmalloc.h>
+
 #include <kernel/kmalloc/kmalloc_heap_struct.h> // kmalloc private header
 #include <kernel/kmalloc/kmalloc_block_node.h>  // kmalloc private header
 

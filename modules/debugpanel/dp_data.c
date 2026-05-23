@@ -55,9 +55,9 @@ STATIC_ASSERT(sizeof(struct dp_printk_event_data) ==
 #endif
 
 #ifdef arch_x86_family
-#include <tilck/kernel/hal.h>
-#include <tilck/common/arch/generic_x86/asm_consts.h>
-#include <tilck/common/arch/generic_x86/x86_utils.h>
+   #include <tilck/kernel/hal.h>
+   #include <tilck/common/arch/generic_x86/asm_consts.h>
+   #include <tilck/common/arch/generic_x86/x86_utils.h>
 #endif
 
 #define DP_GET_TASKS_HARDCAP   1024

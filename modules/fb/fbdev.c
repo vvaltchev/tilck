@@ -6,7 +6,6 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
-#include <tilck/mods/fb_console.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/tty.h>
@@ -15,6 +14,8 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/fs/vfs.h>
+
+#include <tilck/mods/fb_console.h>
 
 #include <linux/fb.h>     // system header
 #include <linux/major.h>  // system header

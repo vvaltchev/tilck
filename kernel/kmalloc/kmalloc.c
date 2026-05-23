@@ -2,6 +2,8 @@
 
 #define _KMALLOC_C_
 
+#include <tilck_gen_headers/config_kmalloc.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
@@ -15,8 +17,6 @@
 #include <tilck/kernel/sort.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/worker_thread.h>
-
-#include <tilck_gen_headers/config_kmalloc.h>
 
 #include "kmalloc_debug.h"
 #include "kmalloc_heap_struct.h"

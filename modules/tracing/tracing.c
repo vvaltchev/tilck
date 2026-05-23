@@ -6,6 +6,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/tracing/wire.h>
 
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/sched.h>
@@ -21,7 +22,6 @@
 #include <tilck/kernel/errno.h>
 
 #include <tilck/mods/tracing.h>
-#include <tilck/common/tracing/wire.h>
 
 #if MOD_sysfs
    #include <tilck/mods/sysfs.h>
