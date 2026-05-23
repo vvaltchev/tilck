@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
 /*
  * The following two defines refer to the memory regions
  * that are required at runtime by EFI.

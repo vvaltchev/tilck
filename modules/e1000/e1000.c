@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: BSD-2-Clause
- *
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
  * Sources:
  *   https://wiki.osdev.org/Intel_8254x
  *   https://www.intel.com/content/dam/doc/manual/
