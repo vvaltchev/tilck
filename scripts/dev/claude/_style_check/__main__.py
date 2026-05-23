@@ -222,7 +222,7 @@ def cmd_check(args) -> int:
          all_diags.extend(diags)
 
    fmt = 'jsonl' if args.json else args.format
-   reporter.emit(all_diags, fmt=fmt)
+   reporter.emit(all_diags, fmt=fmt, color_mode=args.color)
    return 0
 
 
@@ -431,6 +431,16 @@ def build_argparser():
       '--json',
       action='store_true',
       help='Shortcut for --format jsonl (machine-readable output)'
+   )
+
+   check_p.add_argument(
+      '--color',
+      choices=['auto', 'always', 'never'],
+      default='auto',
+      help=('Colorize text output. `auto` (default) enables colors '
+            'when stdout is a TTY and NO_COLOR is unset; `always` '
+            'forces them on (e.g. when piping into a pager that '
+            'understands ANSI); `never` disables them')
    )
 
    check_p.add_argument(
