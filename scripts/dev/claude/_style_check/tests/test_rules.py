@@ -544,6 +544,15 @@ class TestRulesNoFalsePositives(unittest.TestCase):
          'no_packed_case_labels', 'good_no_packed_case.c'
       )
 
+   def test_good_per_case_braces_when_locals(self):
+      # Covers fall-through cases, control-flow stmt bodies with
+      # decls in their braced inner scope, and macro expansions
+      # producing GCC statement-expression compounds with decls.
+      self._assert_no_diags(
+         'per_case_braces_when_locals',
+         'good_per_case_braces_when_locals.c'
+      )
+
    def test_good_switch_case(self):
       self._assert_no_diags(
          'switch_case_indent', 'good_switch_case.c'

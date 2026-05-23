@@ -72,21 +72,22 @@ class PerCaseBracesWhenLocals(Rule):
          if body.kind == CursorKind.COMPOUND_STMT:
             continue
 
-         # Body is a single statement. If it itself is a DECL_STMT,
-         # the case has an un-braced local declaration -- violation.
-         has_decl = False
+         # Fall-through case: the body is another case/default
+         # label. The "real" body belongs to the deepest case in
+         # the chain; this label has no decls of its own to scope.
+         if body.kind in (CursorKind.CASE_STMT,
+                          CursorKind.DEFAULT_STMT):
+            continue
 
-         if body.kind == CursorKind.DECL_STMT:
-            has_decl = True
-
-         else:
-
-            # Walk the body tree for any DECL_STMT (defensive).
-            for sub in body.walk_preorder():
-
-               if sub.kind == CursorKind.DECL_STMT:
-                  has_decl = True
-                  break
+         # Walk the body subtree to see whether there's a DECL_STMT
+         # at the CASE BODY LEVEL. Stop descending at any nested
+         # COMPOUND_STMT -- its decls are inside their own scope
+         # (control-flow `{ ... }` bodies, sub-blocks, and GCC
+         # statement-expression macros like `MAX(({...}))` or
+         # `return_ACPI_STATUS(...)`). The whole point of the rule
+         # is the case label's lack of its own scope; decls in a
+         # nested compound aren't case-body decls.
+         has_decl = _scan_for_decl_outside_compounds(body)
 
          if not has_decl:
             continue
@@ -116,6 +117,42 @@ class PerCaseBracesWhenLocals(Rule):
          ))
 
       return out
+
+
+def _scan_for_decl_outside_compounds(node) -> bool:
+   """Walk `node`'s subtree iteratively, returning True iff a
+   DECL_STMT is found WITHOUT crossing into a nested COMPOUND_STMT.
+
+   Rationale: the rule fires on `case X: int y = ...;` because the
+   un-braced case body has no scope for the declaration. But if the
+   declaration is inside an `if (...) { int y = ...; }` or any other
+   construct that opens a `{ ... }` block, that block already
+   provides a scope -- the case label's missing-scope issue doesn't
+   apply.
+
+   Also catches the GCC statement-expression macro pattern where a
+   macro expands to `({ DECL; DECL; result; })`: those decls live
+   in the macro's own compound, not in the case body."""
+
+   if node.kind == CursorKind.DECL_STMT:
+      return True
+
+   stack = list(node.get_children())
+
+   while stack:
+
+      cur = stack.pop()
+
+      if cur.kind == CursorKind.DECL_STMT:
+         return True
+
+      if cur.kind == CursorKind.COMPOUND_STMT:
+         continue   # the decls inside are inside a scope -- skip
+
+      for child in cur.get_children():
+         stack.append(child)
+
+   return False
 
 
 RULE = PerCaseBracesWhenLocals()
