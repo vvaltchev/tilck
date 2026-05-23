@@ -352,7 +352,7 @@ MbiSetExtraBootInfo(void)
     * Struct tilck_extra_boot_info stores RSDP and
     * RT (UEFI Runtime Services pointer).
     */
-   
+
    gMbi->apm_table = (u32)paddr;
 
 end:

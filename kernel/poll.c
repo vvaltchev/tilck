@@ -17,8 +17,10 @@ poll_count_conds(struct pollfd *fds, nfds_t nfds)
 
    for (nfds_t i = 0; i < nfds; i++) {
 
+      fs_handle h;
+
       fds[i].revents = 0;
-      fs_handle h = get_fs_handle(fds[i].fd);
+      h = get_fs_handle(fds[i].fd);
 
       if (!h) {
          fds[i].revents = POLLNVAL; /* invalid file descriptor */
