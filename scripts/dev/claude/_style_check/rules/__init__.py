@@ -38,6 +38,9 @@ from . import break_before_operator_forbidden  # Q25
 from . import include_order                    # Q13
 from . import cast_no_asymmetric_form          # Q22
 from . import per_case_braces_when_locals      # Q12
+from . import empty_body_braces                # Q44
+from . import endif_annotation_long_blocks     # Q38
+from . import no_packed_enum_values            # Q23
 
 from . import multiline_call_style
 
@@ -95,6 +98,9 @@ ALL_RULES = [
    include_order.RULE,
    cast_no_asymmetric_form.RULE,
    per_case_braces_when_locals.RULE,
+   empty_body_braces.RULE,
+   endif_annotation_long_blocks.RULE,
+   no_packed_enum_values.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

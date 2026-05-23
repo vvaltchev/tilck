@@ -335,6 +335,41 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(len(diags), 1)
       self.assertEqual(diags[0].rule, 'multiline_call_style')
 
+   def test_bad_empty_body_braces(self):
+
+      r = RULES_BY_ID['empty_body_braces']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_empty_body_braces.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(all(d.rule == 'empty_body_braces' for d in diags))
+
+   def test_bad_no_packed_enum_values(self):
+
+      r = RULES_BY_ID['no_packed_enum_values']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_no_packed_enum_values.c', self.parser
+      )
+      # 5 enumerators packed on one line -> 4 violations (one per
+      # enumerator following the first).
+      self.assertEqual(len(diags), 4)
+      self.assertTrue(
+         all(d.rule == 'no_packed_enum_values' for d in diags)
+      )
+
+   def test_bad_endif_annotation_long_blocks(self):
+
+      r = RULES_BY_ID['endif_annotation_long_blocks']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_endif_annotation_long_blocks.c',
+         self.parser
+      )
+      # Short block (~3 lines) is compliant without annotation;
+      # only the long block's bare #endif fires.
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'endif_annotation_long_blocks')
+
 
 class TestRulesOnGoldenFiles(unittest.TestCase):
    """Canonical files in the kernel must report zero diagnostics for
@@ -371,6 +406,9 @@ class TestRulesOnGoldenFiles(unittest.TestCase):
       ('include/tilck/kernel/sched.h', 'break_before_operator_forbidden'):
          '`is_task_stopped` (line 231-232) wraps `||` to continuation '
          'line; v2 Q25 rule requires operator at end of previous line',
+      ('userapps/tracer/screen_tracing.c', 'empty_body_braces'):
+         '`while (...) ;` (bare-semicolon body on next line, line '
+         '743-744); v2 Q44 rule requires `{ }`',
    }
 
    # Rules that surface enough corpus drift that listing every (file,
