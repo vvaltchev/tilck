@@ -119,6 +119,65 @@ deserve their own scoring logic:
   pick. The score for "Style 1 multi-arg" depends on whether H1
   (single-line) was feasible.
 
+## Special header conventions
+
+Two categories of headers don't follow the standard "must have
+`#pragma once`" rule. The tool recognises them automatically or
+via an explicit marker comment.
+
+### `.c.h` implementation-include files
+
+Tilck convention: a file with extension `.c.h` (e.g.
+`kernel/kmalloc/general_kmalloc.c.h`,
+`include/tilck/common/elf_get_section.c.h`) is an
+implementation-include included by exactly one .c file. It's
+not a standalone header. The tool detects these by extension
+and exempts them from `pragma_once` automatically -- no user
+action needed.
+
+### Multi-include / X-macro headers
+
+Some headers are intentionally re-includable: each include site
+sets up different macros before pulling them in, expanding the
+header into different code each time. Canonical Tilck examples:
+
+  - `include/tilck/common/cmdline_opts.h` (DEFINE_KOPT table)
+  - `tests/system/cmds_table.h` (CMD_ENTRY table)
+
+These MUST NOT have `#pragma once` and are typically included
+indented inside a `#define ... #undef` block. Tag the header
+with a marker comment near the top:
+
+```c
+/* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: multi-include */
+
+/* <rest of the file comment> */
+```
+
+Either of these spellings is recognised:
+
+  - `/* style_check: multi-include */`
+  - `/* style_check: re-includable */`
+
+The tool exempts marked headers from `pragma_once`.
+
+### Indented `#include` directives
+
+`include_order` only checks `#include` lines that start at
+column 1. The user's existing convention -- indenting an
+X-macro `#include` inside a `#define ... #undef` block -- is
+the signal that the directive is in a special context, not
+part of the file's top-of-file include block:
+
+```c
+#define DEFINE_KOPT(name, alias, type, default) type kopt_##name = default;
+   #include <tilck/common/cmdline_opts.h>
+#undef DEFINE_KOPT
+```
+
+The indented `#include` is skipped by the rule.
+
 ## Process rules -- NOT enforced by the tool
 
 Per `docs/preferences-notes.md` (Q19, Q28):

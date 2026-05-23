@@ -67,12 +67,54 @@ class CheckContext:
    is_header: bool
    is_cpp: bool
 
+   # `.c.h` "implementation-include" files: included exactly once by
+   # a specific .c file. Not standalone headers, so they don't need
+   # `#pragma once` (and several other header-only rules don't apply).
+   is_c_dot_h: bool = False
+
+   # Multi-include / X-macro headers tagged with `/* style_check:
+   # multi-include */` near the top. Re-includable by design:
+   # exempt from `pragma_once` and similar single-include rules.
+   is_multi_include: bool = False
+
    # libclang artefacts -- may be None if parse failed or rule didn't need them
    tu: Optional[object] = None
    extents: list = field(default_factory=list)
 
    # Comment ranges from the raw-text scanner: list of CommentRange tuples
    comments: list = field(default_factory=list)
+
+
+# Magic marker recognised in the file's first ~10 lines to opt a
+# header into multi-include mode. Either spelling is accepted.
+MULTI_INCLUDE_MARKERS = (
+   '/* style_check: multi-include */',
+   '/* style_check: re-includable */',
+)
+
+
+def detect_multi_include(lines: List[str]) -> bool:
+   """Return True iff one of the marker comments is present near
+   the top of the file. Looking at the first 10 lines covers the
+   SPDX header + optional file-comment + the marker."""
+
+   for line in lines[:10]:
+
+      s = line.strip()
+
+      for marker in MULTI_INCLUDE_MARKERS:
+
+         if s == marker:
+            return True
+
+   return False
+
+
+def detect_c_dot_h(path: Path) -> bool:
+   """Return True iff the path ends with `.c.h` -- Tilck's
+   convention for implementation-include files."""
+
+   return str(path).endswith('.c.h')
 
 
 class Rule:

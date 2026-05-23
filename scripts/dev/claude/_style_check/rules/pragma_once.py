@@ -35,7 +35,10 @@ class PragmaOnce(Rule):
 
    id = 'pragma_once'
    description = (
-      'Headers must use "#pragma once" (not "#ifndef _X_H_" guards)'
+      'Headers must use "#pragma once" (not "#ifndef _X_H_" guards). '
+      'Skipped for `.c.h` implementation-include files and for '
+      'multi-include headers tagged with '
+      '`/* style_check: multi-include */`.'
    )
    layers = LAYER_RAW_TEXT
    applies_to = {'.h'}
@@ -45,6 +48,17 @@ class PragmaOnce(Rule):
       path_s = str(ctx.file_path)
 
       if any(frag in path_s for frag in EXEMPT_PATH_FRAGMENTS):
+         return []
+
+      # `.c.h` files are implementation-includes (included exactly
+      # once by a specific .c file); a `#pragma once` would be
+      # noise on them.
+      if ctx.is_c_dot_h:
+         return []
+
+      # Multi-include / X-macro headers are re-includable by
+      # design -- they MUST NOT have `#pragma once`.
+      if ctx.is_multi_include:
          return []
 
       out = []

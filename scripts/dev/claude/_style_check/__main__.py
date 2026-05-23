@@ -17,7 +17,9 @@ from . import extents
 from . import tokens as _tokens_mod
 from . import aggregator as _agg
 from .rules import ALL_RULES, RULES_BY_ID
-from .rules.base import CheckContext
+from .rules.base import (
+   CheckContext, detect_multi_include, detect_c_dot_h
+)
 
 
 def collect_files(args, repo_root: Path) -> list:
@@ -128,6 +130,8 @@ def build_context(file_path: Path,
       lines=lines,
       is_header=is_header,
       is_cpp=is_cpp,
+      is_c_dot_h=detect_c_dot_h(file_path),
+      is_multi_include=detect_multi_include(lines),
    )
 
    if need_tu and parser_obj is not None:

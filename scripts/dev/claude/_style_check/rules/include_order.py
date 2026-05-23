@@ -22,9 +22,20 @@ from .base import (
 #     kernel / mods / 3rd_party / system). Strict alphabetical
 #     ordering that interleaves subtrees is forbidden.
 
-# Captures: (delim, path) where delim is `<` or `"`.
+# Captures: (delim, path) where delim is `<` or `"`. ANCHORED at
+# column 1 (no leading whitespace) -- the file's main include
+# block always starts there. Indented `#include` directives are
+# inside a special context (X-macro setup, conditional compilation,
+# etc.) and the ordering rule does not apply to them.
+#
+# Example (kernel/cmdline.c) of the intentionally indented form:
+#
+#    #define DEFINE_KOPT(name, alias, type, default) \
+#       type kopt_##name = default;
+#       #include <tilck/common/cmdline_opts.h>
+#    #undef DEFINE_KOPT
 _INCLUDE_PAT = re.compile(
-   r'^\s*#\s*include\s*(?P<delim>[<"])(?P<path>[^>"]+)[>"]'
+   r'^#\s*include\s*(?P<delim>[<"])(?P<path>[^>"]+)[>"]'
 )
 
 # Subtree-of-interest for the grouping check. Returns None for
