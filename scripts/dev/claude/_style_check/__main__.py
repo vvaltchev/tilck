@@ -6,6 +6,7 @@
 
 import os
 import sys
+import signal
 import argparse
 import subprocess
 
@@ -806,7 +807,19 @@ def build_argparser():
    return ap
 
 
+def _sigint_handler(_signum, _frame):
+
+   # Re-raise as KeyboardInterrupt so the main() try/except catches
+   # it. Re-installing the handler here (instead of relying on the
+   # default) ensures Ctrl-C remains responsive even after a
+   # subprocess child (coverage, git ls-files) has run -- those can
+   # leave the parent's signal disposition in an unexpected state.
+   raise KeyboardInterrupt()
+
+
 def main():
+
+   signal.signal(signal.SIGINT, _sigint_handler)
 
    ap = build_argparser()
    args = ap.parse_args()
@@ -815,4 +828,17 @@ def main():
 
 ###############################
 if __name__ == '__main__':
-   sys.exit(main() or 0)
+
+   try:
+      sys.exit(main() or 0)
+   except KeyboardInterrupt:
+      sys.stderr.write('\nERROR: User interrupted (Ctrl-C)\n')
+      sys.exit(130)   # 128 + SIGINT(2) -- POSIX convention
+   except BrokenPipeError:
+      # Output piped to `head` etc. that closed early. Exit cleanly
+      # without dumping the BrokenPipe traceback to stderr.
+      try:
+         sys.stderr.close()
+      except Exception:
+         pass
+      sys.exit(0)
