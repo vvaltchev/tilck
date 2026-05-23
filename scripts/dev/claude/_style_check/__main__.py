@@ -158,6 +158,66 @@ def filter_rules(rules_list, args) -> list:
    return selected
 
 
+def _status_for(diags) -> str:
+   """Pick the worst severity present in `diags`. Used to label each
+   file's progress line: `OK` (nothing fired), `WARN` (only
+   warnings), `FAIL` (at least one error)."""
+
+   if not diags:
+      return 'OK'
+
+   if any(d.severity == 'error' for d in diags):
+      return 'FAIL'
+
+   return 'WARN'
+
+
+# Padded so the three labels align in a column of width 4.
+_STATUS_LABEL = {
+   'OK':   ' OK ',
+   'WARN': 'WARN',
+   'FAIL': 'FAIL',
+}
+
+
+def _emit_status(file_display: str, status: str, color_mode: str,
+                 stream) -> None:
+   """Append `... [STATUS]` after a previously-printed `Checking
+   <file> ` line. Color the bracketed label only -- everything else
+   stays plain so terminals without color rendering still get the
+   text."""
+
+   use_color = reporter._decide_color(color_mode, stream)  # pylint: disable=protected-access
+
+   code = {
+      'OK':   reporter._GREEN,
+      'WARN': reporter._YELLOW,
+      'FAIL': reporter._RED,
+   }[status]
+
+   label = '[{}]'.format(_STATUS_LABEL[status])
+
+   if use_color:
+      label = reporter._BOLD + code + label + reporter._RESET
+
+   stream.write('... {}\n'.format(label))
+   stream.flush()
+
+
+def _display_path(p: Path, repo_root) -> str:
+   """Show path relative to the repo root when possible -- shorter
+   and clearer in --all sweeps; absolute path for files outside
+   the tree."""
+
+   if repo_root is None:
+      return str(p)
+
+   try:
+      return str(p.relative_to(repo_root))
+   except ValueError:
+      return str(p)
+
+
 def cmd_check(args) -> int:
 
    repo_root = _parser_mod.find_repo_root()
@@ -183,6 +243,12 @@ def cmd_check(args) -> int:
    need_tu_any = any(r.needs_tu for r in rules)
    parser_obj = _parser_mod.Parser(build_dir) if need_tu_any else None
 
+   fmt = 'jsonl' if args.json else args.format
+
+   # Per-file progress display: text format + (--all or multi-file
+   # input). JSONL stays a clean stream of records.
+   show_progress = (fmt == 'text') and (args.all or len(files) > 1)
+
    all_diags = []
 
    for f in files:
@@ -201,7 +267,15 @@ def cmd_check(args) -> int:
       need_tu = any(r.needs_tu for r in applicable)
       need_cm = any(r.needs_comments for r in applicable)
 
+      if show_progress:
+         sys.stdout.write('Checking {} '.format(
+            _display_path(f, repo_root)
+         ))
+         sys.stdout.flush()
+
       ctx = build_context(f, parser_obj, need_tu, need_cm)
+
+      file_diags = []
 
       for r in applicable:
 
@@ -219,10 +293,52 @@ def cmd_check(args) -> int:
             if d.score == 0.0:
                d.score = r.default_score
 
-         all_diags.extend(diags)
+         file_diags.extend(diags)
 
-   fmt = 'jsonl' if args.json else args.format
-   reporter.emit(all_diags, fmt=fmt, color_mode=args.color)
+      if show_progress:
+         _emit_status(
+            _display_path(f, repo_root),
+            _status_for(file_diags),
+            args.color,
+            sys.stdout,
+         )
+
+         if file_diags:
+
+            reporter.emit(
+               file_diags,
+               fmt=fmt,
+               color_mode=args.color,
+               with_total=False,
+            )
+            sys.stdout.write('\n')
+
+      all_diags.extend(file_diags)
+
+   if show_progress:
+
+      # Grand summary across all files.
+      total = sum(d.score for d in all_diags)
+
+      if total != 0.0:
+
+         use_color = reporter._decide_color(  # pylint: disable=protected-access
+            args.color, sys.stdout
+         )
+         line = ('total prettiness: {:+.1f} across {} '
+                 'diagnostic(s) in {} file(s)\n').format(
+            total, len(all_diags), len(files)
+         )
+
+         if use_color:
+            line = reporter._BOLD + line + reporter._RESET
+
+         sys.stdout.write(line)
+
+   else:
+
+      reporter.emit(all_diags, fmt=fmt, color_mode=args.color)
+
    return 0
 
 

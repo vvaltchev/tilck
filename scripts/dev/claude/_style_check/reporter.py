@@ -67,7 +67,8 @@ def emit_jsonl(diags: List[Diagnostic], stream=None) -> None:
 
 def emit_text(diags: List[Diagnostic],
               stream=None,
-              color_mode: str = 'auto') -> None:
+              color_mode: str = 'auto',
+              with_total: bool = True) -> None:
    """Human-readable output. Each diagnostic occupies its own
    block separated by a blank line:
 
@@ -118,16 +119,18 @@ def emit_text(diags: List[Diagnostic],
             d.suggestion,
          ))
 
-   total = sum(d.score for d in diags)
+   if with_total:
 
-   if total != 0.0 and len(diags) > 1:
-      out.write('\n')
-      out.write(wrap(
-         _BOLD,
-         'total prettiness: {:+.1f} across {} diagnostic(s)\n'.format(
-            total, len(diags)
-         )
-      ))
+      total = sum(d.score for d in diags)
+
+      if total != 0.0 and len(diags) > 1:
+         out.write('\n')
+         out.write(wrap(
+            _BOLD,
+            'total prettiness: {:+.1f} across {} diagnostic(s)\n'.format(
+               total, len(diags)
+            )
+         ))
 
    out.flush()
 
@@ -135,11 +138,14 @@ def emit_text(diags: List[Diagnostic],
 def emit(diags: List[Diagnostic],
          fmt: str = 'jsonl',
          stream=None,
-         color_mode: str = 'auto') -> None:
+         color_mode: str = 'auto',
+         with_total: bool = True) -> None:
 
    if fmt == 'jsonl':
       emit_jsonl(diags, stream)
    elif fmt == 'text':
-      emit_text(diags, stream, color_mode=color_mode)
+      emit_text(
+         diags, stream, color_mode=color_mode, with_total=with_total
+      )
    else:
       raise ValueError("unknown format: {}".format(fmt))
