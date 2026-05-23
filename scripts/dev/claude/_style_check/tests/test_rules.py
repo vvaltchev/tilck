@@ -447,6 +447,19 @@ class TestRulesNoFalsePositives(unittest.TestCase):
          'non_const_locals_top_of_block', 'good_non_const_locals.c'
       )
 
+   def test_good_blank_line_after_decl_block(self):
+      # Covers three patterns that previously triggered false
+      # positives on real Tilck code:
+      #   1) Tight if-body with `decl + use` (kernel/poll.c:191-194
+      #      pattern).
+      #   2) GCC statement-expression macro expansion -- inner
+      #      compound stmt has decls pinned to the macro call site.
+      #   3) Sub-block (`{ ... }`) used to narrow temporary scope.
+      self._assert_no_diags(
+         'blank_line_after_decl_block',
+         'good_blank_line_after_decl_block.c'
+      )
+
 
 class TestPathBasedRules(unittest.TestCase):
    """Tests for rules whose behavior depends on `ctx.file_path`. The

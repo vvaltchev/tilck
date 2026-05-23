@@ -22,7 +22,10 @@ class BlankLineAfterDeclBlock(Rule):
    id = 'blank_line_after_decl_block'
    description = (
       'Blank line required after the declaration block at the top '
-      'of a function or sub-block (Q18)'
+      'of a FUNCTION BODY. Does NOT apply to control-flow bodies '
+      '(if/for/while), sub-blocks, or compiler-generated compound '
+      'statements from GCC statement-expression macros like `MAX(' +
+      '({ ... })`). Q18 hard rule.'
    )
    layers = 'S+R'
    needs_tu = True
@@ -37,11 +40,38 @@ class BlankLineAfterDeclBlock(Rule):
       seen = set()
       main_file = str(Path(str(ctx.file_path)).resolve())
 
-      for cursor in ctx.tu.cursor.walk_preorder():
+      # Walk the AST while tracking each cursor's IMMEDIATE parent
+      # kind so we can scope the rule to function bodies only.
+      # `walk_preorder` loses parent context -- a manual stack walk
+      # is the clean fix.
+      stack = [(ctx.tu.cursor, None)]
 
-         if cursor.kind != CursorKind.COMPOUND_STMT:
+      while stack:
+
+         cur, parent_kind = stack.pop()
+
+         # Push children with `cur` as their parent. We do this
+         # before the rule check so a `continue` inside the rule
+         # body doesn't skip the recursion.
+         for ch in cur.get_children():
+            stack.append((ch, cur.kind))
+
+         if cur.kind != CursorKind.COMPOUND_STMT:
             continue
 
+         # Apply ONLY to function bodies. Control-flow bodies
+         # (IF_STMT / FOR_STMT / WHILE_STMT / DO_STMT / SWITCH_STMT
+         # / CASE_STMT / DEFAULT_STMT) and sub-blocks (parent is
+         # itself COMPOUND_STMT) are tight operations where a
+         # blank line between the decl and its uses is unwanted.
+         # GCC statement-expression bodies (`({ ... })`) have a
+         # STMT_EXPR parent and are also skipped -- the inner
+         # compound stmt's locations are pinned to the macro
+         # call site and would trigger spurious reports.
+         if parent_kind != CursorKind.FUNCTION_DECL:
+            continue
+
+         cursor = cur
          loc = cursor.location
 
          if loc.file is None:
@@ -55,7 +85,7 @@ class BlankLineAfterDeclBlock(Rule):
          except Exception:
             continue
 
-         children = list(cursor.get_children())
+         children = list(cur.get_children())
 
          if len(children) < 2:
             continue  # not enough children for a decl-then-code pattern
