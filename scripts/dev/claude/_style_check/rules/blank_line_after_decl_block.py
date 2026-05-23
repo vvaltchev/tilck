@@ -22,11 +22,20 @@ class BlankLineAfterDeclBlock(Rule):
    id = 'blank_line_after_decl_block'
    description = (
       'Blank line required after the declaration block at the top '
-      'of a FUNCTION BODY. Does NOT apply to control-flow bodies '
+      'of a FUNCTION BODY whose total statement count exceeds '
+      'SMALL_BODY_THRESHOLD. Tiny bodies (<= 3 statements) are tight '
+      'operations -- a blank line in them would be uglier than the '
+      'absence of one. Does NOT apply to control-flow bodies '
       '(if/for/while), sub-blocks, or compiler-generated compound '
-      'statements from GCC statement-expression macros like `MAX(' +
-      '({ ... })`). Q18 hard rule.'
+      'statements from GCC statement-expression macros like '
+      '`MAX(({ ... }))`. Q18 hard rule.'
    )
+   # Function bodies with at most this many statements skip the
+   # rule entirely. A 2-statement body (`decl + use`) or 3-statement
+   # body (`decl + use + return`) is conceptually one operation that
+   # ballooned to multiple lines for line-fit; the section break
+   # the rule enforces does not apply.
+   SMALL_BODY_THRESHOLD = 3
    layers = 'S+R'
    needs_tu = True
    default_score = SCORE_HARD_RULE
@@ -89,6 +98,9 @@ class BlankLineAfterDeclBlock(Rule):
 
          if len(children) < 2:
             continue  # not enough children for a decl-then-code pattern
+
+         if len(children) <= self.SMALL_BODY_THRESHOLD:
+            continue  # tiny function body -- tight operation, skip
 
          # Only the LEADING run of DECL_STMTs counts as "the
          # declaration block." A decl that appears mid-block (after a

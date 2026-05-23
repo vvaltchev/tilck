@@ -47,16 +47,25 @@ int with_subblock(int x)
 }
 
 /*
- * Function-body uses a statement-expression macro in a single
- * decl. The `({ ... })` inside BUMP expands to an inner
- * COMPOUND_STMT pinned to the macro call site; the rule must
- * not mistake the macro's inner compound stmt for a decl
- * block. The outer function-body has the conventional blank
- * line after its decl.
+ * Tiny function body (2 statements). Even at the function-body
+ * level, a 2-or-3-statement body is a tight operation -- a blank
+ * line between the decl and its use would be uglier than the
+ * absence of one. Same pattern as boot/efi/intf.c:17-22's
+ * `efi_boot_read_key()`. Rule must not fire here.
  */
-int single_macro_use(int x)
+int tiny_function_body(int x)
 {
    int v = BUMP(x, 0);
+   return v;
+}
 
+/*
+ * 3-statement function body (decl + assign + return). Also a tight
+ * operation -- still under SMALL_BODY_THRESHOLD. Rule must not fire.
+ */
+int three_stmt_body(int x)
+{
+   int v;
+   v = BUMP(x, 0);
    return v;
 }
