@@ -4,6 +4,7 @@
 # pylint: disable=missing-function-docstring, missing-class-docstring
 # pylint: disable=invalid-name, broad-except, consider-using-f-string
 
+import os
 import sys
 import argparse
 import subprocess
@@ -214,14 +215,147 @@ def cmd_explain(args) -> int:
    return 0
 
 
+# Directory containing the `_style_check` package -- which is also
+# `scripts/dev/claude/`. We anchor coverage HTML output here.
+_PACKAGE_PARENT = Path(__file__).resolve().parent.parent
+
+# Public test module the `test` sub-command runs.
+_TEST_MODULE = '_style_check.tests.test_rules'
+
+# Coverage HTML output goes to `scripts/dev/claude/htmlcov/`.
+_HTMLCOV_DIR = _PACKAGE_PARENT / 'htmlcov'
+
+
+def _run_tests_plain(verbose: bool, failfast: bool) -> int:
+
+   cmd = [sys.executable, '-m', 'unittest']
+
+   if verbose:
+      cmd.append('-v')
+
+   if failfast:
+      cmd.append('-f')
+
+   cmd.append(_TEST_MODULE)
+
+   env = os.environ.copy()
+   env['PYTHONPATH'] = str(_PACKAGE_PARENT)
+
+   return subprocess.run(cmd, cwd=str(_PACKAGE_PARENT), env=env,
+                         check=False).returncode
+
+
+def _run_tests_with_coverage(verbose: bool, failfast: bool) -> int:
+
+   # Require coverage to be importable -- give a clear hint if missing.
+   try:
+      import coverage as _cov  # noqa: F401  pylint: disable=import-outside-toplevel,unused-import
+   except ImportError:
+      sys.stderr.write(
+         "error: --coverage requires the `coverage` package.\n"
+         "Install with:  pip3 install --user coverage\n"
+         "(on Debian/PEP-668 systems add --break-system-packages)\n"
+      )
+      return 2
+
+   env = os.environ.copy()
+   env['PYTHONPATH'] = str(_PACKAGE_PARENT)
+
+   # 1) Run tests under coverage.
+   run_cmd = [
+      sys.executable, '-m', 'coverage', 'run',
+      '--source=_style_check',
+      '-m', 'unittest'
+   ]
+
+   if verbose:
+      run_cmd.append('-v')
+
+   if failfast:
+      run_cmd.append('-f')
+
+   run_cmd.append(_TEST_MODULE)
+
+   rc = subprocess.run(run_cmd, cwd=str(_PACKAGE_PARENT), env=env,
+                       check=False).returncode
+
+   if rc != 0:
+      sys.stderr.write(
+         "error: tests failed -- HTML coverage report not generated\n"
+      )
+      return rc
+
+   # 2) Emit text summary to stdout.
+   subprocess.run(
+      [sys.executable, '-m', 'coverage', 'report'],
+      cwd=str(_PACKAGE_PARENT), env=env, check=False
+   )
+
+   # 3) Generate HTML report into scripts/dev/claude/htmlcov/.
+   subprocess.run(
+      [sys.executable, '-m', 'coverage', 'html',
+       '-d', str(_HTMLCOV_DIR)],
+      cwd=str(_PACKAGE_PARENT), env=env, check=False
+   )
+
+   sys.stdout.write(
+      "\nHTML coverage report: {}/index.html\n".format(_HTMLCOV_DIR)
+   )
+   return 0
+
+
+def cmd_test(args) -> int:
+
+   if args.coverage:
+      return _run_tests_with_coverage(args.verbose, args.failfast)
+
+   return _run_tests_plain(args.verbose, args.failfast)
+
+
+_DESCRIPTION = (
+   'Tilck C coding-style checker (libclang + raw text).\n\n'
+   'Reports formatting violations as machine-readable JSONL or\n'
+   'human-readable text. Rules are derived from CLAUDE.md +\n'
+   'docs/contributing.md + the empirical kernel/userspace corpus.\n\n'
+   'Sub-commands:\n'
+   '  check       Check files for style violations\n'
+   '  list-rules  List every registered rule, one per line\n'
+   '  explain     Print the full description of one rule\n'
+   '  test        Run the unit test suite (optional --coverage)\n'
+)
+
+_EPILOG = (
+   'Examples:\n'
+   '  # Human-readable check of two files\n'
+   '  style_check check kernel/poll.c kernel/sched.c\n\n'
+   '  # JSONL output (one diag per line) for tooling consumption\n'
+   '  style_check check --json kernel/poll.c\n\n'
+   '  # Files changed since master\n'
+   '  style_check check --since master\n\n'
+   '  # Run a single rule across selected files\n'
+   '  style_check check --rule sizeof_parens kernel/*.c\n\n'
+   '  # Skip a noisy rule\n'
+   '  style_check check --exclude-rule blank_line_after_decl_block ...\n\n'
+   '  # List rules / look up one rule\n'
+   '  style_check list-rules\n'
+   '  style_check explain include_order\n\n'
+   '  # Run unit tests; --coverage also writes HTML to\n'
+   '  # scripts/dev/claude/htmlcov/index.html\n'
+   '  style_check test\n'
+   '  style_check test --coverage\n'
+)
+
+
 def build_argparser():
 
    ap = argparse.ArgumentParser(
       prog='style_check',
-      description='Tilck C coding-style checker (libclang + raw text).'
+      description=_DESCRIPTION,
+      epilog=_EPILOG,
+      formatter_class=argparse.RawDescriptionHelpFormatter,
    )
 
-   sub = ap.add_subparsers(dest='cmd', required=True)
+   sub = ap.add_subparsers(dest='cmd', required=True, metavar='COMMAND')
 
    check_p = sub.add_parser('check', help='Check files for violations')
 
@@ -273,6 +407,36 @@ def build_argparser():
    explain_p = sub.add_parser('explain', help='Explain a rule')
    explain_p.add_argument('rule_id', help='Rule ID')
    explain_p.set_defaults(func=cmd_explain)
+
+   test_p = sub.add_parser(
+      'test',
+      help='Run the unit test suite (optional --coverage)',
+      description=(
+         'Run the unit tests under _style_check/tests/. With '
+         '--coverage, also collect line coverage via coverage.py '
+         'and write an HTML report to scripts/dev/claude/htmlcov/.'
+      ),
+   )
+
+   test_p.add_argument(
+      '--coverage',
+      action='store_true',
+      help='Collect coverage and write HTML to scripts/dev/claude/htmlcov/'
+   )
+
+   test_p.add_argument(
+      '-v', '--verbose',
+      action='store_true',
+      help='Verbose unittest output (one line per test)'
+   )
+
+   test_p.add_argument(
+      '-f', '--failfast',
+      action='store_true',
+      help='Stop on first failing test'
+   )
+
+   test_p.set_defaults(func=cmd_test)
 
    return ap
 
