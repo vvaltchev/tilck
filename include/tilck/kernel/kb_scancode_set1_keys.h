@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 /* Key definitions (partial) for PS/2 scancode set 1 */
 
 #define KEY_L_SHIFT        0x2A

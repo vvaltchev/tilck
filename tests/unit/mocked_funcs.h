@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: multi-include */
 
 DEF_3(wrap, assert_failed, void, const char *, const char *, int)
 DEF_2(wrap, not_reached, void, const char *, int)

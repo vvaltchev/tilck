@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 #include <tilck_gen_headers/config_mm.h>
 #include <tilck_gen_headers/mod_fb.h>
 

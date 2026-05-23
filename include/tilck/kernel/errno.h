@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 /*
  * This file contains the list of all error codes used currently by the Linux
  * kernel. It is not expected Tilck to use all of them all even in 10 years from

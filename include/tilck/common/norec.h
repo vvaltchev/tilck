@@ -1,4 +1,15 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: multi-include */
+
+/*
+ * Re-includable header by design. Callers like bintree.h and
+ * kmalloc_heap_struct.h define STACK_VAR (and sometimes
+ * STACK_SIZE_VAR) before including this header, then `#undef`
+ * them after use so each consumer can re-import the macros
+ * with its own stack name. A `#pragma once` here would skip
+ * the macro re-definition on second inclusion and leave
+ * downstream consumers with undefined STACK_VAR/STACK_SIZE_VAR.
+ */
 
 #include <tilck/common/basic_defs.h>
 

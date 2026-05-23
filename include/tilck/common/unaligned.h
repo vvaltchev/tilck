@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 /*
  * With modern GCC compilers, things like *(u32 *)(ptr + off) are undefined
  * behavior if `ptr+off` is not aligned correctly, even on architectures

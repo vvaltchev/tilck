@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 #include <tilck/common/basic_defs.h>
 
 void init_pic_8259(u8 offset1, u8 offset2);
