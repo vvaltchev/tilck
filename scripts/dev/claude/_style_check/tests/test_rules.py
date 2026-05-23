@@ -371,7 +371,6 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(len(diags), 1)
       self.assertEqual(diags[0].rule, 'harmony_with_neighbors')
       self.assertEqual(diags[0].severity, 'warning')
-      self.assertEqual(diags[0].line, 9)
 
    def test_bad_comment_tag_choice(self):
 

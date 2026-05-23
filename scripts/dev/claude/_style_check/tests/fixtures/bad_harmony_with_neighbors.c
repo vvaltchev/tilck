@@ -1,14 +1,18 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-void short_calls(void)
+extern int some_pred(int);
+extern void short_call(int);
+
+void short_calls(int n)
 {
-   int a = 0;
-   int b = 1;
-   a = b + 1;
-   b = a - 1;
-   int x = some_long_function_call(arg1, arg2, arg3, arg4) + extra;
-   a = b + 2;
-   b = a - 2;
-   a = b * 3;
-   b = a / 3;
+   short_call(1);
+   short_call(2);
+   short_call(3);
+   short_call(4);
+   if (some_pred(n) && n > 0 && n < 100)  short_call(n) + short_call(n+1);
+   short_call(5);
+   short_call(6);
+   short_call(7);
+   short_call(8);
+   short_call(9);
 }
