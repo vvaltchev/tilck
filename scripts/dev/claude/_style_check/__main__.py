@@ -16,6 +16,7 @@ from . import reporter
 from . import extents
 from . import tokens as _tokens_mod
 from . import aggregator as _agg
+from . import config as _config
 from .rules import ALL_RULES, RULES_BY_ID
 from .rules.base import (
    CheckContext, detect_multi_include, detect_c_dot_h
@@ -201,11 +202,12 @@ def _status_for(diags) -> str:
    return 'WARN'
 
 
-# Padded so the three labels align in a column of width 4.
+# Padded so all labels align in a column of width 4.
 _STATUS_LABEL = {
    'OK':   ' OK ',
    'WARN': 'WARN',
    'FAIL': 'FAIL',
+   'SKIP': 'SKIP',
 }
 
 
@@ -222,6 +224,7 @@ def _emit_status(file_display: str, status: str, color_mode: str,
       'OK':   reporter._GREEN,
       'WARN': reporter._YELLOW,
       'FAIL': reporter._RED,
+      'SKIP': reporter._DIM + reporter._CYAN,
    }[status]
 
    label = '[{}]'.format(_STATUS_LABEL[status])
@@ -288,7 +291,29 @@ def cmd_check(args) -> int:
          )
          continue
 
+      # Resolve `.style.yml` cascade for this file. The config can
+      # disable rules, restrict to a whitelist, or mark the file
+      # entirely ignored.
+      file_cfg = _config.resolve_config(f, repo_root)
+
+      if file_cfg.ignore:
+
+         if show_progress:
+            sys.stdout.write('Checking {} '.format(
+               _display_path(f, repo_root)
+            ))
+            sys.stdout.flush()
+            _emit_status(
+               _display_path(f, repo_root),
+               'SKIP',
+               args.color,
+               sys.stdout,
+            )
+
+         continue
+
       applicable = [r for r in rules if r.applies_to_file(f)]
+      applicable = _config.apply_to_rules(applicable, file_cfg)
 
       if not applicable:
          continue

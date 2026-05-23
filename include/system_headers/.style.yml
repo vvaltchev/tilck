@@ -1,0 +1,3 @@
+# Vendored / system headers: not Tilck-authored. Skip all style
+# rules so they're not diffed against the project's conventions.
+ignore: true

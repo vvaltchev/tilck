@@ -825,5 +825,108 @@ class TestAggregator(unittest.TestCase):
       self.assertEqual(len(summary.file_level_diagnostics), 1)
 
 
+class TestStyleConfig(unittest.TestCase):
+   """`.style.yml` parsing and cascading resolution."""
+
+   def setUp(self):
+
+      from .. import config as _config
+      self._config = _config
+
+   def test_parse_ignore_true(self):
+
+      d = self._config._parse_simple_yaml('ignore: true\n')
+      self.assertEqual(d, {'ignore': True})
+
+   def test_parse_list_and_scalar(self):
+
+      text = (
+         '# comment\n'
+         'ignore: false\n'
+         'disabled:\n'
+         '  - cols_80\n'
+         '  - pragma_once\n'
+         '\n'
+         'enabled_only:\n'
+         '  - sizeof_parens\n'
+      )
+      d = self._config._parse_simple_yaml(text)
+      self.assertEqual(d['ignore'], False)
+      self.assertEqual(d['disabled'], ['cols_80', 'pragma_once'])
+      self.assertEqual(d['enabled_only'], ['sizeof_parens'])
+
+   def test_parse_quoted_values(self):
+
+      text = "key: \"hello\"\nlist:\n  - 'foo'\n  - bar\n"
+      d = self._config._parse_simple_yaml(text)
+      self.assertEqual(d['key'], 'hello')
+      self.assertEqual(d['list'], ['foo', 'bar'])
+
+   def test_resolve_walks_up_and_merges(self):
+
+      import tempfile
+
+      with tempfile.TemporaryDirectory() as td:
+
+         root = Path(td)
+         (root / 'project').mkdir()
+         (root / 'project' / 'sub').mkdir()
+         (root / 'project' / 'sub' / 'leaf').mkdir()
+
+         (root / 'project' / '.style.yml').write_text(
+            'disabled:\n  - rule_a\n'
+         )
+         (root / 'project' / 'sub' / '.style.yml').write_text(
+            'disabled:\n  - rule_b\n'
+            'enabled_only:\n  - rule_c\n  - rule_b\n'
+         )
+
+         leaf_file = root / 'project' / 'sub' / 'leaf' / 'x.c'
+         leaf_file.write_text('// dummy\n')
+
+         cfg = self._config.resolve_config(leaf_file, root / 'project')
+         self.assertEqual(cfg.disabled, {'rule_a', 'rule_b'})
+         self.assertEqual(cfg.enabled_only, {'rule_c', 'rule_b'})
+         self.assertFalse(cfg.ignore)
+         self.assertEqual(len(cfg.sources), 2)
+
+   def test_resolve_ignore_short_circuits(self):
+
+      import tempfile
+
+      with tempfile.TemporaryDirectory() as td:
+
+         root = Path(td)
+         (root / 'vendor').mkdir()
+         (root / 'vendor' / '.style.yml').write_text('ignore: true\n')
+
+         leaf = root / 'vendor' / 'multiboot.h'
+         leaf.write_text('#pragma once\n')
+
+         cfg = self._config.resolve_config(leaf, root)
+         self.assertTrue(cfg.ignore)
+
+   def test_apply_to_rules_disabled(self):
+
+      from ..rules import ALL_RULES
+
+      cfg = self._config.StyleConfig(disabled={'cols_80'})
+      filtered = self._config.apply_to_rules(ALL_RULES, cfg)
+      self.assertNotIn('cols_80', {r.id for r in filtered})
+      self.assertGreater(len(filtered), 0)
+
+   def test_apply_to_rules_enabled_only(self):
+
+      from ..rules import ALL_RULES
+
+      cfg = self._config.StyleConfig(
+         enabled_only={'cols_80', 'pragma_once'}
+      )
+      filtered = self._config.apply_to_rules(ALL_RULES, cfg)
+      self.assertEqual(
+         {r.id for r in filtered}, {'cols_80', 'pragma_once'}
+      )
+
+
 if __name__ == '__main__':
    unittest.main()
