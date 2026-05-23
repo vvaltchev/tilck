@@ -137,6 +137,11 @@ class TestRulesOnFixtures(unittest.TestCase):
       )
       # 0xABCD, 0X1234, 0xDEADBEEF -> 3 violations
       self.assertEqual(len(diags), 3)
+      # Soft rule: must report `warning` severity, not `error`.
+      self.assertTrue(
+         all(d.severity == 'warning' for d in diags),
+         'hex_literal_lowercase must be soft (warning severity)'
+      )
 
    def test_bad_no_void_cast_discard(self):
 

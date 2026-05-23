@@ -155,6 +155,11 @@ def filter_rules(rules_list, args) -> list:
       banned = set(args.exclude_rule)
       selected = [r for r in selected if r.id not in banned]
 
+   if args.severity == 'hard':
+      selected = [r for r in selected if r.severity == 'error']
+   elif args.severity == 'soft':
+      selected = [r for r in selected if r.severity == 'warning']
+
    return selected
 
 
@@ -342,11 +347,24 @@ def cmd_check(args) -> int:
    return 0
 
 
+def _severity_tag(r) -> str:
+   """Short label used in `list-rules`: HARD for error-severity
+   rules (defects), SOFT for warning-severity prettiness rules."""
+
+   return 'HARD' if r.severity == 'error' else 'SOFT'
+
+
 def cmd_list_rules(args) -> int:  # pylint: disable=unused-argument
 
    for r in ALL_RULES:
       sys.stdout.write(
-         "{:50} [{}] {}\n".format(r.id, r.layers, r.description)
+         "{:50} {:4} [{}] (score {:+.1f}) {}\n".format(
+            r.id,
+            _severity_tag(r),
+            r.layers,
+            r.default_score,
+            r.description.split('\n')[0],
+         )
       )
 
    return 0
@@ -361,8 +379,14 @@ def cmd_explain(args) -> int:
       return 1
 
    sys.stdout.write("rule:      {}\n".format(r.id))
+   sys.stdout.write("class:     {} ({} severity)\n".format(
+      _severity_tag(r), r.severity
+   ))
+   sys.stdout.write(
+      "score:     {:+.1f} (default per-diagnostic "
+      "prettiness penalty)\n".format(r.default_score)
+   )
    sys.stdout.write("layers:    {}\n".format(r.layers))
-   sys.stdout.write("severity:  {}\n".format(r.severity))
    sys.stdout.write("\n")
    sys.stdout.write(r.explain())
    sys.stdout.write("\n")
@@ -571,6 +595,15 @@ def build_argparser():
       action='append',
       default=[],
       help='Skip this rule (repeatable)'
+   )
+
+   check_p.add_argument(
+      '--severity',
+      choices=['hard', 'soft', 'all'],
+      default='all',
+      help=('Filter by rule class. `hard` shows error-severity '
+            'defects only; `soft` shows warning-severity prettiness '
+            'preferences only; `all` (default) shows both')
    )
 
    check_p.add_argument(

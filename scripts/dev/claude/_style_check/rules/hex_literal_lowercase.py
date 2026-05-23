@@ -11,6 +11,8 @@ from .base import (
    Diagnostic,
    CheckContext,
    LAYER_TOKENS,
+   SEVERITY_WARNING,
+   SCORE_SOFT,
 )
 from .. import tokens as _tokens_mod
 
@@ -23,8 +25,14 @@ _PAT_UPPER_DIGIT = re.compile(r'\b0x[0-9a-fA-F]*[A-F][0-9a-fA-F]*\b')
 class HexLiteralLowercase(Rule):
 
    id = 'hex_literal_lowercase'
-   description = 'Hex literals: 0xab, not 0xAB or 0XAB'
+   description = (
+      'Hex literals: prefer 0xab over 0xAB or 0XAB. Soft preference '
+      '(small prettiness penalty); not a hard rule -- existing '
+      'uppercase code is not a defect.'
+   )
    layers = LAYER_TOKENS
+   severity = SEVERITY_WARNING
+   default_score = SCORE_SOFT
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 
