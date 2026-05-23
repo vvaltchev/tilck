@@ -31,12 +31,13 @@
 static int
 read_sysfs_value(const char *path, char *out, size_t out_sz)
 {
+   ssize_t n;
    int fd = open(path, O_RDONLY);
 
    if (fd < 0)
       return -1;
 
-   ssize_t n = read(fd, out, out_sz - 1);
+   n = read(fd, out, out_sz - 1);
    close(fd);
 
    if (n < 0)

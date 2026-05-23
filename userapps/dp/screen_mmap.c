@@ -96,13 +96,14 @@ static long dp_cmd_get_mtrrs(struct dp_mtrr_entry *buf, unsigned long max,
 
 static void dp_mmap_on_enter(void)
 {
+   long mrc;
    long rc = dp_cmd_get_mmap(regions, MAX_MEM_REGIONS);
    region_count = (rc < 0) ? 0 : (int)rc;
 
    got_gstats = (dp_cmd_get_gstats(&gstats) == 0);
 
    memset(&mtrr_info, 0, sizeof(mtrr_info));
-   long mrc = dp_cmd_get_mtrrs(mtrrs, MAX_MTRRS, &mtrr_info);
+   mrc = dp_cmd_get_mtrrs(mtrrs, MAX_MTRRS, &mtrr_info);
    mtrr_count = (mrc < 0) ? 0 : (int)mrc;
 }
 

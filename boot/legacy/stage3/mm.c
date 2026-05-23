@@ -59,6 +59,8 @@ e820_mmap(void *buf, size_t buf_size, struct mem_info *mi)
 
    while (true) {
 
+      struct mem_area m;
+
       mem_areas->acpi = 1;
       eax = BIOS_INT15h_READ_MEMORY_MAP;
       edx = BIOS_INT15h_READ_MEMORY_MAP_MAGIC;
@@ -81,7 +83,7 @@ e820_mmap(void *buf, size_t buf_size, struct mem_info *mi)
       if (eax != BIOS_INT15h_READ_MEMORY_MAP_MAGIC)
          panic("Error while reading memory map: eax != magic");
 
-      struct mem_area m = {
+      m = (struct mem_area) {
          .base = bios_mem_area->base_low | ((u64)bios_mem_area->base_hi << 32),
          .len  = bios_mem_area->len_low  | ((u64)bios_mem_area->len_hi << 32),
          .type = bios_mem_area->type,

@@ -62,12 +62,14 @@ int main(int argc, char **argv)
 
    do {
 
+      uint32_t checksum;
+
       if ((rc = read_wrapper(fd, buf, bs)) < 0) {
          perror("read");
          break;
       }
 
-      uint32_t checksum = crc32(0, buf, rc);
+      checksum = crc32(0, buf, rc);
       printf("[%08x] %08x\n", off, checksum);
 
       off += rc;

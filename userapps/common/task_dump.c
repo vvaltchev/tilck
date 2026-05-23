@@ -75,6 +75,8 @@ const char *task_dump_str(enum task_dump_str_t t)
    if (!initialized) {
 
       const int path_field_len = (DP_W - 80) + MAX_EXEC_PATH_LEN;
+      char *p;
+      char *end;
 
       snprintf(fmt, sizeof(fmt),
                " %%-5d "
@@ -99,8 +101,8 @@ const char *task_dump_str(enum task_dump_str_t t)
       snprintf(header, sizeof(header), hfmt,
                "pid", "pgid", "sid", "ppid", "S", "tty", "cmdline");
 
-      char *p = hline_sep + strlen(hline_sep);
-      char *end = hline_sep + sizeof(hline_sep);
+      p = hline_sep + strlen(hline_sep);
+      end = hline_sep + sizeof(hline_sep);
 
       for (int i = 0; i < path_field_len + 2 && p < end; i++, p++)
          *p = 'q';

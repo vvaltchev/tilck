@@ -32,6 +32,7 @@ regs_t panic_state_regs;
 /* Called by the assembly function panic_save_current_state() */
 void panic_save_current_task_state(regs_t *r)
 {
+   struct task *curr;
    /*
     * Clear the higher (unused) bits of the segment registers for a nicer
     * panic regs_t dump.
@@ -56,7 +57,7 @@ void panic_save_current_task_state(regs_t *r)
     */
 
    memcpy(&panic_state_regs, r, sizeof(regs_t));
-   struct task *curr = get_curr_task();
+   curr = get_curr_task();
 
    if (curr)
       curr->state_regs = &panic_state_regs;

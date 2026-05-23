@@ -282,6 +282,7 @@ static void term_internal_write_printable_char(struct vterm *t, u8 c, u8 color)
 static void term_internal_write_tab(struct vterm *t, u8 color)
 {
    int rem = t->cols - t->c - 1;
+   u32 tab_col;
 
    if (!t->tabs_buf) {
 
@@ -291,7 +292,7 @@ static void term_internal_write_tab(struct vterm *t, u8 color)
       return;
    }
 
-   u32 tab_col = (u32) MIN(round_up_at(t->c+1, t->tabsize), (u32)t->cols-1) - 1;
+   tab_col = (u32) MIN(round_up_at(t->c+1, t->tabsize), (u32)t->cols-1) - 1;
    t->tabs_buf[t->r * t->cols + tab_col] = 1;
    t->c = (u16)(tab_col + 1);
 }

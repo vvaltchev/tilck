@@ -68,14 +68,16 @@ int cmd_mmap(int argc, char **argv)
 
       for (i = 0; i < 64; i++) {
 
+         void *res;
+
          errno = 0;
 
-         void *res = mmap(NULL,
-                          alloc_size,
-                          PROT_READ | PROT_WRITE,
-                          MAP_ANONYMOUS | MAP_PRIVATE,
-                          -1,
-                          0);
+         res = mmap(NULL,
+                    alloc_size,
+                    PROT_READ | PROT_WRITE,
+                    MAP_ANONYMOUS | MAP_PRIVATE,
+                    -1,
+                    0);
 
          if (res == (void*) -1) {
             i--;

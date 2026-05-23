@@ -51,6 +51,8 @@ static void kmalloc_perf_per_size(u32 size)
 
 void selftest_kmalloc_perf(void)
 {
+   u64 start;
+   u64 duration;
    const int iters = 1000;
    printk("*** kmalloc perf test ***\n");
 
@@ -59,7 +61,7 @@ void selftest_kmalloc_perf(void)
    if (!allocations)
       panic("No enough memory for the 'allocations' buffer");
 
-   u64 start = RDTSC();
+   start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
 
@@ -75,7 +77,7 @@ void selftest_kmalloc_perf(void)
          kfree2(allocations[j], random_values[j]);
    }
 
-   u64 duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
+   duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
 
    kmalloc_perf_print_iters(iters * RANDOM_VALUES_COUNT);
 

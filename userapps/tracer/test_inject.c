@@ -840,12 +840,13 @@ test_inj_gate(void)
 {
    const char *name = "inj_gate_eperm";
    struct dp_trace_event ev;
+   long rc;
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
    ev.sys_ev.sys = SYS_getpid;
 
    cmd_set_test_mode(0);
-   long rc = cmd_inject_event(&ev);
+   rc = cmd_inject_event(&ev);
    cmd_set_test_mode(1);
 
    if (rc >= 0) {
@@ -940,6 +941,12 @@ tr_run_tier2_tests(void)
 int
 tr_run_stress_test(void)
 {
+   int n_read = 0;
+   int n_bad = 0;
+   int last_counter = -1;
+   bool monotone = true;
+   char render_buf[RENDER_BUF_SZ];
+
    if (tr_meta_init() < 0) {
       fprintf(stderr, "tracer --test: tr_meta_init failed\n");
       return 2;
@@ -982,15 +989,11 @@ tr_run_stress_test(void)
    }
 
    /* Drain and validate. */
-   int n_read = 0;
-   int n_bad = 0;
-   int last_counter = -1;
-   bool monotone = true;
-   char render_buf[RENDER_BUF_SZ];
-
    while (1) {
 
       struct dp_trace_event back;
+      struct dp_render_ctx rctx = {0};
+      int counter;
       ssize_t n = read(events_fd, &back, sizeof(back));
 
       if (n != (ssize_t)sizeof(back))
@@ -1006,7 +1009,7 @@ tr_run_stress_test(void)
          continue;
       }
 
-      int counter = (int)back.sys_ev.args[0];
+      counter = (int)back.sys_ev.args[0];
 
       if (counter < 0 || counter >= STRESS_NEVENTS)
          n_bad++;
@@ -1020,7 +1023,6 @@ tr_run_stress_test(void)
        * Render every event and discard the output — the goal is to
        * surface any renderer crash, not to inspect the text.
        */
-      struct dp_render_ctx rctx = {0};
       tr_render_event(&back, render_buf, sizeof(render_buf), &rctx);
    }
 

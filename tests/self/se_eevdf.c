@@ -86,6 +86,8 @@ static void eevdf_thread(void *arg)
 void selftest_eevdf(void)
 {
    int tids[EEVDF_THREADS];
+   u64 min_total = (u64) -1;
+   u64 max_total = 0;
    const u32 min_slice =
       (u32) MIN_GRANULARITY_TICKS * EEVDF_VRUNTIME_SCALE;
    const u32 max_slice =
@@ -138,9 +140,6 @@ void selftest_eevdf(void)
     * Loose fairness sanity check: spread under 50%. This is a smoke
     * test -- the real fairness contract is selftest_fairness's job.
     */
-   u64 min_total = (u64) -1;
-   u64 max_total = 0;
-
    for (int i = 0; i < EEVDF_THREADS; i++) {
 
       if (eevdf_total[i] < min_total)

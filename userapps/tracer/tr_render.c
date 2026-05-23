@@ -361,6 +361,9 @@ static char *sys_name_cache[MAX_SYS_NAMES];
 
 static const char *get_syscall_name_cached(unsigned sys_n)
 {
+   char buf[64];
+   long rc;
+
    if (sys_n >= MAX_SYS_NAMES) {
       static char fallback[32];
       snprintf(fallback, sizeof(fallback), "syscall_%u", sys_n);
@@ -370,10 +373,9 @@ static const char *get_syscall_name_cached(unsigned sys_n)
    if (sys_name_cache[sys_n])
       return sys_name_cache[sys_n];
 
-   char buf[64];
-   long rc = syscall(TILCK_CMD_SYSCALL,
-                     TILCK_CMD_DP_TRACE_GET_SYS_NAME,
-                     (long)sys_n, (long)buf, (long)sizeof(buf), 0L);
+   rc = syscall(TILCK_CMD_SYSCALL,
+                TILCK_CMD_DP_TRACE_GET_SYS_NAME,
+                (long)sys_n, (long)buf, (long)sizeof(buf), 0L);
 
    const char *src;
 

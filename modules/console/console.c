@@ -55,11 +55,12 @@ void reset_console_data(struct tty *t)
 void tty_reset_filter_ctx(struct tty *t)
 {
    struct console_data *cd = t->console_data;
+   struct twfilter_ctx *ctx;
 
    if (!cd)
       return; /* serial tty */
 
-   struct twfilter_ctx *ctx = &cd->filter_ctx;
+   ctx = &cd->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
    ctx->t = t;
    ctx->cd = cd;

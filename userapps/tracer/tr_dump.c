@@ -374,6 +374,9 @@ static bool dump_buffer_with_data(unsigned long orig,
                                   long real_sz,
                                   char *dst, size_t bs)
 {
+   char minibuf[8];
+   char *dest_end;
+
    if (bs <= 8)
       return false;
 
@@ -388,11 +391,10 @@ static bool dump_buffer_with_data(unsigned long orig,
    if (!g_dump_big_bufs && real_sz > 0)
       real_sz = MIN(real_sz, 16);
 
-   char minibuf[8];
    const char *s;
    const long nbytes = real_sz < 0 ? data_bs : MIN(real_sz, data_bs);
    const char *data_end = data + nbytes;
-   char *dest_end = dst + bs;
+   dest_end = dst + bs;
 
    *dst++ = '\"';
 
@@ -1061,14 +1063,15 @@ bool tr_dump(unsigned type_id,
       /* Layer 3 — wstatus int decoded via the W*() macros. */
       case TR_PT_WSTATUS: {
 
+         char body[80] = {0};
+         int rc;
 
          if (!orig) {
-            int rc = snprintf(dst, bs, "NULL");
+            rc = snprintf(dst, bs, "NULL");
             return rc >= 0 && (size_t)rc < bs;
          }
 
          const int s = *(const int *)data;
-         char body[80] = {0};
 
          if (WIFEXITED(s)) {
 
@@ -1097,7 +1100,7 @@ bool tr_dump(unsigned type_id,
             snprintf(body, sizeof(body), "raw");
          }
 
-         int rc = snprintf(dst, bs, "0x%04x [%s]", s, body);
+         rc = snprintf(dst, bs, "0x%04x [%s]", s, body);
          return rc >= 0 && (size_t)rc < bs;
       }
 

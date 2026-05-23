@@ -586,6 +586,7 @@ void process_set_tty(struct process *pi, void *t)
 void init_sched(void)
 {
    int tid;
+   ulong var;
 
    ASSERT(kernel_process_pi->pid == 0);
    ASSERT(kernel_process_pi->parent_pid == 0);
@@ -607,7 +608,6 @@ void init_sched(void)
     * good. Disable interrupts around the bintree_remove for the
     * same IRQ-vs-tree-mutation reason that add_task() does.
     */
-   ulong var;
    disable_interrupts(&var);
    {
       DEBUG_ONLY_UNSAFE(struct task *removed =)
@@ -1014,12 +1014,9 @@ void wake_vruntime_handoff(struct task *ti)
          goto out;
 
       const u64 current_min = atomic_load(&min_vruntime);
-      u64 floor;
-
-      if (current_min > WAKEUP_VRUNTIME_BONUS)
-         floor = current_min - WAKEUP_VRUNTIME_BONUS;
-      else
-         floor = 0;
+      const u64 floor = current_min > WAKEUP_VRUNTIME_BONUS
+                           ? current_min - WAKEUP_VRUNTIME_BONUS
+                           : 0;
 
       if (atomic_load(&ti->ticks.vruntime) < floor)
          atomic_store(&ti->ticks.vruntime, floor);

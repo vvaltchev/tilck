@@ -184,14 +184,17 @@ static char fpu_kernel_regs[CPU_XSAVE_AREA_SIZE] ALIGNED_AT(64);
 
 void save_current_fpu_regs(bool in_kernel)
 {
+   arch_task_members_t *arch_fields;
+   void *buf;
+
    if (UNLIKELY(!x86_cpu_features.can_use_sse))
       return;
 
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_members_t *arch_fields = get_task_arch_fields(get_curr_task());
-   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
+   arch_fields = get_task_arch_fields(get_curr_task());
+   buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
 
    ASSERT(buf != NULL);
 
@@ -218,14 +221,17 @@ void save_current_fpu_regs(bool in_kernel)
 
 void restore_fpu_regs(void *task, bool in_kernel)
 {
+   arch_task_members_t *arch_fields;
+   void *buf;
+
    if (UNLIKELY(!x86_cpu_features.can_use_sse))
       return;
 
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_members_t *arch_fields = get_task_arch_fields((struct task *)task);
-   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
+   arch_fields = get_task_arch_fields((struct task *)task);
+   buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
 
    ASSERT(buf != NULL);
 
@@ -279,6 +285,8 @@ bool allocate_fpu_regs(arch_task_members_t *arch_fields)
 static void
 handle_no_coproc_fault(regs_t *r)
 {
+   arch_task_members_t *arch_fields;
+
    if (is_kernel_thread(get_curr_task())) {
       panic("FPU instructions used in kernel outside an fpu_context!");
    }
@@ -298,7 +306,7 @@ handle_no_coproc_fault(regs_t *r)
        panic("x87 FPU instructions not supported on CPUs without SSE");
    }
 
-   arch_task_members_t *arch_fields = get_task_arch_fields(get_curr_task());
+   arch_fields = get_task_arch_fields(get_curr_task());
    ASSERT(!(r->custom_flags & REGS_FL_FPU_ENABLED));
 
 #if FORK_NO_COW

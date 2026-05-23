@@ -31,6 +31,7 @@ void *ioremap(ulong paddr, size_t size)
    ulong offset;
    size_t count;
    size_t page_count;
+   void *vaddr;
    const u32 pg_flags = PAGING_FL_RW;
 
    offset = paddr & (PAGE_SIZE - 1);
@@ -38,7 +39,7 @@ void *ioremap(ulong paddr, size_t size)
    size = pow2_round_up_at(size + offset, PAGE_SIZE);
    page_count = size / PAGE_SIZE;
 
-   void *vaddr = hi_vmem_reserve(size);
+   vaddr = hi_vmem_reserve(size);
    if (!vaddr) {
       printk("Unable to reserve hi vmem for ioremap() at %p\n", (void *)paddr);
       return NULL;

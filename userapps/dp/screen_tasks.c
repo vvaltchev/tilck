@@ -353,6 +353,7 @@ static void sel_step(int direction)
  */
 static void dp_run_tracer_subprocess(void)
 {
+   int status;
    pid_t pid = fork();
 
    if (pid < 0)
@@ -368,7 +369,6 @@ static void dp_run_tracer_subprocess(void)
       _exit(127);
    }
 
-   int status;
    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
       continue;
 

@@ -16,11 +16,12 @@
 
 void internal_selftest_fb_perf(bool use_fpu)
 {
+   u64 start, duration, cycles;
+
    if (!use_framebuffer())
       panic("Unable to test framebuffer's performance: we're in text-mode");
 
    const int iters = 30;
-   u64 start, duration, cycles;
 
    if (use_fpu)
       fpu_context_begin();
@@ -39,7 +40,7 @@ void internal_selftest_fb_perf(bool use_fpu)
 
    cycles = duration / iters;
 
-   u32 pixels = fb_get_width() * fb_get_height();
+   const u32 pixels = fb_get_width() * fb_get_height();
    printk("fb size (pixels): %u\n", pixels);
    printk("cycles per redraw: %" PRIu64 "\n", cycles);
    printk("cycles per 32 pixels: %" PRIu64 "\n", 32 * cycles / pixels);

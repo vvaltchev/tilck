@@ -95,10 +95,11 @@ static int dump_dir_entry(struct fat_hdr *hdr,
                           void *arg)
 {
    char shortname[16];
-   fat_get_short_name(entry, shortname);
+   char indentbuf[4*16] = {0};
    struct debug_fat_walk_ctx *ctx = arg;
 
-   char indentbuf[4*16] = {0};
+   fat_get_short_name(entry, shortname);
+
    for (int i = 0; i < 4 * ctx->level; i++)
       indentbuf[i] = ' ';
 
@@ -128,11 +129,14 @@ static int dump_dir_entry(struct fat_hdr *hdr,
 void fat_dump_info(void *fatpart_begin)
 {
    struct fat_hdr *hdr = fatpart_begin;
+   enum fat_type ft;
+   struct debug_fat_walk_ctx ctx;
+
    fat_dump_common_header(fatpart_begin);
 
    printk("\n");
 
-   enum fat_type ft = fat_get_type(hdr);
+   ft = fat_get_type(hdr);
    ASSERT(ft != fat12_type);
 
    if (ft == fat16_type) {
@@ -142,7 +146,7 @@ void fat_dump_info(void *fatpart_begin)
    }
    printk("\n");
 
-   struct debug_fat_walk_ctx ctx = {
+   ctx = (struct debug_fat_walk_ctx) {
 
       .walk_params = {
          .ctx = &ctx.walk_ctx,

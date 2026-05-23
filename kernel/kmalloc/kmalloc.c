@@ -144,6 +144,7 @@ actual_allocate_node(struct kmalloc_heap *h,
                      void **vaddr_ref,
                      bool do_actual_alloc)
 {
+   ulong alloc_block_vaddr;
    bool alloc_failed = false;
    struct block_node *nodes = h->metadata_nodes;
    nodes[node].full = true;
@@ -154,7 +155,7 @@ actual_allocate_node(struct kmalloc_heap *h,
    if (h->linear_mapping || !do_actual_alloc)
       return true; // nothing to do!
 
-   ulong alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
+   alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
    const size_t alloc_block_count =
       1 + ((node_size - 1) >> h->alloc_block_size_log2);
 
@@ -344,7 +345,7 @@ internal_kmalloc(struct kmalloc_heap *h,
       // Handle a SIMULATED "call"
       DEBUG_kmalloc_call_begin;
 
-      struct block_node n = nodes[node];
+      const struct block_node n = nodes[node];
 
       if (n.full) {
          DEBUG_already_full;
@@ -353,13 +354,15 @@ internal_kmalloc(struct kmalloc_heap *h,
 
       if (HALF(node_size) < size) {
 
+         void *vaddr;
+         bool success;
+
          if (n.split) {
             DEBUG_already_split;
             SIMULATE_RETURN_NULL();
          }
 
-         void *vaddr = NULL;
-         bool success;
+         vaddr = NULL;
 
          if (mark_node_as_allocated) {
             success = actual_allocate_node(h, node_size,
@@ -449,6 +452,7 @@ static void *
 per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
 {
    void *addr;
+   void *big_block;
    const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
    const bool do_actual_alloc = !(flags & KMALLOC_FL_NO_ACTUAL_ALLOC);
    const u32 sub_blocks_min_size = flags & KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK;
@@ -506,12 +510,12 @@ per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
     */
 
    const size_t desired_size = *size;
-   void *big_block = internal_kmalloc(h,                /* heap */
-                                      rounded_up_size,  /* chunk size */
-                                      0,                /* start node */
-                                      h->size,          /* start node size */
-                                      false,            /* mark as allocated */
-                                      false);           /* do actual alloc */
+   big_block = internal_kmalloc(h,                /* heap */
+                                rounded_up_size,  /* chunk size */
+                                0,                /* start node */
+                                h->size,          /* start node size */
+                                false,            /* mark as allocated */
+                                false);           /* do actual alloc */
 
    if (!big_block)
       return NULL;
@@ -633,17 +637,18 @@ internal_kfree(struct kmalloc_heap *h,
                bool allow_split,
                bool do_actual_free)
 {
+   ulong alloc_block_vaddr;
+
    ASSERT(size);
 
    const int node = ptr_to_node(h, ptr, size);
+   struct block_node *const nodes = h->metadata_nodes;
    size_t free_size_correction = 0;
 
    DEBUG_free1;
    ASSERT(node_to_ptr(h, node, size) == ptr);
    ASSERT(roundup_next_power_of_2(size) == size);
    ASSERT(size >= h->min_block_size);
-
-   struct block_node *nodes = h->metadata_nodes;
 
    if (allow_split && nodes[node].split) {
       free_size_correction = internal_kmalloc_coalesce_block(h, ptr, size);
@@ -673,7 +678,7 @@ internal_kfree(struct kmalloc_heap *h,
    if (h->linear_mapping || !do_actual_free)
       return; // nothing to do!
 
-   ulong alloc_block_vaddr = (ulong)ptr & ~(h->alloc_block_size - 1);
+   alloc_block_vaddr = (ulong)ptr & ~(h->alloc_block_size - 1);
    const size_t alloc_block_count = 1 + ((size-1) >> h->alloc_block_size_log2);
 
    /*
@@ -871,6 +876,7 @@ per_heap_kfree_used_heap_corner_case(struct kmalloc_heap *h,
                                      size_t *size,
                                      u32 flags)
 {
+   struct deferred_kfree_ctx *ctx;
    const bool multi_step_free = !!(flags & KFREE_FL_MULTI_STEP);
 
    /*
@@ -893,7 +899,7 @@ per_heap_kfree_used_heap_corner_case(struct kmalloc_heap *h,
       ASSERT(*size);
    }
 
-   struct deferred_kfree_ctx *ctx = kalloc_obj(struct deferred_kfree_ctx);
+   ctx = kalloc_obj(struct deferred_kfree_ctx);
 
    if (!ctx) {
 
@@ -994,15 +1000,16 @@ oom_case:
 
 void vfree2(void *ptr, size_t size)
 {
+   ulong va_begin, va_end;
+   size_t actual_sz;
+
    if (!ptr)
       return;
 
    if ((ulong)ptr < LINEAR_MAPPING_END)
       return kfree2(ptr, size);
 
-   size_t actual_sz = pow2_round_up_at(size, PAGE_SIZE);
-   ulong va_begin, va_end;
-
+   actual_sz = pow2_round_up_at(size, PAGE_SIZE);
    va_begin = (ulong)ptr;
    va_end = va_begin + actual_sz;
 

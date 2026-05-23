@@ -89,6 +89,7 @@ int cmd_sysenter(int argc, char **argv)
 {
    const char *str = "hello from a sysenter call!\n";
    size_t len = strlen(str);
+   struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
 
    int ret = sysenter_call3(SYS_write  /* write */,
                             1  /* stdout */,
@@ -100,8 +101,6 @@ int cmd_sysenter(int argc, char **argv)
    usleep(100*1000);
    printf("after sleep, everything is fine.\n");
    printf("same sleep, but with sysenter:\n");
-
-   struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
 
 #ifdef __i386__
    ASSERT(SYS_nanosleep == 162);
@@ -428,6 +427,8 @@ static void busy_wait_kernel(void)
 int cmd_getrusage(int argc, char **argv)
 {
    int rc, n, max;
+   int bad_who;
+   void *bad_ptr;
    struct rusage buf_0;
    struct rusage buf_1;
 
@@ -485,13 +486,13 @@ int cmd_getrusage(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == -1 && errno == EINVAL);
 
    // Check failure when the "who" argument is invalid.
-   int bad_who = 1000;
+   bad_who = 1000;
    rc = getrusage(bad_who, &buf_0);
    DEVSHELL_CMD_ASSERT(rc == -1 && errno == EINVAL);
 
    // Check failure when the provided buffer pointer
    // doesn't refer to an accessible page
-   void *bad_ptr = NULL;
+   bad_ptr = NULL;
    rc = getrusage(RUSAGE_SELF, bad_ptr);
    DEVSHELL_CMD_ASSERT(rc == -1 && errno == EFAULT);
 

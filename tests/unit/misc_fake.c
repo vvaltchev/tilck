@@ -47,9 +47,10 @@ void __real_general_kfree(void *ptr, size_t *size, u32 flags);
 
 void panic(const char *fmt, ...)
 {
+   va_list args;
+
    printf("\n--- KERNEL PANIC ---\n");
 
-   va_list args;
    va_start(args, fmt);
    vprintf(fmt, args);
    va_end(args);

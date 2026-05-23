@@ -149,14 +149,14 @@ void nested_interrupts_drop_top_syscall(void)
 
 void panic_dump_nested_interrupts(void)
 {
+   char buf[128];
+   int written = 0;
+
    VERIFY(in_panic());
 
    if (!kopt_panic_kb) {
       ASSERT(!are_interrupts_enabled());
    }
-
-   char buf[128];
-   int written = 0;
 
    written += snprintk(buf + written, sizeof(buf), "Interrupts: [ ");
 

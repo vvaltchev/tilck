@@ -31,6 +31,8 @@ regs_t panic_state_regs;
 /* Called by the assembly function panic_save_current_state() */
 void panic_save_current_task_state(regs_t *r)
 {
+   struct task *curr;
+
    /*
     * Since in panic we need just to save the state without doing a context
     * switch, just saving the ESP in state_regs won't work, because
@@ -38,7 +40,7 @@ void panic_save_current_task_state(regs_t *r)
     * case, just store the regs in a static regs_t instance.
     */
    memcpy(&panic_state_regs, r, sizeof(regs_t));
-   struct task *curr = get_curr_task();
+   curr = get_curr_task();
 
    if (curr)
       curr->state_regs = &panic_state_regs;

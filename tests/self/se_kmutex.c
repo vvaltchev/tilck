@@ -330,9 +330,9 @@ kmutex_ord_supervisor_thread(void *unused)
 
       if (time_ms > 0 && (time_ms % 5000) == 0) {
 
-         printk("[kmutex_ord_supervisor] %d sec elapsed\n", time_ms / 1000);
-
          int cnt[10] = {0};
+
+         printk("[kmutex_ord_supervisor] %d sec elapsed\n", time_ms / 1000);
 
          for (int i = 0; i < KMUTEX_TH_COUNT; i++)
             cnt[ord_th_states[i]]++;

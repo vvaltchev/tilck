@@ -52,6 +52,9 @@ static inline void kb_led_update(void)
 
 static char translate_printable_key(u32 key)
 {
+   char *layout;
+   char c;
+
    if (key >= 256) {
 
       switch (key) {
@@ -67,10 +70,10 @@ static char translate_printable_key(u32 key)
       }
    }
 
-   char *layout =
+   layout =
       us_kb_layouts[kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)];
 
-   char c = layout[key];
+   c = layout[key];
 
    if (numLock)
       c |= numkey[key];

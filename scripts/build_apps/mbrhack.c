@@ -223,7 +223,7 @@ static void dump_bpb(struct bpb *b)
    printf("    Tot sectors count: %8u\n", bpb_get_sectors_count(b));
    printf("\n");
 
-   struct ebpb34 *ext = (void *)b;
+   struct ebpb34 *const ext = (void *)b;
 
    if (ext->boot_sig == 0x28 || ext->boot_sig == 0x29) {
       printf("Extended fields (DOS 3.4 EBPB):\n");
@@ -503,10 +503,9 @@ find_overlapping_part(struct bpb *b,
       if (!t->partitions[i].id)
          continue;
 
-      struct mbr_part *p = &t->partitions[i];
-
-      u32 p_start = get_part_start(b, p);
-      u32 p_end = get_part_end(b, p);
+      struct mbr_part *const p = &t->partitions[i];
+      const u32 p_start = get_part_start(b, p);
+      const u32 p_end = get_part_end(b, p);
 
       if (IN_RANGE_INC(start, p_start, p_end) ||
           IN_RANGE_INC(end, p_start, p_end))
@@ -621,14 +620,15 @@ static int do_check_partitions(struct mbr_info *nfo, struct mbr_part_table *t)
 
    for (int i = 0; i < 4; i++) {
 
-      struct mbr_part *p = &t->partitions[i];
+      struct mbr_part *const p = &t->partitions[i];
+      u32 s;
 
       if (p->id == 0)
          continue;
 
-      u32 s = chs_to_lba(b, get_start_cyl(p), p->start_head, p->start_sec);
-      u32 e = chs_to_lba(b, get_end_cyl(p), p->end_head, p->end_sec);
-      u32 end_lba = p->lba_start + p->lba_tot - 1;
+      s = chs_to_lba(b, get_start_cyl(p), p->start_head, p->start_sec);
+      const u32 e = chs_to_lba(b, get_end_cyl(p), p->end_head, p->end_sec);
+      const u32 end_lba = p->lba_start + p->lba_tot - 1;
 
       if (s != p->lba_start) {
 

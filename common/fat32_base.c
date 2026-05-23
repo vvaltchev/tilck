@@ -298,7 +298,7 @@ fat_walk(struct fat_walk_static_params *p, u32 cluster)
          if (ctx && ctx->lname_sz > 0 && ctx->is_valid)
             long_name_ptr = finalize_long_name(ctx, &dentries[i]);
 
-         int ret = p->cb(p->h, p->ft, dentries + i, long_name_ptr, p->arg);
+         const int ret = p->cb(p->h, p->ft, dentries + i, long_name_ptr, p->arg);
 
          if (ctx) {
             ctx->lname_sz = 0;
@@ -324,7 +324,7 @@ fat_walk(struct fat_walk_static_params *p, u32 cluster)
        * If we're here, it means that there is more then one cluster for the
        * entries of this directory. We have to follow the chain.
        */
-      u32 val = fat_read_fat_entry(p->h, p->ft, 0, cluster);
+      const u32 val = fat_read_fat_entry(p->h, p->ft, 0, cluster);
 
       if (fat_is_end_of_clusterchain(p->ft, val))
          break; // that's it: we hit an exactly full cluster.
@@ -441,7 +441,7 @@ u32 fat_get_first_data_sector(struct fat_hdr *hdr)
       FATSz = h32->BPB_FATSz32;
    }
 
-   u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
+   const u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
       (hdr->BPB_NumFATs * FATSz) + RootDirSectors;
 
    return FirstDataSector;
@@ -728,7 +728,7 @@ fat_read_whole_file(struct fat_hdr *hdr,
       ASSERT((fsize - tot_read) > 0);
 
       // find the next cluster
-      u32 fatval = fat_read_fat_entry(hdr, ft, 0, cluster);
+      const u32 fatval = fat_read_fat_entry(hdr, ft, 0, cluster);
 
       if (fat_is_end_of_clusterchain(ft, fatval)) {
          // rem is still > 0, this should NOT be the last cluster.

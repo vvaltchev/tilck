@@ -140,6 +140,9 @@ dp_chunks_keypress(struct key_event ke)
 
 static void dp_show_chunks(void)
 {
+   unsigned long long lf_allocs = 0;
+   unsigned long long lf_waste  = 0;
+
    row = tui_screen_start_row;
 
    if (!got_data) {
@@ -160,9 +163,6 @@ static void dp_show_chunks(void)
    }
 
    /* Aggregate sums of allocated and waste */
-   unsigned long long lf_allocs = 0;
-   unsigned long long lf_waste  = 0;
-
    for (int i = 0; i < chunks_count; i++) {
 
       lf_allocs += (unsigned long long)chunks[i].size *

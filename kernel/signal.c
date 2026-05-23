@@ -20,11 +20,13 @@ typedef void (*action_type)(struct task *, int signum, int fl);
 
 static void __add_sig(ulong *set, int signum)
 {
+   int slot, index;
+
    ASSERT(signum > 0);
    signum--;
 
-   int slot = signum / NBITS;
-   int index = signum % NBITS;
+   slot = signum / NBITS;
+   index = signum % NBITS;
 
    if (slot >= K_SIGACTION_MASK_WORDS)
       return; /* just silently ignore signals that we don't support */
@@ -42,11 +44,13 @@ static void add_pending_sig(struct task *ti, int signum, int fl)
 
 static void __del_sig(ulong *set, int signum)
 {
+   int slot, index;
+
    ASSERT(signum > 0);
    signum--;
 
-   int slot = signum / NBITS;
-   int index = signum % NBITS;
+   slot = signum / NBITS;
+   index = signum % NBITS;
 
    if (slot >= K_SIGACTION_MASK_WORDS)
       return; /* just silently ignore signals that we don't support */
@@ -62,11 +66,13 @@ static void del_pending_sig(struct task *ti, int signum)
 
 static bool __is_sig_set(ulong *set, int signum)
 {
+   int slot, index;
+
    ASSERT(signum > 0);
    signum--;
 
-   int slot = signum / NBITS;
-   int index = signum % NBITS;
+   slot = signum / NBITS;
+   index = signum % NBITS;
 
    if (slot >= K_SIGACTION_MASK_WORDS)
       return false; /* just silently ignore signals that we don't support */
@@ -226,7 +232,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
       return false;
 
    trace_signal_delivered(ti->tid, sig);
-   __sighandler_t handler = ti->pi->sa_handlers[sig - 1];
+   const __sighandler_t handler = ti->pi->sa_handlers[sig - 1];
 
    if (handler) {
 
@@ -436,6 +442,8 @@ static const action_type signal_default_actions[_NSIG] =
 
 static void do_send_signal(struct task *ti, int signum, int fl)
 {
+   __sighandler_t h;
+
    ASSERT(IN_RANGE(signum, 0, _NSIG));
 
    if (signum == 0) {
@@ -457,7 +465,7 @@ static void do_send_signal(struct task *ti, int signum, int fl)
    if (ti->nested_sig_handlers < 0)
       return; /* the task is dying, no signals allowed */
 
-   __sighandler_t h = ti->pi->sa_handlers[signum - 1];
+   h = ti->pi->sa_handlers[signum - 1];
 
    if (ti->tid == 1 && h == SIG_DFL) {
 

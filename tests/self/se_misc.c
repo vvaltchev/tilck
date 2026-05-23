@@ -51,13 +51,15 @@ REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread)
 
 void selftest_sleep()
 {
+   u64 after;
+   u64 elapsed;
    const u64 wait_ticks = KRN_TIMER_HZ;
    u64 before = get_ticks();
 
    kernel_sleep(wait_ticks);
 
-   u64 after = get_ticks();
-   u64 elapsed = after - before;
+   after = get_ticks();
+   elapsed = after - before;
 
    printk("[sleeping_kthread] elapsed ticks: %" PRIu64
           " (expected: %" PRIu64 ")\n", elapsed, wait_ticks);

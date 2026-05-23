@@ -42,12 +42,14 @@ static long dp_cmd_get_irqs(struct dp_irq_stats *out)
 
 static unsigned long read_ulong_from(const char *path, unsigned long fallback)
 {
+   char buf[32] = {0};
+   ssize_t n;
+   unsigned long v = 0;
    int fd = open(path, 0 /* O_RDONLY */);
    if (fd < 0)
       return fallback;
 
-   char buf[32] = {0};
-   ssize_t n = read(fd, buf, sizeof(buf) - 1);
+   n = read(fd, buf, sizeof(buf) - 1);
    close(fd);
 
    if (n <= 0)
@@ -55,7 +57,6 @@ static unsigned long read_ulong_from(const char *path, unsigned long fallback)
 
    buf[n] = 0;
 
-   unsigned long v = 0;
    for (int i = 0; buf[i] >= '0' && buf[i] <= '9'; i++)
       v = v * 10 + (unsigned long)(buf[i] - '0');
 
@@ -74,6 +75,8 @@ static void dp_irqs_on_enter(void)
 
 static void dp_show_irqs(void)
 {
+   unsigned int tot_unhandled = 0;
+
    row = tui_screen_start_row;
 
    dp_writeln("Kernel IRQ-related counters");
@@ -104,7 +107,6 @@ static void dp_show_irqs(void)
    }
 
    /* Unhandled IRQ table */
-   unsigned int tot_unhandled = 0;
    for (int i = 0; i < (int)(sizeof(stats.unhandled_count) /
                              sizeof(stats.unhandled_count[0])); i++)
    {

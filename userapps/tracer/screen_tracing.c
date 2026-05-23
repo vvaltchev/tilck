@@ -276,11 +276,12 @@ static void list_traced_syscalls(void)
 
    for (long i = 0; i < n; i++) {
 
+      char name[DP_SYS_NAME_MAX];
+
       if (!bitmap[i])
          continue;
 
-      char name[DP_SYS_NAME_MAX];
-      long len = dp_cmd_get_sys_name((unsigned)i, name, sizeof(name));
+      const long len = dp_cmd_get_sys_name((unsigned)i, name, sizeof(name));
 
       if (len < 0)
          continue;
@@ -321,6 +322,7 @@ static void edit_filter(void)
 static void edit_printk_level(void)
 {
    char buf[16];
+   char *endp = NULL;
    buf[0] = '\0';
 
    term_move_left(2);
@@ -329,8 +331,7 @@ static void edit_printk_level(void)
    tui_read_line(buf, sizeof(buf));
    tui_set_input_blocking(false);
 
-   char *endp = NULL;
-   long val = strtol(buf, &endp, 10);
+   const long val = strtol(buf, &endp, 10);
 
    if (!buf[0] || endp == buf || (*endp && *endp != '\0') ||
        val < 0 || val > 100)
@@ -360,13 +361,15 @@ static int parse_and_set_traced_pids(const char *str)
 
    while (1) {
 
+      char *endp = NULL;
+      size_t i = 0;
+
       while (*s == ',' || *s == ' ' || *s == '\t')
          s++;
 
       if (!*s)
          break;
 
-      size_t i = 0;
       while (*s && *s != ',' && *s != ' ' && *s != '\t' &&
              i + 1 < sizeof(tok))
       {
@@ -374,8 +377,7 @@ static int parse_and_set_traced_pids(const char *str)
       }
       tok[i] = '\0';
 
-      char *endp = NULL;
-      long tid = strtol(tok, &endp, 10);
+      const long tid = strtol(tok, &endp, 10);
 
       if (endp == tok || (*endp && *endp != '\0'))
          return -1;
@@ -430,7 +432,7 @@ static void edit_traced_pids(void)
 
    term_write("\r\n");
 
-   int set = parse_and_set_traced_pids(buf);
+   const int set = parse_and_set_traced_pids(buf);
 
    if (set < 0)
       term_write("Invalid input\r\n");
@@ -521,7 +523,11 @@ trace_live_loop(int events_fd)
  */
 static int dump_remaining_events(int events_fd)
 {
-   long rem = dp_cmd_get_in_buf_count();
+   struct dp_trace_event ev;
+   struct dp_render_ctx ctx = {0};
+   char rbuf[RENDER_BUF_SZ];
+   const long rem = dp_cmd_get_in_buf_count();
+   char c;
 
    if (rem <= 0)
       return 0;
@@ -530,7 +536,6 @@ static int dump_remaining_events(int events_fd)
                 rem);
 
    /* Read a single key; loop until we accept it. */
-   char c;
    while (1) {
 
       ssize_t n = read(STDIN_FILENO, &c, 1);
@@ -552,9 +557,6 @@ static int dump_remaining_events(int events_fd)
 
    /* Drain. The events fd's kernel-side read is non-blocking-friendly
     * (returns -EAGAIN when empty), so loop until we hit that or EOF. */
-   struct dp_trace_event ev;
-   struct dp_render_ctx ctx = {0};
-   char rbuf[RENDER_BUF_SZ];
 
    while (1) {
 

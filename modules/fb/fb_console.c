@@ -348,6 +348,7 @@ void fb_draw_banner(void)
    static bool oom;
    static char *lbuf;
    static char *rbuf;
+   u32 llen, rlen, padding = 0;
 
    if (oom || !fb_offset_y)
       return;
@@ -372,7 +373,6 @@ void fb_draw_banner(void)
       }
    }
 
-   u32 llen, rlen, padding = 0;
    ASSERT(fb_offset_y >= font_h);
 
    /*
@@ -414,7 +414,7 @@ void fb_draw_banner(void)
    fb_draw_string_at_raw(0, font_h/2, lbuf, COLOR_BRIGHT_YELLOW);
 
    /* Clear the remaining screen area below the banner and the text */
-   u32 top_lines_used = fb_offset_y + font_h * fb_term_rows;
+   const u32 top_lines_used = fb_offset_y + font_h * fb_term_rows;
    fb_raw_color_lines(top_lines_used,
                       fb_get_height() - top_lines_used,
                       vga_rgb_colors[COLOR_BLACK]);
@@ -570,9 +570,9 @@ void init_fb_console(void)
 
    cursor_color = vga_rgb_colors[COLOR_BRIGHT_WHITE];
 
-   void *font = fb_get_width() / 8 <= KRN_FBCON_BIGFONT_THR
-                  ? (void *)&_binary_font8x16_psf_start
-                  : (void *)&_binary_font16x32_psf_start;
+   void *const font = fb_get_width() / 8 <= KRN_FBCON_BIGFONT_THR
+                        ? (void *)&_binary_font8x16_psf_start
+                        : (void *)&_binary_font16x32_psf_start;
 
    fb_set_font(font);
    fb_map_in_kernel_space();

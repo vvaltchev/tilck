@@ -39,6 +39,7 @@ bool arch_add_final_mem_regions()
    for (int i = 0; i < mem_regions_count; i++) {
 
       struct mem_region *m = mem_regions + i;
+      u64 dma_len;
 
       if (m->type != MULTIBOOT_MEMORY_AVAILABLE || m->extra || m->addr > 16*MB)
          continue;
@@ -72,7 +73,7 @@ bool arch_add_final_mem_regions()
        *
        */
 
-      u64 dma_len = MIN(16 * MB - m->addr, MAX_DMA - tot_dma);
+      dma_len = MIN(16 * MB - m->addr, MAX_DMA - tot_dma);
 
       append_mem_region((struct mem_region) {
          .addr = m->addr,

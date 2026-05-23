@@ -27,6 +27,8 @@ static void mobj_waiter_sig_thread(void *arg)
 
 static void mobj_waiter_wait_thread(void *arg)
 {
+   struct multi_obj_waiter *w;
+
    printk("[wait th] Start\n");
 
    if (atomic_load(&mobj_se_test_signal_counter) > 0) {
@@ -35,7 +37,7 @@ static void mobj_waiter_wait_thread(void *arg)
       return;
    }
 
-   struct multi_obj_waiter *w = allocate_mobj_waiter(ARRAY_SIZE(conds));
+   w = allocate_mobj_waiter(ARRAY_SIZE(conds));
    VERIFY(w != NULL);
 
    for (int j = 0; j < ARRAY_SIZE(conds); j++)

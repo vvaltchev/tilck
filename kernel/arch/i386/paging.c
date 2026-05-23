@@ -43,6 +43,7 @@ pdir_get_page_table(pdir_t *pdir, u32 i)
 bool handle_potential_cow(void *context)
 {
    regs_t *r = context;
+   page_table_t *pt;
    u32 vaddr;
 
    if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW)
@@ -53,7 +54,7 @@ bool handle_potential_cow(void *context)
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
    const void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
-   page_table_t *pt = pdir_get_page_table(get_curr_pdir(), pd_index);
+   pt = pdir_get_page_table(get_curr_pdir(), pd_index);
 
    if (!(pt->pages[pt_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
@@ -79,7 +80,7 @@ bool handle_potential_cow(void *context)
    }
 
    // Allocate a new page.
-   void *new_page_vaddr = kmalloc(PAGE_SIZE);
+   void *const new_page_vaddr = kmalloc(PAGE_SIZE);
 
    if (!new_page_vaddr) {
 
@@ -142,14 +143,14 @@ static void kernel_page_fault_panic(regs_t *r, u32 vaddr, bool rw, bool p)
 
 void handle_page_fault_int(regs_t *r)
 {
-   u32 vaddr;
-   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
-
    bool p  = !!(r->err_code & PAGE_FAULT_FL_PRESENT);
    bool rw = !!(r->err_code & PAGE_FAULT_FL_RW);
    bool us = !!(r->err_code & PAGE_FAULT_FL_US);
    int sig = SIGSEGV;
    struct user_mapping *um;
+   u32 vaddr;
+
+   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    if (!us) {
       /*
@@ -627,7 +628,7 @@ pdir_t *pdir_clone(pdir_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = kalloc_obj(page_table_t);
+      page_table_t *const pt = kalloc_obj(page_table_t);
 
       if (UNLIKELY(!pt)) {
 
@@ -649,8 +650,8 @@ pdir_t *pdir_clone(pdir_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *orig_pt = pdir_get_page_table(pdir, i);
-      page_table_t *new_pt = pdir_get_page_table(new_pdir, i);
+      page_table_t *const orig_pt = pdir_get_page_table(pdir, i);
+      page_table_t *const new_pt = pdir_get_page_table(new_pdir, i);
 
       /* Mark all the non-shared pages in that page-table as COW. */
       for (u32 j = 0; j < 1024; j++) {
@@ -692,7 +693,7 @@ pdir_deep_clone(pdir_t *pdir)
    struct kmalloc_acc acc;
    kmalloc_create_accelerator(&acc, PAGE_SIZE, 4);
 
-   pdir_t *new_pdir = kmalloc_accelerator_get_elem(&acc);
+   pdir_t *const new_pdir = kmalloc_accelerator_get_elem(&acc);
 
    if (UNLIKELY(!new_pdir))
       goto oom_exit;
@@ -709,8 +710,8 @@ pdir_deep_clone(pdir_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *orig_pt = pdir_get_page_table(pdir, i);
-      page_table_t *new_pt = kmalloc_accelerator_get_elem(&acc);
+      page_table_t *const orig_pt = pdir_get_page_table(pdir, i);
+      page_table_t *const new_pt = kmalloc_accelerator_get_elem(&acc);
 
       if (UNLIKELY(!new_pt))
          goto oom_exit;
@@ -724,19 +725,19 @@ pdir_deep_clone(pdir_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
-         void *new_page = kmalloc_accelerator_get_elem(&acc);
+         void *const new_page = kmalloc_accelerator_get_elem(&acc);
 
          if (!new_page)
             goto oom_exit;
 
          ASSERT(IS_PAGE_ALIGNED(new_page));
 
-         ulong orig_page_paddr =
+         const ulong orig_page_paddr =
             (ulong)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
 
-         void *orig_page = PA_TO_LIN_VA(orig_page_paddr);
+         void *const orig_page = PA_TO_LIN_VA(orig_page_paddr);
 
-         u32 new_page_paddr = LIN_VA_TO_PA(new_page);
+         const u32 new_page_paddr = LIN_VA_TO_PA(new_page);
          ASSERT(pf_ref_count_get(new_page_paddr) == 0);
          pf_ref_count_inc(new_page_paddr);
 
@@ -775,7 +776,7 @@ void pdir_destroy(pdir_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = pdir_get_page_table(pdir, i);
+      page_table_t *const pt = pdir_get_page_table(pdir, i);
 
       for (u32 j = 0; j < 1024; j++) {
 
@@ -960,7 +961,7 @@ void *failsafe_map_framebuffer(ulong paddr, ulong size)
    ulong vaddr = FAILSAFE_FB_VADDR;
    __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(page_size_buf));
 
-   u32 big_pages_to_use = pow2_round_up_at(size, 4 * MB) / (4 * MB);
+   const u32 big_pages_to_use = pow2_round_up_at(size, 4 * MB) / (4 * MB);
 
    for (u32 i = 0; i < big_pages_to_use; i++) {
       map_4mb_page_int(__kernel_pdir,

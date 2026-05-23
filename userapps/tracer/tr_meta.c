@@ -46,6 +46,7 @@ static bool inited;
  */
 static int load_meta_file(void)
 {
+   off_t end;
    int fd = open(META_PATH, O_RDONLY);
 
    if (fd < 0)
@@ -54,7 +55,7 @@ static int load_meta_file(void)
    /* fstat-then-read keeps the loader simple; if the immutable
     * sysfs file ever grows past what one read() can handle the
     * caller below loops, but in practice it's tens of KB. */
-   off_t end = lseek(fd, 0, SEEK_END);
+   end = lseek(fd, 0, SEEK_END);
 
    if (end < 0) {
       int e = errno;
@@ -155,10 +156,12 @@ static int validate_and_index(void)
 
 int tr_meta_init(void)
 {
+   int rc;
+
    if (inited)
       return 0;
 
-   int rc = load_meta_file();
+   rc = load_meta_file();
 
    if (rc < 0) {
       fprintf(stderr,

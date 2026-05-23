@@ -82,18 +82,21 @@ void dp_buf_reset(void)
 static void
 dp_buf_append(int relrow, int col, const char *text, int text_len)
 {
+   struct dp_buf_line *L;
+   struct dp_buf_chunk *C;
+
    if (relrow < 0 || relrow >= DP_BUF_MAX_LINES)
       return;
 
    if (relrow >= dp_buf_lines)
       dp_buf_lines = relrow + 1;
 
-   struct dp_buf_line *L = &dp_buf[relrow];
+   L = &dp_buf[relrow];
 
    if (L->chunk_count >= DP_BUF_MAX_CHUNKS)
       return;
 
-   struct dp_buf_chunk *C = &L->chunks[L->chunk_count++];
+   C = &L->chunks[L->chunk_count++];
 
    C->col = col;
 
@@ -194,6 +197,7 @@ void dp_show_modal_msg(const char *msg)
    static const char common_msg[] = "Press ANY key to continue";
    const int max_line_len = DP_W - 2 - 2 - 2;
    const int msg_len = (int)strlen(msg);
+   char clear_buf[DP_W+1];
 
    int row_len = msg_len < max_line_len ? msg_len : max_line_len;
    if (row_len < (int)sizeof(common_msg) - 1)
@@ -202,8 +206,6 @@ void dp_show_modal_msg(const char *msg)
 
    const int srow = tui_start_row + DP_H / 2 - 5 / 2;
    const int scol = tui_cols / 2 - row_len / 2;
-
-   char clear_buf[DP_W+1];
 
    if (msg_len > max_line_len)
       return; /* for the moment, no multi-line */

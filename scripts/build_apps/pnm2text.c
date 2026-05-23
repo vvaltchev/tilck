@@ -352,10 +352,11 @@ static void
 recognize_and_print_char(int row, int col)
 {
    char imgbuf[font_w_bytes * font_h]; // VLA
+   uint8_t c;
 
    bzero(imgbuf, font_w_bytes * font_h);
    img_get_char(row, col, imgbuf);
-   uint8_t c = recognize_char(&imgbuf, row, col);
+   c = recognize_char(&imgbuf, row, col);
 
    putchar(
       32 <= c && c <= 127

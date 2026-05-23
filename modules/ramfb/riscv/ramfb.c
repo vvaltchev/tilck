@@ -156,6 +156,7 @@ int init_ramfb(void *fdt)
    bool found = false;
    u32 count = 0, select = 0;
    struct qemu_fwcfg_file file;
+   struct qemu_ramfb_cfg ramfb_cfg;
 
    rc = fdt_parse_fwcfg(fdt);
    if (rc)
@@ -180,7 +181,7 @@ int init_ramfb(void *fdt)
    if (!found)
       return -ENODEV;
 
-   struct qemu_ramfb_cfg ramfb_cfg = {
+   ramfb_cfg = (struct qemu_ramfb_cfg) {
       .addr = BE64(simplefb_paddr),
       .format = BE32(simplefb_format),
       .flags = BE32(0),

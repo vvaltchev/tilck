@@ -20,21 +20,23 @@ char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 static void
 brk_syscall_int(struct process *pi, void *new_brk)
 {
+   void *vaddr;
+
    ASSERT(!is_preemption_enabled());
 
    if (new_brk < pi->brk) {
 
       /* we have to free pages */
 
-      for (void *vaddr = new_brk; vaddr < pi->brk; vaddr += PAGE_SIZE) {
-         unmap_page(pi->pdir, vaddr, true);
+      for (void *p = new_brk; p < pi->brk; p += PAGE_SIZE) {
+         unmap_page(pi->pdir, p, true);
       }
 
       pi->brk = new_brk;
       return;
    }
 
-   void *vaddr = pi->brk;
+   vaddr = pi->brk;
 
    while (vaddr < new_brk) {
 

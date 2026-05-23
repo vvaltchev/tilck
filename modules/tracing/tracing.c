@@ -191,14 +191,13 @@ static void
 trace_syscall_enter_save_params(const struct syscall_info *si,
                                 struct trace_event *e)
 {
-   if (!si)
-      return;
-
-   struct syscall_event_data *se = &e->sys_ev;
+   struct syscall_event_data *const se = &e->sys_ev;
    char *buf = NULL;
    size_t bs = 0;
    int idx;
 
+   if (!si)
+      return;
 
    for (int i = 0; i < si->n_params; i++) {
 
@@ -229,13 +228,13 @@ static void
 trace_syscall_exit_save_params(const struct syscall_info *si,
                                struct trace_event *e)
 {
-   if (!si)
-      return;
-
-   struct syscall_event_data *se = &e->sys_ev;
+   struct syscall_event_data *const se = &e->sys_ev;
    char *buf = NULL;
    size_t bs = 0;
    int idx;
+
+   if (!si)
+      return;
 
    for (int i = 0; i < si->n_params; i++) {
 
@@ -307,6 +306,7 @@ trace_syscall_enter_int(u32 sys,
                         ulong a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
+   struct trace_event e;
 
    if (!get_curr_task()->traced)
       return; /* the current task is not traced */
@@ -314,7 +314,7 @@ trace_syscall_enter_int(u32 sys,
    if (si && !exp_block(si))
       return; /* don't trace the enter event */
 
-   struct trace_event e = {
+   e = (struct trace_event) {
 
       .type = te_sys_enter,
       .tid = get_curr_tid(),
@@ -340,11 +340,12 @@ trace_syscall_exit_int(u32 sys,
                        ulong a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
+   struct trace_event e;
 
    if (!get_curr_task()->traced)
       return; /* the current task is not traced */
 
-   struct trace_event e = {
+   e = (struct trace_event) {
       .type = te_sys_exit,
       .tid = get_curr_tid(),
       .sys_time = get_sys_time(),
@@ -362,6 +363,8 @@ trace_syscall_exit_int(u32 sys,
 void
 trace_printk_raw_int(short level, const char *buf, size_t buf_size)
 {
+   struct trace_event e;
+
    ASSERT(level >= 1);
 
    if (!__trace_printk_initialized)
@@ -370,7 +373,7 @@ trace_printk_raw_int(short level, const char *buf, size_t buf_size)
    if (__tracing_printk_lvl < level)
       return;
 
-   struct trace_event e = {
+   e = (struct trace_event) {
       .type = te_printk,
       .tid = get_curr_tid(),
       .sys_time = get_sys_time(),
@@ -388,6 +391,7 @@ void
 trace_printk_int(short level, const char *fmt, ...)
 {
    va_list args;
+   struct trace_event e;
    int written;
    ASSERT(level >= 1);
 
@@ -397,7 +401,7 @@ trace_printk_int(short level, const char *fmt, ...)
    if (__tracing_printk_lvl < level)
       return;
 
-   struct trace_event e = {
+   e = (struct trace_event) {
       .type = te_printk,
       .tid = get_curr_tid(),
       .sys_time = get_sys_time(),
@@ -435,6 +439,8 @@ void
 trace_signal_delivered_int(int target_tid, int signum)
 {
    struct task *ti;
+   struct trace_event e;
+
    disable_preemption();
    {
       ti = get_task(target_tid);
@@ -447,7 +453,7 @@ trace_signal_delivered_int(int target_tid, int signum)
    if (!ti->traced)
       return; /* the task is not traced */
 
-   struct trace_event e = {
+   e = (struct trace_event) {
       .type = te_signal_delivered,
       .tid = target_tid,
       .sys_time = get_sys_time(),
@@ -462,10 +468,12 @@ trace_signal_delivered_int(int target_tid, int signum)
 void
 trace_task_killed_int(int signum)
 {
+   struct trace_event e;
+
    if (!get_curr_task()->traced)
       return; /* the current task is not traced */
 
-   struct trace_event e = {
+   e = (struct trace_event) {
       .type = te_killed,
       .tid = get_curr_tid(),
       .sys_time = get_sys_time(),
@@ -1024,6 +1032,7 @@ tracing_fill_param(struct tr_wire_param *out,
 static void
 tracing_init_meta_blob(void)
 {
+   struct tr_wire_syscall *out;
    const u32 n_ptype = TR_PT_COUNT;
 
    /* Fixed mapping: index = enum tr_ptype_id value. */
@@ -1078,7 +1087,7 @@ tracing_init_meta_blob(void)
       tracing_init_oom_panic("tracing_meta_blob");
 
    /* Header. */
-   struct tr_wire_header *h = (void *)tracing_meta_blob;
+   struct tr_wire_header *const h = (void *)tracing_meta_blob;
    *h = (struct tr_wire_header) {
       .magic         = TR_WIRE_MAGIC,
       .version       = TR_WIRE_VERSION,
@@ -1087,7 +1096,7 @@ tracing_init_meta_blob(void)
    };
 
    /* ptype info table. */
-   struct tr_wire_ptype_info *pt = (void *)(h + 1);
+   struct tr_wire_ptype_info *const pt = (void *)(h + 1);
    for (u32 i = 0; i < n_ptype; i++) {
 
       const struct sys_param_type *t = ptable[i];
@@ -1105,7 +1114,8 @@ tracing_init_meta_blob(void)
    }
 
    /* Syscall table. */
-   struct tr_wire_syscall *out = (void *)(pt + n_ptype);
+   out = (void *)(pt + n_ptype);
+
    for (u32 sn = 0; sn < MAX_SYSCALLS; sn++) {
 
       const struct syscall_info *si = syscalls_info[sn];

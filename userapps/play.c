@@ -45,6 +45,8 @@ parse_args(int argc, char **argv)
    while (argc) {
 
       char *arg = argv[0];
+      int bits;
+      int channels;
 
       if (!strcmp(arg, "-d")) {
 
@@ -78,7 +80,7 @@ parse_args(int argc, char **argv)
             show_help_and_exit();
 
          argc--; argv++;
-         int bits = atoi(argv[0]);
+         bits = atoi(argv[0]);
 
          if (bits != 8 && bits != 16)
             show_help_and_exit();
@@ -94,7 +96,7 @@ parse_args(int argc, char **argv)
             show_help_and_exit();
 
          argc--; argv++;
-         int channels = atoi(argv[0]);
+         channels = atoi(argv[0]);
 
          if (channels != 1 && channels != 2)
             show_help_and_exit();
@@ -225,6 +227,7 @@ test_sound(int devfd)
 {
    const u32 max_samples = 64 * KB;
    u32 tot_sz = max_samples * (opt_test_bits >> 3) * opt_test_channels;
+   struct tilck_sound_params p;
 
    void *raw_buf = malloc(tot_sz);
    int rc, written = 0;
@@ -237,7 +240,7 @@ test_sound(int devfd)
    printf("Playing test sound: %u bits, %u channels at 22050 Hz\n",
           opt_test_bits, opt_test_channels);
 
-   struct tilck_sound_params p = {
+   p = (struct tilck_sound_params) {
       .sample_rate = 22050,
       .bits = opt_test_bits,
       .channels = opt_test_channels,
@@ -314,6 +317,8 @@ static u32 be32(u32 x)
 static int
 check_wav_header(struct wav_header *hdr)
 {
+   u32 exp_br;
+
    if (be32(hdr->ChunkID) != CHUNK_ID_RIFF) {
       printf("Not a WAV file: wrong ChunkID\n");
       return -1;
@@ -354,7 +359,7 @@ check_wav_header(struct wav_header *hdr)
       return -1;
    }
 
-   u32 exp_br = hdr->SampleRate * hdr->NumChannels * hdr->BitsPerSample / 8;
+   exp_br = hdr->SampleRate * hdr->NumChannels * hdr->BitsPerSample / 8;
 
    if (hdr->ByteRate != exp_br) {
       printf("ByteRate %u != expected value %u\n", hdr->ByteRate, exp_br);
@@ -371,6 +376,7 @@ play_wav_file(int devfd)
    u32 tot_read = 0, data_read;
    u32 last_sec = (u32) -1;
    struct wav_header hdr;
+   struct tilck_sound_params params;
    u8 *buf = NULL;
    int rc = 0;
 
@@ -401,7 +407,7 @@ play_wav_file(int devfd)
       goto out;
    }
 
-   struct tilck_sound_params params = {
+   params = (struct tilck_sound_params) {
       .sample_rate = hdr.SampleRate,
       .bits = hdr.BitsPerSample,
       .channels = hdr.NumChannels,

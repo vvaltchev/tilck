@@ -391,8 +391,10 @@ void tty_write_on_all_ttys(const char *buf, size_t size)
 
 STATIC void init_tty(void)
 {
+   struct driver_info *di;
+
    process_term_read_info(&first_term_i);
-   struct driver_info *di = kzalloc_obj(struct driver_info);
+   di = kzalloc_obj(struct driver_info);
 
    if (!di)
       panic("TTY: no enough memory for struct driver_info");

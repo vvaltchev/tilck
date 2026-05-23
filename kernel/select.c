@@ -44,7 +44,7 @@ select_count_cond_per_set(struct select_ctx *c,
       if (!FD_ISSET(i, set))
          continue;
 
-      fs_handle h = get_fs_handle(i);
+      const fs_handle h = get_fs_handle(i);
 
       if (!h)
          return -EBADF;
@@ -101,7 +101,7 @@ select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
       if (!FD_ISSET(i, set))
          continue;
 
-      fs_handle h = get_fs_handle(i);
+      const fs_handle h = get_fs_handle(i);
 
       if (!h || !is_ready(h)) {
          FD_CLR(i, set);
@@ -126,7 +126,7 @@ count_ready_streams_per_set(int nfds, fd_set *set, func_rwe_ready is_ready)
       if (!FD_ISSET(j, set))
          continue;
 
-      fs_handle h = get_fs_handle(j);
+      const fs_handle h = get_fs_handle(j);
 
       if (h && is_ready(h))
          count++;
@@ -176,12 +176,13 @@ select_read_user_tv(struct k_timeval *user_tv,
 
    if (user_tv) {
 
+      u64 tmp = 0;
+
       tv = (void *) ((fd_set *)curr->args_copybuf + 3);
 
       if (copy_from_user(tv, user_tv, sizeof(struct k_timeval)))
          return -EFAULT;
 
-      u64 tmp = 0;
       tmp += (u64)tv->tv_sec * KRN_TIMER_HZ;
       tmp += (u64)tv->tv_usec / (1000000 / KRN_TIMER_HZ);
 
@@ -310,7 +311,7 @@ select_wait_on_cond(struct select_ctx *c)
                continue; /* preempt still disabled */
             }
 
-            u32 rem = task_cancel_wakeup_timer(curr);
+            const u32 rem = task_cancel_wakeup_timer(curr);
             c->tv->tv_sec = rem / KRN_TIMER_HZ;
             c->tv->tv_usec = (rem % KRN_TIMER_HZ) * (1000000 / KRN_TIMER_HZ);
             enable_preemption();

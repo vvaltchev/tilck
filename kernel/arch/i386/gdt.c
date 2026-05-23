@@ -136,6 +136,8 @@ static NODISCARD int gdt_expand(void)
 {
    void *old_gdt_ptr;
    void *old_gdt_refcount_ptr;
+   void *new_gdt;
+   void *new_gdt_refcount;
    u32 old_gdt_size;
    u32 new_size;
 
@@ -152,8 +154,7 @@ static NODISCARD int gdt_expand(void)
          return -ENOMEM;
       }
 
-      void *new_gdt = kzalloc_array_obj(struct gdt_entry, new_size);
-      void *new_gdt_refcount;
+      new_gdt = kzalloc_array_obj(struct gdt_entry, new_size);
 
       if (!new_gdt) {
          enable_preemption();
@@ -388,6 +389,7 @@ static void gdt_set_slot(struct process *pi, u16 slot, u16 gdt_index)
 int sys_set_thread_area(void *arg)
 {
    int rc = 0;
+   int slot;
    struct gdt_entry e = {0};
    struct user_desc dc;
    struct user_desc *ud = arg;
@@ -419,7 +421,7 @@ int sys_set_thread_area(void *arg)
 
    if (dc.entry_number == INVALID_ENTRY_NUM) {
 
-      int slot = find_available_slot_in_user_task();
+      slot = find_available_slot_in_user_task();
 
       if (slot < 0) {
          rc = -ESRCH;
@@ -447,7 +449,7 @@ int sys_set_thread_area(void *arg)
 
    /* Handling the case where the user specified a GDT entry number */
 
-   int slot = get_user_task_slot_for_gdt_entry(dc.entry_number);
+   slot = get_user_task_slot_for_gdt_entry(dc.entry_number);
 
    if (slot < 0) {
       /* A GDT entry with that index has never been allocated by this task */

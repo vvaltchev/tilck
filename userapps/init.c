@@ -141,6 +141,7 @@ static int get_video_tty_count(void)
 static void open_std_handles(int tty)
 {
    char ttyfile[32] = "/dev/console";
+   int in, out, err;
 
    if (tty >= 0) {
 
@@ -150,9 +151,9 @@ static void open_std_handles(int tty)
          sprintf(ttyfile, "/dev/ttyS%d", tty - TTYS0_MINOR);
    }
 
-   int in = open(ttyfile, O_RDONLY);
-   int out = open(ttyfile, O_WRONLY);
-   int err = open(ttyfile, O_WRONLY);
+   in = open(ttyfile, O_RDONLY);
+   out = open(ttyfile, O_WRONLY);
+   err = open(ttyfile, O_WRONLY);
 
    if (in != 0) {
       printf("[init] in: %i, expected: 0\n", in);

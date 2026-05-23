@@ -21,9 +21,11 @@ static u16 sb16_curr_rate;
 u8
 sb16_get_irq(void)
 {
-   outb(DSP_MIXER, 0x80);
-   u8 irq_code = inb(DSP_MIXER_DATA);
+   u8 irq_code;
    u8 irq;
+
+   outb(DSP_MIXER, 0x80);
+   irq_code = inb(DSP_MIXER_DATA);
 
    switch (irq_code) {
 

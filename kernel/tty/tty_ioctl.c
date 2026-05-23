@@ -188,11 +188,12 @@ static int tty_ioctl_KDGKBMODE(struct tty *t, void *argp)
 static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
 {
    struct process *pi = get_curr_proc();
+   ulong mode;
 
    if (t != pi->proc_tty)
       return -EPERM; /* don't allow setting mode of other TTYs */
 
-   ulong mode = (ulong) argp;
+   mode = (ulong) argp;
 
    switch (mode) {
 

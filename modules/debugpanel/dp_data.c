@@ -491,12 +491,12 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
          if (!(mask & (1u << 11)))
             continue;
 
-         u8 mtype = (u8)(base & 0xff);
+         const u8 mtype = (u8)(base & 0xff);
          base &= ~0xffull;
          mask &= ~((u64)PAGE_SIZE - 1);
 
-         u32 first_set_bit = get_first_set_bit_index64(mask);
-         u64 size_kb = (1ull << first_set_bit) / KB;
+         const u32 first_set_bit = get_first_set_bit_index64(mask);
+         const u64 size_kb = (1ull << first_set_bit) / KB;
          bool one_block = true;
 
          for (u32 b = first_set_bit;

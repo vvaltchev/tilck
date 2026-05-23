@@ -63,11 +63,13 @@ int main(int argc, char **argv)
 
    if (argc > 1 && !strcmp(argv[1], "--test")) {
 
+      int rc1, rc2;
+
       if (argc > 2 && !strcmp(argv[2], "--stress"))
          return tr_run_stress_test();
 
-      int rc1 = tr_run_tier1_tests();
-      int rc2 = tr_run_tier2_tests();
+      rc1 = tr_run_tier1_tests();
+      rc2 = tr_run_tier2_tests();
       return rc1 == 0 && rc2 == 0 ? 0 : 1;
    }
 

@@ -104,7 +104,7 @@ bool handle_potential_cow(void *context)
    }
 
    // Allocate a new page.
-   void *new_page_vaddr = kmalloc(PAGE_SIZE);
+   void *const new_page_vaddr = kmalloc(PAGE_SIZE);
 
    if (!new_page_vaddr) {
 
@@ -680,12 +680,12 @@ pdir_clone_int(pdir_t *old_pdir,pdir_t *new_pdir,
 
             ASSERT(IS_L0_PAGE_ALIGNED(new_page));
 
-            ulong orig_page_paddr =
+            const ulong orig_page_paddr =
                (ulong)old_pdir->entries[j].pfn << PAGE_SHIFT;
 
-            void *orig_page = PA_TO_LIN_VA(orig_page_paddr);
+            void *const orig_page = PA_TO_LIN_VA(orig_page_paddr);
 
-            u32 new_page_paddr = LIN_VA_TO_PA(new_page);
+            const u32 new_page_paddr = LIN_VA_TO_PA(new_page);
             ASSERT(pf_ref_count_get(new_page_paddr) == 0);
             pf_ref_count_inc(new_page_paddr);
 
@@ -776,7 +776,7 @@ pdir_destroy_int(pdir_t *pdir, u32 pd_idx, u32 level)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = PA_TO_LIN_VA(pdir->entries[i].pfn << PAGE_SHIFT);
+      page_table_t *const pt = PA_TO_LIN_VA(pdir->entries[i].pfn << PAGE_SHIFT);
 
       level--;
       pdir_destroy_int((pdir_t *)pt, PTRS_PER_PT, level);
@@ -1157,6 +1157,7 @@ void init_hi_vmem_heap(void)
 
 void *failsafe_map_framebuffer(ulong paddr, ulong size)
 {
+   u32 big_pages_to_use;
    /*
     * Paging has not been initialized yet: probably we're in panic.
     * At this point, the kernel still uses page_size_buf as pdir, with only
@@ -1166,7 +1167,7 @@ void *failsafe_map_framebuffer(ulong paddr, ulong size)
    ulong vaddr = FAILSAFE_FB_VADDR;
    __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(page_size_buf));
 
-   u32 big_pages_to_use = pow2_round_up_at(size, L1_PAGE_SIZE) / L1_PAGE_SIZE;
+   big_pages_to_use = pow2_round_up_at(size, L1_PAGE_SIZE) / L1_PAGE_SIZE;
 
    for (u32 i = 0; i < big_pages_to_use; i++) {
 

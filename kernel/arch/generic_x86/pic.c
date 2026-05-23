@@ -259,13 +259,13 @@ bool pic_is_spur_irq(int irq)
    if (irq == 7) {
 
       outb(PIC1_COMMAND, PIC_READ_ISR);
-      u8 isr = inb(PIC1_COMMAND);
+      const u8 isr = inb(PIC1_COMMAND);
       return !(isr & (1 << 7));
 
    } else if (irq == 15) {
 
       outb(PIC2_COMMAND, PIC_READ_ISR);
-      u8 isr = inb(PIC2_COMMAND);
+      const u8 isr = inb(PIC2_COMMAND);
 
       if (!(isr & (1 << 7))) {
          pic_send_eoi(PIC_CASCADE);

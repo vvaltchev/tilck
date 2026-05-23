@@ -202,10 +202,13 @@ create_fb_device(int minor,
 
 static void init_fbdev(void)
 {
+   struct driver_info *di;
+   int rc;
+
    if (!use_framebuffer())
       return;
 
-   struct driver_info *di = kalloc_obj(struct driver_info);
+   di = kalloc_obj(struct driver_info);
 
    if (!di)
       panic("TTY: no enough memory for init_tty()");
@@ -213,7 +216,7 @@ static void init_fbdev(void)
    di->name = "fb";
    di->create_dev_file = create_fb_device;
    register_driver(di, FB_MAJOR);
-   int rc = create_dev_file("fb0", FB_MAJOR, 0 /* minor */, NULL);
+   rc = create_dev_file("fb0", FB_MAJOR, 0 /* minor */, NULL);
 
    if (rc != 0)
       panic("TTY: unable to create /dev/fb0 (error: %d)", rc);

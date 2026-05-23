@@ -209,12 +209,14 @@ int stricmp(const char *s1, const char *s2)
  */
 inline void str_reverse(char *str, size_t len)
 {
+   char *end;
+
    ASSERT(len == strlen(str));
 
    if (!len)
       return;
 
-   char *end = str + len - 1;
+   end = str + len - 1;
 
    while (str < end) {
 

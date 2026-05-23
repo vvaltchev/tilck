@@ -836,7 +836,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
       case F_DUPFD:
          {
             kmutex_lock(&curr->pi->fslock);
-            int new_fd = get_free_handle_num_ge(curr->pi, arg);
+            const int new_fd = get_free_handle_num_ge(curr->pi, arg);
             rc = sys_dup2(fd, new_fd);
             kmutex_unlock(&curr->pi->fslock);
             return rc;
@@ -845,7 +845,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
       case F_DUPFD_CLOEXEC:
          {
             kmutex_lock(&curr->pi->fslock);
-            int new_fd = get_free_handle_num_ge(curr->pi, arg);
+            const int new_fd = get_free_handle_num_ge(curr->pi, arg);
             if (!(rc = sys_dup2(fd, new_fd))) {
                /* dup2 succeeded */
                struct fs_handle_base *h2 = get_fs_handle(new_fd);
@@ -880,7 +880,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
          if (arg & (O_ASYNC | O_DIRECT))
             NOT_IMPLEMENTED();
 
-         int unchangeable = hb->fl_flags & ~FCNTL_CHANGEABLE_FL;
+         const int unchangeable = hb->fl_flags & ~FCNTL_CHANGEABLE_FL;
          hb->fl_flags = (arg & FCNTL_CHANGEABLE_FL) | unchangeable;
          break;
 

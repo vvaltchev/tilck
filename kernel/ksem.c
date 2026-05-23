@@ -128,10 +128,12 @@ int ksem_signal(struct ksem *s, int units)
 
    list_for_each(wo, tmp, &s->wait_list, wait_list_node) {
 
+      int wait_units;
+
       if (rem_counter <= 0)
          break; /* not enough units to unblock anybody */
 
-      int wait_units = (int)wo->extra;
+      wait_units = (int)wo->extra;
       ASSERT(wo->type == WOBJ_SEM);
       ASSERT(wait_units > 0);
 

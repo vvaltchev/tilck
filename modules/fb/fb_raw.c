@@ -352,13 +352,15 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 
 void debug_dump_glyph(u32 n)
 {
+   u8 *data;
+
    if (!font_glyph_data) {
       printk("debug_dump_glyph: font_glyph_data == 0: are we in text mode?\n");
       return;
    }
 
    const char fgbg[2] = {'#', '.'};
-   u8 *data = font_glyph_data + font_bytes_per_glyph * n;
+   data = font_glyph_data + font_bytes_per_glyph * n;
 
    printk(NO_PREFIX "\nGlyph #%u:\n\n", n);
 
@@ -480,6 +482,8 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
    /* Static variables, set once! */
    static void *op;
+   void *vaddr;
+   u8 *d;
 
    if (UNLIKELY(!op)) {
 
@@ -498,12 +502,12 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
    ASSUME_WITHOUT_CHECK(font_h == 16 || font_h == 32);
    ASSUME_WITHOUT_CHECK(font_bytes_per_glyph==16 || font_bytes_per_glyph==64);
 
-   void *vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
-   u8 *d = font_glyph_data + font_bytes_per_glyph * c;
+   vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
+   d = font_glyph_data + font_bytes_per_glyph * c;
    const u32 c_off = (u32)(
       (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11)
    );
-   u32 *scanlines = &fb_w8_char_scanlines[c_off];
+   u32 *const scanlines = &fb_w8_char_scanlines[c_off];
    goto *op;
 
    width1:

@@ -350,10 +350,11 @@ int tilck_sys_gcov_get_file_info(int fn,
                                  u32 fname_buf_size,
                                  u32 *user_fsize)
 {
+   int rc;
+
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
 
-   int rc;
    const struct gcov_info *gi = files_array[fn];
    const u32 fname_len = (u32)strlen(gi->filename);
 
@@ -456,10 +457,11 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
 
 int tilck_sys_gcov_get_file(int fn, char *user_buf)
 {
+   u32 rc;
+
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
 
-   u32 rc;
    const struct gcov_info *gi = files_array[fn];
 
    rc = fault_resumable_call(ALL_FAULTS_MASK,         // mask

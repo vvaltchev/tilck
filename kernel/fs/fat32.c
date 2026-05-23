@@ -63,6 +63,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize, offt *pos)
 
    do {
 
+      u32 fatval;
       char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
 
       const offt file_rem       = fsize - *pos;
@@ -88,7 +89,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize, offt *pos)
       }
 
       // find the next cluster
-      u32 fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
+      fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
          ASSERT(*pos == fsize);
@@ -135,6 +136,7 @@ fat_seek_forward(fs_handle handle, offt dist)
 
    do {
 
+      u32 fatval;
       const offt file_rem       = fsize - h->h_fpos;
       const offt dist_rem       = dist - moved_distance;
       const offt cluster_off    = h->h_fpos % (offt)d->cluster_size;
@@ -150,7 +152,7 @@ fat_seek_forward(fs_handle handle, offt dist)
          break;
 
       // find the next cluster
-      u32 fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
+      fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
          ASSERT(h->h_fpos == fsize);
@@ -229,7 +231,7 @@ fat_seek(fs_handle handle, offt off, int whence)
       return fat_seek_dir(fh, off);
    }
 
-   offt curr_pos = fh->h_fpos;
+   const offt curr_pos = fh->h_fpos;
 
    switch (whence) {
 
@@ -246,8 +248,7 @@ fat_seek(fs_handle handle, offt off, int whence)
          if (off >= 0)
             break;
 
-         struct fatfs_handle *h = (struct fatfs_handle *) handle;
-         off = (offt) h->e->DIR_FileSize + off;
+         off = (offt) fh->e->DIR_FileSize + off;
 
          if (off < 0)
             return -EINVAL;
@@ -367,13 +368,18 @@ fat_getdents_cb(struct fat_hdr *hdr,
                 void *arg)
 {
    char short_name[16];
-   const char *entname = long_name ? long_name : short_name;
    struct fat_getdents_ctx *ctx = arg;
+   struct vfs_dent64 dent;
+   const char *entname;
 
-   if (entname == short_name)
+   if (long_name) {
+      entname = long_name;
+   } else {
       fat_get_short_name(entry, short_name);
+      entname = short_name;
+   }
 
-   struct vfs_dent64 dent = {
+   dent = (struct vfs_dent64) {
       .ino  = fat_entry_to_inode(hdr, entry),
       .type = entry->directory ? VFS_DIR : VFS_FILE,
       .name_len = (u8) strlen(entname) + 1,
@@ -536,7 +542,9 @@ fat_get_entry(struct mnt_fs *fs,
    struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;
    struct fat_walk_static_params walk_params;
    struct fat_entry *dir_entry;
+   struct fat_entry *res;
    struct fat_search_ctx ctx;
+   enum vfs_entry_type type = VFS_NONE;
 
    if (!dir_inode && !name)              // both dir_inode and name are NULL:
       return fat_get_root_entry(d, fp);  // getting a path to the root dir
@@ -558,8 +566,7 @@ fat_get_entry(struct mnt_fs *fs,
    fat_init_search_ctx(&ctx, name, true);
    fat_fs_walk_generic(d, &walk_params, dir_entry);
 
-   struct fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
-   enum vfs_entry_type type = VFS_NONE;
+   res = !ctx.not_dir ? ctx.result : NULL;
 
    if (res) {
 

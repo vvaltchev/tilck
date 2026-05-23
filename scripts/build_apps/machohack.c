@@ -173,10 +173,11 @@ patch_relocs(void *buf, size_t size, bool is64, uint32_t ncmds,
 
          for (j = 0; j < seg->nsects; j++) {
 
+            struct relocation_info *relocs;
+
             if (sect[j].nreloc == 0)
                continue;
 
-            struct relocation_info *relocs;
             relocs = (void *)((char *)buf + sect[j].reloff);
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
@@ -198,10 +199,11 @@ patch_relocs(void *buf, size_t size, bool is64, uint32_t ncmds,
 
          for (j = 0; j < seg->nsects; j++) {
 
+            struct relocation_info *relocs;
+
             if (sect[j].nreloc == 0)
                continue;
 
-            struct relocation_info *relocs;
             relocs = (void *)((char *)buf + sect[j].reloff);
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
@@ -246,10 +248,11 @@ shift_reloc_indices(void *buf, size_t size, bool is64, uint32_t ncmds,
 
          for (j = 0; j < seg->nsects; j++) {
 
+            struct relocation_info *relocs;
+
             if (sect[j].nreloc == 0)
                continue;
 
-            struct relocation_info *relocs;
             relocs = (void *)((char *)buf + sect[j].reloff);
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
@@ -271,10 +274,11 @@ shift_reloc_indices(void *buf, size_t size, bool is64, uint32_t ncmds,
 
          for (j = 0; j < seg->nsects; j++) {
 
+            struct relocation_info *relocs;
+
             if (sect[j].nreloc == 0)
                continue;
 
-            struct relocation_info *relocs;
             relocs = (void *)((char *)buf + sect[j].reloff);
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
@@ -337,6 +341,7 @@ do_patch_syms(const char *path, void *buf, size_t size,
    struct dysymtab_command *dsc;
    bool is64;
    uint32_t ncmds;
+   uint32_t str_cursor;
    int n_found = 0;
    struct patch_info patches[MAX_SYMS];
 
@@ -410,7 +415,7 @@ do_patch_syms(const char *path, void *buf, size_t size,
    }
 
    size_t new_size = size + new_nlist_bytes + new_str_bytes;
-   char *out = calloc(1, new_size);
+   char *const out = calloc(1, new_size);
 
    if (!out) { perror("calloc"); return 1; }
 
@@ -418,7 +423,7 @@ do_patch_syms(const char *path, void *buf, size_t size,
     * New undefined entries go at the very end of the symbol table.
     * This is after all existing symbols (locals + ext-defined + undefs).
     */
-   uint32_t insert_idx = sc->nsyms;
+   const uint32_t insert_idx = sc->nsyms;
    size_t symtab_start = sc->symoff;
    size_t old_symtab_end = symtab_start + sc->nsyms * nlist_size;
 
@@ -434,8 +439,8 @@ do_patch_syms(const char *path, void *buf, size_t size,
    /* We need to figure out the new string offsets. The string table
     * will be shifted by new_nlist_bytes (because we're inserting nlist
     * entries before it). */
-   uint32_t new_stroff = sc->stroff + (uint32_t)new_nlist_bytes;
-   uint32_t str_cursor = sc->strsize;
+   const uint32_t new_stroff = sc->stroff + (uint32_t)new_nlist_bytes;
+   str_cursor = sc->strsize;
 
    /* For each matched symbol, update its n_strx to point to the new
     * "___real_*" name that will be appended to the string table. */
@@ -518,20 +523,25 @@ do_patch_syms(const char *path, void *buf, size_t size,
    }
 
    /* Update LC_SYMTAB */
-   struct symtab_command *new_sc;
-   bool dummy_is64;
-   uint32_t dummy_ncmds;
-   new_sc = find_symtab_cmd(out, new_size, &dummy_is64, &dummy_ncmds);
-   new_sc->nsyms += (uint32_t)n_found;
-   new_sc->stroff = new_stroff;
-   new_sc->strsize = str_cursor;
+   {
+      bool dummy_is64;
+      uint32_t dummy_ncmds;
+      struct symtab_command *const new_sc =
+         find_symtab_cmd(out, new_size, &dummy_is64, &dummy_ncmds);
+
+      new_sc->nsyms += (uint32_t)n_found;
+      new_sc->stroff = new_stroff;
+      new_sc->strsize = str_cursor;
+   }
 
    /* Update LC_DYSYMTAB: new entries are undefined externals */
-   struct dysymtab_command *new_dsc;
-   new_dsc = find_dysymtab_cmd(out, is64, ncmds);
+   {
+      struct dysymtab_command *const new_dsc =
+         find_dysymtab_cmd(out, is64, ncmds);
 
-   if (new_dsc)
-      new_dsc->nundefsym += (uint32_t)n_found;
+      if (new_dsc)
+         new_dsc->nundefsym += (uint32_t)n_found;
+   }
 
    /*
     * Step 3: Patch all relocations that reference old _sym to
@@ -547,7 +557,7 @@ do_patch_syms(const char *path, void *buf, size_t size,
                    patches[i].new_sym_idx);
    }
 
-   int rc = write_file(path, out, new_size);
+   const int rc = write_file(path, out, new_size);
    free(out);
    return rc;
 }
@@ -574,10 +584,12 @@ main(int argc, char **argv)
 
    if (strcmp(argv[2], "--patch-syms") == 0) {
 
+      int rc;
+
       if (argc < 4)
          usage(argv[0]);
 
-      int rc = do_patch_syms(
+      rc = do_patch_syms(
          argv[1], buf, size, (const char **)&argv[3], argc - 3
       );
 

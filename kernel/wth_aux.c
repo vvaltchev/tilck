@@ -29,6 +29,7 @@ int wth_create_thread_for(struct worker_thread *t)
 void wth_wakeup(struct worker_thread *t)
 {
    struct task *curr = get_curr_task();
+   struct worker_thread *curr_tt;
    int exp_state = TASK_STATE_SLEEPING;
 
    t->waiting_for_jobs = false;
@@ -38,7 +39,7 @@ void wth_wakeup(struct worker_thread *t)
     * if it didn't, an IRQ preempted us and made its state RUNNABLE.
     */
 
-   struct worker_thread *curr_tt = curr->worker_thread;
+   curr_tt = curr->worker_thread;
 
    if (!curr_tt || t->priority < curr_tt->priority)
       sched_set_need_resched();
