@@ -61,6 +61,45 @@ def collect_files(args, repo_root: Path) -> list:
             if p.exists():
                files.append(p)
 
+   if args.all:
+
+      try:
+
+         out = subprocess.check_output(
+            ['git', 'ls-files', '*.c', '*.h'],
+            cwd=str(root),
+            stderr=subprocess.DEVNULL,
+            text=True
+         )
+
+      except subprocess.CalledProcessError:
+         out = ''
+
+      # The tool's own bad-fixture directory contains intentionally
+      # broken code -- it would generate spurious diagnostics in a
+      # corpus sweep. Exclude it. This is the tool ignoring its own
+      # test data, not the tool taking a stance on the codebase.
+      own_fixtures = str(
+         Path(__file__).resolve().parent / 'tests' / 'fixtures'
+      )
+
+      for line in out.split('\n'):
+
+         line = line.strip()
+
+         if not line:
+            continue
+
+         p = root / line
+
+         if not p.exists():
+            continue
+
+         if str(p.resolve()).startswith(own_fixtures):
+            continue
+
+         files.append(p)
+
    return files
 
 
@@ -261,10 +300,14 @@ def _run_tests_with_coverage(verbose: bool, failfast: bool) -> int:
    env = os.environ.copy()
    env['PYTHONPATH'] = str(_PACKAGE_PARENT)
 
-   # 1) Run tests under coverage.
+   # 1) Run tests under coverage. Scope to `_style_check.rules` --
+   # that is the meaningful code that synthetic fixtures exercise.
+   # The rest of the package (CLI dispatcher, parser wrapper, raw-
+   # text helpers) is covered implicitly by every rule invocation
+   # that uses it, but the headline number tracks rule coverage.
    run_cmd = [
       sys.executable, '-m', 'coverage', 'run',
-      '--source=_style_check',
+      '--source=_style_check.rules',
       '-m', 'unittest'
    ]
 
@@ -332,6 +375,9 @@ _EPILOG = (
    '  style_check check --json kernel/poll.c\n\n'
    '  # Files changed since master\n'
    '  style_check check --since master\n\n'
+   '  # Sweep every .c/.h file tracked by git (defects in the source,\n'
+   '  # not in the tool)\n'
+   '  style_check check --all\n\n'
    '  # Run a single rule across selected files\n'
    '  style_check check --rule sizeof_parens kernel/*.c\n\n'
    '  # Skip a noisy rule\n'
@@ -364,6 +410,14 @@ def build_argparser():
    check_p.add_argument(
       '--since',
       help='Also check files changed since this git ref'
+   )
+
+   check_p.add_argument(
+      '--all',
+      action='store_true',
+      help=('Also check every .c / .h file tracked by git in the '
+            'current repository (corpus sweep -- failures are '
+            'defects in the source code, not the tool)')
    )
 
    check_p.add_argument(

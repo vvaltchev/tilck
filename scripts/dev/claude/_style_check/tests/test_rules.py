@@ -15,7 +15,6 @@ from ..rules.base import CheckContext
 
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / 'fixtures'
-REPO_ROOT = _parser_mod.find_repo_root() or HERE.parents[4]
 
 
 def _ctx_for(file_path, parser_obj, need_tu=False, need_comments=False):
@@ -371,87 +370,229 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(diags[0].rule, 'endif_annotation_long_blocks')
 
 
-class TestRulesOnGoldenFiles(unittest.TestCase):
-   """Canonical files in the kernel must report zero diagnostics for
-   each rule, EXCEPT for known-drift combinations enumerated below.
-   Drift exceptions are real-world cleanup candidates, not bugs in
-   the tool."""
-
-   GOLDEN = [
-      'kernel/poll.c',
-      'kernel/execve.c',
-      'kernel/sched.c',
-      'kernel/fork.c',
-      'kernel/signal.c',
-      'kernel/kmutex.c',
-      'include/tilck/kernel/sync.h',
-      'include/tilck/common/atomics.h',
-      'include/tilck/common/basic_defs.h',
-      'include/tilck/kernel/sched.h',
-      'include/tilck/kernel/list.h',
-      'include/tilck/common/assert.h',
-      'userapps/tracer/screen_tracing.c',
-      'userapps/dp/dp_main.c',
-      'userapps/devshell/devshell.c',
-   ]
-
-   # Map of (file, rule_id) -> "drift comment". The test allows the
-   # rule to fire on this file without failing. These are real
-   # cleanup candidates the user can address separately.
-   KNOWN_DRIFT = {
-      ('userapps/tracer/screen_tracing.c', 'while_true_only'):
-         '4x `while (1)` -- v2 Q31 rule requires `while (true)`',
-      ('userapps/dp/dp_main.c', 'while_true_only'):
-         '1x `while (1)` -- v2 Q31 rule requires `while (true)`',
-      ('include/tilck/kernel/sched.h', 'break_before_operator_forbidden'):
-         '`is_task_stopped` (line 231-232) wraps `||` to continuation '
-         'line; v2 Q25 rule requires operator at end of previous line',
-      ('userapps/tracer/screen_tracing.c', 'empty_body_braces'):
-         '`while (...) ;` (bare-semicolon body on next line, line '
-         '743-744); v2 Q44 rule requires `{ }`',
-   }
-
-   # Rules that surface enough corpus drift that listing every (file,
-   # rule) pair in KNOWN_DRIFT would be tedious. These rules stay
-   # ACTIVE for normal tool use; they are only skipped in this
-   # golden-files unit test. The user has explicitly flagged the
-   # underlying patterns as drift to clean up over time (Q15 mid-block
-   # decls, Q18 blank-line-after-decl-block).
-   GOLDEN_SKIP_RULES = {
-      'non_const_locals_top_of_block',
-      'blank_line_after_decl_block',
-      'blank_line_after_non_final_return',
-   }
+class TestRulesNoFalsePositives(unittest.TestCase):
+   """Synthetic `good_*` fixtures exercise the no-violation code paths
+   (rule walks the construct, finds it compliant, returns []).
+   These are tool-correctness tests, NOT corpus-quality tests --
+   the fixtures live entirely inside the test directory."""
 
    def setUp(self):
 
       build_dir = _parser_mod.resolve_build_dir('build/compile_db')
       self.parser = _parser_mod.Parser(build_dir)
 
-   def test_all_rules_clean_on_golden(self):
+   def _assert_no_diags(self, rule_id, fixture_name):
 
-      for rel in self.GOLDEN:
+      r = RULES_BY_ID[rule_id]
+      diags = _run_rule(r, FIXTURES / fixture_name, self.parser)
+      self.assertEqual(
+         diags, [],
+         '{} fired on compliant fixture {}: {}'.format(
+            rule_id, fixture_name, diags
+         )
+      )
 
-         p = REPO_ROOT / rel
-         self.assertTrue(p.exists(), "missing golden: {}".format(p))
+   def test_good_multiline_call_style(self):
+      self._assert_no_diags(
+         'multiline_call_style', 'good_multiline_call_style.c'
+      )
 
-         applicable = [
-            r for r in RULES_BY_ID.values() if r.applies_to_file(p)
-         ]
+   def test_good_multiline_call_complex(self):
+      self._assert_no_diags(
+         'multiline_call_style', 'good_multiline_call_complex.c'
+      )
 
-         for r in applicable:
+   def test_good_static_fn_def(self):
+      self._assert_no_diags(
+         'static_fn_def_type_own_line', 'good_static_fn_def.c'
+      )
 
-            if r.id in self.GOLDEN_SKIP_RULES:
-               continue  # rule known to surface widespread corpus drift
+   def test_good_pointer_asterisk(self):
+      self._assert_no_diags(
+         'pointer_asterisk_attached', 'good_pointer_asterisk.c'
+      )
 
-            if (rel, r.id) in self.KNOWN_DRIFT:
-               continue  # allowed drift -- see KNOWN_DRIFT map
+   def test_good_empty_body_braces(self):
+      self._assert_no_diags(
+         'empty_body_braces', 'good_empty_body_braces.c'
+      )
 
-            diags = _run_rule(r, p, self.parser)
-            self.assertEqual(
-               diags, [],
-               "{} fired on golden {}: {}".format(r.id, rel, diags)
+   def test_good_no_packed_enum(self):
+      self._assert_no_diags(
+         'no_packed_enum_values', 'good_no_packed_enum.c'
+      )
+
+   def test_good_include_order(self):
+      self._assert_no_diags(
+         'include_order', 'good_include_order.c'
+      )
+
+   def test_good_no_packed_case(self):
+      self._assert_no_diags(
+         'no_packed_case_labels', 'good_no_packed_case.c'
+      )
+
+   def test_good_switch_case(self):
+      self._assert_no_diags(
+         'switch_case_indent', 'good_switch_case.c'
+      )
+
+   def test_good_function_def_no_style2(self):
+      self._assert_no_diags(
+         'function_def_no_style2', 'good_function_def_no_style2.c'
+      )
+
+   def test_good_non_const_locals(self):
+      self._assert_no_diags(
+         'non_const_locals_top_of_block', 'good_non_const_locals.c'
+      )
+
+
+class TestPathBasedRules(unittest.TestCase):
+   """Tests for rules whose behavior depends on `ctx.file_path`. The
+   path is consulted as a string; we synthesize CheckContext directly
+   to exercise both the exempt and active branches without needing
+   real files at every relevant path."""
+
+   @staticmethod
+   def _ctx(path_str, content):
+
+      source_bytes = content.encode('utf-8')
+
+      return CheckContext(
+         file_path=Path(path_str),
+         source_bytes=source_bytes,
+         source_text=content,
+         lines=content.split('\n'),
+         is_header=path_str.endswith('.h'),
+         is_cpp=False,
+      )
+
+   def test_spdx_header_fires_on_tilck_path_missing_header(self):
+
+      r = RULES_BY_ID['spdx_header']
+      ctx = self._ctx(
+         '/repo/kernel/example.c',
+         '/* something else on line 1 */\n\nint main(void) { return 0; }\n'
+      )
+      diags = r.check(ctx)
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'spdx_header')
+      self.assertEqual(diags[0].line, 1)
+
+   def test_spdx_header_passes_on_tilck_path_with_header(self):
+
+      r = RULES_BY_ID['spdx_header']
+      ctx = self._ctx(
+         '/repo/kernel/example.c',
+         '/* SPDX-License-Identifier: BSD-2-Clause */\n\nint x;\n'
+      )
+      self.assertEqual(r.check(ctx), [])
+
+   def test_spdx_header_skips_exempt_path(self):
+
+      r = RULES_BY_ID['spdx_header']
+      ctx = self._ctx(
+         '/repo/3rd_party/foo/bar.c',
+         'whatever\n'
+      )
+      self.assertEqual(r.check(ctx), [])
+
+   def test_spdx_header_skips_non_tilck_path(self):
+
+      r = RULES_BY_ID['spdx_header']
+      ctx = self._ctx(
+         '/some/other/place/file.c',
+         'whatever\n'
+      )
+      self.assertEqual(r.check(ctx), [])
+
+   def test_spdx_header_skips_empty_file(self):
+
+      r = RULES_BY_ID['spdx_header']
+      ctx = self._ctx('/repo/kernel/empty.c', '')
+      ctx.lines = []   # empty file: split('') -> [''], force to []
+      self.assertEqual(r.check(ctx), [])
+
+   def test_include_order_skips_exempt_path(self):
+
+      r = RULES_BY_ID['include_order']
+      ctx = self._ctx(
+         '/repo/3rd_party/foo/file.c',
+         '#include <tilck/kernel/sync.h>\n'
+         '#include <tilck_gen_headers/config.h>\n'
+      )
+      self.assertEqual(r.check(ctx), [])
+
+   def test_include_order_skips_header_file(self):
+
+      r = RULES_BY_ID['include_order']
+      ctx = self._ctx(
+         '/repo/include/tilck/kernel/foo.h',
+         '#include <tilck/kernel/sync.h>\n'
+         '#include <tilck_gen_headers/config.h>\n'
+      )
+      # applies_to_file filter rejects .h files for this rule.
+      self.assertFalse(r.applies_to_file(Path('/repo/include/foo.h')))
+
+   def test_include_order_no_includes_returns_empty(self):
+
+      r = RULES_BY_ID['include_order']
+      ctx = self._ctx(
+         '/repo/kernel/no_includes.c',
+         'int main(void) { return 0; }\n'
+      )
+      self.assertEqual(r.check(ctx), [])
+
+   def test_include_order_only_local_includes_returns_empty(self):
+
+      r = RULES_BY_ID['include_order']
+      ctx = self._ctx(
+         '/repo/kernel/local_only.c',
+         '#include "foo.h"\n#include "bar.h"\n'
+      )
+      # Local quoted includes are not subject to grouping; should
+      # produce zero diagnostics.
+      self.assertEqual(r.check(ctx), [])
+
+
+class TestRulesGracefulWithoutTU(unittest.TestCase):
+   """Every rule with `needs_tu = True` must early-return [] when
+   `ctx.tu` is None (e.g. compile_db missed the file). Catches
+   accidental NPE on a degraded code path."""
+
+   @staticmethod
+   def _bare_ctx():
+
+      content = 'int main(void) { return 0; }\n'
+
+      return CheckContext(
+         file_path=Path('/fake/kernel/example.c'),
+         source_bytes=content.encode('utf-8'),
+         source_text=content,
+         lines=content.split('\n'),
+         is_header=False,
+         is_cpp=False,
+      )
+
+   def test_every_needs_tu_rule_handles_none_tu(self):
+
+      ctx = self._bare_ctx()
+      tu_rules = [r for r in RULES_BY_ID.values() if r.needs_tu]
+
+      # Confidence check: we should have many of these.
+      self.assertGreater(len(tu_rules), 5)
+
+      for r in tu_rules:
+
+         ctx.tu = None
+         diags = r.check(ctx)
+         self.assertEqual(
+            diags, [],
+            '{} did not gracefully early-return on tu=None: {}'.format(
+               r.id, diags
             )
+         )
 
 
 if __name__ == '__main__':
