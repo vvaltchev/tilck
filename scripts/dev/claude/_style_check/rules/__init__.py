@@ -42,6 +42,10 @@ from . import empty_body_braces                # Q44
 from . import endif_annotation_long_blocks     # Q38
 from . import no_packed_enum_values            # Q23
 
+# Context-sensitive soft rules
+from . import harmony_with_neighbors           # Q22b
+from . import align_multiline_operators        # Q10
+
 from . import multiline_call_style
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
@@ -101,6 +105,8 @@ ALL_RULES = [
    empty_body_braces.RULE,
    endif_annotation_long_blocks.RULE,
    no_packed_enum_values.RULE,
+   harmony_with_neighbors.RULE,
+   align_multiline_operators.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

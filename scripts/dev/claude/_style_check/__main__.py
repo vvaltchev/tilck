@@ -15,6 +15,7 @@ from . import parser as _parser_mod
 from . import reporter
 from . import extents
 from . import tokens as _tokens_mod
+from . import aggregator as _agg
 from .rules import ALL_RULES, RULES_BY_ID
 from .rules.base import CheckContext
 
@@ -300,6 +301,16 @@ def cmd_check(args) -> int:
 
          file_diags.extend(diags)
 
+      # Build the per-function summary. The aggregator needs the TU
+      # to find function extents; if a rule didn't request a TU the
+      # context won't have one, so the summary will be file-level only.
+      file_summary = _agg.build_file_summary(
+         file_path=f,
+         tu=ctx.tu,
+         lines=ctx.lines,
+         diagnostics=file_diags,
+      )
+
       if show_progress:
          _emit_status(
             _display_path(f, repo_root),
@@ -316,7 +327,34 @@ def cmd_check(args) -> int:
                color_mode=args.color,
                with_total=False,
             )
+
+            if args.summary and file_summary.functions:
+               reporter.emit_function_summaries(
+                  file_summary,
+                  color_mode=args.color,
+                  stream=sys.stdout,
+               )
+
             sys.stdout.write('\n')
+
+      elif file_diags and not args.json and args.summary \
+            and file_summary.functions:
+
+         # Single-file text mode: print summary at the end too if
+         # there's something to show.
+         reporter.emit(
+            file_diags,
+            fmt=fmt,
+            color_mode=args.color,
+            with_total=True,
+         )
+         reporter.emit_function_summaries(
+            file_summary,
+            color_mode=args.color,
+            stream=sys.stdout,
+         )
+         all_diags.extend(file_diags)
+         continue
 
       all_diags.extend(file_diags)
 
@@ -340,9 +378,15 @@ def cmd_check(args) -> int:
 
          sys.stdout.write(line)
 
-   else:
+   elif fmt == 'jsonl':
 
+      # JSONL: no per-file emission happened above; flush the whole
+      # collected stream now.
       reporter.emit(all_diags, fmt=fmt, color_mode=args.color)
+
+   # Single-file text mode: per-file emit already happened in the
+   # elif branch above (or no diagnostics, no emit). Nothing left
+   # to print here.
 
    return 0
 
@@ -604,6 +648,15 @@ def build_argparser():
       help=('Filter by rule class. `hard` shows error-severity '
             'defects only; `soft` shows warning-severity prettiness '
             'preferences only; `all` (default) shows both')
+   )
+
+   check_p.add_argument(
+      '--summary',
+      action=argparse.BooleanOptionalAction,
+      default=True,
+      help=('Show per-function prettiness summary (total / '
+            'normalized score / verdict) under each file with '
+            'diagnostics. Default: on. Use --no-summary to disable.')
    )
 
    check_p.add_argument(

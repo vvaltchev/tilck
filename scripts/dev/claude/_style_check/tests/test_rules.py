@@ -361,6 +361,32 @@ class TestRulesOnFixtures(unittest.TestCase):
          all(d.rule == 'no_packed_enum_values' for d in diags)
       )
 
+   def test_bad_harmony_with_neighbors(self):
+
+      r = RULES_BY_ID['harmony_with_neighbors']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_harmony_with_neighbors.c', self.parser
+      )
+      # One outlier-long line among short neighbors.
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'harmony_with_neighbors')
+      self.assertEqual(diags[0].severity, 'warning')
+      self.assertEqual(diags[0].line, 9)
+
+   def test_bad_align_multiline_operators(self):
+
+      r = RULES_BY_ID['align_multiline_operators']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_align_multiline_operators.c',
+         self.parser
+      )
+      # First && at col 19, second at col 21 -- first one flagged
+      # (target column is the rightmost).
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'align_multiline_operators')
+      self.assertEqual(diags[0].severity, 'warning')
+
    def test_bad_endif_annotation_long_blocks(self):
 
       r = RULES_BY_ID['endif_annotation_long_blocks']
@@ -450,6 +476,19 @@ class TestRulesNoFalsePositives(unittest.TestCase):
    def test_good_non_const_locals(self):
       self._assert_no_diags(
          'non_const_locals_top_of_block', 'good_non_const_locals.c'
+      )
+
+   def test_good_align_multiline_operators(self):
+
+      self._assert_no_diags(
+         'align_multiline_operators',
+         'good_align_multiline_operators.c'
+      )
+
+   def test_good_harmony_with_neighbors(self):
+
+      self._assert_no_diags(
+         'harmony_with_neighbors', 'good_harmony_with_neighbors.c'
       )
 
    def test_good_blank_line_after_decl_block(self):
@@ -611,6 +650,98 @@ class TestRulesGracefulWithoutTU(unittest.TestCase):
                r.id, diags
             )
          )
+
+
+class TestAggregator(unittest.TestCase):
+   """Per-function rollup: function extraction from a TU, diagnostic
+   attribution, verdict computation."""
+
+   def setUp(self):
+
+      from .. import aggregator as _agg
+      self._agg = _agg
+
+      build_dir = _parser_mod.resolve_build_dir('build/compile_db')
+      self.parser = _parser_mod.Parser(build_dir)
+
+   def test_function_region_verdict_clean(self):
+
+      from ..rules.base import Diagnostic
+
+      f = self._agg.FunctionRegion(
+         name='foo', start_line=1, end_line=10, stmt_count=10
+      )
+      self.assertEqual(f.verdict, 'clean')   # no diagnostics
+      f.diagnostics.append(Diagnostic(
+         file='x', line=2, col=1, end_line=2, end_col=10,
+         rule='r', severity='warning', message='m', score=-0.5,
+      ))
+      # -0.5 / 10 = -0.05 -> >= -0.1 -> clean
+      self.assertEqual(f.verdict, 'clean')
+
+   def test_function_region_verdict_drift(self):
+
+      from ..rules.base import Diagnostic
+
+      f = self._agg.FunctionRegion(
+         name='foo', start_line=1, end_line=10, stmt_count=10
+      )
+      f.diagnostics.append(Diagnostic(
+         file='x', line=2, col=1, end_line=2, end_col=10,
+         rule='r', severity='warning', message='m', score=-3.0,
+      ))
+      # -3.0 / 10 = -0.30 -> between drift and ugly thresholds -> drift
+      self.assertEqual(f.verdict, 'drift')
+
+   def test_function_region_verdict_ugly(self):
+
+      from ..rules.base import Diagnostic
+
+      f = self._agg.FunctionRegion(
+         name='foo', start_line=1, end_line=10, stmt_count=10
+      )
+      f.diagnostics.append(Diagnostic(
+         file='x', line=2, col=1, end_line=2, end_col=10,
+         rule='r', severity='warning', message='m', score=-6.0,
+      ))
+      # -6.0 / 10 = -0.6 -> below drift floor -> ugly
+      self.assertEqual(f.verdict, 'ugly')
+
+   def test_function_region_verdict_broken(self):
+
+      from ..rules.base import Diagnostic
+
+      f = self._agg.FunctionRegion(
+         name='foo', start_line=1, end_line=10, stmt_count=10
+      )
+      f.diagnostics.append(Diagnostic(
+         file='x', line=2, col=1, end_line=2, end_col=10,
+         rule='r', severity='error', message='m', score=-10.0,
+      ))
+      # Any error severity -> broken regardless of normalized score
+      self.assertEqual(f.verdict, 'broken')
+      self.assertEqual(f.hard_violations, 1)
+      self.assertEqual(f.soft_violations, 0)
+
+   def test_extract_functions_no_tu_returns_empty(self):
+
+      result = self._agg.extract_functions(None, Path('/fake.c'))
+      self.assertEqual(result, [])
+
+   def test_build_file_summary_no_tu(self):
+
+      from ..rules.base import Diagnostic
+
+      d = Diagnostic(file='x.c', line=1, col=1, end_line=1, end_col=5,
+                     rule='r', severity='warning', message='m')
+      summary = self._agg.build_file_summary(
+         file_path=Path('/fake.c'),
+         tu=None,
+         lines=['int x = 0;'],
+         diagnostics=[d],
+      )
+      self.assertEqual(summary.functions, [])
+      self.assertEqual(len(summary.file_level_diagnostics), 1)
 
 
 if __name__ == '__main__':

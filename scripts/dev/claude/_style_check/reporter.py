@@ -149,3 +149,70 @@ def emit(diags: List[Diagnostic],
       )
    else:
       raise ValueError("unknown format: {}".format(fmt))
+
+
+# Per-function summary block ----------------------------------------
+
+_VERDICT_COLOR = {
+   'clean':  _GREEN,
+   'drift':  _YELLOW,
+   'ugly':   _YELLOW,
+   'broken': _RED,
+}
+
+_VERDICT_TAG = {
+   'clean':  ' CLEAN',
+   'drift':  ' DRIFT',
+   'ugly':   '  UGLY',
+   'broken': 'BROKEN',
+}
+
+
+def emit_function_summaries(file_summary,
+                            stream=None,
+                            color_mode: str = 'auto') -> None:
+   """Render a per-function table beneath a file's diagnostics:
+
+       function_name (lines A..B) [VERDICT]  total=-X.X  norm=-X.X  hard=N  soft=N
+
+   Only functions with at least one diagnostic are shown. The
+   colored verdict tag mirrors the file-level [ OK / WARN / FAIL ]
+   labels for instant visual grouping."""
+
+   out = stream if stream is not None else sys.stdout
+   use_color = _decide_color(color_mode, out)
+   wrap = _wrap_factory(use_color)
+
+   touched = [f for f in file_summary.functions if f.diagnostics]
+
+   if not touched:
+      return
+
+   out.write('\n')
+   header = '  per-function prettiness summary:'
+   out.write(wrap(_BOLD, header) + '\n')
+
+   for f in touched:
+
+      tag = _VERDICT_TAG[f.verdict]
+      tag_colored = wrap(_BOLD + _VERDICT_COLOR[f.verdict], tag)
+
+      lhs = '    {} (lines {}..{})'.format(
+         f.name, f.start_line, f.end_line
+      )
+      rhs = ('total {:+.1f}  norm {:+.2f}  hard {}  soft {}').format(
+         f.total_score, f.normalized_score,
+         f.hard_violations, f.soft_violations
+      )
+
+      out.write('{}  [{}]  {}\n'.format(lhs, tag_colored, rhs))
+
+   if file_summary.file_level_diagnostics:
+
+      flv = file_summary.file_level_diagnostics
+      total = sum(d.score for d in flv)
+      out.write('    {} file-level diagnostic(s) total {:+.1f}\n'.format(
+         len(flv), total
+      ))
+
+   out.flush()
