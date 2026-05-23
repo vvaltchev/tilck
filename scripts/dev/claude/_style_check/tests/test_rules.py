@@ -373,6 +373,61 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(diags[0].severity, 'warning')
       self.assertEqual(diags[0].line, 9)
 
+   def test_bad_comment_tag_choice(self):
+
+      r = RULES_BY_ID['comment_tag_choice']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_comment_tag_choice.c', self.parser
+      )
+      self.assertEqual(len(diags), 3)
+      self.assertTrue(all(d.severity == 'warning' for d in diags))
+
+   def test_bad_paren_explicit_precedence(self):
+
+      r = RULES_BY_ID['paren_explicit_precedence']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_paren_explicit_precedence.c',
+         self.parser
+      )
+      self.assertGreaterEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'paren_explicit_precedence')
+      self.assertEqual(diags[0].severity, 'warning')
+
+   def test_bad_macro_brace_only_forbidden(self):
+
+      r = RULES_BY_ID['macro_brace_only_forbidden']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_macro_brace_only_forbidden.c',
+         self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'macro_brace_only_forbidden')
+      self.assertEqual(diags[0].severity, 'warning')
+
+   def test_bad_typed_literal_suffix(self):
+
+      r = RULES_BY_ID['typed_literal_suffix']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_typed_literal_suffix.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'typed_literal_suffix' for d in diags)
+      )
+
+   def test_bad_free_no_null_guard(self):
+
+      r = RULES_BY_ID['free_no_null_guard']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_free_no_null_guard.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'free_no_null_guard' for d in diags)
+      )
+
    def test_bad_align_multiline_operators(self):
 
       r = RULES_BY_ID['align_multiline_operators']

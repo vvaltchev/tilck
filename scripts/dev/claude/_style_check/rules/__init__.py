@@ -46,6 +46,13 @@ from . import no_packed_enum_values            # Q23
 from . import harmony_with_neighbors           # Q22b
 from . import align_multiline_operators        # Q10
 
+# Additional soft rules from the preferences corpus
+from . import comment_tag_choice               # Q29
+from . import paren_explicit_precedence        # Q37
+from . import macro_brace_only_forbidden       # Q28
+from . import typed_literal_suffix             # Q47
+from . import free_no_null_guard               # Q11
+
 from . import multiline_call_style
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
@@ -107,6 +114,11 @@ ALL_RULES = [
    no_packed_enum_values.RULE,
    harmony_with_neighbors.RULE,
    align_multiline_operators.RULE,
+   comment_tag_choice.RULE,
+   paren_explicit_precedence.RULE,
+   macro_brace_only_forbidden.RULE,
+   typed_literal_suffix.RULE,
+   free_no_null_guard.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }
