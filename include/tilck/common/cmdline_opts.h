@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: multi-include */
 
 /*
  * Special header without protections like '#pragma once', because it want
