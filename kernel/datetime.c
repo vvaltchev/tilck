@@ -34,7 +34,7 @@ const char *months3[12] =
 static s64 boot_timestamp;
 static bool in_full_resync;
 static u64 last_resync_time_ns;        /* __time_ns at last drift measurement */
-static int last_drift_value;           /* signed sec drift at last measurement */
+static s64 last_drift_ns;              /* signed ns drift at last measurement */
 
 /* lifetime statistics about re-syncs */
 static struct clock_resync_stats clock_rstats;
@@ -151,7 +151,14 @@ static void clock_nudge_tick_duration(s64 drift_ns)
    if (!last_resync_time_ns)
       return;     /* first iteration -- nothing to compare against */
 
-   if ((drift_ns > 0) != (last_drift_value > 0))
+   /*
+    * Use the full ns drift, not its whole-seconds truncation: a sub-
+    * second `last_drift_value` got cast to 0, and `(x > 0) != (0 > 0)`
+    * silently turned the sign check into "only nudge when drift_ns is
+    * negative". That bias inflated __tick_duration over time in any
+    * environment where a single bad measurement crossed zero.
+    */
+   if ((drift_ns > 0) != (last_drift_ns > 0))
       return;     /* sign flipped -- not systemic */
 
    const u64 time_gap_ns = __time_ns - last_resync_time_ns;
@@ -193,7 +200,7 @@ static void clock_drift_adj(void *unused)
       clock_nudge_tick_duration(drift_ns);
 
       last_resync_time_ns = __time_ns;
-      last_drift_value = (int)(drift_ns / (s64)TS_SCALE);
+      last_drift_ns = drift_ns;
 
       clock_rstats.full_resync_count++;
       if (drift_ns > (s64)TS_SCALE || drift_ns < -(s64)TS_SCALE)

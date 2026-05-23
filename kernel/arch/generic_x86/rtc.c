@@ -158,6 +158,34 @@ extern u64 __time_ns;                 /* defined in kernel/timer.c */
 
 static struct kcond rtc_uie_cond;
 static volatile u64 rtc_uie_signal_time_ns;
+static u64 rtc_uie_last_accepted_edge_ns;
+
+/*
+ * Minimum acceptable gap, in ns of __time_ns, between two consecutive
+ * edges returned by rtc_wait_for_second_edge(). On real hardware the
+ * RTC chip ticks at exactly 1 Hz, so consecutive edges are ~1 s
+ * apart. In a VM (QEMU/KVM), the chip's UIE schedule can shift
+ * forward by a fraction of a second when the host preempts the guest
+ * -- the chip re-anchors its 1-Hz cadence to the new wall-clock
+ * boundary, but __time_ns (driven by the PIT) has already caught up,
+ * so the next UF event lands at a sub-second offset in __time_ns
+ * terms. Reject those events and keep waiting; the next "real" edge
+ * lands ~1 s later on the new schedule.
+ *
+ * 500 ms is the gap: comfortably above any phase shift we've seen,
+ * comfortably below the ~1 s real cadence.
+ */
+#define RTC_UIE_MIN_EDGE_INTERVAL_NS  (500ull * 1000ull * 1000ull)
+
+/*
+ * Cap on filtered kcond_wait passes per call. The caller's timeout
+ * already bounds total wait time; this is the structural cap so the
+ * loop is not unconditional. 8 is well above any rate we've ever
+ * observed; if the chip really were firing UF that fast the call
+ * gives up and the caller (drift kthread or selftest) sees a
+ * timeout, which is the correct signal that the hardware misbehaves.
+ */
+#define RTC_UIE_MAX_FILTER_ATTEMPTS   8
 
 static void rtc_enable_uie(void)
 {
@@ -254,14 +282,49 @@ void init_rtc_uie(void)
 
 bool rtc_wait_for_second_edge(u64 *time_ns_out, u32 timeout_ticks)
 {
-   bool got_signal;
+   const u64 deadline_ticks = get_ticks() + timeout_ticks;
+   u64 edge_ns = 0;
+   bool got_valid_edge = false;
 
    rtc_enable_uie();
-   got_signal = kcond_wait(&rtc_uie_cond, NULL, timeout_ticks);
+
+   /*
+    * Filter loop: accept the first edge whose __time_ns snapshot is
+    * at least RTC_UIE_MIN_EDGE_INTERVAL_NS past the previously
+    * accepted one (see the macro's comment for the why). Both the
+    * caller's deadline and a hard attempt cap bound the wait: time
+    * for the normal case, attempts as a safety net against hardware
+    * that keeps firing sub-interval events forever.
+    */
+   for (int attempt = 0; attempt < RTC_UIE_MAX_FILTER_ATTEMPTS; attempt++) {
+
+      const u64 now_ticks = get_ticks();
+      u32 remaining;
+      u64 since_last;
+
+      if (now_ticks >= deadline_ticks)
+         break;
+
+      remaining = (u32)(deadline_ticks - now_ticks);
+      if (!kcond_wait(&rtc_uie_cond, NULL, remaining))
+         break;     /* kcond timed out */
+
+      edge_ns = rtc_uie_signal_time_ns;
+      since_last = edge_ns - rtc_uie_last_accepted_edge_ns;
+
+      if (since_last >= RTC_UIE_MIN_EDGE_INTERVAL_NS) {
+         got_valid_edge = true;
+         break;
+      }
+   }
+
    rtc_disable_uie();
 
-   if (got_signal && time_ns_out)
-      *time_ns_out = rtc_uie_signal_time_ns;
+   if (got_valid_edge) {
+      rtc_uie_last_accepted_edge_ns = edge_ns;
+      if (time_ns_out)
+         *time_ns_out = edge_ns;
+   }
 
-   return got_signal;
+   return got_valid_edge;
 }
