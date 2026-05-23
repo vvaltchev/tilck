@@ -14,13 +14,16 @@
 
 void rotate_left_child(void **obj_ref, long bintree_offset)
 {
+   struct bintree_node *orig_node;
+   struct bintree_node *orig_left_child;
+
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   struct bintree_node *orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN(*obj_ref);
    ASSERT(orig_node->left_obj != NULL);
 
-   struct bintree_node *orig_left_child = OBJTN(orig_node->left_obj);
+   orig_left_child = OBJTN(orig_node->left_obj);
    *obj_ref = orig_node->left_obj;
    orig_node->left_obj = orig_left_child->right_obj;
    OBJTN(*obj_ref)->right_obj = NTOBJ(orig_node);
@@ -41,13 +44,16 @@ void rotate_left_child(void **obj_ref, long bintree_offset)
 
 void rotate_right_child(void **obj_ref, long bintree_offset)
 {
+   struct bintree_node *orig_node;
+   struct bintree_node *orig_right_child;
+
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   struct bintree_node *orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN(*obj_ref);
    ASSERT(orig_node->right_obj != NULL);
 
-   struct bintree_node *orig_right_child = OBJTN(orig_node->right_obj);
+   orig_right_child = OBJTN(orig_node->right_obj);
    *obj_ref = orig_node->right_obj;
    orig_node->right_obj = orig_right_child->left_obj;
    OBJTN(*obj_ref)->left_obj = NTOBJ(orig_node);

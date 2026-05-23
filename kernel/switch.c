@@ -223,8 +223,9 @@ switch_to_task_safety_checks(struct task *curr, struct task *next)
 void
 set_current_task_in_user_mode(void)
 {
-   ASSERT(!is_preemption_enabled());
    struct task *curr = get_curr_task();
+
+   ASSERT(!is_preemption_enabled());
 
    curr->running_in_kernel &= ~((u32)IN_SYSCALL_FLAG);
    task_info_reset_kernel_stack(curr);

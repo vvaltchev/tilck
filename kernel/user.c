@@ -36,10 +36,11 @@ static void internal_copy_user_str(void *dest,
                                    size_t *written_ptr,
                                    int *rc)
 {
-   ASSERT(in_fault_resumable_code());
-
    const char *ptr = user_ptr;
    char *d = dest;
+
+   ASSERT(in_fault_resumable_code());
+
    *written_ptr = 0;
    *rc = 0;
 

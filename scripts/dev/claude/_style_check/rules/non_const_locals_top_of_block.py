@@ -19,6 +19,7 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_HARD_RULE,
    SCORE_STRONG_PREF,
+   SCORE_MEDIUM_PREF,
    SCORE_SOFT,
 )
 
@@ -165,13 +166,32 @@ class NonConstLocalsTopOfBlock(Rule):
                   seen.add(key)
 
                   has_init = _decl_has_init(child)
+                  multiline = _decl_is_multiline(child)
 
-                  # Classify the violation. Three flavors with
+                  # Classify the violation. Four flavors with
                   # different severities / scores:
                   #
-                  #   hard      = severity error,   score -10  -- bare decl after prelude only
-                  #   strong    = severity warning, score -3   -- any decl after real non-decl
-                  #   small     = severity warning, score -0.5 -- init'd decl after prelude only
+                  #   hard       severity error,   score -10
+                  #              bare decl after prelude only
+                  #
+                  #   strong     severity warning, score -3
+                  #              any decl after real non-decl
+                  #
+                  #   medium     severity warning, score -1.5
+                  #              MULTI-LINE init'd decl after
+                  #              prelude. The line-savings
+                  #              argument doesn't apply when the
+                  #              init spans several lines -- the
+                  #              whole block sitting before the
+                  #              ASSERT defeats the "ASSERTs are
+                  #              the entry-point check" pattern.
+                  #              SPLIT form preferred: bare decl
+                  #              at top, assignment after ASSERTs.
+                  #
+                  #   small      severity warning, score -0.5
+                  #              SINGLE-LINE init'd decl after
+                  #              prelude. Line-savings applies;
+                  #              judgment call to move or leave.
                   if saw_real_non_decl:
 
                      severity = self.severity
@@ -183,12 +203,25 @@ class NonConstLocalsTopOfBlock(Rule):
                         'body, or a {{ }} sub-block)'
                      ).format(sub.spelling)
 
+                  elif has_init and multiline:
+
+                     severity = self.severity
+                     score = SCORE_MEDIUM_PREF
+                     msg = (
+                        'multi-line init\'d local "{}" sits after a '
+                        'diagnostic-prelude (ASSERT/STATIC_ASSERT/'
+                        '...). The line-savings argument that '
+                        'tolerates single-line init\'d decls after '
+                        'preludes does NOT apply here: a multi-line '
+                        'initializer between the function header and '
+                        'the ASSERTs defeats the "ASSERTs as entry-'
+                        'point check" pattern. SPLIT form preferred: '
+                        '`T {} ;` at the top, `{} = ...;` after the '
+                        'ASSERTs.'
+                     ).format(sub.spelling, sub.spelling, sub.spelling)
+
                   elif has_init:
 
-                     # init'd decl after prelude: small soft penalty.
-                     # Whether to actually move it is a judgment call
-                     # (dependency on the ASSERT'd state vs harmony
-                     # with the leading decl block).
                      severity = self.severity
                      score = SCORE_SOFT
                      msg = (
@@ -240,6 +273,20 @@ class NonConstLocalsTopOfBlock(Rule):
                saw_real_non_decl = True
 
       return out
+
+
+def _decl_is_multiline(decl_stmt) -> bool:
+   """True iff the DECL_STMT spans more than one source line.
+
+   Multi-line decls are typically `T x = <some big expression>`
+   where the initializer wraps across lines. Detected via the
+   DECL_STMT cursor's extent."""
+
+   try:
+      ext = decl_stmt.extent
+      return ext.end.line > ext.start.line
+   except Exception:
+      return False
 
 
 def _decl_has_init(decl_stmt) -> bool:

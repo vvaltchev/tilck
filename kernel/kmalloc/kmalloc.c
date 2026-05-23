@@ -227,17 +227,17 @@ internal_kmalloc_split_block(struct kmalloc_heap *h,
                              const size_t block_size,
                              const size_t leaf_node_size)
 {
+   struct block_node *nodes = h->metadata_nodes;
+   size_t s;
+   int n;
+   int node_count = 1;
+
    ASSERT(leaf_node_size >= h->min_block_size);
    ASSERT(block_size >= h->min_block_size);
    ASSERT(roundup_next_power_of_2(leaf_node_size) == leaf_node_size);
    ASSERT(roundup_next_power_of_2(block_size) == block_size);
 
-   struct block_node *nodes = h->metadata_nodes;
-
-   size_t s;
-   int n = ptr_to_node(h, vaddr, block_size);
-   int node_count = 1;
-
+   n = ptr_to_node(h, vaddr, block_size);
    ASSERT(nodes[n].full);
    ASSERT(!nodes[n].split);
 
@@ -320,13 +320,13 @@ internal_kmalloc(struct kmalloc_heap *h,
                  bool mark_node_as_allocated,
                  bool do_actual_alloc)   /* ignored if linear_mapping = 1 */
 {
+   struct block_node *nodes = h->metadata_nodes;
+   int stack_size = 0;
+
    /*
     * do_actual_alloc -> mark_node_as_allocated (logical implication).
     */
    ASSERT(!do_actual_alloc || mark_node_as_allocated);
-
-   struct block_node *nodes = h->metadata_nodes;
-   int stack_size = 0;
 
    if (!start_node_size)
       start_node_size = calculate_node_size(h, start_node);

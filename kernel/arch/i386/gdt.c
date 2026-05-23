@@ -237,20 +237,24 @@ void set_kernel_stack(ulong stack)
    enable_interrupts(&var);
 }
 
+/* The operand format expected by the `lgdt` instruction. */
+struct gdt_ptr_desc {
+
+   u16 size_minus_one;
+   struct gdt_entry *gdt_vaddr;
+
+} PACKED;
+
 static void load_gdt(struct gdt_entry *g, u32 entries_count)
 {
+   struct gdt_ptr_desc gdt_ptr;
+
    ASSERT(!are_interrupts_enabled());
    ASSERT(entries_count <= 64 * KB);
 
-   struct {
-
-      u16 size_minus_one;
-      struct gdt_entry *gdt_vaddr;
-
-   } PACKED gdt_ptr = {
-
-      (u16)(sizeof(struct gdt_entry) * entries_count - 1),
-      g,
+   gdt_ptr = (struct gdt_ptr_desc) {
+      .size_minus_one = (u16)(sizeof(struct gdt_entry) * entries_count - 1),
+      .gdt_vaddr = g,
    };
 
    asmVolatile("lgdt (%0)"

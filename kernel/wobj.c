@@ -201,13 +201,13 @@ mobj_waiter_set(struct multi_obj_waiter *w,
                 void *ptr,
                 struct list *wait_list)
 {
+   struct mwobj_elem *e = &w->elems[index];
+
    /*
     * No chaining is allowed: the waited object pointed by `ptr` is expected to
     * be a regular (waitable) object like kcond.
     */
    ASSERT(type != WOBJ_MWO_WAITER && type != WOBJ_MWO_ELEM);
-
-   struct mwobj_elem *e = &w->elems[index];
 
    /*
     * Populate the elem's state BEFORE wait_obj_set() links it into the

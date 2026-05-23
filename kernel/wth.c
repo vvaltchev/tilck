@@ -90,12 +90,12 @@ NODISCARD bool
 wth_enqueue_on(struct worker_thread *t, void (*func)(void *), void *arg)
 {
    bool success, was_empty;
-   ASSERT(t != NULL);
-
    struct wjob new_job = {
       .func = func,
       .arg = arg,
    };
+
+   ASSERT(t != NULL);
 
    disable_preemption();
 
@@ -258,8 +258,9 @@ void wth_run(void *arg)
 
 struct task *wth_get_runnable_thread(void)
 {
-   ASSERT(!is_preemption_enabled());
    struct worker_thread *selected = NULL;
+
+   ASSERT(!is_preemption_enabled());
 
    for (int i = 0; i < worker_threads_cnt; i++) {
 

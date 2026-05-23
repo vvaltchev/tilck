@@ -431,16 +431,19 @@ create_id_common(struct create_pid_visit_ctx *ctx, int max_id)
 
 int create_new_pid(void)
 {
+   struct create_pid_visit_ctx ctx;
+   int r;
+
    ASSERT(!is_preemption_enabled());
 
-   struct create_pid_visit_ctx ctx = {
+   ctx = (struct create_pid_visit_ctx) {
       .kernel_tid = false,
       .id_off = 0,
       .lowest_available = 0,
       .lowest_after_current_max = current_max_pid + 1,
    };
 
-   int r = create_id_common(&ctx, MAX_PID);
+   r = create_id_common(&ctx, MAX_PID);
 
    if (r >= 0)
       current_max_pid = r;
@@ -450,16 +453,19 @@ int create_new_pid(void)
 
 int create_new_kernel_tid(void)
 {
+   struct create_pid_visit_ctx ctx;
+   int r;
+
    ASSERT(!is_preemption_enabled());
 
-   struct create_pid_visit_ctx ctx = {
+   ctx = (struct create_pid_visit_ctx) {
       .kernel_tid = true,
       .id_off = KERNEL_TID_START,
       .lowest_available = 0,
       .lowest_after_current_max = current_max_kernel_tid + 1,
    };
 
-   int r = create_id_common(&ctx, KERNEL_MAX_TID);
+   r = create_id_common(&ctx, KERNEL_MAX_TID);
 
    if (r >= 0) {
       current_max_kernel_tid = r;

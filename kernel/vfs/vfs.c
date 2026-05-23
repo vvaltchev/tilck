@@ -26,14 +26,18 @@ static u32 next_device_id;
 
 void vfs_close(fs_handle h)
 {
+   struct process *pi = get_curr_proc();
+   struct fs_handle_base *hb = h;
+   struct mnt_fs *fs;
+   struct locked_file *lf;
+   const struct fs_ops *fsops;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   struct process *pi = get_curr_proc();
-   struct fs_handle_base *hb = h;
-   struct mnt_fs *fs = hb->fs;
-   struct locked_file *lf = hb->lf;
-   const struct fs_ops *fsops = fs->fsops;
+   fs = hb->fs;
+   lf = hb->lf;
+   fsops = fs->fsops;
 
    if (!pi->vforked)
       remove_all_mappings_of_handle(pi, h);
@@ -113,10 +117,10 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->read)
       return -EBADF;
@@ -129,10 +133,10 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->write)
       return -EBADF;
@@ -144,10 +148,10 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 }
 ssize_t vfs_pread(fs_handle h, void *buf, size_t buf_size, offt off)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->read)
       return -EBADF;
@@ -160,10 +164,10 @@ ssize_t vfs_pread(fs_handle h, void *buf, size_t buf_size, offt off)
 
 ssize_t vfs_pwrite(fs_handle h, void *buf, size_t buf_size, offt off)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->write)
       return -EBADF;
@@ -176,13 +180,13 @@ ssize_t vfs_pwrite(fs_handle h, void *buf, size_t buf_size, offt off)
 
 offt vfs_seek(fs_handle h, offt off, int whence)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
       return -EINVAL; /* Tilck does NOT support SEEK_DATA and SEEK_HOLE */
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->seek)
       return -ESPIPE;
@@ -192,10 +196,10 @@ offt vfs_seek(fs_handle h, offt off, int whence)
 
 int vfs_ioctl(fs_handle h, ulong request, void *argp)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->ioctl)
       return -ENOTTY; // Yes, ENOTTY *IS* the right error. See the man page.
@@ -216,12 +220,15 @@ int vfs_ftruncate(fs_handle h, offt length)
 
 int vfs_fstat64(fs_handle h, struct k_stat64 *statbuf)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+   struct mnt_fs *fs;
+   const struct fs_ops *fsops;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   struct mnt_fs *fs = hb->fs;
-   const struct fs_ops *fsops = fs->fsops;
+   fs = hb->fs;
+   fsops = fs->fsops;
 
    return fsops->stat(fs, fsops->get_inode(h), statbuf);
 }

@@ -55,12 +55,12 @@ static void init_terminated(struct task *ti, int exit_code, int term_sig)
 
 static struct process *get_child_reaper(struct process *pi)
 {
+   struct task *child_reaper = get_task(1); /* init */
+
    /* TODO: support prctl(PR_SET_CHILD_SUBREAPER) */
    ASSERT(!is_preemption_enabled());
 
-   struct task *child_reaper = get_task(1); /* init */
    VERIFY(child_reaper != NULL);
-
    return child_reaper->pi;
 }
 
