@@ -178,6 +178,75 @@ part of the file's top-of-file include block:
 
 The indented `#include` is skipped by the rule.
 
+## Per-directory configuration: `.style.yml`
+
+Drop a `.style.yml` in any directory to apply settings to that
+directory and every subdirectory. Settings cascade: every config
+from the repo root down to the file's parent directory is
+applied in order, deeper configs merging with / overriding
+shallower ones.
+
+### Schema
+
+```yaml
+# .style.yml
+
+# Skip the file entirely -- no rules run, no diagnostics produced.
+# In `--all` output the file is shown as `[SKIP]` (dim cyan).
+ignore: true
+
+# Disable specific rules. The set UNIONS with parent configs:
+# if the root says `disabled: [cols_80]` and this directory adds
+# `disabled: [pragma_once]`, both rules are disabled here.
+disabled:
+  - cols_80
+  - pragma_once
+
+# Whitelist: only run these rules. REPLACES any parent setting
+# (last `enabled_only` on the path wins).
+enabled_only:
+  - sizeof_parens
+  - hex_literal_lowercase
+```
+
+All three keys are optional and may be combined. With both
+`enabled_only` and `disabled` set, `enabled_only` is applied
+first (narrow to the whitelist) and `disabled` removes anything
+unwanted from that whitelist.
+
+### Canonical usage in Tilck
+
+Vendored / system header directories carry `ignore: true`:
+
+  - `include/system_headers/.style.yml`
+  - `include/3rd_party/.style.yml`
+  - `common/3rd_party/.style.yml`
+
+The files in these directories preserve upstream style; nothing
+is diffed against the Tilck conventions.
+
+### Cascading example
+
+```
+repo/.style.yml:
+  disabled:
+    - rule_a
+
+repo/lib/.style.yml:
+  disabled:
+    - rule_b
+  enabled_only:
+    - rule_b
+    - rule_c
+```
+
+For `repo/lib/foo.c`:
+
+  - `disabled = {rule_a, rule_b}` (unioned)
+  - `enabled_only = {rule_b, rule_c}` (replaced by deeper config)
+  - Effective rule set: `{rule_c}` (only rule_b/rule_c
+    whitelisted; rule_b also disabled; rule_a not in whitelist).
+
 ## Process rules -- NOT enforced by the tool
 
 Per `docs/preferences-notes.md` (Q19, Q28):
