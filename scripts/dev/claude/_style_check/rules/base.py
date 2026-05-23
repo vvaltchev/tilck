@@ -17,12 +17,28 @@ LAYER_STRUCTURAL = 'S'
 LAYER_COMMENTS = 'C'
 
 # Default per-rule prettiness penalties (signed doubles, unbounded).
-# Negative values are "ugly"; positive values would mean "actively
-# pretty" (not yet used). A "very bad statement" can carry a large
-# negative score that drags down the function-level aggregate.
-SCORE_HARD_RULE = -10.0     # hard rule violation
-SCORE_STRONG_PREF = -3.0    # strong but soft preference
-SCORE_SOFT = -1.0           # mild soft preference / cosmetic nit
+# Negative values are "ugly"; positive values mean "actively pretty"
+# or "legitimate override" (e.g. SCORE_CONTEXT_OK, used by context-
+# sensitive rules to forgive a violation when justified by
+# surroundings).
+#
+# Tier semantics (see docs/rule-classification.md for the audit):
+#
+#   HARD_RULE     -10.0  error    -- defect (build/semantic/policy)
+#   STRONG_PREF    -3.0  warning  -- "hard rule" in casual prefs but
+#                                    cosmetic in nature
+#   MEDIUM_PREF    -1.5  warning  -- "ugly", "avoid", conventions
+#   SOFT           -0.5  warning  -- mild preference (hex case, etc.)
+#   NUDGE          -0.2  warning  -- low-threshold suggestion
+#   CONTEXT_OK     +0.5  --       -- forgiveness modifier when a
+#                                    soft rule is legitimately
+#                                    overridden by context
+SCORE_HARD_RULE   = -10.0
+SCORE_STRONG_PREF = -3.0
+SCORE_MEDIUM_PREF = -1.5
+SCORE_SOFT        = -0.5
+SCORE_NUDGE       = -0.2
+SCORE_CONTEXT_OK  = +0.5
 
 
 @dataclass

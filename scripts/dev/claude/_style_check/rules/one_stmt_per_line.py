@@ -7,10 +7,12 @@ import re
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
    LAYER_TOKENS,
+   SEVERITY_WARNING,
+   SCORE_STRONG_PREF,
 )
 from .. import tokens as _tokens_mod
 
@@ -27,6 +29,11 @@ class OneStmtPerLine(Rule):
    id = 'one_stmt_per_line'
    description = 'Do not pack multiple statements on one line'
    layers = LAYER_TOKENS
+
+   severity = SEVERITY_WARNING
+
+   default_score = SCORE_STRONG_PREF
+
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

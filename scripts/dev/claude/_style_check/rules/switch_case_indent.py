@@ -10,10 +10,11 @@ import clang.cindex
 from clang.cindex import CursorKind
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
-   SCORE_HARD_RULE,
+   SEVERITY_WARNING,
+   SCORE_STRONG_PREF,
 )
 
 
@@ -26,7 +27,8 @@ class SwitchCaseIndent(Rule):
    )
    layers = 'S+T'
    needs_tu = True
-   default_score = SCORE_HARD_RULE
+   severity = SEVERITY_WARNING
+   default_score = SCORE_STRONG_PREF
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

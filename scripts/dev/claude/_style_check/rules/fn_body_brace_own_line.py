@@ -6,9 +6,11 @@
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
+   SEVERITY_WARNING,
+   SCORE_STRONG_PREF,
 )
 from .. import tokens as _tokens_mod
 
@@ -20,6 +22,11 @@ class FnBodyBraceOwnLine(Rule):
    layers = 'S+T'
    needs_tu = True
    applies_to = {'.c'}
+
+   severity = SEVERITY_WARNING
+
+   default_score = SCORE_STRONG_PREF
+
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

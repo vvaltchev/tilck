@@ -6,10 +6,12 @@
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
    LAYER_RAW_TEXT,
+   SEVERITY_WARNING,
+   SCORE_SOFT,
 )
 
 
@@ -18,6 +20,11 @@ class TrailingWs(Rule):
    id = 'trailing_ws'
    description = 'No trailing whitespace at end of line'
    layers = LAYER_RAW_TEXT
+
+   severity = SEVERITY_WARNING
+
+   default_score = SCORE_SOFT
+
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

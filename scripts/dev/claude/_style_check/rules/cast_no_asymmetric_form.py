@@ -8,11 +8,12 @@ import re
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
    LAYER_TOKENS,
-   SCORE_HARD_RULE,
+   SEVERITY_WARNING,
+   SCORE_STRONG_PREF,
 )
 from .. import tokens as _tokens_mod
 
@@ -42,7 +43,8 @@ class CastNoAsymmetricForm(Rule):
       '(default) or `(Type*)expr` (compact form for line-fit only).'
    )
    layers = LAYER_TOKENS
-   default_score = SCORE_HARD_RULE
+   severity = SEVERITY_WARNING
+   default_score = SCORE_STRONG_PREF
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

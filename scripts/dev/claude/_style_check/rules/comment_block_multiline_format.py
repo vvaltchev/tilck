@@ -5,10 +5,12 @@
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
    LAYER_COMMENTS,
+   SEVERITY_WARNING,
+   SCORE_MEDIUM_PREF,
 )
 
 
@@ -20,6 +22,11 @@ class CommentBlockMultilineFormat(Rule):
    )
    layers = LAYER_COMMENTS
    needs_comments = True
+
+   severity = SEVERITY_WARNING
+
+   default_score = SCORE_MEDIUM_PREF
+
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

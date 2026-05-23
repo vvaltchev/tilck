@@ -8,11 +8,12 @@ import re
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
    LAYER_RAW_TEXT,
-   SCORE_HARD_RULE,
+   SEVERITY_WARNING,
+   SCORE_MEDIUM_PREF,
 )
 
 # Q38 rule:
@@ -46,7 +47,8 @@ class EndifAnnotationLongBlocks(Rule):
       'optional. Q38 hard rule (length-based escalation).'
    ).format(LONG_BLOCK_LINES)
    layers = LAYER_RAW_TEXT
-   default_score = SCORE_HARD_RULE
+   severity = SEVERITY_WARNING
+   default_score = SCORE_MEDIUM_PREF
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

@@ -7,10 +7,12 @@ import re
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
    LAYER_TOKENS,
+   SEVERITY_WARNING,
+   SCORE_STRONG_PREF,
 )
 from .. import tokens as _tokens_mod
 
@@ -24,6 +26,11 @@ class ElseSameLineAsBrace(Rule):
    id = 'else_same_line_as_brace'
    description = '"} else" and "} else if" go on the same line as the closing brace'
    layers = LAYER_TOKENS
+
+   severity = SEVERITY_WARNING
+
+   default_score = SCORE_STRONG_PREF
+
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

@@ -7,10 +7,12 @@ import re
 from typing import List
 
 from .base import (
-   Rule,
+      Rule,
    Diagnostic,
    CheckContext,
    LAYER_TOKENS,
+   SEVERITY_WARNING,
+   SCORE_MEDIUM_PREF,
 )
 from .. import tokens as _tokens_mod
 
@@ -26,6 +28,11 @@ class NoVoidCastDiscard(Rule):
    id = 'no_void_cast_discard'
    description = 'No (void)expr casts; kernel does not use this pattern'
    layers = LAYER_TOKENS
+
+   severity = SEVERITY_WARNING
+
+   default_score = SCORE_MEDIUM_PREF
+
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 
