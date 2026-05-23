@@ -52,6 +52,8 @@ from . import paren_explicit_precedence        # Q37
 from . import macro_brace_only_forbidden       # Q28
 from . import typed_literal_suffix             # Q47
 from . import free_no_null_guard               # Q11
+from . import assert_split_heterogeneous       # Q43
+from . import operator_past_close_paren        # Q25 refinement
 
 from . import multiline_call_style
 
@@ -119,6 +121,8 @@ ALL_RULES = [
    macro_brace_only_forbidden.RULE,
    typed_literal_suffix.RULE,
    free_no_null_guard.RULE,
+   assert_split_heterogeneous.RULE,
+   operator_past_close_paren.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

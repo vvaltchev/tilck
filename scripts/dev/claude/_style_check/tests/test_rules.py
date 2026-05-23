@@ -417,6 +417,33 @@ class TestRulesOnFixtures(unittest.TestCase):
          all(d.rule == 'typed_literal_suffix' for d in diags)
       )
 
+   def test_bad_assert_split_heterogeneous(self):
+
+      r = RULES_BY_ID['assert_split_heterogeneous']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_assert_split_heterogeneous.c',
+         self.parser
+      )
+      # 4-clause ASSERT fires; single-clause and 2-clause don't.
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'assert_split_heterogeneous')
+      self.assertEqual(diags[0].severity, 'warning')
+
+   def test_bad_operator_past_close_paren(self):
+
+      r = RULES_BY_ID['operator_past_close_paren']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_operator_past_close_paren.c',
+         self.parser
+      )
+      # 2 operators (one per wrapped line) should fire.
+      self.assertGreaterEqual(len(diags), 1)
+      self.assertTrue(
+         all(d.rule == 'operator_past_close_paren' for d in diags)
+      )
+
    def test_bad_free_no_null_guard(self):
 
       r = RULES_BY_ID['free_no_null_guard']

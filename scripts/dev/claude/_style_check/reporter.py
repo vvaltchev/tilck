@@ -170,10 +170,19 @@ _VERDICT_TAG = {
 
 def emit_function_summaries(file_summary,
                             stream=None,
-                            color_mode: str = 'auto') -> None:
+                            color_mode: str = 'auto',
+                            per_statement: bool = True) -> None:
    """Render a per-function table beneath a file's diagnostics:
 
-       function_name (lines A..B) [VERDICT]  total=-X.X  norm=-X.X  hard=N  soft=N
+       function_name (lines A..B) [VERDICT]  total=-X.X  norm=-X.X
+                                              hard=N    soft=N
+
+   With per_statement=True (default) and when a function has
+   diagnostics clustered on the same line, the worst lines (top 3
+   by absolute score) are listed beneath the function:
+
+         line N  ([R1, R2, ...]) total -X.X
+         ...
 
    Only functions with at least one diagnostic are shown. The
    colored verdict tag mirrors the file-level [ OK / WARN / FAIL ]
@@ -207,6 +216,9 @@ def emit_function_summaries(file_summary,
 
       out.write('{}  [{}]  {}\n'.format(lhs, tag_colored, rhs))
 
+      if per_statement and len(f.diagnostics) > 1:
+         _emit_worst_lines(f, out, wrap)
+
    if file_summary.file_level_diagnostics:
 
       flv = file_summary.file_level_diagnostics
@@ -216,3 +228,41 @@ def emit_function_summaries(file_summary,
       ))
 
    out.flush()
+
+
+def _emit_worst_lines(func, out, wrap) -> None:
+   """Group `func.diagnostics` by source line and list the top-3
+   lines by absolute score. Lines with multiple diagnostics are
+   the interesting per-statement clusters; surfacing them lets
+   the reader find the densest problem spots quickly."""
+
+   by_line = {}
+   for d in func.diagnostics:
+      slot = by_line.setdefault(d.line, [])
+      slot.append(d)
+
+   # Skip the breakdown if no line has multiple diags (the per-
+   # diagnostic listing already shows the same info).
+   if not any(len(v) > 1 for v in by_line.values()):
+      return
+
+   line_totals = [
+      (line, sum(d.score for d in diags), diags)
+      for line, diags in by_line.items()
+   ]
+   line_totals.sort(key=lambda t: t[1])   # most negative first
+
+   worst = line_totals[:3]
+
+   for line, total, diags in worst:
+
+      if total >= 0:
+         break
+
+      ids = sorted({d.rule for d in diags})
+      rule_list = ', '.join(ids)
+      out.write(
+         '         line {:>4}  total {:+.1f}  ({})\n'.format(
+            line, total, rule_list
+         )
+      )

@@ -398,19 +398,64 @@ def _severity_tag(r) -> str:
    return 'HARD' if r.severity == 'error' else 'SOFT'
 
 
+def _tier_of(r) -> str:
+
+   if r.severity == 'error':
+      return 'HARD'
+
+   s = r.default_score
+
+   if s <= -3.0:
+      return 'STRONG'
+
+   if s <= -1.0:
+      return 'MEDIUM'
+
+   if s <= -0.4:
+      return 'SOFT'
+
+   return 'NUDGE'
+
+
+_TIER_ORDER = ['HARD', 'STRONG', 'MEDIUM', 'SOFT', 'NUDGE']
+_TIER_LABEL = {
+   'HARD':   'HARD   (defects)',
+   'STRONG': 'STRONG (-3.0, strong prefs)',
+   'MEDIUM': 'MEDIUM (-1.5, conventions)',
+   'SOFT':   'SOFT   (-0.5, mild prefs)',
+   'NUDGE':  'NUDGE  (-0.2, low-threshold)',
+}
+
+
 def cmd_list_rules(args) -> int:  # pylint: disable=unused-argument
 
-   for r in ALL_RULES:
-      sys.stdout.write(
-         "{:50} {:4} [{}] (score {:+.1f}) {}\n".format(
-            r.id,
-            _severity_tag(r),
-            r.layers,
-            r.default_score,
-            r.description.split('\n')[0],
-         )
-      )
+   buckets = {t: [] for t in _TIER_ORDER}
 
+   for r in ALL_RULES:
+      buckets[_tier_of(r)].append(r)
+
+   for t in _TIER_ORDER:
+
+      if not buckets[t]:
+         continue
+
+      sys.stdout.write('\n=== {} -- {} rule(s) ===\n'.format(
+         _TIER_LABEL[t], len(buckets[t])
+      ))
+
+      for r in buckets[t]:
+         desc = r.description.split('\n')[0]
+
+         if len(desc) > 70:
+            desc = desc[:67] + '...'
+
+         sys.stdout.write(
+            "  {:45} [{}] (score {:+.1f}) {}\n".format(
+               r.id, r.layers, r.default_score, desc
+            )
+         )
+
+   sys.stdout.write('\n')
    return 0
 
 
