@@ -299,7 +299,7 @@ def cmd_check(args) -> int:
 
       if file_cfg.ignore:
 
-         if show_progress:
+         if show_progress and not args.quiet:
             sys.stdout.write('Checking {} '.format(
                _display_path(f, repo_root)
             ))
@@ -322,7 +322,7 @@ def cmd_check(args) -> int:
       need_tu = any(r.needs_tu for r in applicable)
       need_cm = any(r.needs_comments for r in applicable)
 
-      if show_progress:
+      if show_progress and not args.quiet:
          sys.stdout.write('Checking {} '.format(
             _display_path(f, repo_root)
          ))
@@ -366,47 +366,88 @@ def cmd_check(args) -> int:
       )
 
       if show_progress:
-         _emit_status(
-            _display_path(f, repo_root),
-            _status_for(file_diags),
-            args.color,
-            sys.stdout,
-         )
 
-         if file_diags:
+         if args.quiet:
 
-            reporter.emit(
-               file_diags,
-               fmt=fmt,
-               color_mode=args.color,
-               with_total=False,
-            )
-
-            if args.summary and file_summary.functions:
-               reporter.emit_function_summaries(
-                  file_summary,
-                  color_mode=args.color,
-                  stream=sys.stdout,
+            # In quiet mode, only show files that have diagnostics.
+            if file_diags:
+               sys.stdout.write('Checking {} '.format(
+                  _display_path(f, repo_root)
+               ))
+               sys.stdout.flush()
+               _emit_status(
+                  _display_path(f, repo_root),
+                  _status_for(file_diags),
+                  args.color,
+                  sys.stdout,
                )
 
-            sys.stdout.write('\n')
+               reporter.emit(
+                  file_diags,
+                  fmt=fmt,
+                  color_mode=args.color,
+                  with_total=False,
+                  context_lines=args.U,
+                  all_lines=ctx.lines,
+               )
 
-      elif file_diags and not args.json and args.summary \
-            and file_summary.functions:
+               if args.summary and file_summary.functions:
+                  reporter.emit_function_summaries(
+                     file_summary,
+                     color_mode=args.color,
+                     stream=sys.stdout,
+                  )
 
-         # Single-file text mode: print summary at the end too if
-         # there's something to show.
+               sys.stdout.write('\n')
+
+         else:
+
+            _emit_status(
+               _display_path(f, repo_root),
+               _status_for(file_diags),
+               args.color,
+               sys.stdout,
+            )
+
+            if file_diags:
+
+               reporter.emit(
+                  file_diags,
+                  fmt=fmt,
+                  color_mode=args.color,
+                  with_total=False,
+                  context_lines=args.U,
+                  all_lines=ctx.lines,
+               )
+
+               if args.summary and file_summary.functions:
+                  reporter.emit_function_summaries(
+                     file_summary,
+                     color_mode=args.color,
+                     stream=sys.stdout,
+                  )
+
+               sys.stdout.write('\n')
+
+      elif file_diags and not args.json:
+
+         # Single-file text mode: always emit diagnostics.
          reporter.emit(
             file_diags,
             fmt=fmt,
             color_mode=args.color,
             with_total=True,
+            context_lines=args.U,
+            all_lines=ctx.lines,
          )
-         reporter.emit_function_summaries(
-            file_summary,
-            color_mode=args.color,
-            stream=sys.stdout,
-         )
+
+         if args.summary and file_summary.functions:
+            reporter.emit_function_summaries(
+               file_summary,
+               color_mode=args.color,
+               stream=sys.stdout,
+            )
+
          all_diags.extend(file_diags)
          continue
 
@@ -768,6 +809,22 @@ def build_argparser():
       '--build-dir',
       default='build/compile_db',
       help='Path to the merged compile_commands.json directory'
+   )
+
+   check_p.add_argument(
+      '-q', '--quiet',
+      action='store_true',
+      help=('Suppress per-file progress lines for clean files. '
+            'Only files with diagnostics are shown.')
+   )
+
+   check_p.add_argument(
+      '-U',
+      type=int,
+      default=0,
+      metavar='N',
+      help=('Show N lines of context around each violation, like '
+            'git diff -U<N>. The violation line is highlighted.')
    )
 
    check_p.set_defaults(func=cmd_check)

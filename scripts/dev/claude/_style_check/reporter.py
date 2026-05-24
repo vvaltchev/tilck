@@ -65,10 +65,39 @@ def emit_jsonl(diags: List[Diagnostic], stream=None) -> None:
    out.flush()
 
 
+def _emit_context(d, all_lines, context_n, out, wrap):
+   """Render N lines of context around the diagnostic line, with the
+   violation line highlighted."""
+
+   if not all_lines or context_n <= 0:
+      return
+
+   start = max(0, d.line - 1 - context_n)
+   end = min(len(all_lines), d.line + context_n)
+
+   for idx in range(start, end):
+
+      ln = idx + 1             # 1-based
+      text = all_lines[idx].rstrip('\n')
+
+      if ln == d.line:
+         # Highlight the violation line
+         prefix = wrap(_RED + _BOLD, '>{:>4} '.format(ln))
+         out.write('   {} {}\n'.format(
+            prefix,
+            wrap(_RED, text),
+         ))
+      else:
+         prefix = wrap(_DIM, ' {:>4} '.format(ln))
+         out.write('   {} {}\n'.format(prefix, text))
+
+
 def emit_text(diags: List[Diagnostic],
               stream=None,
               color_mode: str = 'auto',
-              with_total: bool = True) -> None:
+              with_total: bool = True,
+              context_lines: int = 0,
+              all_lines: list = None) -> None:
    """Human-readable output. Each diagnostic occupies its own
    block separated by a blank line:
 
@@ -76,6 +105,9 @@ def emit_text(diags: List[Diagnostic],
           message text on its own line, wrapped if long
        | <snippet from the source line>
        suggest: <optional suggestion>
+
+   With context_lines > 0, shows N lines of surrounding source
+   around each violation with the offending line highlighted.
    """
 
    out = stream if stream is not None else sys.stdout
@@ -107,7 +139,9 @@ def emit_text(diags: List[Diagnostic],
 
       out.write('   {}\n'.format(d.message))
 
-      if d.snippet:
+      if context_lines > 0 and all_lines:
+         _emit_context(d, all_lines, context_lines, out, wrap)
+      elif d.snippet:
          out.write('   {} {}\n'.format(
             wrap(_DIM, '|'),
             wrap(_DIM, d.snippet),
@@ -139,13 +173,16 @@ def emit(diags: List[Diagnostic],
          fmt: str = 'jsonl',
          stream=None,
          color_mode: str = 'auto',
-         with_total: bool = True) -> None:
+         with_total: bool = True,
+         context_lines: int = 0,
+         all_lines: list = None) -> None:
 
    if fmt == 'jsonl':
       emit_jsonl(diags, stream)
    elif fmt == 'text':
       emit_text(
-         diags, stream, color_mode=color_mode, with_total=with_total
+         diags, stream, color_mode=color_mode, with_total=with_total,
+         context_lines=context_lines, all_lines=all_lines,
       )
    else:
       raise ValueError("unknown format: {}".format(fmt))
