@@ -23,8 +23,58 @@ from .base import (
 # statements. Detection: a multi-line `#define` whose final
 # logical line ends with `}` and NOT `} while (0)` (and was
 # not just a single-expression macro).
+#
+# Exceptions -- brace-only is the correct form when:
+#
+#   1. Declaration macros: body contains `static`, `struct X =`,
+#      `extern`, or designated-initializer `.field =` at the
+#      outermost level. These expand to file-scope declarations,
+#      not executable statements.
+#
+#   2. Flow-control macros: body contains `continue`, `return`,
+#      or computed `goto` (`goto *`). Wrapping in `do { } while (0)`
+#      would change the semantics of `continue` (it restarts the
+#      wrapper, not the enclosing loop) and `return` is fine
+#      either way but these macros are intentionally designed to
+#      be used inside specific loop constructs (e.g. norec.h).
+#
+#   3. Conditional-guard macros: body is `if (cond) { stmt; }`
+#      with no else -- a single guarded call, not multi-statement.
+#      Wrapping these in `do { } while (0)` is unnecessary and
+#      adds noise; the `if` already provides the scoping.
+#
+#   4. Function-definition macros: body defines one or more
+#      static/inline function definitions (e.g. atomics.h
+#      _DEFINE_ATOMIC_INT_OPS).
 
 _DEFINE_START = re.compile(r'^\s*#\s*define\s+\w+(?:\([^)]*\))?')
+
+# Patterns that indicate the macro body is declarations, not
+# executable statements.
+_DECL_INDICATORS = re.compile(
+   r'\bstatic\b|\bextern\b|\bstruct\s+\w+\s+\w+\s*='
+   r'|\.\w+\s*='       # designated initializer
+   r'|\bSTATIC_ASSERT\b'
+   r'|\bstruct\s+\w+\s*\{'   # struct definition
+   r'|\bvoid\s+[\w#]+\s*\('   # function definition (## paste ok)
+)
+
+# Flow-control keywords that break under do { } while (0).
+_FLOW_CONTROL = re.compile(
+   r'\bcontinue\b|\breturn\b|\bgoto\s*\*'
+)
+
+# Pure initializer: body is just `{ expr, expr, ... }` with no
+# semicolons inside (used as aggregate initializer, not statement).
+_PURE_INITIALIZER = re.compile(
+   r'^\{[^;]*\}$'
+)
+
+# Conditional-guard: body is `if (...) { ... }` with no else.
+_IF_GUARD = re.compile(
+   r'^\s*#\s*define\s+\w+\([^)]*\)\s*'
+   r'if\s*\('
+)
 
 
 class MacroBraceOnlyForbidden(Rule):
@@ -90,6 +140,31 @@ class MacroBraceOnlyForbidden(Rule):
          # Does the body contain `do {` somewhere? If yes, this is
          # likely a `do { ... } while (...)` body -- not the V2 form.
          if 'do {' in joined or 'do{' in joined:
+            i = j + 1
+            continue
+
+         # Strip the #define header to get just the body.
+         body = re.sub(
+            r'^\s*#\s*define\s+\w+(?:\([^)]*\))?\s*', '', joined
+         )
+
+         # Exception 1+4: declaration / function-definition macros.
+         if _DECL_INDICATORS.search(body):
+            i = j + 1
+            continue
+
+         # Exception 2: flow-control macros.
+         if _FLOW_CONTROL.search(body):
+            i = j + 1
+            continue
+
+         # Exception 2b: pure initializer (no semicolons inside).
+         if _PURE_INITIALIZER.match(body.strip()):
+            i = j + 1
+            continue
+
+         # Exception 3: conditional-guard macros (`if (...) { }`)
+         if body.lstrip().startswith('if') and 'else' not in body:
             i = j + 1
             continue
 
