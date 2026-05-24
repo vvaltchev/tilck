@@ -75,6 +75,12 @@ class BlankLineAfterNonFinalReturn(Rule):
          if next_line == 'else' or next_line.startswith('} else'):
             continue
 
+         # Preprocessor directives (`#else`, `#endif`, `#elif`, etc.)
+         # act as scope boundaries similar to `}`. A return before
+         # a preprocessor branch boundary doesn't need a blank line.
+         if next_line.startswith('#'):
+            continue
+
          line_no = i + 1                # 1-based line number of return
          ret_line_text = ctx.lines[i] if i < len(ctx.lines) else ''
 
