@@ -40,6 +40,16 @@ class CommentBlockMultilineFormat(Rule):
          if cr.start_line == cr.end_line:
             continue  # single-line /* ... */, not subject to this rule
 
+         # Side comments: the `/*` starts after code on the same line
+         # (e.g. a struct field). Their continuation lines are aligned
+         # to the opening `/*`, NOT indented with ` * `. Skip them.
+         open_line = ctx.lines[cr.start_line - 1] \
+            if cr.start_line - 1 < len(ctx.lines) else ''
+         prefix = open_line[:open_line.find('/*')]
+
+         if prefix.strip():
+            continue   # code before `/*` -- this is a side comment
+
          # Interior lines: cr.start_line + 1 ... cr.end_line
          # Each must begin (after optional whitespace) with '*' followed
          # by either a space, EOL, or '/' (closing line).
