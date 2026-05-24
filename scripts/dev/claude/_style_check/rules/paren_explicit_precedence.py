@@ -28,8 +28,11 @@ from .. import tokens as _tokens_mod
 # around either sub-expression on that line.
 
 _SHIFT = re.compile(r'(<<|>>)')
-# Single-char & or | that isn't doubled (&&/||) or part of `|=` / `&=`.
+# Single-char & or | that isn't doubled (&&/||) or part of `|=`/`&=`.
+# Also exclude unary address-of `&`: preceded by `=`, `(`, `,`, or
+# start-of-expression contexts.
 _BITWISE = re.compile(r'(?<![&|])([&|])(?![&|=])')
+_ADDR_OF = re.compile(r'[=,(]\s*&\w')
 
 
 class ParenExplicitPrecedence(Rule):
@@ -55,18 +58,37 @@ class ParenExplicitPrecedence(Rule):
          if not _SHIFT.search(line):
             continue
 
-         if not _BITWISE.search(line):
+         # Filter out unary address-of `&` before checking for
+         # bitwise ops: mask `= &var` / `(&var` / `, &var` so they
+         # don't look like bitwise-AND.
+         line_no_addrof = _ADDR_OF.sub(lambda m: ' ' * len(m.group()), line)
+
+         if not _BITWISE.search(line_no_addrof):
             continue
 
-         # Light gate: if the line is already "parenthesized enough",
-         # don't fire. Counting parens isn't perfect but it filters
-         # cases where the user already wrote `((a << b) & c)`.
-         opens = line.count('(')
-         closes = line.count(')')
+         # Check whether each shift and each bitwise operator is
+         # already inside a parenthesized sub-expression. If every
+         # shift is at depth >= 1, or every bitwise op is at depth
+         # >= 1, the expression is already disambiguated — parens
+         # around EITHER side of the precedence boundary suffice.
+         def _all_at_depth(pattern, text):
 
-         # If there are at least 2 paren pairs on the line, assume
-         # the author already structured it.
-         if opens >= 2 and closes >= 2:
+            for sm in pattern.finditer(text):
+               depth = 0
+               for k in range(sm.start()):
+                  if text[k] == '(':
+                     depth += 1
+                  elif text[k] == ')':
+                     depth -= 1
+               if depth < 1:
+                  return False
+
+            return True
+
+         if _all_at_depth(_SHIFT, line):
+            continue
+
+         if _all_at_depth(_BITWISE, line_no_addrof):
             continue
 
          # Find a column to report at -- use the first shift.
