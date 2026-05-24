@@ -89,6 +89,7 @@ static void init_null(void)
 {
    int rc;
    struct driver_info *di = kzalloc_obj(struct driver_info);
+
    if (!di)
       panic("NULL: not enough memory for struct driver_info");
 

@@ -13,6 +13,7 @@
 void simple_test_kthread(void *arg)
 {
    u32 i;
+
    DEBUG_SAVE_ESP();
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);

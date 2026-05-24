@@ -44,6 +44,7 @@ void selftest_so1(void)
     * looking exactly for this.
     */
    char *volatile ptr = buf;
+
    printk("Causing intentionally a stack overflow: expect panic\n");
    memset(ptr, 'x', KERNEL_STACK_SIZE);
 }
@@ -60,6 +61,7 @@ void selftest_so2(void)
     * looking exactly for this.
     */
    char *volatile ptr = buf;
+
    printk("Causing intentionally a stack underflow: expect panic\n");
    memset(ptr - KERNEL_STACK_SIZE, 'y', KERNEL_STACK_SIZE);
 }

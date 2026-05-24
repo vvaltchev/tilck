@@ -323,6 +323,7 @@ static void edit_printk_level(void)
 {
    char buf[16];
    char *endp = NULL;
+
    buf[0] = '\0';
 
    term_move_left(2);
@@ -402,9 +403,9 @@ static void edit_traced_pids(void)
     * lives in TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR.
     */
    int traced[64];
+   char buf[DP_TRACE_FILTER_MAX];
    long n = dp_cmd_get_traced_tids_and_clear(traced, 64);
 
-   char buf[DP_TRACE_FILTER_MAX];
    buf[0] = '\0';
 
    if (n > 0) {

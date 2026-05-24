@@ -69,6 +69,7 @@ AcpiOsAllocate(ACPI_SIZE Size)
    const size_t sz = (size_t)Size;
    void *vaddr;
    ulong var;
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (Size >= 512 * MB) {

@@ -316,6 +316,7 @@ int generic_fs_munmap(struct user_mapping *um, void *vaddrp, size_t len)
    struct process *pi = hb->pi;
    ulong vaddr = (ulong)vaddrp;
    ulong vend = vaddr + len;
+
    ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vend; vaddr += PAGE_SIZE) {

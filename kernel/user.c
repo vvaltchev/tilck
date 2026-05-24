@@ -278,6 +278,7 @@ void push_string_on_user_stack(regs_t *r, const char *str)
    const size_t rem = len - aligned_len;
 
    ulong user_sp = regs_get_usersp(r);
+
    user_sp -= aligned_len + (rem > 0 ? USERMODE_STACK_ALIGN : 0);
    regs_set_usersp(r, user_sp);
    memcpy(TO_PTR(user_sp), str, aligned_len);

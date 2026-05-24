@@ -46,6 +46,7 @@ static unsigned long read_ulong_from(const char *path, unsigned long fallback)
    ssize_t n;
    unsigned long v = 0;
    int fd = open(path, 0 /* O_RDONLY */);
+
    if (fd < 0)
       return fallback;
 

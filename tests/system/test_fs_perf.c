@@ -49,6 +49,7 @@ int cmd_fs_perf1(int argc, char **argv)
    const int n = 1000;
    u64 start, end, elapsed;
    const char *dest_dir = argc > 0 ? argv[0] : "/tmp";
+
    printf("Using '%s' as test dir\n", dest_dir);
 
    start = RDTSC();

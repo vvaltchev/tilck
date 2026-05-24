@@ -286,6 +286,7 @@ unused_tx_queue_slots(void)
    const u32 head = read_reg(REG_TDH);
    const u32 used = (tx_tail - head + TX_RING_CAP) % TX_RING_CAP;
    const u32 free = TX_RING_CAP - used - 1;
+
    return free;
 }
 

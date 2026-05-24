@@ -27,6 +27,7 @@ ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
 {
    u64 start_ticks = 0, end_ticks = 0;
    struct task *curr = get_curr_task();
+
    ASSERT(!is_preemption_enabled());
 
    if (timeout_ticks > 0) {
@@ -101,6 +102,7 @@ int ksem_signal(struct ksem *s, int units)
 {
    struct wait_obj *wo, *tmp;
    int rem_counter, rc = 0;
+
    ASSERT(units > 0);
 
    disable_preemption();

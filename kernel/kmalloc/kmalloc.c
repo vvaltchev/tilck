@@ -150,6 +150,7 @@ actual_allocate_node(struct kmalloc_heap *h,
    nodes[node].full = true;
 
    const ulong vaddr = (ulong)node_to_ptr(h, node, node_size);
+
    *vaddr_ref = (void *)vaddr;
 
    if (h->linear_mapping || !do_actual_alloc)

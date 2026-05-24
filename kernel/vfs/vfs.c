@@ -237,6 +237,7 @@ int vfs_fsync(fs_handle h)
 {
    struct fs_handle_base *hb = h;
    int rc = 0;
+
    ASSERT(is_preemption_enabled());
 
    if (~hb->fs->flags & VFS_FS_RW)
@@ -252,6 +253,7 @@ int vfs_fdatasync(fs_handle h)
 {
    struct fs_handle_base *hb = h;
    int rc = 0;
+
    ASSERT(is_preemption_enabled());
 
    if (~hb->fs->flags & VFS_FS_RW)

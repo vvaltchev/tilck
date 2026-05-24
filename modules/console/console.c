@@ -207,6 +207,7 @@ tty_csi_EF_handler(u32 *params,
 {
    struct tty *const t = ctx->t;
    const int n = (int)MAX(1u, params[0]);
+
    ASSERT(c == 'E' || c == 'F');
 
    if (c == 'E') {

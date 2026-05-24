@@ -255,6 +255,7 @@ u64 get_sys_time(void)
 {
    u64 ts;
    ulong var;
+
    disable_interrupts(&var);
    {
       ts = __time_ns;

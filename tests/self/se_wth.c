@@ -39,6 +39,7 @@ static void end_test(void *arg)
    const u32 tot_iters = max_jobs * 10;
 
    u64 elapsed = RDTSC() - g_cycles_begin;
+
    VERIFY(atomic_load(&g_counter) == tot_iters);
 
    printk("[se_wth] Avg cycles per job "

@@ -215,6 +215,7 @@ write_number_param(struct snprintk_ctx *ctx, char fmtX)
    ulong width = width_val[ctx->width];
    u8 base = diuox_base[(u8)fmtX];
    char *intbuf = ctx->intbuf;
+
    ASSERT(base);
 
    if (fmtX == 'd' || fmtX == 'i') {
@@ -465,6 +466,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *__fmt, va_list __args)
 
    /* ctx has to be a pointer because of macros */
    struct snprintk_ctx *ctx = &__ctx;
+
    snprintk_ctx_reset_state(ctx);
    ctx->fmt = __fmt;
    ctx->buf = initial_buf;

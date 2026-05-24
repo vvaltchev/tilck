@@ -39,6 +39,7 @@ WaitForKeyPress(void)
     UINTN index;
     EFI_INPUT_KEY k;
     EFI_EVENT event = ST->ConIn->WaitForKey;
+
     BS->WaitForEvent(1,       // number of events in the array pointed by &event
                      &event,  // pointer to events array (1 elem in our case).
                      &index); // index of the last matching event in the array

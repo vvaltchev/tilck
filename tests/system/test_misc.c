@@ -44,6 +44,7 @@ int cmd_bad_read(int argc, char **argv)
 {
    int ret, err;
    void *addr = (void *) 0xB0000000;
+
    printf("[cmd] req. kernel to read unaccessibile user addr: %p\n", addr);
 
    /* write to stdout a buffer unaccessibile for the user */

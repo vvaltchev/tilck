@@ -404,6 +404,7 @@ int sys_execve(const char *user_filename,
    char *const *env = NULL;
 
    struct task *curr = get_curr_task();
+
    ASSERT(curr != NULL);
 
    if ((rc = execve_get_path(user_filename, &path)))

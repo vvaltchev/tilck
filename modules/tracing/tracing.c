@@ -267,6 +267,7 @@ enqueue_trace_event(struct trace_event *e)
 {
    ulong var;
    bool success;
+
    disable_interrupts(&var);
    {
       success = ringbuf_write_elem(&tracing_rb, e);
@@ -393,6 +394,7 @@ trace_printk_int(short level, const char *fmt, ...)
    va_list args;
    struct trace_event e;
    int written;
+
    ASSERT(level >= 1);
 
    if (!__trace_printk_initialized)
@@ -1072,6 +1074,7 @@ tracing_init_meta_blob(void)
    /* Count syscalls for which we have metadata (non-NULL entry in
     * syscalls_info, populated by tracing_populate_syscalls_info). */
    u32 n_sys = 0;
+
    for (u32 i = 0; i < MAX_SYSCALLS; i++)
       if (syscalls_info[i])
          n_sys++;

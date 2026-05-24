@@ -100,6 +100,7 @@ AcpiOsReadable(
 {
    ulong va = (ulong)Pointer;
    ulong va_end = va + Length;
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (va < BASE_VA)
@@ -128,6 +129,7 @@ AcpiOsWritable(
    ulong va_end = va + Length;
    struct mem_region m;
    int reg_count = get_mem_regions_count();
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (va < BASE_VA)

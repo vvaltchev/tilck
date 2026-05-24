@@ -692,6 +692,7 @@ pdir_deep_clone(pdir_t *pdir)
    STATIC_ASSERT(sizeof(page_table_t) == PAGE_SIZE);
 
    struct kmalloc_acc acc;
+
    kmalloc_create_accelerator(&acc, PAGE_SIZE, 4);
 
    pdir_t *const new_pdir = kmalloc_accelerator_get_elem(&acc);
@@ -825,6 +826,7 @@ static inline bool in_big_4mb_page(pdir_t *pdir, void *vaddrp)
    const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
    page_dir_entry_t *e = &pdir->entries[pd_index];
+
    return e->present && e->psize;
 }
 

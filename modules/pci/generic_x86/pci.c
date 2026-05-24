@@ -115,6 +115,7 @@ pci_get_config_io_addr(struct pci_device_loc loc, u32 off)
    const u32 bus = loc.bus;
    const u32 dev = loc.dev;
    const u32 func = loc.func;
+
    return 0x80000000 | (bus << 16) | (dev << 11) | (func << 8) | (off & ~3u);
 }
 

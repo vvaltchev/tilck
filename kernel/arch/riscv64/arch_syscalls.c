@@ -54,6 +54,7 @@ static void __unknown_syscall(void)
    struct task *curr = get_curr_task();
    regs_t *r = curr->state_regs;
    const u32 sn = r->a7;
+
    unknown_syscall_int(r, sn);
 }
 

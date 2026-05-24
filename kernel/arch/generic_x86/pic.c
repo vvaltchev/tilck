@@ -104,6 +104,7 @@ void pic_send_eoi(int __irq)
 {
    ulong var;
    u8 irq = (u8)__irq;
+
    ASSERT(IN_RANGE_INC(__irq, 0, 16));
 
    disable_interrupts(&var);
@@ -126,6 +127,7 @@ void pic_mask_and_send_eoi(int __irq)
    ulong var;
    u8 irq = (u8)__irq;
    u8 irq_mask;
+
    ASSERT(IN_RANGE_INC(__irq, 0, 16));
 
    disable_interrupts(&var);
@@ -155,6 +157,7 @@ void irq_set_mask(int irq)
    u16 port;
    ulong var;
    u8 irq_mask;
+
    ASSERT(IN_RANGE_INC(irq, 0, 16));
 
    if (irq == PIC_CASCADE) {
@@ -188,6 +191,7 @@ void irq_clear_mask(int irq)
    u16 port;
    ulong var;
    u8 irq_mask;
+
    ASSERT(IN_RANGE_INC(irq, 0, 16));
 
    if (irq < 8) {

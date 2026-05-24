@@ -163,6 +163,7 @@ void dp_buf_paint(int row_off,
    const int clear_len = panel_w - 2 < (int)sizeof(spaces)
                          ? panel_w - 2
                          : (int)sizeof(spaces);
+
    memset(spaces, ' ', (size_t)clear_len);
 
    for (int i = 0; i < screen_rows; i++) {
@@ -200,6 +201,7 @@ void dp_show_modal_msg(const char *msg)
    char clear_buf[DP_W+1];
 
    int row_len = msg_len < max_line_len ? msg_len : max_line_len;
+
    if (row_len < (int)sizeof(common_msg) - 1)
       row_len = (int)sizeof(common_msg) - 1;
    row_len += 2;

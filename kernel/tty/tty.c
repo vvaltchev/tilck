@@ -104,6 +104,7 @@ tty_on_dup_extra(int minor, void *extra)
 {
    struct tty_handle_extra *eh = extra;
    char *new_buf;
+
    ASSERT(eh->read_buf);
 
    if (!(new_buf = kmalloc(TTY_READ_BS)))

@@ -117,6 +117,7 @@ nds_should_skip_progress_check(int i, int *tid_ref)
 {
    int tid;
    struct task *ti;
+
    ASSERT(!is_preemption_enabled());
 
    if (!no_deadlock_set_progress[i])

@@ -98,6 +98,7 @@ static void dp_mmap_on_enter(void)
 {
    long mrc;
    long rc = dp_cmd_get_mmap(regions, MAX_MEM_REGIONS);
+
    region_count = (rc < 0) ? 0 : (int)rc;
 
    got_gstats = (dp_cmd_get_gstats(&gstats) == 0);

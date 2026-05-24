@@ -917,6 +917,7 @@ STATIC u64 sched_compute_avg_vruntime(void)
    const u64 curr_v = atomic_load(&curr->ticks.vruntime);
    const u64 sum = atomic_load(&sum_vruntime_in_tree);
    const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
+
    return (sum + curr_v) / nr_running;
 }
 
@@ -1334,6 +1335,7 @@ struct task *get_task(int tid)
 {
    long ltid = tid;
    struct task *res = NULL;
+
    ASSERT(!is_preemption_enabled());
 
    res = bintree_find_ptr(tree_by_tid_root,

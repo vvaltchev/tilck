@@ -54,6 +54,7 @@ void selftest_kmalloc_perf(void)
    u64 start;
    u64 duration;
    const int iters = 1000;
+
    printk("*** kmalloc perf test ***\n");
 
    allocations = kalloc_array_obj(void *, 10000);

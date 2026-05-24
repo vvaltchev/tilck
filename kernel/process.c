@@ -474,6 +474,7 @@ mode_t sys_umask(mode_t mask)
 {
    struct process *pi = get_curr_proc();
    mode_t old = pi->umask;
+
    pi->umask = mask & 0777;
    return old;
 }

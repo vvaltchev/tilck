@@ -1158,13 +1158,15 @@ void init_hi_vmem_heap(void)
 void *failsafe_map_framebuffer(ulong paddr, ulong size)
 {
    u32 big_pages_to_use;
+   ulong vaddr;
+
    /*
     * Paging has not been initialized yet: probably we're in panic.
     * At this point, the kernel still uses page_size_buf as pdir, with only
     * the first 4 MB of the physical mapped at BASE_VA.
     */
 
-   ulong vaddr = FAILSAFE_FB_VADDR;
+   vaddr = FAILSAFE_FB_VADDR;
    __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(page_size_buf));
 
    big_pages_to_use = pow2_round_up_at(size, L1_PAGE_SIZE) / L1_PAGE_SIZE;

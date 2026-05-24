@@ -24,6 +24,7 @@ void irq_set_mask(int irq)
    ulong var;
    u32 hwirq;
    struct irq_domain *domain;
+
    ASSERT(IN_RANGE_INC(irq, 0, MAX_IRQ_NUM - 1));
 
    disable_interrupts(&var);
@@ -40,6 +41,7 @@ void irq_clear_mask(int irq)
    ulong var;
    u32 hwirq;
    struct irq_domain *domain;
+
    ASSERT(IN_RANGE_INC(irq, 0, MAX_IRQ_NUM - 1));
 
    disable_interrupts(&var);

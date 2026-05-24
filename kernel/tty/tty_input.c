@@ -392,6 +392,7 @@ static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)
 {
    struct tty_handle_extra *eh = (void *)&h->extra;
    offt rem = eh->read_buf_used - eh->read_pos;
+
    ASSERT(rem >= 0);
 
    size_t m = MIN((size_t)rem, size);
@@ -418,6 +419,7 @@ tty_internal_read_single_char_from_kb(struct tty *t,
 {
    struct tty_handle_extra *eh = (void *)&h->extra;
    u8 c = tty_inbuf_read_elem(t);
+
    eh->read_buf[eh->read_buf_used++] = (char)c;
 
    if (t->c_term.c_lflag & ICANON) {

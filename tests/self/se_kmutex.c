@@ -231,6 +231,7 @@ static void kmutex_ord_th(void *arg)
 {
    int tid = get_curr_tid();
    int local_id = (int)(long)arg;
+
    ord_th_states[local_id] = 1;
 
    /*

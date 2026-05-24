@@ -226,6 +226,7 @@ ramfs_rename(struct mnt_fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
    int rc;
 
    DEBUG_ONLY_UNSAFE(struct ramfs_data *d = fs->device_data);
+
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 
    if (newp->inode != NULL) {

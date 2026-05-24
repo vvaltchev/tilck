@@ -103,6 +103,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size, offt *pos)
    struct pipe *p = (void *)kh->kobj;
    bool sig_pending = false;
    ssize_t rc = 0;
+
    ASSERT(*pos == 0);
 
    if (!size)
@@ -167,6 +168,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size, offt *pos)
    struct pipe *p = (void *)kh->kobj;
    bool sig_pending = false;
    ssize_t rc = 0;
+
    ASSERT(*pos == 0);
 
    if (!size)
