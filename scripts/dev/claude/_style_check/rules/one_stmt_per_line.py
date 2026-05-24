@@ -23,6 +23,16 @@ from .. import tokens as _tokens_mod
 
 _STMT_HEAD_CLASS = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_')
 
+# Lines starting with `case` or `default:` are switch dispatch tables;
+# packed `case N: stmt; stmt; break;` is idiomatic for column-aligned
+# tables.
+_CASE_PAT = re.compile(r'^\s*(case\b|default\s*:)')
+
+# `argc--; argv++;` and similar paired post-inc/dec idioms.
+_ARGC_ARGV_PAT = re.compile(
+   r'^\s*\w+\s*[-+]{2}\s*;\s*\w+\s*[-+]{2}\s*;'
+)
+
 
 class OneStmtPerLine(Rule):
 
@@ -90,9 +100,26 @@ class OneStmtPerLine(Rule):
 
                   if key not in seen:
 
-                     seen.add(key)
                      line_text = ctx.lines[line - 1] \
                         if line - 1 < len(ctx.lines) else ''
+
+                     # Skip switch-case dispatch tables:
+                     # `case N: stmt; stmt; break;`
+                     if _CASE_PAT.match(line_text):
+                        last_semi_pos = i
+                        last_semi_brace_depth = brace_depth
+                        i += 1
+                        continue
+
+                     # Skip paired inc/dec idioms:
+                     # `argc--; argv++;`
+                     if _ARGC_ARGV_PAT.match(line_text):
+                        last_semi_pos = i
+                        last_semi_brace_depth = brace_depth
+                        i += 1
+                        continue
+
+                     seen.add(key)
 
                      out.append(Diagnostic(
                         file=str(ctx.file_path),
