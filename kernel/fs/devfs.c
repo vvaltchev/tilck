@@ -105,11 +105,11 @@ devfs_get_next_inode(struct devfs_data *d)
 int
 create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
 {
-   struct mnt_fs *fs = devfs;
    struct driver_info *dinfo;
    struct devfs_data *d;
    struct devfs_file *f;
    int rc;
+   struct mnt_fs *fs = devfs;
 
    ASSERT(devfs != NULL);
 
@@ -166,9 +166,9 @@ devfs_dir_write(fs_handle h, char *buf, size_t len, offt *pos)
 static offt
 devfs_dir_seek(fs_handle h, offt target_off, int whence)
 {
+   struct devfs_file *pos;
    struct devfs_handle *dh = h;
    struct devfs_data *d = dh->fs->device_data;
-   struct devfs_file *pos;
    offt off = 0;
 
    if (target_off < 0 || whence != SEEK_SET)
@@ -410,9 +410,9 @@ devfs_get_entry(struct mnt_fs *fs,
                 ssize_t nl,
                 struct fs_path *fs_path)
 {
-   struct devfs_data *d = fs->device_data;
    struct devfs_dir *dir;
    struct devfs_file *pos;
+   struct devfs_data *d = fs->device_data;
 
    if ((!dir_inode && !name) || is_dot_or_dotdot(name, (int)nl)) {
 

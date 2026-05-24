@@ -11,8 +11,8 @@ process_add_user_mapping(fs_handle h,
                          size_t off,
                          int prot)
 {
-   struct process *pi = get_curr_proc();
    struct user_mapping *um;
+   struct process *pi = get_curr_proc();
 
    ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
    ASSERT(!is_preemption_enabled());
@@ -47,9 +47,9 @@ void process_remove_user_mapping(struct user_mapping *um)
 
 struct user_mapping *process_get_user_mapping(void *vaddrp)
 {
+   struct user_mapping *pos;
    const ulong vaddr = (ulong)vaddrp;
    struct process *pi = get_curr_proc();
-   struct user_mapping *pos;
 
    ASSERT(!is_preemption_enabled());
 
@@ -153,8 +153,8 @@ void remove_all_file_mappings(struct process *pi)
 struct mappings_info *
 duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
 {
-   struct mappings_info *new_mi = NULL;
    struct user_mapping *um, *um2;
+   struct mappings_info *new_mi = NULL;
 
    if (!(new_mi = kalloc_obj(struct mappings_info)))
       goto oom_case;
@@ -216,8 +216,8 @@ oom_case:
 
 void user_vfree_and_unmap(ulong user_vaddr, size_t page_count)
 {
-   pdir_t *pdir = get_curr_pdir();
    ulong va = user_vaddr;
+   pdir_t *pdir = get_curr_pdir();
 
    for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
 
@@ -230,9 +230,9 @@ void user_vfree_and_unmap(ulong user_vaddr, size_t page_count)
 
 bool user_valloc_and_map_slow(ulong user_vaddr, size_t page_count)
 {
-   pdir_t *pdir = get_curr_pdir();
-   ulong pa, va = user_vaddr;
    void *kernel_vaddr;
+   ulong pa, va = user_vaddr;
+   pdir_t *pdir = get_curr_pdir();
 
    for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
 
@@ -260,9 +260,9 @@ bool user_valloc_and_map_slow(ulong user_vaddr, size_t page_count)
 
 bool user_valloc_and_map(ulong user_vaddr, size_t page_count)
 {
-   pdir_t *pdir = get_curr_pdir();
-   size_t size = (size_t)page_count << PAGE_SHIFT;
    size_t count;
+   size_t size = (size_t)page_count << PAGE_SHIFT;
+   pdir_t *pdir = get_curr_pdir();
 
    void *kernel_vaddr =
       general_kmalloc(&size, KMALLOC_FL_MULTI_STEP | PAGE_SIZE);

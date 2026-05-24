@@ -109,8 +109,8 @@ u32 task_cancel_wakeup_timer(struct task *ti)
 static void tick_all_timers(void)
 {
    struct task *pos, *temp;
-   bool any_woken_up_task = false;
    ulong var;
+   bool any_woken_up_task = false;
 
    /*
     * This is *NOT* the best we can do. In particular, it's terrible to keep
@@ -451,8 +451,8 @@ void delay_us(u32 us)
 
 void init_timer(void)
 {
-   struct hw_timer_info info;
    static struct bogo_measure_ctx ctx;
+   struct hw_timer_info info;
 
    measure_bogomips.context = &ctx;
 

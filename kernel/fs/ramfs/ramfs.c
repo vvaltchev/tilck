@@ -117,9 +117,9 @@ ramfs_get_entry(struct mnt_fs *fs,
                 ssize_t name_len,
                 struct fs_path *fs_path)
 {
+   struct ramfs_entry *re;
    struct ramfs_data *d = fs->device_data;
    struct ramfs_inode *idir = dir_inode;
-   struct ramfs_entry *re;
 
    if (!dir_inode) {
 
@@ -150,8 +150,8 @@ static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
 
 static int ramfs_symlink(const char *target, struct vfs_path *lp)
 {
-   struct ramfs_data *d = lp->fs->device_data;
    struct ramfs_inode *n;
+   struct ramfs_data *d = lp->fs->device_data;
 
    n = ramfs_create_inode_symlink(d, lp->fs_path.dir_inode, target);
 
@@ -195,8 +195,8 @@ static int ramfs_release_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 
 static int ramfs_chmod(struct mnt_fs *fs, vfs_inode_ptr_t inode, mode_t mode)
 {
-   struct ramfs_inode *i = inode;
    int rc;
+   struct ramfs_inode *i = inode;
 
    rwlock_wp_exlock(&i->rwlock);
    {
@@ -221,9 +221,9 @@ static int ramfs_chmod(struct mnt_fs *fs, vfs_inode_ptr_t inode, mode_t mode)
 static int
 ramfs_rename(struct mnt_fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 {
+   int rc;
    struct ramfs_path *oldp = (void *)&voldp->fs_path;
    struct ramfs_path *newp = (void *)&vnewp->fs_path;
-   int rc;
 
    DEBUG_ONLY_UNSAFE(struct ramfs_data *d = fs->device_data);
 

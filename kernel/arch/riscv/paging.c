@@ -166,6 +166,7 @@ kernel_page_fault_panic(regs_t *r, ulong vaddr, bool wr, bool ex, bool rd)
 
 void handle_page_fault_int(regs_t *r)
 {
+   struct user_mapping *um;
    ulong vaddr = r->sbadaddr;
    bool ex = (r->scause == EXC_INST_PAGE_FAULT);
    bool rd = (r->scause == EXC_LOAD_PAGE_FAULT);
@@ -173,7 +174,6 @@ void handle_page_fault_int(regs_t *r)
    bool us = !(r->sstatus & SR_SPP);
    bool p = 0;
    int sig = SIGSEGV;
-   struct user_mapping *um;
    page_table_t *pt = pdir_get_page_table(get_curr_pdir(), vaddr);
 
    if (!us) {
@@ -351,8 +351,8 @@ unmap_pages_permissive(pdir_t *pdir,
                        size_t page_count,
                        bool do_free)
 {
-   size_t unmapped_pages = 0;
    int rc;
+   size_t unmapped_pages = 0;
 
    for (size_t i = 0; i < page_count; i++) {
 
@@ -482,11 +482,11 @@ map_pages_int(pdir_t *pdir,
               bool big_pages_allowed,
               ulong hw_flags)
 {
+   ulong big_page_flags;
    int rc;
    size_t pages = 0;
    size_t big_pages = 0;
    size_t rem_pages = page_count;
-   ulong big_page_flags;
 
    ASSERT(IS_L0_PAGE_ALIGNED(vaddr));
    ASSERT(IS_L0_PAGE_ALIGNED(paddr));
@@ -642,8 +642,8 @@ static int
 pdir_clone_int(pdir_t *old_pdir,pdir_t *new_pdir,
                u32 pd_idx, u32 level, bool deep)
 {
-   page_table_t *old_pt, *new_pt;
    int rc;
+   page_table_t *old_pt, *new_pt;
 
    if (level == 0) {
       /* Mark all the non-shared pages in that page-table as COW. */
@@ -1157,8 +1157,8 @@ void init_hi_vmem_heap(void)
 
 void *failsafe_map_framebuffer(ulong paddr, ulong size)
 {
-   u32 big_pages_to_use;
    ulong vaddr;
+   u32 big_pages_to_use;
 
    /*
     * Paging has not been initialized yet: probably we're in panic.

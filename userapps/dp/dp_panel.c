@@ -196,9 +196,9 @@ void dp_buf_paint(int row_off,
 void dp_show_modal_msg(const char *msg)
 {
    static const char common_msg[] = "Press ANY key to continue";
+   char clear_buf[DP_W+1];
    const int max_line_len = DP_W - 2 - 2 - 2;
    const int msg_len = (int)strlen(msg);
-   char clear_buf[DP_W+1];
 
    int row_len = msg_len < max_line_len ? msg_len : max_line_len;
 

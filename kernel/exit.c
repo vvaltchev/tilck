@@ -67,8 +67,8 @@ static struct process *get_child_reaper(struct process *pi)
 static void
 handle_children_of_dying_process(struct task *ti)
 {
-   struct process *pi = ti->pi;
    struct task *pos, *temp;
+   struct process *pi = ti->pi;
    struct process *child_reaper = get_child_reaper(pi);
 
    list_for_each(pos, temp, &pi->children, siblings_node) {
@@ -118,8 +118,8 @@ struct on_task_exit_cb {
 int
 register_on_task_exit_cb(void (*cb)(struct task *))
 {
-   struct task *ti = get_curr_task();
    int rc = 0;
+   struct task *ti = get_curr_task();
 
    disable_preemption();
    {

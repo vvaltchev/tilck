@@ -40,10 +40,10 @@ struct mem_info g_meminfo;
 bool
 load_kernel_file(const char *filepath)
 {
-   struct fat_hdr *hdr = (struct fat_hdr *)bp_paddr;
    struct fat_entry *e;
    ulong free_space;
    size_t len;
+   struct fat_hdr *hdr = (struct fat_hdr *)bp_paddr;
 
    if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL))) {
       printk("ERROR: Unable to open '%s'\n", filepath);

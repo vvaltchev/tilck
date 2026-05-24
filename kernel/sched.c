@@ -913,10 +913,10 @@ static u32 sched_compute_slice(void)
  */
 STATIC u64 sched_compute_avg_vruntime(void)
 {
+   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
    struct task *curr = get_curr_task();
    const u64 curr_v = atomic_load(&curr->ticks.vruntime);
    const u64 sum = atomic_load(&sum_vruntime_in_tree);
-   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
 
    return (sum + curr_v) / nr_running;
 }
@@ -1163,9 +1163,9 @@ sched_should_return_immediately(struct task *curr, enum task_state curr_state)
 STATIC struct task *
 sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 {
-   struct task *curr = get_curr_task();
    struct task *selected;
    ulong var;
+   struct task *curr = get_curr_task();
 
    /*
     * EEVDF selection: pick the eligible task with the earliest
@@ -1252,10 +1252,10 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 
 void do_schedule(void)
 {
+   struct task *selected = NULL;
    enum task_state curr_state = get_curr_task_state();
    const bool resched = need_reschedule();
    struct task *curr = get_curr_task();
-   struct task *selected = NULL;
 
    ASSERT(!is_preemption_enabled());
 
@@ -1367,11 +1367,11 @@ bool in_currently_dying_task(void)
 
 int send_signal_to_group(int pgid, int sig)
 {
-   struct process *curr_pi = get_curr_proc();
-   struct process *leader = NULL;
    struct bintree_walk_ctx ctx;
    struct task *ti;
+   struct process *leader = NULL;
    int count = 0;
+   struct process *curr_pi = get_curr_proc();
 
    disable_preemption();
 
@@ -1413,11 +1413,11 @@ int send_signal_to_group(int pgid, int sig)
 
 int send_signal_to_session(int sid, int sig)
 {
-   struct process *curr_pi = get_curr_proc();
-   struct process *leader = NULL;
    struct bintree_walk_ctx ctx;
    struct task *ti;
+   struct process *leader = NULL;
    int count = 0;
+   struct process *curr_pi = get_curr_proc();
 
    disable_preemption();
 

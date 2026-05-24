@@ -40,8 +40,8 @@ static enum irq_action riscv_timer_irq_handler(void *ctx)
 
 static ulong fdt_parse_timebase_frequency(void)
 {
-   int cpus_node, len;
    const fdt32_t *prop;
+   int cpus_node, len;
    void *fdt = fdt_get_address();
 
    cpus_node = fdt_path_offset(fdt, "/cpus");
@@ -59,8 +59,8 @@ DEFINE_IRQ_HANDLER_NODE(riscv_timer_irq_node, riscv_timer_irq_handler, NULL);
 
 void hw_timer_setup(u32 interval, struct hw_timer_info *out)
 {
-   int irq;
    u64 actual_interval;
+   int irq;
 
    ASSERT(out != NULL);
 

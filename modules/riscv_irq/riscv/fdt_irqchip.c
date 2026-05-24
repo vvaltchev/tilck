@@ -64,8 +64,8 @@ void irqchip_put_irq(int irq)
 
 enum irq_action generic_irq_handler(u8 irq)
 {
-   enum irq_action hret = IRQ_NOT_HANDLED;
    struct irq_handler_node *pos;
+   enum irq_action hret = IRQ_NOT_HANDLED;
 
    list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
 
@@ -181,8 +181,8 @@ int fdt_parse_one_hwirq(void *fdt, int node, int index,
 int irqchip_get_irq_count(void *fdt, int node)
 {
    struct fdt_irq_param irq_param;
-   int index = 0;
    int rc = 0;
+   int index = 0;
 
    while (rc == 0) {
       rc = fdt_parse_one_hwirq(fdt, node, index, &irq_param);
@@ -196,8 +196,8 @@ int irqchip_alloc_irq(void *fdt, int node, int hwirq_index)
 {
    struct irq_domain *domain, *tmp;
    struct fdt_irq_param irq_param;
-   int irq = 0, rc;
    int hwirq, type;
+   int irq = 0, rc;
 
    rc = fdt_parse_one_hwirq(fdt, node, hwirq_index, &irq_param);
    if (rc)
@@ -301,9 +301,9 @@ void init_fdt_irqchip(void)
    struct intc_dev *intc_nodes, *intc_done;
    int node, parent_intc, len;
    bool enabled;
-   int intc_cnt = 0;
-   int intc_done_index = 0;
    int intc_done_cnt = 0;
+   int intc_done_index = 0;
+   int intc_cnt = 0;
 
    void *fdt = fdt_get_address();
 

@@ -202,9 +202,9 @@ filter_video_modes(video_mode_t *all_modes, int all_modes_cnt)
 video_mode_t
 get_user_video_mode_choice(void)
 {
-   int len, err = 0;
    char buf[16];
    long s;
+   int len, err = 0;
 
    while (true) {
 

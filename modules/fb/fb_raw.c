@@ -481,9 +481,9 @@ bool fb_pre_render_char_scanlines(void)
 void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
    /* Static variables, set once! */
-   static void *op;
    void *vaddr;
    u8 *d;
+   static void *op;
 
    if (UNLIKELY(!op)) {
 

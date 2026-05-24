@@ -75,11 +75,11 @@ static void cmod_read_datetime_raw(struct datetime *d)
 
 void hw_read_clock_cmos(struct datetime *out)
 {
-   struct datetime d, dlast;
    u32 reg_b;
    bool use_24h;
    bool use_binary;
    bool hour_pm_bit;
+   struct datetime d, dlast;
 
    reg_b = cmos_read_reg(REG_STATUS_REG_B);
    use_24h = !!(reg_b & (1 << 1));
@@ -283,9 +283,9 @@ void init_rtc_uie(void)
 
 bool rtc_wait_for_second_edge(u64 *time_ns_out, u32 timeout_ticks)
 {
-   const u64 deadline_ticks = get_ticks() + timeout_ticks;
    u64 edge_ns = 0;
    bool got_valid_edge = false;
+   const u64 deadline_ticks = get_ticks() + timeout_ticks;
 
    rtc_enable_uie();
 

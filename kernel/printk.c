@@ -362,11 +362,11 @@ __tilck_vprintk(char *prefixbuf,
                 const char *fmt,
                 va_list args)
 {
+   struct ringbuf_stat old;
+   bool has_newline = false;
+   int written, prefix_sz = 0;
    const bool panic = in_panic();
    bool prefix = !panic;
-   bool has_newline = false;
-   struct ringbuf_stat old;
-   int written, prefix_sz = 0;
 
    if (fmt[0] == PRINTK_CTRL_CHAR) {
 

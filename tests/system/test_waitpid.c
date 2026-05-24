@@ -424,8 +424,8 @@ wpid6_test_active_child(int n, int pgid1, int pgid2)
  */
 int cmd_wpid6(int argc, char **argv)
 {
-   int cld[7] = {0};
    int pid, wstatus;
+   int cld[7] = {0};
    int g1_killed = 0;
    int g2_killed = 0;
 

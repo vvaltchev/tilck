@@ -60,9 +60,9 @@ bool is_kmalloc_initialized(void)
 
 STATIC_INLINE int ptr_to_node(struct kmalloc_heap *h, void *ptr, size_t size)
 {
-   const ulong size_log = log2_for_power_of_2(size);
-
    const ulong offset = (ulong)ptr - h->vaddr;
+
+   const ulong size_log = log2_for_power_of_2(size);
    const ulong nodes_before_our = (1 << (h->heap_data_size_log2 - size_log))-1;
    const ulong position_in_row = offset >> size_log;
 
@@ -229,9 +229,9 @@ internal_kmalloc_split_block(struct kmalloc_heap *h,
                              const size_t block_size,
                              const size_t leaf_node_size)
 {
-   struct block_node *nodes = h->metadata_nodes;
    size_t s;
    int n;
+   struct block_node *nodes = h->metadata_nodes;
    int node_count = 1;
 
    ASSERT(leaf_node_size >= h->min_block_size);
@@ -273,13 +273,13 @@ internal_kmalloc_coalesce_block(struct kmalloc_heap *h,
                                 void *const vaddr,
                                 const size_t block_size)
 {
-   struct block_node *nodes = h->metadata_nodes;
-   const int block_node_num = ptr_to_node(h, vaddr, block_size);
-
    size_t s;
-   int n = block_node_num;
+   struct block_node *nodes = h->metadata_nodes;
+
    int node_count = 1;
    size_t already_free_size = 0;
+   const int block_node_num = ptr_to_node(h, vaddr, block_size);
+   int n = block_node_num;
 
    ASSERT(nodes[n].full || nodes[n].split);
 
@@ -454,11 +454,11 @@ per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
 {
    void *addr;
    void *big_block;
-   const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
-   const bool do_actual_alloc = !(flags & KMALLOC_FL_NO_ACTUAL_ALLOC);
    const u32 sub_blocks_min_size = flags & KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK;
    const bool do_split = (sub_blocks_min_size != 0);
    const size_t original_desired_size = *size;
+   const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
+   const bool do_actual_alloc = !(flags & KMALLOC_FL_NO_ACTUAL_ALLOC);
 
    ASSERT(original_desired_size != 0);
    ASSERT(!do_split || sub_blocks_min_size >= h->min_block_size);
@@ -620,8 +620,8 @@ per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
 void *
 per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags)
 {
-   bool expected = false;
    void *res;
+   bool expected = false;
 
    if (!atomic_cas_strong(&h->in_use, &expected, true))
       return NULL; /* heap already in use (we're in IRQ context) */
@@ -966,9 +966,9 @@ void vfree_internal(ulong va_begin, ulong va_end)
 
 void *vmalloc(size_t size)
 {
-   size_t actual_sz = pow2_round_up_at(size, PAGE_SIZE);
    ulong va, va_begin, va_end;
    void *ptr;
+   size_t actual_sz = pow2_round_up_at(size, PAGE_SIZE);
 
    if (!hi_vmem_avail())
       return kmalloc(size);

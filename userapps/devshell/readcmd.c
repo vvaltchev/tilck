@@ -337,9 +337,9 @@ int read_command(char *buf, int buf_size)
 {
    int rc;
    char c;
-   int c_cmd_len = 0;
    struct termios orig_termios, t;
    char curr_cmd[buf_size]; // VLA
+   int c_cmd_len = 0;
 
    tcgetattr(0, &orig_termios);
 

@@ -64,9 +64,9 @@ void invalidate_page(ulong vaddr)
 
 void init_paging(void)
 {
-   int rc;
    void *user_vdso_vaddr;
    size_t pagesframes_refcount_bufsize;
+   int rc;
 
    phys_mem_lim = (ulong)MIN(get_phys_mem_size(),
                              (u64)LINEAR_MAPPING_SIZE);
@@ -123,9 +123,9 @@ map_framebuffer(pdir_t *pdir,
                 ulong size,
                 bool user_mmap)
 {
-   size_t count;
    int selected_mtrr;
    ulong pow2size;
+   size_t count;
 
    if (!get_kernel_pdir())
       return failsafe_map_framebuffer(paddr, size);

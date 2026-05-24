@@ -125,9 +125,9 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
 int cmd_runall(int argc, char **argv)
 {
+   u64 start_ms, end_ms;
    bool any_failure = false;
    int to_run = 0, passed = 0;
-   u64 start_ms, end_ms;
 
    start_ms = get_monotonic_time_ms();
 

@@ -189,10 +189,10 @@ static void do_print_val(char type, u64 val, ulong w)
 
 static int cmd_print(int argc, char **argv)
 {
-   int rc, error = 0;
    char type;
-   ulong vaddr, w, tmp, n = 1;
    u64 val;
+   int rc, error = 0;
+   ulong vaddr, w, tmp, n = 1;
 
    if (argc < 2 || argc > 3) {
       cmd_print_help();
@@ -350,12 +350,12 @@ static int cmd_help(int argc, char **argv)
 int
 dp_mini_debugger_tool()
 {
-   struct tty *t = get_curr_process_tty();
    fs_handle h;
    char buf[128];
    char *args[8];
    ssize_t rc;
    int last_arg, n_args;
+   struct tty *t = get_curr_process_tty();
 
    if (!t) {
       printk("ERROR: the current process has no attached TTY\n");

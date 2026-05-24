@@ -99,9 +99,9 @@ static bool is_tid_off_limits(int tid)
 static void
 render_one_task(const struct dp_task_info *t, bool kernel_tasks)
 {
-   const char *fmt = task_dump_str(TDS_ROW_FMT);
-   char path[80] = {0};
    char state_str[4];
+   char path[80] = {0};
+   const char *fmt = task_dump_str(TDS_ROW_FMT);
 
    if (t->is_kthread && !kernel_tasks)
       return;

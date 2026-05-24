@@ -302,11 +302,11 @@ int cmd_pipe4(int argc, char **argv)
 static void
 pipe_reader_child(int id, int fd)
 {
-   int tot_read = 0;
    char buf[4096];
    int rc;
-   int fail = 0;
    int to_read;
+   int tot_read = 0;
+   int fail = 0;
 
    while (true) {
 
@@ -335,9 +335,9 @@ pipe_reader_child(int id, int fd)
 static void
 pipe_writer_child(int id, int fd, int write_lim)
 {
-   int tot_written = 0;
    char buf[4096];
    int rc;
+   int tot_written = 0;
    int fail = 0;
    int to_write = 0;
 

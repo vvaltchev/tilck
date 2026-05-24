@@ -46,8 +46,8 @@ void remove_test_file_expecting_success(const char *path, int n)
 
 int cmd_fs_perf1(int argc, char **argv)
 {
-   const int n = 1000;
    u64 start, end, elapsed;
+   const int n = 1000;
    const char *dest_dir = argc > 0 ? argv[0] : "/tmp";
 
    printf("Using '%s' as test dir\n", dest_dir);
@@ -74,11 +74,11 @@ int cmd_fs_perf1(int argc, char **argv)
 
 int cmd_fs_perf2(int argc, char **argv)
 {
-   const int n = 1024;
    char path[256];
    char buf[1024];
    int fd, rc;
    u64 start, end, elapsed;
+   const int n = 1024;
    const char *dest_dir = argc > 0 ? argv[0] : "/tmp";
 
    printf("Using '%s' as test dir\n", dest_dir);

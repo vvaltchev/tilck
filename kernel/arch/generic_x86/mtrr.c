@@ -45,8 +45,8 @@ u32 get_var_mttrs_count(void)
 
 int get_free_mtrr(void)
 {
-   u32 var_mtrr_count = get_var_mttrs_count();
    u32 selected = 0;
+   u32 var_mtrr_count = get_var_mttrs_count();
 
    for (u32 i = 0; i < var_mtrr_count; i++, selected++) {
 

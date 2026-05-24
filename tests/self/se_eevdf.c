@@ -57,8 +57,8 @@ static u64 eevdf_vruntime[EEVDF_THREADS];
 
 static void eevdf_thread(void *arg)
 {
-   const int idx = (int)(ulong)arg;
    ulong var;
+   const int idx = (int)(ulong)arg;
 
    /* Same barrier idiom as selftest_fairness: every thread must
     * have been scheduled at least once before any of them starts

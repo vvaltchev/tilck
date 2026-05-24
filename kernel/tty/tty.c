@@ -241,8 +241,8 @@ STATIC struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
    struct tty *t;
-   term *new_term = get_curr_term();
    const struct term_interface *new_term_intf;
+   term *new_term = get_curr_term();
 
    if (!(t = kzalloc_obj(struct tty)))
       return NULL;

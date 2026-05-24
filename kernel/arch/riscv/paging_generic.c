@@ -119,9 +119,9 @@ void invalidate_page(ulong vaddr)
 
 void init_paging(void)
 {
-   int rc;
    void *user_vdso_vaddr;
    size_t pagesframes_refcount_bufsize;
+   int rc;
 
    /* get_phys_mem_size() assumes that the physical address starts from zero */
    phys_mem_lim = (ulong)MIN((__mem_upper_kb << 10) - (__mem_lower_kb << 10),

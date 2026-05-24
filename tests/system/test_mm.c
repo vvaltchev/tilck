@@ -55,9 +55,9 @@ int cmd_brk(int argc, char **argv)
 
 int cmd_mmap(int argc, char **argv)
 {
+   void *arr[1024];
    const int iters_count = 10;
    const size_t alloc_size = 1 * MB;
-   void *arr[1024];
    int max_mb = -1;
 
    ull_t tot_duration = 0;
@@ -205,8 +205,9 @@ static size_t mm_estimate_usable_mem_int(size_t step_size)
 {
    int rc, pipefd[2];
    int rfd, wfd, wstatus;
-   size_t msg, mem = 0;
    pid_t childpid;
+   size_t msg;
+   size_t mem = 0;
 
    printf(STR_PARENT "Estimating usable memory..\n");
 

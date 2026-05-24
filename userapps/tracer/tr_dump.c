@@ -467,10 +467,10 @@ static bool dump_iov_inner(unsigned long orig,
                            long maybe_tot_data_size,
                            char *dst, size_t bs)
 {
+   char buf[32];
    int used = 0, rem = (int)bs;
    long iovcnt = MIN(u_iovcnt, 4);
    long tot_rem = maybe_tot_data_size >= 0 ? maybe_tot_data_size : 16;
-   char buf[32];
 
    if (bs < 128)
       return false;

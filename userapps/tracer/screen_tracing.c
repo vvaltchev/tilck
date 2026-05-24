@@ -163,8 +163,8 @@ static char filter_buf[DP_TRACE_FILTER_MAX];
 
 static void show_banner(void)
 {
-   struct dp_trace_stats st = {0};
    long rc;
+   struct dp_trace_stats st = {0};
 
    if (dp_cmd_get_stats(&st) < 0) {
       term_write(E_COLOR_BR_RED
@@ -356,8 +356,8 @@ static void edit_printk_level(void)
  */
 static int parse_and_set_traced_pids(const char *str)
 {
-   const char *s = str;
    char tok[32];
+   const char *s = str;
    int traced_cnt = 0;
 
    while (1) {
@@ -462,10 +462,10 @@ static bool
 trace_live_loop(int events_fd)
 {
    struct dp_trace_event ev;
-   struct dp_render_ctx ctx = {0};
    char rbuf[RENDER_BUF_SZ];
    char c;
    ssize_t n;
+   struct dp_render_ctx ctx = {0};
    bool keep_banner = false;
 
    while (1) {
@@ -525,10 +525,10 @@ trace_live_loop(int events_fd)
 static int dump_remaining_events(int events_fd)
 {
    struct dp_trace_event ev;
-   struct dp_render_ctx ctx = {0};
    char rbuf[RENDER_BUF_SZ];
-   const long rem = dp_cmd_get_in_buf_count();
    char c;
+   struct dp_render_ctx ctx = {0};
+   const long rem = dp_cmd_get_in_buf_count();
 
    if (rem <= 0)
       return 0;

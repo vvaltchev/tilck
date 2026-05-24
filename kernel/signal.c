@@ -194,8 +194,8 @@ kill_task_now_or_later(struct task *ti, void *regs, int signum)
  */
 bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
 {
-   struct task *ti = __ti;
    int sig;
+   struct task *ti = __ti;
 
    ASSERT(!is_preemption_enabled());
    ASSERT(ti == get_curr_task() || sig_state == sig_in_usermode);
@@ -640,8 +640,8 @@ int sys_kill(int pid, int sig)
 static int
 sigaction_int(int signum, const struct k_sigaction *user_act)
 {
-   struct task *curr = get_curr_task();
    struct k_sigaction act;
+   struct task *curr = get_curr_task();
 
    if (copy_from_user(&act, user_act, sizeof(act)) != 0)
       return -EFAULT;
@@ -688,9 +688,9 @@ sys_rt_sigaction(int signum,
                  struct k_sigaction *user_oldact,
                  size_t sigsetsize)
 {
-   struct task *curr = get_curr_task();
    struct k_sigaction oldact;
    int rc = 0;
+   struct task *curr = get_curr_task();
 
    if (!IN_RANGE(signum, 1, _NSIG))
       return -EINVAL;
@@ -760,8 +760,8 @@ sys_rt_sigprocmask(int how,
                    sigset_t *user_oldset,
                    size_t sigsetsize)
 {
-   struct task *ti = get_curr_task();
    int rc;
+   struct task *ti = get_curr_task();
 
    ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
@@ -832,8 +832,8 @@ sys_rt_sigprocmask(int how,
 int
 sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
 {
-   struct task *ti = get_curr_task();
    int rc;
+   struct task *ti = get_curr_task();
 
    ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
@@ -864,8 +864,8 @@ sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
 
 int sys_rt_sigsuspend(sigset_t *u_mask, size_t sigsetsize)
 {
-   struct task *curr = get_curr_task();
    int rc;
+   struct task *curr = get_curr_task();
 
    ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
@@ -963,9 +963,9 @@ __sighandler_t sys_signal(int signum, __sighandler_t handler)
 
 ulong sys_rt_sigreturn(void)
 {
+   ulong user_sp;
    struct task *curr = get_curr_task();
    regs_t *r = curr->state_regs;
-   ulong user_sp;
 
    ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 

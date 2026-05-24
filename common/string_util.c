@@ -68,9 +68,9 @@ int strncmp(const char *s1, const char *s2, size_t n)
 
 int memcmp(const void *_m1, const void *_m2, size_t n)
 {
-   size_t i = 0;
    const char *m1 = _m1;
    const char *m2 = _m2;
+   size_t i = 0;
 
    while(i < n && *m1 == *m2) {
       m1++; m2++; i++;
@@ -125,8 +125,8 @@ char *tilck_strcpy(char *dest, const char *src)
 
 char *tilck_strncpy(char *dest, const char *src, size_t n)
 {
-   char *p = dest;
    size_t i = 0;
+   char *p = dest;
 
    while (*src && i < n) {
       *p++ = *src++;
@@ -156,8 +156,8 @@ char *tilck_strcat(char *dest, const char *src)
 
 char *tilck_strncat(char *dest, const char *src, size_t n)
 {
-   char *p = dest + strlen(dest);
    size_t i = 0;
+   char *p = dest + strlen(dest);
 
    while (*src && i < n) {
       *p++ = *src++;
@@ -329,7 +329,6 @@ void bzero(void *s, size_t n)
 size_t strnlen(const char *str, size_t count)
 {
    unsigned long ret = 0;
-
    while (*str != '\0' && ret < count) {
       ret++;
       str++;

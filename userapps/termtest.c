@@ -207,13 +207,13 @@ void console_perf_test(void)
    static const char letters[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-   int iters = 3;
    struct winsize w;
    char *buf, tot_time_s[32], c_time_s[32];
    ssize_t r, tot, written;
    struct timespec ts_before, ts_after;
    uint64_t start, end, c;
    double tot_time_real, tot_time, time_c, cycles_per_sec;
+   int iters = 3;
 
    if (ioctl(1, TIOCGWINSZ, &w) != 0) {
       perror("ioctl() failed");
@@ -383,8 +383,9 @@ static void sym_read(void)
 
 static void poll_and_read(void)
 {
+   int rc;
    char buf[32] = {0};
-   int rc, pos = 0;
+   int pos = 0;
    struct pollfd fds[] = {
       { .fd = 0, .events = POLLIN, .revents = 0 }
    };

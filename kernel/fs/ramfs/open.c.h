@@ -91,12 +91,12 @@ static int ramfs_open_existing_checks(int fl, struct ramfs_inode *i)
 static int
 ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
+   int rc;
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    struct ramfs_data *d = p->fs->device_data;
    struct ramfs_inode *i = rp->inode;
    struct ramfs_inode *idir = rp->dir_inode;
    struct locked_file *lf = NULL;
-   int rc;
 
    if (!i) {
 

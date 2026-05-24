@@ -342,8 +342,8 @@ int __retain_obj(atomic_int_t *ref_count)
 /* Return the new value */
 int __release_obj(atomic_int_t *ref_count)
 {
-   int old = atomic_fetch_sub(ref_count, 1);
    int ret;
+   int old = atomic_fetch_sub(ref_count, 1);
    ASSERT(old > 0);
    ret = old - 1;
 

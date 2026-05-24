@@ -353,8 +353,8 @@ kmutex_ord_supervisor_thread(void *unused)
 
 void selftest_kmutex_ord()
 {
-   u32 unlucky_threads = 0;
    int tid, supervisor_tid;
+   u32 unlucky_threads = 0;
 
    idx1 = idx2 = 0;
    ord_test_done = false;

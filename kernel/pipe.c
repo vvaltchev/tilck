@@ -33,10 +33,10 @@
 struct pipe_event {
    u64 ts;                       /* tick counter when the op happened    */
    int tid;                      /* tid that performed the op            */
-   char op;                      /* 'I'=init, 'D'=dup, 'C'=close         */
    bool is_write;                /* RD vs WR end                         */
    u16 read_handles_after;       /* counters as observed AFTER the op,   */
    u16 write_handles_after;      /* so the trail is self-explaining      */
+   char op;                      /* 'I'=init, 'D'=dup, 'C'=close         */
 };
 #endif /* KRN_HANG_DETECTION */
 
@@ -224,9 +224,9 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size, offt *pos)
 
 static int pipe_read_ready(fs_handle h)
 {
+   bool ret;
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   bool ret;
 
    kmutex_lock(&p->mutex);
    {
@@ -246,9 +246,9 @@ static struct kcond *pipe_get_rready_cond(fs_handle h)
 
 static int pipe_write_ready(fs_handle h)
 {
+   bool ret;
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   bool ret;
 
    kmutex_lock(&p->mutex);
    {
@@ -332,8 +332,8 @@ void destroy_pipe(struct pipe *p)
 
 struct pipe *debug_get_pipe_for_handle(fs_handle h, bool *is_write_end)
 {
-   struct fs_handle_base *hb = h;
    struct kfs_handle *kh;
+   struct fs_handle_base *hb = h;
 
    if (!h)
       return NULL;
@@ -406,9 +406,9 @@ void debug_dump_pipe_state_for_obj(void *obj)
 
 static void pipe_on_handle_close(fs_handle h)
 {
+   int old;
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   int old;
 
    /*
     * Take p->mutex around BOTH the handle-count decrement and the wakeup

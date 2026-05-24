@@ -164,8 +164,8 @@ static void ns16550_wait_for_read(void *priv)
 
 static char ns16550_read(void *priv)
 {
-   struct ns16550 *uart = priv;
    char c;
+   struct ns16550 *uart = priv;
 
    ns16550_wait_for_read(uart);
    c = (char)ns16550_reg_rd(uart, UART_RBR);

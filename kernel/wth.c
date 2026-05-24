@@ -192,8 +192,8 @@ bool wth_process_single_job(struct worker_thread *t)
 
 void wth_run(void *arg)
 {
-   struct worker_thread *t = arg;
    bool job_run;
+   struct worker_thread *t = arg;
 
    ASSERT(t != NULL);
    DEBUG_SAVE_ESP()                    /* see debug_utils.h */

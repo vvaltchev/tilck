@@ -83,9 +83,10 @@ void debug_no_deadlock_set_report_progress(void)
 
 void debug_check_for_deadlock(void)
 {
-   bool found_runnable = false;
    struct task *ti;
-   int tid, candidates = 0;
+   int tid;
+   bool found_runnable = false;
+   int candidates = 0;
 
    disable_preemption();
    {

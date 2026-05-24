@@ -52,9 +52,9 @@ void tui_set_input_blocking(bool blocking)
 static int
 read_single_byte(char *buf, int len)
 {
-   bool esc_timeout = false;
    ssize_t rc;
    char c;
+   bool esc_timeout = false;
 
    while (1) {
 

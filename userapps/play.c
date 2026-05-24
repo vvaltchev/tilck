@@ -44,9 +44,9 @@ parse_args(int argc, char **argv)
 {
    while (argc) {
 
-      char *arg = argv[0];
       int bits;
       int channels;
+      char *arg = argv[0];
 
       if (!strcmp(arg, "-d")) {
 
@@ -225,12 +225,13 @@ gen_test_sound(void *buf, u32 max_samples, u8 bits, u8 channels, u32 rate)
 static int
 test_sound(int devfd)
 {
+   struct tilck_sound_params p;
    const u32 max_samples = 64 * KB;
    u32 tot_sz = max_samples * (opt_test_bits >> 3) * opt_test_channels;
-   struct tilck_sound_params p;
 
+   int rc;
+   int written = 0;
    void *raw_buf = malloc(tot_sz);
-   int rc, written = 0;
 
    if (!raw_buf) {
       printf("Out of memory\n");
@@ -372,13 +373,14 @@ check_wav_header(struct wav_header *hdr)
 static int
 play_wav_file(int devfd)
 {
-   int fd = open(opt_file, O_RDONLY);
-   u32 tot_read = 0, data_read;
-   u32 last_sec = (u32) -1;
+   u32 data_read;
    struct wav_header hdr;
    struct tilck_sound_params params;
+   u32 tot_read = 0;
+   u32 last_sec = (u32) -1;
    u8 *buf = NULL;
    int rc = 0;
+   int fd = open(opt_file, O_RDONLY);
 
    if (fd < 0) {
       printf("Unable to open WAV file '%s': %s\n", opt_file, strerror(errno));

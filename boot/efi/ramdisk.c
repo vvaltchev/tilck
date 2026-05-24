@@ -28,10 +28,10 @@ static EFI_STATUS
 LoadRamdisk_GetTotFatSize(struct load_ramdisk_ctx *ctx)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
-   EFI_PHYSICAL_ADDRESS paddr = 0;
    EFI_STATUS status;
    UINT32 fat_sec_sz;
    void *fat_hdr;
+   EFI_PHYSICAL_ADDRESS paddr = 0;
 
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
@@ -58,9 +58,9 @@ static EFI_STATUS
 LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
-   EFI_PHYSICAL_ADDRESS paddr = 0;
    EFI_STATUS status;
    void *fat_hdr;
+   EFI_PHYSICAL_ADDRESS paddr = 0;
 
    /* Allocate memory for storing the whole FAT table */
    status = BS->AllocatePages(AllocateAnyPages,
@@ -95,9 +95,9 @@ end:
 static EFI_STATUS
 LoadRamdisk_CompactClusters(struct load_ramdisk_ctx *ctx)
 {
-   EFI_STATUS status = EFI_SUCCESS;
    void *fat_hdr = ctx->fat_hdr;
    UINT32 ff_clu_off;
+   EFI_STATUS status = EFI_SUCCESS;
 
    ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
 
@@ -170,9 +170,9 @@ end:
 static EFI_STATUS
 GetPhysBlockIODeviceHandle(EFI_LOADED_IMAGE *img, EFI_HANDLE *ref)
 {
+   EFI_STATUS status;
    EFI_DEVICE_PATH *parentDpCopy = NULL;
    EFI_HANDLE parentDpHandle = NULL;
-   EFI_STATUS status;
 
    parentDpCopy = GetCopyOfParentDevicePathNode(
       DevicePathFromHandle(img->DeviceHandle)
@@ -229,9 +229,9 @@ LoadRamdisk(EFI_HANDLE image,
             UINTN *rd_size_ref)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
+   struct load_ramdisk_ctx ctx = {0};
    EFI_STATUS status = EFI_SUCCESS;
    EFI_HANDLE bioDeviceHandle = NULL;
-   struct load_ramdisk_ctx ctx = {0};
 
    status = GetPhysBlockIODeviceHandle(loadedImg, &bioDeviceHandle);
    HANDLE_EFI_ERROR("GetPhysBlockIODeviceHandle");

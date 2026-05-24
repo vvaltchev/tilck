@@ -112,9 +112,9 @@ init_reset_signal_mask(void)
 
 static int get_video_tty_count(void)
 {
-   static int count = 0;
    struct stat statbuf;
    char buf[32];
+   static int count = 0;
 
    if (!getenv("TILCK")) {
       /* On Linux we're not going to use multiple TTYs for testing. */
@@ -140,8 +140,8 @@ static int get_video_tty_count(void)
 
 static void open_std_handles(int tty)
 {
-   char ttyfile[32] = "/dev/console";
    int in, out, err;
+   char ttyfile[32] = "/dev/console";
 
    if (tty >= 0) {
 
@@ -365,10 +365,10 @@ begin:
 
 static void wait_for_children(int timeout_ms)
 {
-   const bool was_in_shutdown = in_shutdown;
    int shell_tty, wstatus;
-   int elapsed_ms = timeout_ms ? 0 : -1;
    pid_t pid;
+   const bool was_in_shutdown = in_shutdown;
+   int elapsed_ms = timeout_ms ? 0 : -1;
 
    while (elapsed_ms < timeout_ms) {
 
@@ -442,8 +442,8 @@ static void setup_console_for_shell(int tty)
 static void tilck_console_msg_loop(int tty)
 {
    char buf[32];
-   int poll_timeout = -1;                    /* infinite */
    int rc;
+   int poll_timeout = -1;                    /* infinite */
 
    struct pollfd fd = {
       .fd = 0,
@@ -544,8 +544,8 @@ static int fork_and_run_shell_on_tty(int tty)
 
 int main(int argc, char **argv, char **env)
 {
-   int pid = getpid();
    struct stat statbuf;
+   int pid = getpid();
 
    if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
       show_help_and_exit();

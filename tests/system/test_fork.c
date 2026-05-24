@@ -93,9 +93,9 @@ int cmd_fork0(int argc, char **argv)
 
 static int do_fork_perf(int (*fork_func)(void))
 {
-   const int iters = 150000;
    int rc, wstatus, child_pid;
    ull_t start, duration;
+   const int iters = 150000;
 
    start = RDTSC();
 
@@ -253,7 +253,8 @@ int cmd_vfork0(int argc, char **argv)
    static const char child_hello[] = "Hello from the child!!";
    static const char parent_hello[] = "Hello from the parent!!";
 
-   int rc, pid, wstatus, failed = 0;
+   int rc, pid, wstatus;
+   int failed = 0;
    volatile int stack_var = 0;       /* changed by child: must be volatile */
    void *volatile mmap_addr = NULL;  /* changed by child: must be volatile */
 

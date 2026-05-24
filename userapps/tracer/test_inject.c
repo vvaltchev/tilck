@@ -210,9 +210,9 @@ inject_and_read(const char *name,
 static bool
 render_contains(const struct dp_trace_event *e, const char *needle)
 {
-   struct dp_render_ctx rctx = {0};
    char buf[RENDER_BUF_SZ];
    int n;
+   struct dp_render_ctx rctx = {0};
 
    n = tr_render_event(e, buf, sizeof(buf), &rctx);
 
@@ -941,11 +941,11 @@ tr_run_tier2_tests(void)
 int
 tr_run_stress_test(void)
 {
+   char render_buf[RENDER_BUF_SZ];
    int n_read = 0;
    int n_bad = 0;
    int last_counter = -1;
    bool monotone = true;
-   char render_buf[RENDER_BUF_SZ];
 
    if (tr_meta_init() < 0) {
       fprintf(stderr, "tracer --test: tr_meta_init failed\n");

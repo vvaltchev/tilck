@@ -125,10 +125,10 @@ const char *task_dump_str(enum task_dump_str_t t)
 static void
 render_task_row_plain(const struct dp_task_info *t, bool kernel_tasks)
 {
-   const char *fmt = task_dump_str(TDS_ROW_FMT);
+   char state_str[4];
    char path[80] = {0};
    char path2[64] = {0};
-   char state_str[4];
+   const char *fmt = task_dump_str(TDS_ROW_FMT);
 
    if (t->is_kthread && !kernel_tasks)
       return;

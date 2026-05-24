@@ -273,8 +273,8 @@ dp_main_handle_keypress(struct key_event ke)
 static int
 dp_main_body(struct key_event ke)
 {
-   bool dp_screen_key_handled = false;
    int rc;
+   bool dp_screen_key_handled = false;
 
    if (!skip_next_keypress) {
 

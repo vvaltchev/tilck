@@ -28,9 +28,9 @@ int wth_create_thread_for(struct worker_thread *t)
 
 void wth_wakeup(struct worker_thread *t)
 {
-   struct task *curr = get_curr_task();
    struct worker_thread *curr_tt;
    int exp_state = TASK_STATE_SLEEPING;
+   struct task *curr = get_curr_task();
 
    t->waiting_for_jobs = false;
    atomic_cas_strong(&t->task->state, &exp_state, TASK_STATE_RUNNABLE);

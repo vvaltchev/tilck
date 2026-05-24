@@ -126,8 +126,8 @@ legacy_boot_set_curr_video_mode(video_mode_t wanted_mode)
 static void
 legacy_boot_get_all_video_modes(video_mode_t **modes, int *count)
 {
-   video_mode_t *all_modes = NULL;
    struct VbeInfoBlock *vb;
+   video_mode_t *all_modes = NULL;
    int all_modes_cnt = 0;
 
    alloc_once_vbe_info_blocks();

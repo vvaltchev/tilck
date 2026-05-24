@@ -109,9 +109,9 @@ internal_copy_str_array_from_user(void *dest,
                                   int *rc)
 {
    int argc;
+   char *after_ptrs_arr;
    char **dest_arr = (char **)dest;
    char *dest_end = (char *)dest + max_size;
-   char *after_ptrs_arr;
    size_t written = 0;
    *rc = 0;
 
@@ -230,6 +230,7 @@ int duplicate_user_argv(char *dest,
 {
    int rc;
    size_t curr_written = 0;
+
 
    if (*written_ptr >= dest_size)
       return -E2BIG;

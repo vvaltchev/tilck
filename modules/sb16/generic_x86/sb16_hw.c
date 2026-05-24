@@ -185,9 +185,9 @@ sb16_set_sample_rate(u16 sample_rate)
 void
 sb16_program(struct tilck_sound_params *p, u32 buf_sz)
 {
+   u32 samples_cnt;
    u8 prog_mode = 0;
    u8 sound_fmt = 0;
-   u32 samples_cnt;
 
    prog_mode |= DSP_PLAY;
 

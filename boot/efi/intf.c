@@ -24,9 +24,9 @@ efi_boot_read_key(void)
 static bool
 efi_boot_get_mode_info(video_mode_t m, struct generic_video_mode_info *gi)
 {
+   EFI_STATUS status;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
    UINTN sizeof_info = 0;
-   EFI_STATUS status;
 
    bzero(gi, sizeof(*gi));
    status = gProt->QueryMode(gProt, m, &sizeof_info, &mi);
@@ -53,8 +53,8 @@ efi_boot_get_mode_info(video_mode_t m, struct generic_video_mode_info *gi)
 static void
 efi_boot_clear_screen(void)
 {
-   EFI_STATUS status;
    UINTN rows, cols;
+   EFI_STATUS status;
 
    /*
     * Unfortunately, on some machines, the UEFI firmware doesn't do what we
@@ -100,8 +100,8 @@ efi_boot_get_curr_video_mode(void)
 bool
 efi_boot_set_curr_video_mode(video_mode_t wanted_mode)
 {
-   video_mode_t orig_mode = gProt->Mode->Mode;
    EFI_STATUS status = EFI_SUCCESS;
+   video_mode_t orig_mode = gProt->Mode->Mode;
 
    if (wanted_mode != orig_mode) {
 
@@ -129,8 +129,8 @@ efi_boot_load_kernel_file(const char *path, void **paddr)
 {
    static CHAR16 tmp_path[128];
 
-   EFI_PHYSICAL_ADDRESS kernel_file_paddr;
    const char *p = path;
+   EFI_PHYSICAL_ADDRESS kernel_file_paddr;
    int i;
 
    for (i = 0; *p && i < ARRAY_SIZE(tmp_path); i++, p++) {
@@ -175,8 +175,8 @@ end:
 
 char *efi_boot_get_cmdline_buf(UINT32 *buf_sz)
 {
-   EFI_PHYSICAL_ADDRESS buf = EFI_MBI_MAX_ADDR;
    EFI_STATUS status = EFI_SUCCESS;
+   EFI_PHYSICAL_ADDRESS buf = EFI_MBI_MAX_ADDR;
 
    if (!gCmdlineBuf) {
 

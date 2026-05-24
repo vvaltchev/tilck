@@ -26,11 +26,11 @@ static u32 next_device_id;
 
 void vfs_close(fs_handle h)
 {
-   struct process *pi = get_curr_proc();
-   struct fs_handle_base *hb = h;
    struct mnt_fs *fs;
    struct locked_file *lf;
    const struct fs_ops *fsops;
+   struct process *pi = get_curr_proc();
+   struct fs_handle_base *hb = h;
 
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
@@ -74,9 +74,9 @@ void vfs_close(fs_handle h)
 int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
    struct fs_handle_base *new_handle;
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    const struct fs_ops *fsops;
    int rc;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    ASSERT(h != NULL);
 
@@ -220,9 +220,9 @@ int vfs_ftruncate(fs_handle h, offt length)
 
 int vfs_fstat64(fs_handle h, struct k_stat64 *statbuf)
 {
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    struct mnt_fs *fs;
    const struct fs_ops *fsops;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
@@ -235,8 +235,8 @@ int vfs_fstat64(fs_handle h, struct k_stat64 *statbuf)
 
 int vfs_fsync(fs_handle h)
 {
-   struct fs_handle_base *hb = h;
    int rc = 0;
+   struct fs_handle_base *hb = h;
 
    ASSERT(is_preemption_enabled());
 
@@ -251,8 +251,8 @@ int vfs_fsync(fs_handle h)
 
 int vfs_fdatasync(fs_handle h)
 {
-   struct fs_handle_base *hb = h;
    int rc = 0;
+   struct fs_handle_base *hb = h;
 
    ASSERT(is_preemption_enabled());
 
@@ -474,8 +474,8 @@ vfs_truncate_impl(struct mnt_fs *fs,
                   struct vfs_path *p,
                   offt len, ulong x, ulong y)
 {
-   struct locked_file *lf = NULL;
    int rc;
+   struct locked_file *lf = NULL;
 
    if (!fs->fsops->truncate)
       return -EROFS;
@@ -817,11 +817,11 @@ int vfs_futimens(fs_handle h, const struct k_timespec64 times[2])
 
 ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
 {
+   ssize_t rc;
+   size_t len;
    struct fs_handle_base *hb = h;
    struct task *curr = get_curr_task();
    ssize_t ret = 0;
-   ssize_t rc;
-   size_t len;
 
    if (hb->fops->readv)
       return hb->fops->readv(h, iov, iovcnt);
@@ -863,11 +863,11 @@ ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
 
 ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt)
 {
+   ssize_t rc;
+   size_t len;
    struct fs_handle_base *hb = h;
    struct task *curr = get_curr_task();
    ssize_t ret = 0;
-   ssize_t rc;
-   size_t len;
 
    if (hb->fops->writev)
       return hb->fops->writev(h, iov, iovcnt);

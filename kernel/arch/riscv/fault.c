@@ -121,8 +121,8 @@ static void fault_in_panic(regs_t *r)
 
 void handle_fault(regs_t *r)
 {
-   const int int_num = r->int_num;
    bool cow = false;
+   const int int_num = r->int_num;
 
    ASSERT(is_fault(int_num));
 

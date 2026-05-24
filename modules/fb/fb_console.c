@@ -286,8 +286,8 @@ static void fb_banner_update_battery_pm(void)
 
 static u32 fb_banner_left_side(char *buf, size_t buf_sz)
 {
-   int ttynum = 1;
    int rc;
+   int ttynum = 1;
 
    if (get_curr_tty())
       ttynum = get_curr_tty_num();

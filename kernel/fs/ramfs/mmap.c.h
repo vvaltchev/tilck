@@ -10,13 +10,13 @@ static int ramfs_munmap(struct user_mapping *um, void *vaddrp, size_t len)
 static int
 ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
 {
-   struct ramfs_handle *rh = um->h;
-   struct ramfs_inode *i = rh->inode;
-   ulong vaddr = um->vaddr;
    struct bintree_walk_ctx ctx;
    struct ramfs_block *b;
    u32 pg_flags;
    int rc;
+   struct ramfs_handle *rh = um->h;
+   struct ramfs_inode *i = rh->inode;
+   ulong vaddr = um->vaddr;
 
    const size_t off_begin = um->off;
    const size_t off_end = off_begin + um->len;
@@ -83,11 +83,11 @@ ramfs_handle_fault_int(struct process *pi,
                        bool p,
                        bool rw)
 {
-   struct ramfs_handle *rh = um->h;
-   ulong vaddr = (ulong) vaddrp;
    ulong abs_off;
    struct ramfs_block *block;
    int rc;
+   struct ramfs_handle *rh = um->h;
+   ulong vaddr = (ulong) vaddrp;
 
    ASSERT(um != NULL);
 

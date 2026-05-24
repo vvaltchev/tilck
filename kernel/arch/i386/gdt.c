@@ -134,12 +134,12 @@ set_entry_num2(u32 n,
 
 static NODISCARD int gdt_expand(void)
 {
+   u32 old_gdt_size;
+   u32 new_size;
    void *old_gdt_ptr;
    void *old_gdt_refcount_ptr;
    void *new_gdt;
    void *new_gdt_refcount;
-   u32 old_gdt_size;
-   u32 new_size;
 
    ASSERT(are_interrupts_enabled());
    disable_preemption();
@@ -388,10 +388,10 @@ static void gdt_set_slot(struct process *pi, u16 slot, u16 gdt_index)
 
 int sys_set_thread_area(void *arg)
 {
-   int rc = 0;
    int slot;
-   struct gdt_entry e = {0};
    struct user_desc dc;
+   int rc = 0;
+   struct gdt_entry e = {0};
    struct user_desc *ud = arg;
 
    rc = copy_from_user(&dc, ud, sizeof(struct user_desc));

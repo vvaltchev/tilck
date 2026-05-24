@@ -52,8 +52,8 @@ static void kopt_handle_bool(bool *var, const char *arg)
 
 static void kopt_handle_long(long *var, const char *arg)
 {
-   int err = 0;
    long res;
+   int err = 0;
 
    res = tilck_strtol(arg, NULL, 10, &err);
 
@@ -67,8 +67,8 @@ static void kopt_handle_long(long *var, const char *arg)
 
 static void kopt_handle_ulong(ulong *var, const char *arg)
 {
-   int base = 10, err = 0;
    ulong res;
+   int base = 10, err = 0;
 
    if (arg[0] == '0' && arg[1] == 'x') {
       base = 16;
@@ -130,8 +130,8 @@ handle_cmdline_arg(const char *arg)
 static void
 handle_selftest_kopt(void)
 {
-   char buf[MAX_CMD_ARG_LEN + 1] = SELFTEST_PREFIX;
    ulong addr;
+   char buf[MAX_CMD_ARG_LEN + 1] = SELFTEST_PREFIX;
 
    if (!kopt_selftest)
       return;
@@ -381,12 +381,12 @@ kopt_sysfs_prop_type(enum kopt_type t)
 
 void register_kopts_sysfs(void)
 {
-   const u32 n = ARRAY_SIZE(all_kopts);
    struct sysobj *obj = NULL;
    struct sysobj_type *type = NULL;
    struct sysobj_prop **props = NULL;
    void **prop_data = NULL;
    const char *fail_msg = "out of memory";
+   const u32 n = ARRAY_SIZE(all_kopts);
 
    if (!(obj = kzalloc_obj(struct sysobj)))
       goto fail;

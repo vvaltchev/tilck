@@ -14,8 +14,8 @@ static struct tilck_extra_boot_info extra_boot_info;
 static EFI_STATUS
 AllocateMbi(void)
 {
-   EFI_STATUS status = EFI_SUCCESS;
    EFI_PHYSICAL_ADDRESS multiboot_buffer = EFI_MBI_MAX_ADDR;
+   EFI_STATUS status = EFI_SUCCESS;
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
@@ -139,12 +139,11 @@ EFI_STATUS
 MultibootSaveMemoryMap(UINTN *mapkey)
 {
    EFI_MEMORY_DESCRIPTOR *desc = NULL;
-   EFI_STATUS status = EFI_SUCCESS;
-   UINT32 last_type = (UINT32) -1;
    UINT64 last_start = 0;
    UINT64 last_end = 0;
-
    EFI_PHYSICAL_ADDRESS multiboot_mmap_paddr = EFI_MBI_MAX_ADDR;
+   EFI_STATUS status = EFI_SUCCESS;
+   UINT32 last_type = (UINT32) -1;
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
@@ -206,9 +205,9 @@ end:
 static EFI_STATUS
 MbiSetRamdisk(void)
 {
-   EFI_STATUS status = EFI_SUCCESS;
-   EFI_PHYSICAL_ADDRESS multiboot_mod_addr = EFI_MBI_MAX_ADDR;
    multiboot_module_t *mod;
+   EFI_PHYSICAL_ADDRESS multiboot_mod_addr = EFI_MBI_MAX_ADDR;
+   EFI_STATUS status = EFI_SUCCESS;
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
@@ -235,8 +234,8 @@ MbiSetBootloaderName(void)
 {
    static char BootloaderName[] = "TILCK_EFI";
 
-   EFI_STATUS status = EFI_SUCCESS;
    EFI_PHYSICAL_ADDRESS paddr = EFI_MBI_MAX_ADDR;
+   EFI_STATUS status = EFI_SUCCESS;
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
@@ -256,8 +255,8 @@ static EFI_STATUS
 MbiSetPointerToAcpiTable(void)
 {
    static EFI_GUID gAcpi20Table = ACPI_20_TABLE_GUID;
-   EFI_PHYSICAL_ADDRESS tablePaddr;
    void *table = NULL;
+   EFI_PHYSICAL_ADDRESS tablePaddr;
 
    for (UINTN i = 0; i < ST->NumberOfTableEntries; i++) {
 
@@ -302,8 +301,8 @@ MbiSetPointerToRuntimeServices(void)
 static EFI_STATUS
 MbiSetExtraBootInfo(void)
 {
-   EFI_STATUS status = EFI_SUCCESS;
    EFI_PHYSICAL_ADDRESS paddr = EFI_MBI_MAX_ADDR;
+   EFI_STATUS status = EFI_SUCCESS;
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,

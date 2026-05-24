@@ -22,9 +22,9 @@ stackwalk32(void **frames,
             void *ebp,
             pdir_t *pdir)
 {
-   bool curr_pdir = false;
    void *retAddr;
    size_t i;
+   bool curr_pdir = false;
 
    if (!ebp) {
       ebp = __builtin_frame_address(0);

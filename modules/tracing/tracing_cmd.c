@@ -273,12 +273,12 @@ tilck_sys_dp_task_get_traced_tids_and_clear(ulong u_buf, ulong max,
 {
    s32 *kbuf;
    ulong sz;
-   int rc = 0;
    struct {
       s32 *buf;
       ulong max;
       ulong written;
    } ctx;
+   int rc = 0;
 
    if (!max || max > 1024)
       return -EINVAL;

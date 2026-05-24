@@ -66,9 +66,9 @@ acpi_osl_do_free(void *ptr)
 void *
 AcpiOsAllocate(ACPI_SIZE Size)
 {
-   const size_t sz = (size_t)Size;
    void *vaddr;
    ulong var;
+   const size_t sz = (size_t)Size;
 
    ACPI_FUNCTION_TRACE(__FUNC__);
 

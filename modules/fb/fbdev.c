@@ -142,9 +142,9 @@ register_mapping:
 
 static int fbdev_munmap(struct user_mapping *um, void *vaddr, size_t len)
 {
-   struct fs_handle_base *hb = um->h;
    size_t unmapped_count;
    bool dying_task = false;
+   struct fs_handle_base *hb = um->h;
 
    ASSERT(IS_PAGE_ALIGNED(len));
    ASSERT(hb->pi == get_curr_proc());

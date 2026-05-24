@@ -153,10 +153,10 @@ static int fdt_parse_simplefb(void *fdt)
 int init_ramfb(void *fdt)
 {
    int rc;
-   bool found = false;
-   u32 count = 0, select = 0;
    struct qemu_fwcfg_file file;
    struct qemu_ramfb_cfg ramfb_cfg;
+   bool found = false;
+   u32 count = 0, select = 0;
 
    rc = fdt_parse_fwcfg(fdt);
    if (rc)

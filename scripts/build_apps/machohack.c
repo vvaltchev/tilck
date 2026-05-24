@@ -342,8 +342,8 @@ do_patch_syms(const char *path, void *buf, size_t size,
    bool is64;
    uint32_t ncmds;
    uint32_t str_cursor;
-   int n_found = 0;
    struct patch_info patches[MAX_SYMS];
+   int n_found = 0;
 
    sc = find_symtab_cmd(buf, size, &is64, &ncmds);
 

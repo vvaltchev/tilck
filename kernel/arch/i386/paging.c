@@ -144,12 +144,12 @@ static void kernel_page_fault_panic(regs_t *r, u32 vaddr, bool rw, bool p)
 
 void handle_page_fault_int(regs_t *r)
 {
+   struct user_mapping *um;
+   u32 vaddr;
    bool p  = !!(r->err_code & PAGE_FAULT_FL_PRESENT);
    bool rw = !!(r->err_code & PAGE_FAULT_FL_RW);
    bool us = !!(r->err_code & PAGE_FAULT_FL_US);
    int sig = SIGSEGV;
-   struct user_mapping *um;
-   u32 vaddr;
 
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
@@ -323,8 +323,8 @@ unmap_pages_permissive(pdir_t *pdir,
                        size_t page_count,
                        bool do_free)
 {
-   size_t unmapped_pages = 0;
    int rc;
+   size_t unmapped_pages = 0;
 
    for (size_t i = 0; i < page_count; i++) {
       rc = unmap_page_permissive(
@@ -457,11 +457,11 @@ map_pages_int(pdir_t *pdir,
               bool big_pages_allowed,
               ulong hw_flags)
 {
+   u32 big_page_flags;
    int rc;
    size_t pages = 0;
    size_t big_pages = 0;
    size_t rem_pages = page_count;
-   u32 big_page_flags;
 
    ASSERT(!((ulong)vaddr & OFFSET_IN_PAGE_MASK));
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK));

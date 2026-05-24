@@ -26,9 +26,9 @@ int cmd_select1(int argc, char **argv)
    int nfds, pipefd[2];
    int wstatus;
    int rc, fl, tot;
-   int failed = 0;
    char buf[64];
    pid_t childpid;
+   int failed = 0;
 
    signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE */
 
@@ -309,7 +309,8 @@ int cmd_select4(int argc, char **argv)
 {
    struct timeval tv, rtv1, rtv2;
    u64 ts1, ts2, elapsed;
-   int rc, attempts_cnt = 1;
+   int rc;
+   int attempts_cnt = 1;
    int sleep_ms = 100;
    const int max_attempts = 5;
 

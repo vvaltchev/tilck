@@ -150,8 +150,8 @@ bool fat32_is_valid_filename_character(char c)
 static void fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
                                       struct fat_long_entry *le)
 {
-   char entrybuf[13] = {0};
    int ebuf_size=0;
+   char entrybuf[13] = {0};
 
    if (ctx->lname_chksum != le->LDIR_Chksum) {
       bzero(ctx->lname_buf, sizeof(ctx->lname_chksum));
@@ -837,9 +837,9 @@ void fat_compact_clusters(struct fat_hdr *hdr)
 u32
 fat_get_first_free_cluster_off(struct fat_hdr *hdr)
 {
-   u32 clu, ff_sector;
    const u32 cluster_count = fat_get_cluster_count(hdr);
    const enum fat_type ft = fat_get_type(hdr);
+   u32 clu, ff_sector;
 
    for (clu = 0; clu < cluster_count; clu++) {
       if (!fat_read_fat_entry(hdr, ft, 0, clu))

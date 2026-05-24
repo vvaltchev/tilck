@@ -69,9 +69,9 @@ static bool fails_with_e2big(size_t len)
 
 int cmd_bigargv(int argc, char **argv)
 {
+   size_t a0;
    size_t l = 1024;
    size_t r = 16 * 4096;
-   size_t a0;
    size_t argv_len = 0, env_len = 0;
 
    if (!running_on_tilck()) {

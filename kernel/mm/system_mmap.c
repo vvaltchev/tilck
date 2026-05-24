@@ -577,8 +577,8 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
 
 bool system_mmap_check_for_extra_ramdisk_region(void *rd)
 {
-   int ri = system_mmap_get_region_of(LIN_VA_TO_PA(rd));
    struct mem_region *r;
+   int ri = system_mmap_get_region_of(LIN_VA_TO_PA(rd));
 
    VERIFY(ri >= 0);
 

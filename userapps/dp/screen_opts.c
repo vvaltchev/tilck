@@ -74,10 +74,10 @@ val_color(const char *val)
 static void
 render_section(const char *dir_path, const char *label, int *row, int col)
 {
-   DIR *d = opendir(dir_path);
    struct dirent *e;
    char path[512];
    char val[OPT_VAL_MAX];
+   DIR *d = opendir(dir_path);
 
    dp_write((*row)++, col,
             E_COLOR_BR_WHITE "%s" RESET_ATTRS, label);

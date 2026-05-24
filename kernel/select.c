@@ -171,8 +171,8 @@ select_read_user_tv(struct k_timeval *user_tv,
                     struct k_timeval **tv_ref,
                     u32 *timeout)
 {
-   struct task *curr = get_curr_task();
    struct k_timeval *tv = NULL;
+   struct task *curr = get_curr_task();
 
    if (user_tv) {
 
@@ -233,10 +233,10 @@ select_write_user_sets(struct select_ctx *c)
 static int
 select_wait_on_cond(struct select_ctx *c)
 {
-   struct task *curr = get_curr_task();
    struct multi_obj_waiter *waiter = NULL;
    int idx = 0;
    int rc = 0;
+   struct task *curr = get_curr_task();
 
    if (!(waiter = allocate_mobj_waiter(c->cond_cnt)))
       return -ENOMEM;

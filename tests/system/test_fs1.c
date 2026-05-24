@@ -159,9 +159,10 @@ int cmd_fs3(int argc, char **argv)
 {
    struct linux_dirent64 *de;
    char dentsbuf[192];
-   int fd, rc, off = 0;
+   int fd, rc;
    int last_n;
    DIR *d;
+   int off = 0;
 
    if (!running_on_tilck()) {
       not_on_tilck_message();

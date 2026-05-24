@@ -42,8 +42,8 @@ static long dp_cmd_get_irqs(struct dp_irq_stats *out)
 
 static unsigned long read_ulong_from(const char *path, unsigned long fallback)
 {
-   char buf[32] = {0};
    ssize_t n;
+   char buf[32] = {0};
    unsigned long v = 0;
    int fd = open(path, 0 /* O_RDONLY */);
 

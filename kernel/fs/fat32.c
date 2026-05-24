@@ -305,8 +305,8 @@ STATIC int fat_stat(struct mnt_fs *fs,
                     vfs_inode_ptr_t i,
                     struct k_stat64 *statbuf)
 {
-   struct fat_entry *e = i;
    struct datetime crt_time, wrt_time;
+   struct fat_entry *e = i;
 
    if (!e)
       return -ENOENT;
@@ -368,9 +368,9 @@ fat_getdents_cb(struct fat_hdr *hdr,
                 void *arg)
 {
    char short_name[16];
-   struct fat_getdents_ctx *ctx = arg;
    struct vfs_dent64 dent;
    const char *entname;
+   struct fat_getdents_ctx *ctx = arg;
 
    if (long_name) {
       entname = long_name;
@@ -391,12 +391,12 @@ fat_getdents_cb(struct fat_hdr *hdr,
 
 static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
-   struct fatfs_handle *fh = h;
-   struct fat_fs_device_data *d = fh->fs->device_data;
    struct fat_getdents_ctx ctx;
    struct fat_walk_long_name_ctx walk_ctx;
    struct fat_walk_static_params walk_params;
    int rc;
+   struct fatfs_handle *fh = h;
+   struct fat_fs_device_data *d = fh->fs->device_data;
 
    if (!fh->e->directory && !fh->e->volume_id)
       return -ENOTDIR;
@@ -538,12 +538,12 @@ fat_get_entry(struct mnt_fs *fs,
               ssize_t name_len,
               struct fs_path *fs_path)
 {
-   struct fat_fs_device_data *d = fs->device_data;
-   struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;
    struct fat_walk_static_params walk_params;
    struct fat_entry *dir_entry;
    struct fat_entry *res;
    struct fat_search_ctx ctx;
+   struct fat_fs_device_data *d = fs->device_data;
+   struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;
    enum vfs_entry_type type = VFS_NONE;
 
    if (!dir_inode && !name)              // both dir_inode and name are NULL:

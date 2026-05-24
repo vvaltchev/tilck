@@ -138,8 +138,8 @@ static void shell_run_child(int argc)
 
 static int parse_cmd_line(const char *cmd_line)
 {
-   int argc = 0;
    char quote_char;
+   int argc = 0;
    char *arg = NULL;
    bool in_arg = false;
    bool in_quotes = false;
@@ -331,8 +331,8 @@ int main(int argc, char **argv, char **env)
    static char cwd_buf[256];
    static struct termios orig_termios;
    const char *cmdname;
-   char uc = '#';
    int rc;
+   char uc = '#';
 
    setup_signals();
 

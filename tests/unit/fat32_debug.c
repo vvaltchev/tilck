@@ -128,9 +128,9 @@ static int dump_dir_entry(struct fat_hdr *hdr,
 
 void fat_dump_info(void *fatpart_begin)
 {
-   struct fat_hdr *hdr = fatpart_begin;
    enum fat_type ft;
    struct debug_fat_walk_ctx ctx;
+   struct fat_hdr *hdr = fatpart_begin;
 
    fat_dump_common_header(fatpart_begin);
 

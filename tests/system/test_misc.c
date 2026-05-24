@@ -115,9 +115,9 @@ int cmd_sysenter(int argc, char **argv)
 
 int cmd_syscall_perf(int argc, char **argv)
 {
+   ull_t start, duration;
    const int major_iters = 100;
    const int iters = 1000;
-   ull_t start, duration;
    ull_t best = (ull_t) -1;
 
    for (int j = 0; j < major_iters; j++) {

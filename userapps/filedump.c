@@ -11,7 +11,8 @@
 
 int read_wrapper(int fd, char *buf, int len)
 {
-   int rc, tot = 0;
+   int rc;
+   int tot = 0;
 
    while (tot < len) {
 
@@ -31,8 +32,9 @@ int read_wrapper(int fd, char *buf, int len)
 
 int main(int argc, char **argv)
 {
-   int fd, bs, rc, off = 0;
+   int fd, bs, rc;
    char *buf;
+   int off = 0;
 
    if (argc < 3) {
       fprintf(stderr, "Usage: %s <file> <bufsize>\n", argv[0]);

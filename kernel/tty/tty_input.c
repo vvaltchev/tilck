@@ -159,8 +159,8 @@ static inline bool tty_inbuf_drop_last_written_elem(struct tty *t)
 static void
 tty_inbuf_write_elem(struct tty *t, u8 c, bool block)
 {
-   ASSERT(in_panic() || !block || is_preemption_enabled());
    bool ok;
+   ASSERT(in_panic() || !block || is_preemption_enabled());
 
    while (true) {
 
@@ -479,9 +479,9 @@ ssize_t
 tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    struct tty_handle_extra *eh = (void *)&h->extra;
-   struct process *pi = get_curr_proc();
-   size_t read_count = 0;
    bool delim_break;
+   size_t read_count = 0;
+   struct process *pi = get_curr_proc();
 
    ASSERT(is_preemption_enabled());
 

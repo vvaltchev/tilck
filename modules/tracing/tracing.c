@@ -191,10 +191,10 @@ static void
 trace_syscall_enter_save_params(const struct syscall_info *si,
                                 struct trace_event *e)
 {
+   int idx;
    struct syscall_event_data *const se = &e->sys_ev;
    char *buf = NULL;
    size_t bs = 0;
-   int idx;
 
    if (!si)
       return;
@@ -228,10 +228,10 @@ static void
 trace_syscall_exit_save_params(const struct syscall_info *si,
                                struct trace_event *e)
 {
+   int idx;
    struct syscall_event_data *const se = &e->sys_ev;
    char *buf = NULL;
    size_t bs = 0;
-   int idx;
 
    if (!si)
       return;
@@ -306,8 +306,8 @@ trace_syscall_enter_int(u32 sys,
                         ulong a5,
                         ulong a6)
 {
-   const struct syscall_info *si = tracing_get_syscall_info(sys);
    struct trace_event e;
+   const struct syscall_info *si = tracing_get_syscall_info(sys);
 
    if (!get_curr_task()->traced)
       return; /* the current task is not traced */
@@ -340,8 +340,8 @@ trace_syscall_exit_int(u32 sys,
                        ulong a5,
                        ulong a6)
 {
-   const struct syscall_info *si = tracing_get_syscall_info(sys);
    struct trace_event e;
+   const struct syscall_info *si = tracing_get_syscall_info(sys);
 
    if (!get_curr_task()->traced)
       return; /* the current task is not traced */
@@ -391,8 +391,8 @@ trace_printk_raw_int(short level, const char *buf, size_t buf_size)
 void
 trace_printk_int(short level, const char *fmt, ...)
 {
-   va_list args;
    struct trace_event e;
+   va_list args;
    int written;
 
    ASSERT(level >= 1);
@@ -811,10 +811,10 @@ handle_sys_trace_arg(const char *arg)
 STATIC int
 set_traced_syscalls_int(const char *str)
 {
-   const size_t len = strlen(str);
-   const char *s = str;
    char *p, buf[32];
    int rc;
+   const size_t len = strlen(str);
+   const char *s = str;
 
    if (len >= TRACED_SYSCALLS_STR_LEN)
       return -ENAMETOOLONG;

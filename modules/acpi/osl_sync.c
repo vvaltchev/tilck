@@ -116,9 +116,9 @@ AcpiOsWaitSemaphore(
     UINT32                  Units,
     UINT16                  Timeout)
 {
-   struct ksem *s = Handle;
    u64 ticks;
    int rc;
+   struct ksem *s = Handle;
 
    ACPI_FUNCTION_TRACE(__FUNC__);
 
