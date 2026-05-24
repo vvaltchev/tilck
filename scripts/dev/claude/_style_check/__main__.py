@@ -286,6 +286,8 @@ def cmd_check(args) -> int:
 
    for f in files:
 
+      check_interrupted()
+
       if not f.exists():
          sys.stderr.write(
             "warning: skipping missing file {}\n".format(f)
@@ -869,14 +871,25 @@ def build_argparser():
    return ap
 
 
+_interrupted = False
+
+
 def _sigint_handler(_signum, _frame):
 
-   # Re-raise as KeyboardInterrupt so the main() try/except catches
-   # it. Re-installing the handler here (instead of relying on the
-   # default) ensures Ctrl-C remains responsive even after a
-   # subprocess child (coverage, git ls-files) has run -- those can
-   # leave the parent's signal disposition in an unexpected state.
-   raise KeyboardInterrupt()
+   global _interrupted
+   _interrupted = True
+
+   # Restore the default handler so a second Ctrl-C kills
+   # immediately (no "Exception ignored in ctypes callback" noise).
+   signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
+def check_interrupted():
+   """Call from the main loop between files. Raises KeyboardInterrupt
+   when safe (outside ctypes callbacks)."""
+
+   if _interrupted:
+      raise KeyboardInterrupt()
 
 
 def main():
