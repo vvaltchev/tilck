@@ -78,6 +78,20 @@ class FnBodyBraceOwnLine(Rule):
          if '\n' in between:
             continue  # `{` on its own line -- compliant
 
+         # One-liner function defs (e.g. `void foo() { }` or
+         # `int bar() { return 0; }`) are an accepted pattern for
+         # trivial stubs. Skip when the matching `}` is on the same
+         # line as the opening `{`.
+         close_brace = _tokens_mod.find_matching_close(
+            ctx.source_text, brace_ofs, '{', '}'
+         )
+
+         if close_brace >= 0:
+            body_span = ctx.source_text[brace_ofs:close_brace + 1]
+
+            if '\n' not in body_span:
+               continue
+
          # No newline between `)` and `{`: brace is on the same line
          # as the signature.
          line, col = _tokens_mod.offset_to_line_col(
