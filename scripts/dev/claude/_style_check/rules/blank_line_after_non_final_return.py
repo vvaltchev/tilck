@@ -69,6 +69,12 @@ class BlankLineAfterNonFinalReturn(Rule):
          if _LABEL_LIKE_PAT.match(next_line):
             continue   # case/default/goto label -- next scope marker
 
+         # `return` inside an if-branch followed by `else` or `} else`:
+         # the return is part of a conditional pair and a blank line
+         # between the branches would be uglier than no blank line.
+         if next_line == 'else' or next_line.startswith('} else'):
+            continue
+
          line_no = i + 1                # 1-based line number of return
          ret_line_text = ctx.lines[i] if i < len(ctx.lines) else ''
 
