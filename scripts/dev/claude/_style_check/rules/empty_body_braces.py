@@ -81,6 +81,14 @@ class EmptyBodyBraces(Rule):
 
          kw = 'while' if cursor.kind == CursorKind.WHILE_STMT else 'for'
 
+         # Guard against macro-expanded loops: if the raw source at
+         # the cursor location doesn't start with `while` / `for`,
+         # the loop was introduced by a macro and should be skipped.
+         raw_at = line_text.lstrip()
+
+         if not raw_at.startswith(kw):
+            continue
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=loc.line,
