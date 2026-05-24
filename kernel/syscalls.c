@@ -260,10 +260,11 @@ long sys_clone(regs_t *u_regs, ulong clone_flags, ulong newsp,
 
    if (clone_flags == SIGCHLD)
       return sys_fork(u_regs);
-   else if (clone_flags == (CLONE_VFORK | CLONE_VM | SIGCHLD))
+
+   if (clone_flags == (CLONE_VFORK | CLONE_VM | SIGCHLD))
       return sys_vfork(u_regs);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 static int

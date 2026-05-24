@@ -139,10 +139,11 @@ long sys_unlinkat(int dfd, const char *pathname, int flag)
 
    if (dfd == AT_FDCWD && flag == 0)
       return sys_unlink(pathname);
-   else if (dfd == AT_FDCWD && flag == AT_REMOVEDIR)
+
+   if (dfd == AT_FDCWD && flag == AT_REMOVEDIR)
       return sys_rmdir(pathname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_rmdir(const char *u_path)
@@ -476,12 +477,14 @@ long sys_fstatat64(int dfd, const char *filename,
 
    if (dfd == AT_FDCWD && flag == AT_SYMLINK_NOFOLLOW)
       return sys_lstat64(filename, statbuf);
-   else if (dfd == AT_FDCWD && flag == 0)
+
+   if (dfd == AT_FDCWD && flag == 0)
       return sys_stat64(filename, statbuf);
-   else if (flag == AT_EMPTY_PATH && filename[0] == 0)
+
+   if (flag == AT_EMPTY_PATH && filename[0] == 0)
       return sys_fstat64(dfd, statbuf);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_symlink(const char *u_target, const char *u_linkpath)
@@ -944,10 +947,11 @@ long sys_fchownat(int dfd, const char *u_path,
 
    if (flag == 0)
       return sys_chown(u_path, user, group);
-   else if (flag == AT_SYMLINK_NOFOLLOW)
+
+   if (flag == AT_SYMLINK_NOFOLLOW)
       return sys_lchown(u_path, user, group);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_fsync(int fd)

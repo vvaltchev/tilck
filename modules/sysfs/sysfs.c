@@ -715,28 +715,40 @@ main_sysfs_create_default_objects(void)
 
    if ((rc = REGISTER_SYSFS_HW_OBJ("power", &sysfs_power_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("storage", &sysfs_storage_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("network", &sysfs_network_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("display", &sysfs_display_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("media", &sysfs_media_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("bridge", &sysfs_bridge_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("comm", &sysfs_comm_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("generic", &sysfs_genp_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("input", &sysfs_input_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("serbus", &sysfs_serbus_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("wireless", &sysfs_wifi_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("sigproc", &sysfs_sigproc_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("other", &sysfs_other_obj)))
       return rc;
 

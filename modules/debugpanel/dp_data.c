@@ -541,6 +541,7 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
    if (u_info) {
       if (user_out_of_range((void *)u_info, sizeof(info)))
          return -EFAULT;
+
       if (copy_to_user((void *)u_info, &info, sizeof(info)))
          return -EFAULT;
    }

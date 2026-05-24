@@ -573,6 +573,7 @@ static const char *enum_lookup(const struct enum_pair *t, unsigned long v)
    for (; t->name; t++)
       if (t->value == v)
          return t->name;
+
    return NULL;
 }
 
@@ -597,8 +598,10 @@ bitmask_dump(const struct enum_pair *t, unsigned long v,
 
          if (!buf_append(dst, &used, &rem, t->name))
             return false;
+
          if (!buf_append(dst, &used, &rem, "|"))
             return false;
+
          matched |= t->value;
          any = true;
       }
@@ -612,6 +615,7 @@ bitmask_dump(const struct enum_pair *t, unsigned long v,
       snprintf(hex, sizeof(hex), "0x%lx", rest);
       if (!buf_append(dst, &used, &rem, hex))
          return false;
+
       any = true;
    } else if (any) {
       /* Drop the trailing '|' */
@@ -872,6 +876,7 @@ static bool dump_clone_flags(unsigned long v, long unused, char *dst, size_t bs)
       char tmp[256];
       if (!bitmask_dump(tab_clone_flags, flags, tmp, sizeof(tmp)))
          return false;
+
       if (!buf_append(dst, &used, &rem, tmp))
          return false;
    }

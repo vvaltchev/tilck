@@ -264,10 +264,9 @@ static u32 read_reg(u32 off)
 {
    if (is_mmio)
       return mmio_read32(io_addr + (off >> 2));
-   else {
-      outl(io_addr + 0x00, off);
-      return inl(io_addr + 0x4);
-   }
+
+   outl(io_addr + 0x00, off);
+   return inl(io_addr + 0x4);
 }
 
 static void write_reg(u32 off, u32 val)

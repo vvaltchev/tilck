@@ -117,9 +117,12 @@ find_symtab_cmd(void *buf, size_t size, bool *is64, uint32_t *ncmds)
    *ncmds = n;
 
    for (i = 0; i < n; i++) {
+
       lc = (struct load_command *)((char *)buf + off);
+
       if (lc->cmd == LC_SYMTAB)
          return (struct symtab_command *)lc;
+
       off += lc->cmdsize;
    }
 
@@ -136,9 +139,12 @@ find_dysymtab_cmd(void *buf, bool is64, uint32_t ncmds)
    off = is64 ? sizeof(struct mach_header_64) : sizeof(struct mach_header);
 
    for (i = 0; i < ncmds; i++) {
+
       lc = (struct load_command *)((char *)buf + off);
+
       if (lc->cmd == LC_DYSYMTAB)
          return (struct dysymtab_command *)lc;
+
       off += lc->cmdsize;
    }
 
