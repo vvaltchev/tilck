@@ -120,6 +120,9 @@ class BlankLineAfterDeclBlock(Rule):
          if leading_decl_count == 0:
             continue  # no decl block at the start of this scope
 
+         if leading_decl_count == 1:
+            continue  # single decl is not a "block"; blank line is noise
+
          if leading_decl_count == len(children):
             continue  # all decls, no non-decl to follow
 
