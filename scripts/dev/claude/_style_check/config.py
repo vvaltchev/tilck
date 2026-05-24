@@ -272,6 +272,91 @@ def resolve_config(file_path: Path,
    return cfg
 
 
+def scan_block_disables(lines: List[str]) -> List[Tuple[int, int, Set[str]]]:
+   """Scan for block-scoped style_check annotations inside { } blocks.
+
+   A `/* style_check: disable rule1, rule2 */` comment that appears
+   inside a function body (after `{`) suppresses the listed rules for
+   the enclosing block only — from the annotation line to the matching
+   `}`.
+
+   Returns a list of (start_line, end_line, disabled_rules) tuples
+   (1-based, inclusive)."""
+
+   ranges = []
+
+   for i, line in enumerate(lines):
+
+      m = _INLINE_DISABLE_RE.search(line)
+
+      if not m:
+         continue
+
+      ln = i + 1   # 1-based
+
+      # Is this inside a block (not at file scope)?
+      # File-level markers are in the first _INLINE_SCAN_LINES lines
+      # and are already handled by _scan_inline_disables. Skip those.
+      if i < _INLINE_SCAN_LINES:
+         continue
+
+      rules = set()
+
+      for tok in m.group(1).split(','):
+         tok = tok.strip()
+         if tok:
+            rules.add(tok)
+
+      if not rules:
+         continue
+
+      # Find the end of the enclosing block: walk forward counting
+      # braces. We start at depth 0 (the annotation line) and look
+      # for the line where depth drops below 0 (matching `}`).
+      depth = 0
+      end = len(lines)
+
+      for j in range(i + 1, len(lines)):
+         for ch in lines[j]:
+            if ch == '{':
+               depth += 1
+            elif ch == '}':
+               depth -= 1
+               if depth < 0:
+                  end = j + 1  # 1-based
+                  break
+
+         if depth < 0:
+            break
+
+      ranges.append((ln, end, rules))
+
+   return ranges
+
+
+def filter_block_disables(diagnostics, block_ranges):
+   """Remove diagnostics suppressed by block-scoped annotations."""
+
+   if not block_ranges:
+      return diagnostics
+
+   out = []
+
+   for d in diagnostics:
+
+      suppressed = False
+
+      for start, end, rules in block_ranges:
+         if start <= d.line <= end and d.rule in rules:
+            suppressed = True
+            break
+
+      if not suppressed:
+         out.append(d)
+
+   return out
+
+
 def apply_to_rules(rules_list, cfg: StyleConfig) -> list:
    """Filter a list of Rule instances by the resolved config.
    Doesn't handle `ignore` -- the caller should short-circuit

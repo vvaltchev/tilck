@@ -350,6 +350,11 @@ def cmd_check(args) -> int:
 
          file_diags.extend(diags)
 
+      # Apply block-scoped style_check annotations (function-level
+      # disable markers).
+      block_ranges = _config.scan_block_disables(ctx.lines)
+      file_diags = _config.filter_block_disables(file_diags, block_ranges)
+
       # Build the per-function summary. The aggregator needs the TU
       # to find function extents; if a rule didn't request a TU the
       # context won't have one, so the summary will be file-level only.

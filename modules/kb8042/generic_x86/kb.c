@@ -425,6 +425,7 @@ static bool hw_8042_init(void)
 static void
 init_kb_internal(void)
 {
+   /* style_check: disable comment_block_multiline_format */
    const bool acpi_ok = get_acpi_init_status() == ais_fully_initialized;
 
    /*
