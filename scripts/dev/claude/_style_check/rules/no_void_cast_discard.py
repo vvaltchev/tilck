@@ -45,6 +45,16 @@ class NoVoidCastDiscard(Rule):
          line_text = ctx.lines[line - 1] \
             if line - 1 < len(ctx.lines) else ''
 
+         # Only flag standalone `(void)ident;` statements used to
+         # silence unused-parameter warnings. Skip when the cast
+         # shares a line with other code (e.g. `ASSERT(x); (void)x;`)
+         # — those silence unused-variable warnings for locals and
+         # are legitimate.
+         stripped = line_text.strip()
+
+         if not stripped.startswith('(void)'):
+            continue
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=line,
@@ -54,7 +64,7 @@ class NoVoidCastDiscard(Rule):
             rule=self.id,
             severity=self.severity,
             message='no (void)expr discards; use named "unused" params instead',
-            snippet=line_text.strip(),
+            snippet=stripped,
          ))
 
       return out
