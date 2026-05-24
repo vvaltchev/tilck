@@ -4,6 +4,7 @@
 # pylint: disable=broad-except, consider-using-f-string
 
 import os
+import re as _re
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -182,13 +183,54 @@ def _find_configs_along_path(file_path: Path,
    return collected
 
 
+_INLINE_DISABLE_RE = _re.compile(
+   r'/\*\s*style_check:\s*disable\s+([\w,\s]+)\s*\*/'
+)
+
+_INLINE_SCAN_LINES = 15
+
+
+def _scan_inline_disables(file_path: Path) -> Set[str]:
+   """Scan the first few lines of a file for inline disable markers.
+
+   Recognised form: /* style_check: disable rule1, rule2 */
+   Returns the set of rule IDs to suppress for this file."""
+
+   disabled = set()  # type: Set[str]
+
+   try:
+      with open(file_path, encoding='utf-8', errors='replace') as fh:
+         for n, line in enumerate(fh):
+            if n >= _INLINE_SCAN_LINES:
+               break
+            m = _INLINE_DISABLE_RE.search(line)
+            if m:
+               for tok in m.group(1).split(','):
+                  tok = tok.strip()
+                  if tok:
+                     disabled.add(tok)
+   except (OSError, IOError):
+      pass
+
+   return disabled
+
+
 def resolve_config(file_path: Path,
                    repo_root: Optional[Path]) -> StyleConfig:
    """Walk the directory chain from `repo_root` down to
    `file_path`'s parent, applying each `.style.yml` in order to
-   produce the final `StyleConfig` for this file."""
+   produce the final `StyleConfig` for this file.
+
+   Also scans the file's first few lines for inline disable markers
+   of the form: /* style_check: disable rule_id */"""
 
    cfg = StyleConfig()
+
+   # Inline file-level disables.
+   inline = _scan_inline_disables(file_path)
+
+   if inline:
+      cfg.disabled |= inline
 
    for cfg_path in _find_configs_along_path(file_path, repo_root):
 
