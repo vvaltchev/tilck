@@ -16,11 +16,9 @@ from .base import (
 )
 from .. import tokens as _tokens_mod
 
-# Cast to void: `(void)<expression>` where expression starts with an
-# identifier or `(` or unary operator. The `void` keyword in function
-# args (`void foo(void)`) is always followed by `)` or `,` so the
-# trailing-class character distinguishes the cast.
-_PAT = re.compile(r'\(\s*void\s*\)[ \t]*([A-Za-z_(!&*])')
+# Cast to void: `(void) ident;` — bare identifier, no function call.
+# Matches `(void) src;` but NOT `(void) func(args);`.
+_PAT = re.compile(r'\(\s*void\s*\)\s*(\w+)\s*;')
 
 
 class NoVoidCastDiscard(Rule):
@@ -41,18 +39,47 @@ class NoVoidCastDiscard(Rule):
 
       for m in _PAT.finditer(masked):
 
+         ident = m.group(1)
          line, col = _tokens_mod.offset_to_line_col(masked, m.start())
          line_text = ctx.lines[line - 1] \
             if line - 1 < len(ctx.lines) else ''
 
-         # Only flag standalone `(void)ident;` statements used to
-         # silence unused-parameter warnings. Skip when the cast
-         # shares a line with other code (e.g. `ASSERT(x); (void)x;`)
-         # — those silence unused-variable warnings for locals and
-         # are legitimate.
-         stripped = line_text.strip()
+         # Skip when the identifier is a local variable, not a
+         # parameter. Heuristic: scan backward from this line for
+         # a declaration or assignment of `ident` within the same
+         # function body. If the identifier is assigned to (written),
+         # it's a local variable being silenced for release builds.
+         # Only bare `(void) param;` with no prior assignment is the
+         # unused-parameter anti-pattern.
+         is_local = False
 
-         if not stripped.startswith('(void)'):
+         for k in range(line - 2, -1, -1):
+
+            prev = ctx.lines[k].strip() if k < len(ctx.lines) else ''
+
+            if prev == '{':
+               # Hit function-body opening brace. If we found no
+               # assignment, check if ident appears in the function
+               # signature (it's a parameter). Stop scanning.
+               break
+
+            # If ident is assigned to anywhere above, it's a local.
+            if re.search(r'\b' + re.escape(ident) + r'\s*=', prev):
+               is_local = True
+               break
+
+            # If ident appears in a declaration (type + ident or
+            # type + ..., ident, ...), it's a local.
+            if re.search(r'\b' + re.escape(ident) + r'\b', prev):
+               if re.search(
+                  r'(?:int|long|u32|u64|u16|u8|size_t|ssize_t|bool|'
+                  r'char|void|ulong|offt|struct\s+\w+|enum\s+\w+)'
+                  r'\s', prev
+               ):
+                  is_local = True
+                  break
+
+         if is_local:
             continue
 
          out.append(Diagnostic(
@@ -63,8 +90,11 @@ class NoVoidCastDiscard(Rule):
             end_col=col + len(m.group(0)),
             rule=self.id,
             severity=self.severity,
-            message='no (void)expr discards; use named "unused" params instead',
-            snippet=stripped,
+            message=(
+               '(void){} silences an unused parameter; prefer '
+               'naming it `unused` instead'.format(ident)
+            ),
+            snippet=line_text.strip(),
          ))
 
       return out
