@@ -141,7 +141,9 @@ render_task_row_plain(const struct dp_task_info *t, bool kernel_tasks)
       if ((int)strlen(src) < MAX_EXEC_PATH_LEN - 2) {
          snprintf(path, sizeof(path), "%s", src);
       } else {
-         snprintf(path2, MAX_EXEC_PATH_LEN + 1 - 6, "%s", src);
+         const size_t trunc = MAX_EXEC_PATH_LEN + 1 - 6;
+         strncpy(path2, src, trunc);
+         path2[trunc - 1] = '\0';
          snprintf(path, sizeof(path), "%s...", path2);
       }
    }
