@@ -214,7 +214,7 @@ void terminate_process(int exit_code, int term_sig)
    struct process *const pi = ti->pi;
    struct task *parent;
    const bool vforked = pi->vforked;
-   DEBUG_ONLY(enum task_state state = atomic_load(&ti->state));
+   DEBUG_ONLY(enum task_state state = (enum task_state)atomic_load(&ti->state));
 
    ASSERT(state != TASK_STATE_ZOMBIE);
    ASSERT(!is_kernel_thread(ti));
