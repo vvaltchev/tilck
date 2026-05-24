@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck/kernel/hal.h>

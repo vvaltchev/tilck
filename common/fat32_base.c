@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/assert.h>

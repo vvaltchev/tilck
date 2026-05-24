@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 /*
  * Userspace counterpart of modules/debugpanel/dp_input.c. The ESC

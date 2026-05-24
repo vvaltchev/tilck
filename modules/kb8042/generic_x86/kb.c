@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck_gen_headers/mod_kb8042.h>
 

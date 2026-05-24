@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck/common/tilck_sound.h>
 #include <tilck/common/printk.h>
