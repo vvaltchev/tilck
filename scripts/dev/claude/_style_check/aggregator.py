@@ -245,10 +245,12 @@ _BRACE_ONLY = frozenset((
 
 
 def _compute_prettiness(lines, start, end, diagnostics):
-   """Compute per-function prettiness (0.0..1.0) from gradient
-   diagnostics. Each scoreable line starts at 1.0; gradient
-   costs subtract from the affected line. The function score is
-   the mean of all line scores."""
+   """Compute per-function prettiness from ALL diagnostics.
+   Each scoreable line starts at 1.0; both gradient costs and
+   violation scores reduce the affected line. Lines CAN go
+   negative -- a HARD violation (-10.0) on one line drags the
+   function mean significantly. The function score is the mean
+   of all line scores, clamped to [0.0, 1.0]."""
 
    line_scores = {}
 
@@ -272,20 +274,21 @@ def _compute_prettiness(lines, start, end, diagnostics):
 
    for d in diagnostics:
 
-      if not d.is_gradient:
-         continue
+      cost = d.prettiness_cost
 
-      if d.prettiness_cost <= 0:
+      if cost <= 0 and d.score < 0:
+         cost = abs(d.score)
+
+      if cost <= 0:
          continue
 
       for ln in range(d.line, d.end_line + 1):
 
          if ln in line_scores:
-            line_scores[ln] = max(
-               0.0, line_scores[ln] - d.prettiness_cost
-            )
+            line_scores[ln] -= cost
 
-   return sum(line_scores.values()) / len(line_scores)
+   raw = sum(line_scores.values()) / len(line_scores)
+   return max(0.0, min(1.0, raw))
 
 
 def build_file_summary(file_path: Path,

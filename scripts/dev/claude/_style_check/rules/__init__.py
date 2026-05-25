@@ -61,6 +61,10 @@ from . import multiline_call_vs_long_neighbor  # harmony: wrapped-arg vs long ne
 from . import call_cluster_column_align        # columnar alignment in call tables
 from . import else_after_return                # Q49
 from . import blank_line_before_return
+from . import designator_init_spacing
+
+# Verbose-type-name rule
+from . import verbose_type_name
 
 # Gradient-only density rules
 from . import ifdef_density
@@ -137,6 +141,8 @@ ALL_RULES = [
    define_backslash_align.RULE,
    else_after_return.RULE,
    blank_line_before_return.RULE,
+   designator_init_spacing.RULE,
+   verbose_type_name.RULE,
    ifdef_density.RULE,
    cast_density.RULE,
 ]
