@@ -174,7 +174,8 @@ show_hello_message(void)
 #endif
 }
 
-WEAK const char *get_signal_name(int signum) {
+WEAK const char *get_signal_name(int signum)
+{
    return "";
 }
 
@@ -187,11 +188,13 @@ WEAK const char *get_signal_name(int signum) {
  * remain; the drift-compensation kthread checks for `false` from
  * rtc_wait_for_second_edge() and degrades to no-RTC behavior.
  */
-WEAK void init_rtc_uie(void) {
+WEAK void init_rtc_uie(void)
+{
    /* no-op */
 }
 
-WEAK bool rtc_wait_for_second_edge(u64 *time_ns_out, u32 timeout_ticks) {
+WEAK bool rtc_wait_for_second_edge(u64 *time_ns_out, u32 timeout_ticks)
+{
    return false;
 }
 

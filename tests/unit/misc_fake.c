@@ -96,12 +96,14 @@ int __wrap_wth_create_thread_for(void *t) { return 0; }
 void __wrap_wth_wakeup(struct worker_thread *t) { /* do nothing */ }
 void __wrap_check_in_irq_handler(void) { /* do nothing */ }
 
-void __wrap_kmutex_lock(struct kmutex *m) {
+void __wrap_kmutex_lock(struct kmutex *m)
+{
    ASSERT(m->owner_task == NULL);
    m->owner_task = get_curr_task();
 }
 
-void __wrap_kmutex_unlock(struct kmutex *m) {
+void __wrap_kmutex_unlock(struct kmutex *m)
+{
    ASSERT(m->owner_task == get_curr_task());
    m->owner_task = NULL;
 }

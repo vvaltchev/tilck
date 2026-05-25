@@ -47,13 +47,15 @@ static unsigned hist_count;
 static unsigned curr_hist_cmd_to_show;
 static int curr_line_pos;
 
-static inline void move_right(int n) {
+static inline void move_right(int n)
+{
    char buf[16];
    int rc = sprintf(buf, "\033[%dC", n);
    write(1, buf, rc);
 }
 
-static inline void move_left(int n) {
+static inline void move_left(int n)
+{
    char buf[16];
    int rc = sprintf(buf, "\033[%dD", n);
    write(1, buf, rc);

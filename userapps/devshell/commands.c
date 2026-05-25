@@ -22,7 +22,8 @@ static const char *tt_str[] =
    [TT_LONG] = "tt_long",
 };
 
-static int get_cmds_count(void) {
+static int get_cmds_count(void)
+{
 
    static int value;
    struct test_cmd_entry *e;
