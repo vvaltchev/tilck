@@ -17,6 +17,8 @@ from .base import (
    CheckContext,
    SEVERITY_WARNING,
    SCORE_SOFT,
+   COST_MILD,
+   COST_SIGNIFICANT,
 )
 from .. import tokens as _tokens_mod
 
@@ -569,6 +571,14 @@ class HarmonyWithNeighbors(Rule):
             if partners > MAX_PARTNERS:
                continue
 
+            # Continuous cost: scales from COST_MILD at the fence
+            # to COST_SIGNIFICANT at 2x overshoot.
+            overshoot = (length - fence) / max(fence - med, 1)
+            cost = min(
+               COST_SIGNIFICANT,
+               COST_MILD + (COST_SIGNIFICANT - COST_MILD) * overshoot,
+            )
+
             out.append(Diagnostic(
                file=str(ctx.file_path),
                line=line_no,
@@ -579,14 +589,11 @@ class HarmonyWithNeighbors(Rule):
                severity=self.severity,
                message=(
                   'line is {} cols; function median {:.0f} '
-                  '(+{} delta); IQR fence {:.0f} -- '
-                  'isolated outlier, consider wrapping'
+                  '(+{} delta); IQR fence {:.0f}'
                ).format(length, med, int(delta), fence),
                snippet=raw.rstrip(),
-               suggestion=(
-                  'wrap the line or extract a local to '
-                  'fit the local rhythm'
-               ),
+               is_gradient=True,
+               prettiness_cost=cost,
             ))
 
       return out

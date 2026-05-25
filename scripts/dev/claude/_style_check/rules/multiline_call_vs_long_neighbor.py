@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from .base import (
+   COST_MILD,
    Rule,
    Diagnostic,
    CheckContext,
@@ -155,6 +156,8 @@ class MultilineCallVsLongNeighbor(Rule):
                'consider compacting or wrapping uniformly'
             ).format(line_no, call_end, neighbor_line),
             snippet=line_text.rstrip(),
+            is_gradient=True,
+            prettiness_cost=COST_MILD,
          ))
 
       return out

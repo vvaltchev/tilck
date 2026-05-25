@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from .base import (
+   COST_MILD,
    Rule,
    Diagnostic,
    CheckContext,
@@ -112,6 +113,8 @@ class ParenExplicitPrecedence(Rule):
                'parenthesize each sub-expression'
             ),
             snippet=line_text.strip(),
+            is_gradient=True,
+            prettiness_cost=COST_MILD,
          ))
 
       return out

@@ -7,12 +7,14 @@ import re
 from typing import List
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
+   COST_MINOR,
+   COST_MILD,
 )
 from .. import tokens as _tokens_mod
 
@@ -118,38 +120,47 @@ class OneStmtPerLine(Rule):
                      line_text = ctx.lines[line - 1] \
                         if line - 1 < len(ctx.lines) else ''
 
-                     # Skip switch-case dispatch tables:
-                     # `case N: stmt; stmt; break;`
+                     # Allowed multi-statement idioms: emit
+                     # gradient diagnostics (affect prettiness
+                     # but not shown as violations).
+                     is_exception = False
+
                      if _CASE_PAT.match(line_text):
-                        last_semi_pos = i
-                        last_semi_brace_depth = brace_depth
-                        i += 1
-                        continue
+                        is_exception = True
 
-                     # Skip paired inc/dec idioms:
-                     # `argc--; argv++;`
-                     if _ARGC_ARGV_PAT.match(line_text):
-                        last_semi_pos = i
-                        last_semi_brace_depth = brace_depth
-                        i += 1
-                        continue
+                     elif _ARGC_ARGV_PAT.match(line_text):
+                        is_exception = True
 
-                     # Skip `p++; continue;` / `p--; continue;`
-                     if _INCDEC_CONTINUE_PAT.match(line_text):
-                        last_semi_pos = i
-                        last_semi_brace_depth = brace_depth
-                        i += 1
-                        continue
+                     elif _INCDEC_CONTINUE_PAT.match(line_text):
+                        is_exception = True
 
-                     # Skip `NOT_REACHED(); return ...;`
-                     if _NOT_REACHED_RET_PAT.search(line_text):
-                        last_semi_pos = i
-                        last_semi_brace_depth = brace_depth
-                        i += 1
-                        continue
+                     elif _NOT_REACHED_RET_PAT.search(line_text):
+                        is_exception = True
 
-                     # Skip `ASSERT(x); (void)x;`
-                     if _ASSERT_VOID_PAT.search(line_text):
+                     elif _ASSERT_VOID_PAT.search(line_text):
+                        is_exception = True
+
+                     if is_exception:
+
+                        seen.add(key)
+
+                        out.append(Diagnostic(
+                           file=str(ctx.file_path),
+                           line=line,
+                           col=col,
+                           end_line=line,
+                           end_col=col + len(between),
+                           rule=self.id,
+                           severity=self.severity,
+                           message=(
+                              'packed idiom (allowed but '
+                              'not ideal)'
+                           ),
+                           snippet=line_text.strip(),
+                           is_gradient=True,
+                           prettiness_cost=COST_MINOR,
+                        ))
+
                         last_semi_pos = i
                         last_semi_brace_depth = brace_depth
                         i += 1

@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from .base import (
+   COST_MILD,
    Rule,
    Diagnostic,
    Fix,
@@ -206,6 +207,8 @@ class CallClusterColumnAlign(Rule):
                         majority_n, len(cluster)),
                snippet=line_text.rstrip(),
                fixes=fixes,
+               is_gradient=True,
+               prettiness_cost=COST_MILD,
             ))
 
       return out

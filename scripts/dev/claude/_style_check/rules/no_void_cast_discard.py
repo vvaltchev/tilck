@@ -7,6 +7,7 @@ import re
 from typing import List
 
 from .base import (
+   COST_MILD,
       Rule,
    Diagnostic,
    CheckContext,
@@ -95,6 +96,8 @@ class NoVoidCastDiscard(Rule):
                'naming it `unused` instead'.format(ident)
             ),
             snippet=line_text.strip(),
+            is_gradient=True,
+            prettiness_cost=COST_MILD,
          ))
 
       return out

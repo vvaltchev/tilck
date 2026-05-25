@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from .base import (
+   COST_MINOR,
    Rule,
    Diagnostic,
    CheckContext,
@@ -68,6 +69,8 @@ class TypedLiteralSuffix(Rule):
             ).format(type_name, num),
             snippet=line_text.strip(),
             suggestion='use a literal suffix (e.g. `0x...u`, `1ull`)',
+            is_gradient=True,
+            prettiness_cost=COST_MINOR,
          ))
 
       return out

@@ -29,10 +29,15 @@ class FunctionRegion:
    end_line: int
    stmt_count: int = 0       # rough: non-blank, non-pure-comment lines
    diagnostics: List[Diagnostic] = field(default_factory=list)
+   prettiness: float = 1.0   # 0.0..1.0 gradient quality metric
+
+   @property
+   def violation_diagnostics(self):
+      return [d for d in self.diagnostics if not d.is_gradient]
 
    @property
    def total_score(self) -> float:
-      return sum(d.score for d in self.diagnostics)
+      return sum(d.score for d in self.violation_diagnostics)
 
    @property
    def normalized_score(self) -> float:
@@ -46,11 +51,17 @@ class FunctionRegion:
 
    @property
    def hard_violations(self) -> int:
-      return sum(1 for d in self.diagnostics if d.severity == 'error')
+      return sum(
+         1 for d in self.diagnostics
+         if d.severity == 'error' and not d.is_gradient
+      )
 
    @property
    def soft_violations(self) -> int:
-      return sum(1 for d in self.diagnostics if d.severity == 'warning')
+      return sum(
+         1 for d in self.diagnostics
+         if d.severity == 'warning' and not d.is_gradient
+      )
 
    @property
    def verdict(self) -> str:
@@ -196,6 +207,55 @@ def _count_statements(lines: List[str], start: int, end: int) -> int:
    return max(1, cnt)
 
 
+_BRACE_ONLY = frozenset((
+   '', '{', '}', '};', '})', '});', ');', '))', '));', '}, {',
+))
+
+
+def _compute_prettiness(lines, start, end, diagnostics):
+   """Compute per-function prettiness (0.0..1.0) from gradient
+   diagnostics. Each scoreable line starts at 1.0; gradient
+   costs subtract from the affected line. The function score is
+   the mean of all line scores."""
+
+   line_scores = {}
+
+   for ln in range(start, end + 1):
+
+      if ln <= 0 or ln > len(lines):
+         continue
+
+      stripped = lines[ln - 1].strip()
+
+      if not stripped:
+         continue
+
+      if stripped in _BRACE_ONLY:
+         continue
+
+      line_scores[ln] = 1.0
+
+   if not line_scores:
+      return 1.0
+
+   for d in diagnostics:
+
+      if not d.is_gradient:
+         continue
+
+      if d.prettiness_cost <= 0:
+         continue
+
+      for ln in range(d.line, d.end_line + 1):
+
+         if ln in line_scores:
+            line_scores[ln] = max(
+               0.0, line_scores[ln] - d.prettiness_cost
+            )
+
+   return sum(line_scores.values()) / len(line_scores)
+
+
 def build_file_summary(file_path: Path,
                        tu,
                        lines: List[str],
@@ -235,6 +295,9 @@ def build_file_summary(file_path: Path,
    # Sort each function's diagnostics by line for stable display.
    for f in funcs:
       f.diagnostics.sort(key=lambda d: (d.line, d.col))
+      f.prettiness = _compute_prettiness(
+         lines, f.start_line, f.end_line, f.diagnostics
+      )
 
    summary.file_level_diagnostics.sort(key=lambda d: (d.line, d.col))
    summary.functions = funcs

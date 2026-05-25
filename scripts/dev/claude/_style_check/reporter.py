@@ -2,6 +2,7 @@
 # pylint: disable=missing-module-docstring, missing-function-docstring
 # pylint: disable=bad-indentation, consider-using-f-string
 
+import math
 import os
 import json
 import sys
@@ -160,7 +161,12 @@ def emit_text(diags: List[Diagnostic],
 
       score_part = ''
 
-      if d.score != 0.0:
+      if d.is_gradient:
+         score_part = wrap(
+            _DIM,
+            '  (prettiness: -{:.0f}%)'.format(d.prettiness_cost * 100),
+         )
+      elif d.score != 0.0:
          score_part = wrap(
             _DIM, '  (score: {:+.1f})'.format(d.score)
          )
@@ -335,7 +341,10 @@ def emit_function_summaries(file_summary,
    use_color = _decide_color(color_mode, out)
    wrap = _wrap_factory(use_color)
 
-   touched = [f for f in file_summary.functions if f.diagnostics]
+   touched = [
+      f for f in file_summary.functions
+      if f.diagnostics or f.prettiness < 1.0
+   ]
 
    if not touched:
       return
@@ -352,10 +361,18 @@ def emit_function_summaries(file_summary,
       lhs = '    {} (lines {}..{})'.format(
          f.name, f.start_line, f.end_line
       )
-      rhs = ('total {:+.1f}  norm {:+.2f}  hard {}  soft {}').format(
-         f.total_score, f.normalized_score,
-         f.hard_violations, f.soft_violations
-      )
+
+      parts = []
+
+      if f.prettiness < 0.999:
+         pct = math.floor(f.prettiness * 100)
+         parts.append('pretty {}%'.format(pct))
+
+      parts.append('total {:+.1f}'.format(f.total_score))
+      parts.append('norm {:+.2f}'.format(f.normalized_score))
+      parts.append('hard {}'.format(f.hard_violations))
+      parts.append('soft {}'.format(f.soft_violations))
+      rhs = '  '.join(parts)
 
       out.write('{}  [{}]  {}\n'.format(lhs, tag_colored, rhs))
 

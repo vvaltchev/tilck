@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from .base import (
+   COST_MINOR,
    Rule,
    Diagnostic,
    CheckContext,
@@ -87,6 +88,8 @@ class ElseAfterReturn(Rule):
             ),
             snippet=line_text.strip(),
             suggestion='remove `else`, add blank line after return',
+            is_gradient=True,
+            prettiness_cost=COST_MINOR,
          ))
 
       return out

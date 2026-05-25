@@ -351,8 +351,10 @@ def cmd_check(args) -> int:
 
          # Backfill prettiness score from the rule's default if a
          # rule didn't set it explicitly per-diagnostic.
+         # Gradient diagnostics keep score=0 — their impact is
+         # via prettiness_cost, not the violation score.
          for d in diags:
-            if d.score == 0.0:
+            if d.score == 0.0 and not d.is_gradient:
                d.score = r.default_score
 
          file_diags.extend(diags)
@@ -362,9 +364,8 @@ def cmd_check(args) -> int:
       block_ranges = _config.scan_block_disables(ctx.lines)
       file_diags = _config.filter_block_disables(file_diags, block_ranges)
 
-      # Build the per-function summary. The aggregator needs the TU
-      # to find function extents; if a rule didn't request a TU the
-      # context won't have one, so the summary will be file-level only.
+      # Build the per-function summary with ALL diagnostics (including
+      # gradient) so prettiness is computed; then split for display.
       file_summary = _agg.build_file_summary(
          file_path=f,
          tu=ctx.tu,
@@ -372,25 +373,33 @@ def cmd_check(args) -> int:
          diagnostics=file_diags,
       )
 
+      # Separate gradient diagnostics: they affect prettiness but
+      # are not shown as violations in the normal output unless
+      # --gradient is passed.
+      if args.gradient:
+         visible_diags = file_diags
+      else:
+         visible_diags = [d for d in file_diags if not d.is_gradient]
+
       if show_progress:
 
          if args.quiet:
 
             # In quiet mode, only show files that have diagnostics.
-            if file_diags:
+            if visible_diags:
                sys.stdout.write('Checking {} '.format(
                   _display_path(f, repo_root)
                ))
                sys.stdout.flush()
                _emit_status(
                   _display_path(f, repo_root),
-                  _status_for(file_diags),
+                  _status_for(visible_diags),
                   args.color,
                   sys.stdout,
                )
 
                reporter.emit(
-                  file_diags,
+                  visible_diags,
                   fmt=fmt,
                   color_mode=args.color,
                   with_total=False,
@@ -411,21 +420,27 @@ def cmd_check(args) -> int:
 
             _emit_status(
                _display_path(f, repo_root),
-               _status_for(file_diags),
+               _status_for(visible_diags),
                args.color,
                sys.stdout,
             )
 
-            if file_diags:
+            has_gradient = any(
+               f.prettiness < 1.0 for f in file_summary.functions
+            )
+
+            if visible_diags:
 
                reporter.emit(
-                  file_diags,
+                  visible_diags,
                   fmt=fmt,
                   color_mode=args.color,
                   with_total=False,
                   context_lines=args.U,
                   all_lines=ctx.lines,
                )
+
+            if (visible_diags or has_gradient):
 
                if args.summary and file_summary.functions:
                   reporter.emit_function_summaries(
@@ -436,11 +451,12 @@ def cmd_check(args) -> int:
 
                sys.stdout.write('\n')
 
-      elif file_diags and not args.json and not args.diff:
+      elif (visible_diags or file_diags) and not args.json \
+           and not args.diff:
 
          # Single-file text mode: always emit diagnostics.
          reporter.emit(
-            file_diags,
+            visible_diags,
             fmt=fmt,
             color_mode=args.color,
             with_total=True,
@@ -455,10 +471,23 @@ def cmd_check(args) -> int:
                stream=sys.stdout,
             )
 
-         all_diags.extend(file_diags)
+         all_diags.extend(visible_diags)
+
+         if args.diff:
+            all_diags.extend(
+               d for d in file_diags
+               if d.is_gradient and d.fixes
+            )
+
          continue
 
-      all_diags.extend(file_diags)
+      all_diags.extend(visible_diags)
+
+      if args.diff:
+         all_diags.extend(
+            d for d in file_diags
+            if d.is_gradient and d.fixes
+         )
 
    if show_progress:
 
@@ -491,8 +520,9 @@ def cmd_check(args) -> int:
    # to print here.
 
    if args.diff and all_diags:
-      reporter.emit_diff(all_diags, file_lines_map,
-                         repo_root=repo_root)
+      reporter.emit_diff(
+         all_diags, file_lines_map, repo_root=repo_root,
+      )
 
    return 0
 
@@ -843,6 +873,14 @@ def build_argparser():
       action='store_true',
       help=('Emit a unified diff for all auto-fixable violations. '
             'Pipe to `git apply` to apply all fixes at once.')
+   )
+
+   check_p.add_argument(
+      '--gradient',
+      action='store_true',
+      help=('Show gradient diagnostics (prettiness reductions) '
+            'alongside violations. Normally hidden; use this '
+            'to see every per-line prettiness impact.')
    )
 
    check_p.set_defaults(func=cmd_check)

@@ -40,6 +40,18 @@ SCORE_SOFT        = -0.5
 SCORE_NUDGE       = -0.2
 SCORE_CONTEXT_OK  = +0.5
 
+# Prettiness cost tiers for gradient rules. Each scoreable line
+# starts at 1.0; gradient diagnostics subtract their cost from
+# the affected line's prettiness. The line score is clamped to
+# [0.0, 1.0]. Function prettiness = mean of line scores.
+#
+# Gradient diagnostics are NOT shown as violations — they only
+# affect the per-function prettiness metric.
+COST_MINOR      = 0.10   # barely noticeable imperfection
+COST_MILD       = 0.20   # acceptable tradeoff for line length
+COST_MODERATE   = 0.35   # clearly suboptimal, prefer alternative
+COST_SIGNIFICANT = 0.50  # ugly but technically valid
+
 
 @dataclass
 class Fix:
@@ -63,6 +75,8 @@ class Diagnostic:
    score: float = 0.0
    suggestion: Optional[str] = None
    fixes: list = field(default_factory=list)  # List[Fix]
+   is_gradient: bool = False       # gradient: affects prettiness only
+   prettiness_cost: float = 0.0    # 0.0..1.0 reduction to line score
 
 
 @dataclass

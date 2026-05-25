@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from .base import (
+   COST_MODERATE,
    Rule,
    Diagnostic,
    Fix,
@@ -96,6 +97,8 @@ class CastNoAsymmetricForm(Rule):
                      '`(Type *) expr` (also acceptable)'),
             snippet=line_text.strip(),
             fixes=fixes,
+            is_gradient=True,
+            prettiness_cost=COST_MODERATE,
          ))
 
       return out
