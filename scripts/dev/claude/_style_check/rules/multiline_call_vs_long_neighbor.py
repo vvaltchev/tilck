@@ -100,6 +100,13 @@ class MultilineCallVsLongNeighbor(Rule):
          if not found_close or op_lines < MIN_OP_LINES:
             continue
 
+         indent = len(masked_lines[i]) - len(masked_lines[i].lstrip())
+         parts = [masked_lines[k].strip() for k in range(i, call_end)]
+         compacted = re.sub(r'\s+', ' ', ' '.join(parts))
+
+         if indent + len(compacted) > 80:
+            continue
+
          long_before = False
          long_after = False
 
