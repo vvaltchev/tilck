@@ -41,11 +41,21 @@ void pdir_clone(void *pdir) { }
 void pdir_deep_clone(void *pdir) { }
 void pdir_destroy(void *pdir) { }
 void set_curr_pdir(void *pdir) { }
-void arch_specific_new_proc_setup(struct process *pi, struct process *parent) { NOT_REACHED(); }
+void arch_specific_new_proc_setup(struct process *pi,
+                                  struct process *parent)
+{
+   NOT_REACHED();
+}
 void arch_specific_free_proc(struct process *pi) { NOT_REACHED(); }
 void fpu_context_begin(void) { }
 void fpu_context_end(void) { }
-void map_zero_pages(void *pdir, void *vaddrp, size_t page_count, u32 pg_flags) { NOT_REACHED(); }
+void map_zero_pages(void *pdir,
+                    void *vaddrp,
+                    size_t page_count,
+                    u32 pg_flags)
+{
+   NOT_REACHED();
+}
 void dump_var_mtrrs(void) { }
 void set_page_rw(void *pdir, void *vaddr, bool rw) { }
 void poweroff(void) { NOT_REACHED(); }
@@ -80,4 +90,10 @@ int get_syscall_num(void *func) { return -1; }
 
 void arch_add_initial_mem_regions(void) { }
 bool arch_add_final_mem_regions(void) { return false; }
-void setup_sig_handler(struct task *ti, void *r, ulong user_func, int signum) { NOT_REACHED(); }
+void setup_sig_handler(struct task *ti,
+                       void *r,
+                       ulong user_func,
+                       int signum)
+{
+   NOT_REACHED();
+}
