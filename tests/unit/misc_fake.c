@@ -17,6 +17,8 @@
 #include <kernel/kmalloc/kmalloc_heap_struct.h> // kmalloc private header
 #include <kernel/kmalloc/kmalloc_block_node.h>  // kmalloc private header
 
+struct worker_thread;
+
 u32 spur_irq_count;
 u32 unhandled_irq_count[256];
 
@@ -91,8 +93,8 @@ int __wrap_fat_ramdisk_prepare_for_mmap(void *hdr, size_t rd_size)
 }
 
 int __wrap_wth_create_thread_for(void *t) { return 0; }
-void __wrap_wth_wakeup() { /* do nothing */ }
-void __wrap_check_in_irq_handler() { /* do nothing */ }
+void __wrap_wth_wakeup(struct worker_thread *t) { /* do nothing */ }
+void __wrap_check_in_irq_handler(void) { /* do nothing */ }
 
 void __wrap_kmutex_lock(struct kmutex *m) {
    ASSERT(m->owner_task == NULL);

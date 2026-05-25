@@ -77,7 +77,7 @@ static void sek_thread(void *unused)
    } // for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++)
 }
 
-void selftest_kmutex()
+void selftest_kmutex(void)
 {
    int local_tids[3];
 
@@ -149,7 +149,7 @@ static void test_kmutex_thread_trylock(void *unused)
    }
 }
 
-void selftest_kmutex_rec()
+void selftest_kmutex_rec(void)
 {
    bool success;
    int local_tids[3];
@@ -351,7 +351,7 @@ kmutex_ord_supervisor_thread(void *unused)
    }
 }
 
-void selftest_kmutex_ord()
+void selftest_kmutex_ord(void)
 {
    int tid, supervisor_tid;
    u32 unlucky_threads = 0;

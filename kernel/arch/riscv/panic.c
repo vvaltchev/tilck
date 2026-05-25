@@ -25,7 +25,7 @@ volatile bool __in_kernel_shutdown;
 volatile bool __in_panic_debugger;
 
 void init_console(void);         /* defined in main.c */
-void panic_save_current_state(); /* defined in kernel_yield.S */
+void panic_save_current_state(void); /* defined in kernel_yield.S */
 regs_t panic_state_regs;
 
 /* Called by the assembly function panic_save_current_state() */

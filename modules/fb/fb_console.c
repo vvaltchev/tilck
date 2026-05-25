@@ -231,7 +231,7 @@ static struct video_interface framebuffer_vi =
 };
 
 
-static void fb_blink_thread()
+static void fb_blink_thread(void *unused)
 {
    while (true) {
 
@@ -420,7 +420,7 @@ void fb_draw_banner(void)
                       vga_rgb_colors[COLOR_BLACK]);
 }
 
-static void fb_update_banner()
+static void fb_update_banner(void *unused)
 {
    while (true) {
 
@@ -462,7 +462,7 @@ static void fb_scroll_one_line_up(void)
       fb_enable_cursor();
 }
 
-static void async_pre_render_scanlines()
+static void async_pre_render_scanlines(void *unused)
 {
    if (!fb_pre_render_char_scanlines()) {
       printk("fb_console: WARNING: fb_pre_render_char_scanlines failed.\n");

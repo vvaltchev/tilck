@@ -90,7 +90,7 @@ static void (*const funcs[])(void) = {
    &scr_colors
 };
 
-int main()
+int main(void)
 {
    initscr();
 

@@ -348,7 +348,7 @@ static int cmd_help(int argc, char **argv)
 }
 
 int
-dp_mini_debugger_tool()
+dp_mini_debugger_tool(void)
 {
    fs_handle h;
    char buf[128];

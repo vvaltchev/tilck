@@ -233,7 +233,7 @@ static void se_rwlock_common(int *rt, int *wt, struct se_rwlock_ctx *ctx)
    }
 }
 
-void selftest_rwlock_rp()
+void selftest_rwlock_rp(void)
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];
@@ -319,7 +319,7 @@ end:
 
 REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp)
 
-void selftest_rwlock_wp()
+void selftest_rwlock_wp(void)
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];

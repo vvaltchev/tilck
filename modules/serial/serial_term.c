@@ -136,7 +136,7 @@ sterm_init(term *_t, u16 serial_port_fwd)
    return 0;
 }
 
-static void sterm_ignored()
+static void sterm_ignored(void)
 {
    /* do nothing */
 }

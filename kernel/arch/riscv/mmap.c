@@ -5,7 +5,7 @@
 
 #include "paging_int.h"
 
-void arch_add_initial_mem_regions()
+void arch_add_initial_mem_regions(void)
 {
    /*
     * Reserve 1MB below kernel's head, where
@@ -19,7 +19,7 @@ void arch_add_initial_mem_regions()
    });
 }
 
-bool arch_add_final_mem_regions()
+bool arch_add_final_mem_regions(void)
 {
    /* do nothing */
    return false;

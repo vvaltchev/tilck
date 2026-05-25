@@ -3,25 +3,25 @@
 #include <tilck/kernel/syscalls.h>
 
 /* Actual implementation, not a stub: only the root user exists. */
-int sys_getuid()
+int sys_getuid(void)
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-int sys_getgid()
+int sys_getgid(void)
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-int sys_geteuid()
+int sys_geteuid(void)
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-int sys_getegid()
+int sys_getegid(void)
 {
    return 0;
 }
@@ -51,7 +51,7 @@ int sys_setuid16(ulong uid)
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-int sys_getuid16()
+int sys_getuid16(void)
 {
    return 0;
 }

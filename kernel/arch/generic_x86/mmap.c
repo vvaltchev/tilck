@@ -8,7 +8,7 @@
 STATIC_ASSERT(MAX_DMA <= 16 * MB);
 STATIC_ASSERT((MAX_DMA & (64 * KB - 1)) == 0);
 
-void arch_add_initial_mem_regions()
+void arch_add_initial_mem_regions(void)
 {
    /* We want to keep the first 64 KB as reserved */
    append_mem_region((struct mem_region) {
@@ -32,7 +32,7 @@ void arch_add_initial_mem_regions()
    });
 }
 
-bool arch_add_final_mem_regions()
+bool arch_add_final_mem_regions(void)
 {
    u64 tot_dma = 0;
 

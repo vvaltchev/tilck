@@ -51,7 +51,7 @@ void selftest_kthread(void)
 
 REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread)
 
-void selftest_sleep()
+void selftest_sleep(void)
 {
    u64 after;
    u64 elapsed;
@@ -72,7 +72,7 @@ void selftest_sleep()
 
 REGISTER_SELF_TEST(sleep, se_short, &selftest_sleep)
 
-void selftest_join()
+void selftest_join(void)
 {
    int tid;
 
