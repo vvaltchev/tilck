@@ -24,19 +24,20 @@ static void textmode_clear_row(u16 row_num, u8 color)
 
 static void textmode_set_char_at(u16 row, u16 col, u16 entry)
 {
+   volatile u16 *video = (volatile u16 *)VIDEO_ADDR;
    ASSERT(row < VIDEO_ROWS);
    ASSERT(col < VIDEO_COLS);
-
-   volatile u16 *video = (volatile u16 *)VIDEO_ADDR;
    video[row * VIDEO_COLS + col] = entry;
 }
 
 static void textmode_set_row(u16 row, u16 *data, bool fpu_allowed)
 {
+   void *dest_addr;
+   void *src_addr;
    ASSERT(row < VIDEO_ROWS);
 
-   void *dest_addr = VIDEO_ADDR + row * VIDEO_COLS;
-   void *src_addr = data;
+   dest_addr = VIDEO_ADDR + row * VIDEO_COLS;
+   src_addr = data;
 
    memcpy32(dest_addr, src_addr, VIDEO_COLS >> 1);
 }

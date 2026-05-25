@@ -145,8 +145,9 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
 
    list_for_each(wo, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
 
+      struct task *task_to_wake_up;
       ASSERT(wo->type == WOBJ_TASK);
-      struct task *task_to_wake_up = CONTAINER_OF(wo, struct task, wobj);
+      task_to_wake_up = CONTAINER_OF(wo, struct task, wobj);
 
       if (atomic_load(&task_to_wake_up->state) != TASK_STATE_SLEEPING) {
 

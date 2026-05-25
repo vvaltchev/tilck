@@ -426,8 +426,9 @@ fat_write_fat_entry(struct fat_hdr *h,
 
    } else {
 
+      u32 oldval;
       ASSERT((value & 0xF0000000U) == 0); /* the top 4 bits cannot be used */
-      u32 oldval = *(u32 *)ptr & 0xF0000000U;
+      oldval = *(u32 *)ptr & 0xF0000000U;
       *(u32 *)ptr = oldval | value;
    }
 }

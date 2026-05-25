@@ -54,9 +54,11 @@ int irqchip_get_free_irq(struct irq_domain *domain, int hwirq)
 
 void irqchip_put_irq(int irq)
 {
+   ulong slot, index;
    ASSERT(irq > 0 && irq < MAX_IRQ_NUM);
-   ulong slot = irq / NBITS;
-   ulong index = irq % NBITS;
+
+   slot = irq / NBITS;
+   index = irq % NBITS;
 
    irq_bitmap[slot] &= ~(1 << index);
    irq_datas[irq].present = false;

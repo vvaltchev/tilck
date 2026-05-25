@@ -133,10 +133,11 @@ STATIC void remove_mem_region(int i)
 
 STATIC void swap_mem_regions(int i, int j)
 {
+   struct mem_region temp;
    ASSERT(IN_RANGE(i, 0, mem_regions_count));
    ASSERT(IN_RANGE(j, 0, mem_regions_count));
 
-   struct mem_region temp = mem_regions[i];
+   temp = mem_regions[i];
    mem_regions[i] = mem_regions[j];
    mem_regions[j] = temp;
 }
