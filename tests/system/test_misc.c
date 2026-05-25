@@ -408,9 +408,9 @@ comes_after(struct timeval t2,
             struct timeval t1)
 {
    // t1 must come before t2
-   return t2.tv_sec > t1.tv_sec
-       || (t2.tv_sec == t1.tv_sec
-         && t2.tv_usec > t1.tv_usec);
+   return t2.tv_sec > t1.tv_sec ||
+          (t2.tv_sec == t1.tv_sec &&
+           t2.tv_usec > t1.tv_usec);
 }
 
 static void busy_wait(void)

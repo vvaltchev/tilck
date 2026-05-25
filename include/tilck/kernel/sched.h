@@ -228,8 +228,8 @@ static ALWAYS_INLINE bool is_task_stopped(struct task *ti)
 {
    const enum task_state s = (enum task_state) atomic_load(&ti->state);
 
-   return s == TASK_STATE_STOPPED
-      || (s == TASK_STATE_SLEEPING && ti->stop_pending);
+   return s == TASK_STATE_STOPPED ||
+          (s == TASK_STATE_SLEEPING && ti->stop_pending);
 }
 
 #define KTH_ALLOC_BUFS                       (1 << 0)
