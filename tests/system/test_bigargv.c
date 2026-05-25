@@ -21,7 +21,9 @@ static void do_bigargv_test(size_t len)
    memset(big_arg, 'a', len);
    big_arg[len-1] = 0;
 
-   close(0); close(1); close(2);
+   close(0);
+   close(1);
+   close(2);
    execvpe(DEVSHELL_PATH, argv, shell_env);
 
    /* If we got here, execve() failed */

@@ -61,12 +61,18 @@ read_file(const char *path, size_t *out_size)
    struct stat st;
    void *buf;
 
-   if (!f) { perror(path); return NULL; }
+   if (!f) {
+      perror(path);
+      return NULL;
+   }
 
    fstat(fileno(f), &st);
    buf = malloc((size_t)st.st_size);
 
-   if (!buf) { fclose(f); return NULL; }
+   if (!buf) {
+      fclose(f);
+      return NULL;
+   }
 
    fread(buf, 1, (size_t)st.st_size, f);
    fclose(f);
@@ -79,7 +85,10 @@ write_file(const char *path, const void *data, size_t size)
 {
    FILE *f = fopen(path, "wb");
 
-   if (!f) { perror(path); return -1; }
+   if (!f) {
+      perror(path);
+      return -1;
+   }
 
    if (fwrite(data, 1, size, f) != size) {
       perror("fwrite");
@@ -423,7 +432,10 @@ do_patch_syms(const char *path, void *buf, size_t size,
    size_t new_size = size + new_nlist_bytes + new_str_bytes;
    char *const out = calloc(1, new_size);
 
-   if (!out) { perror("calloc"); return 1; }
+   if (!out) {
+      perror("calloc");
+      return 1;
+   }
 
    /*
     * New undefined entries go at the very end of the symbol table.

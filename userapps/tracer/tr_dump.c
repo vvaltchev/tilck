@@ -572,7 +572,10 @@ dump_iov_out_with_data(unsigned long orig,
 /* For ioctl/fcntl cmds we use small inline tables of (value, name)
  * pairs. Generic helper: scan a table, return the matching name or
  * NULL on miss. */
-struct enum_pair { unsigned long value; const char *name; };
+struct enum_pair {
+   unsigned long value;
+   const char *name;
+};
 
 static const char *enum_lookup(const struct enum_pair *t, unsigned long v)
 {

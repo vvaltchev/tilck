@@ -5,7 +5,13 @@
 #include <ncurses/ncurses.h>
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
-#define printc(name) printw(#name ": "); addch(name); printw("\n");
+
+#define printc(name)      \
+   do {                   \
+      printw(#name ": "); \
+      addch(name);        \
+      printw("\n");       \
+   } while (0)
 
 static const char *msg_next =
    "Press ANY key to move to the next screen or 'q' to exit";
