@@ -118,7 +118,8 @@ int main(void)
       funcs[i]();
 
       refresh();
-      mvprintw(LINES - 1, 0, i < ARRAY_SIZE(funcs) - 1 ? msg_next : msg_last);
+      const char *msg = i < ARRAY_SIZE(funcs) - 1 ? msg_next : msg_last;
+      mvprintw(LINES - 1, 0, msg);
 
       if (getch() == 'q')
          break;

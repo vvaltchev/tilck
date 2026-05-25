@@ -125,7 +125,9 @@ static bool handle_special_keys_pressed(u32 key)
 
       case KEY_DEL:
 
-         if (kb_is_pressed(KEY_LEFT_CTRL) && kb_is_pressed(KEY_LEFT_ALT)) {
+         if (kb_is_pressed(KEY_LEFT_CTRL) &&
+             kb_is_pressed(KEY_LEFT_ALT))
+         {
             printk("Ctrl + Alt + Del: Reboot!\n");
             reboot();
             NOT_REACHED();
