@@ -380,7 +380,15 @@ of "done", not polish.
 ### Summary of explicit rules (from contributing.md)
 
 - **3 spaces** indentation (not tabs)
-- **80 columns** strict line limit (no exceptions)
+- **80 columns** strict line limit (no exceptions).
+  **Fixing an over-80-col line is NOT just breaking the line.**
+  When a line is part of a columnar pattern (macro tables, aligned
+  `#define` blocks, column-aligned call clusters), breaking that
+  one line destroys the visual pattern. Instead: reduce the padding
+  for the ENTIRE block so all entries stay aligned and fit in 80
+  cols. Only when padding reduction can't work (a single field is
+  inherently too long) should you consider renaming or refactoring.
+  Always look at the surrounding context before touching a long line.
 - **snake_case** everywhere
 - Opening brace on same line for control flow, **new line for
   functions and array initializers**

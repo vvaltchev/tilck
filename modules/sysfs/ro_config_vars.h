@@ -44,10 +44,10 @@ DEF_STATIC_CONF_RO(BOOL,  ubsan,                   KERNEL_UBSAN);
 DEF_STATIC_CONF_RO(BOOL,  kernel_64bit_offt,       KERNEL_64BIT_OFFT);
 
 /* console */
-DEF_STATIC_CONF_RO(ULONG, big_font_threshold,      KRN_FBCON_BIGFONT_THR);
-DEF_STATIC_CONF_RO(BOOL,  banner,                  KRN_FB_CONSOLE_BANNER);
-DEF_STATIC_CONF_RO(BOOL,  cursor_blink,            KRN_FB_CONSOLE_CURSOR_BLINK);
-DEF_STATIC_CONF_RO(BOOL,  use_alt_fonts,           KRN_FB_CONSOLE_USE_ALT_FONTS);
-DEF_STATIC_CONF_RO(BOOL,  show_logo,               KRN_SHOW_LOGO);
-DEF_STATIC_CONF_RO(BOOL,  big_scroll_buf,          TERM_BIG_SCROLL_BUF);
-DEF_STATIC_CONF_RO(BOOL,  failsafe_opt,            KRN_FB_CONSOLE_FAILSAFE_OPT);
+DEF_STATIC_CONF_RO(ULONG, big_font_threshold,     KRN_FBCON_BIGFONT_THR);
+DEF_STATIC_CONF_RO(BOOL,  banner,                 KRN_FB_CONSOLE_BANNER);
+DEF_STATIC_CONF_RO(BOOL,  cursor_blink,           KRN_FB_CONSOLE_CURSOR_BLINK);
+DEF_STATIC_CONF_RO(BOOL,  use_alt_fonts,          KRN_FB_CONSOLE_USE_ALT_FONTS);
+DEF_STATIC_CONF_RO(BOOL,  show_logo,              KRN_SHOW_LOGO);
+DEF_STATIC_CONF_RO(BOOL,  big_scroll_buf,         TERM_BIG_SCROLL_BUF);
+DEF_STATIC_CONF_RO(BOOL,  failsafe_opt,           KRN_FB_CONSOLE_FAILSAFE_OPT);
