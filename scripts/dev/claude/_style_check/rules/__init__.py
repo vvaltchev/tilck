@@ -47,6 +47,7 @@ from . import harmony_with_neighbors           # Q22b
 from . import align_multiline_operators        # Q10
 
 # Additional soft rules from the preferences corpus
+from . import define_backslash_align
 from . import comment_tag_choice               # Q29
 from . import paren_explicit_precedence        # Q37
 from . import macro_brace_only_forbidden       # Q28
@@ -126,6 +127,7 @@ ALL_RULES = [
    assert_split_heterogeneous.RULE,
    operator_past_close_paren.RULE,
    multiline_call_vs_long_neighbor.RULE,
+   define_backslash_align.RULE,
    else_after_return.RULE,
 ]
 
