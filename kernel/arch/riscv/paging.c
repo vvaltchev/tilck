@@ -1077,8 +1077,8 @@ void set_pages_io(pdir_t *pdir, void *vaddr, size_t size)
 
 void early_init_paging(void)
 {
-   set_fault_handler(EXC_INST_PAGE_FAULT, handle_page_fault);
-   set_fault_handler(EXC_LOAD_PAGE_FAULT, handle_page_fault);
+   set_fault_handler(EXC_INST_PAGE_FAULT,  handle_page_fault);
+   set_fault_handler(EXC_LOAD_PAGE_FAULT,  handle_page_fault);
    set_fault_handler(EXC_STORE_PAGE_FAULT, handle_page_fault);
 
    __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(kpdir_buf));

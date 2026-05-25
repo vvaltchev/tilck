@@ -116,8 +116,8 @@
       .ret_type = &ptype_errno_or_val,                                \
       .params = {                                                     \
          SIMPLE_PARAM(par1, &ptype_path, sys_param_in),               \
-         SIMPLE_PARAM(par2, &ptype_int, sys_param_in),                \
-         SIMPLE_PARAM(par3, &ptype_int, sys_param_in),                \
+         SIMPLE_PARAM(par2, &ptype_int,  sys_param_in),               \
+         SIMPLE_PARAM(par3, &ptype_int,  sys_param_in),               \
       }                                                               \
    }
 

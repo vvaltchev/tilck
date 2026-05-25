@@ -98,7 +98,7 @@ init_set_signal_mask(void)
    signal(SIGTERM, &init_handle_sig_term);
    signal(SIGUSR1, &init_handle_sig_usr1);
    signal(SIGUSR2, &init_handle_sig_usr2);
-   signal(SIGURG, &init_handle_sig_urg);
+   signal(SIGURG,  &init_handle_sig_urg);
 }
 
 static void
@@ -107,7 +107,7 @@ init_reset_signal_mask(void)
    signal(SIGTERM, SIG_DFL);
    signal(SIGUSR1, SIG_DFL);
    signal(SIGUSR2, SIG_DFL);
-   signal(SIGURG, SIG_DFL);
+   signal(SIGURG,  SIG_DFL);
 }
 
 static int get_video_tty_count(void)

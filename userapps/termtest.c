@@ -502,14 +502,14 @@ static struct {
    CMD_ENTRY("-s", dump_termios),
 #endif
 
-   CMD_ENTRY("-p", console_perf_test),
-   CMD_ENTRY("-n", read_nonblock),
-   CMD_ENTRY("-nr", read_nonblock_rawmode),
-   CMD_ENTRY("-fr", write_full_row),
-   CMD_ENTRY("-sr", sleep_then_read),
-   CMD_ENTRY("-mr", sym_read),
-   CMD_ENTRY("-cs", read_ttys0_canon_mode),
-   CMD_ENTRY("-pr", poll_and_read),
+   CMD_ENTRY("-p",   console_perf_test),
+   CMD_ENTRY("-n",   read_nonblock),
+   CMD_ENTRY("-nr",  read_nonblock_rawmode),
+   CMD_ENTRY("-fr",  write_full_row),
+   CMD_ENTRY("-sr",  sleep_then_read),
+   CMD_ENTRY("-mr",  sym_read),
+   CMD_ENTRY("-cs",  read_ttys0_canon_mode),
+   CMD_ENTRY("-pr",  poll_and_read),
    CMD_ENTRY("-xmr", medium_raw_read),
 };
 

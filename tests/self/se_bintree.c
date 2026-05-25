@@ -185,8 +185,8 @@ selftest_bintree_perf(void)
    printk("\n");
    printk("    elems    |     bst    |     list\n");
    printk("-------------+------------+--------------\n");
-   do_bintree_perf_test(250, false, NULL);
-   do_bintree_perf_test(500, false, NULL);
+   do_bintree_perf_test(250,  false, NULL);
+   do_bintree_perf_test(500,  false, NULL);
    do_bintree_perf_test(1000, false, NULL);
    printk("\n");
    printk("\n");

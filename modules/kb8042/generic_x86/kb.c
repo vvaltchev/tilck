@@ -221,7 +221,7 @@ static void kb_process_scancode(u8 scancode)
 static void kb_dump_regs(u8 ctr, u8 cto, u8 status)
 {
    bool masked = irq_is_masked(X86_PC_KEYBOARD_IRQ);
-   printk("KB: IRQ masked:                   %u\n", masked);
+   printk("KB: IRQ masked:                   %u\n",  masked);
    printk("KB: Ctrl Config. Byte (CTR):   0x%02x\n", ctr);
    printk("KB: Ctrl Output Port (CTO):    0x%02x\n", cto);
    printk("KB: Status register:           0x%02x\n", status);

@@ -422,11 +422,11 @@ init_pci_ecam(void)
 
    for (u32 i = 0; i < pcie_segments_cnt; i++, it++) {
 
-      printk("PCI: MCFG elem[%u]\n", i);
+      printk("PCI: MCFG elem[%u]\n",    i);
       printk("    Base paddr: %#llx\n", it->Address);
-      printk("    Segment:    %u\n", it->PciSegment);
-      printk("    Start bus:  %u\n", it->StartBusNumber);
-      printk("    End bus:    %u\n", it->EndBusNumber);
+      printk("    Segment:    %u\n",     it->PciSegment);
+      printk("    Start bus:  %u\n",     it->StartBusNumber);
+      printk("    End bus:    %u\n",     it->EndBusNumber);
 
       pcie_segments[i] = (struct pci_segment) {
          .base_paddr = it->Address,
