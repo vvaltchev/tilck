@@ -582,8 +582,8 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
          ASSERT(eh->read_pos == 0);
       }
 
-      while (!tty_inbuf_is_empty(t) &&
-             eh->read_buf_used < TTY_READ_BS &&
+      while (!tty_inbuf_is_empty(t)              &&
+             eh->read_buf_used < TTY_READ_BS     &&
              tty_internal_read_single_char_from_kb(t, h, &delim_break)) { }
 
       if (!(h->fl_flags & O_NONBLOCK) || !(t->c_term.c_lflag & ICANON))
