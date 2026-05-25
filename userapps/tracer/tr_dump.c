@@ -229,11 +229,11 @@ static bool buf_append(char *dst, int *used, int *rem, const char *str)
    return true;
 }
 
-#define OPEN_CHECK_FLAG(_x)                                  \
-   do {                                                      \
-      if (((fl) & (_x)) == (_x))                             \
-         if (!buf_append(dst, &used, &rem, #_x "|"))         \
-            return false;                                    \
+#define OPEN_CHECK_FLAG(_x)                                           \
+   do {                                                               \
+      if (((fl) & (_x)) == (_x))                                      \
+         if (!buf_append(dst, &used, &rem, #_x "|"))                  \
+            return false;                                             \
    } while (0)
 
 static bool dump_open_flags(unsigned long fl, long unused, char *dst, size_t bs)

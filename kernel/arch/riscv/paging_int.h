@@ -35,11 +35,11 @@
 
 #define _PAGE_PROT_NONE _PAGE_READ
 
-#define _PAGE_BASE   (_PAGE_PRESENT    \
-                     | _PAGE_READ      \
-                     | _PAGE_EXEC      \
-                     | _PAGE_ACCESSED  \
-                     | _PAGE_DIRTY     \
+#define _PAGE_BASE   (_PAGE_PRESENT                                   \
+                     | _PAGE_READ                                     \
+                     | _PAGE_EXEC                                     \
+                     | _PAGE_ACCESSED                                 \
+                     | _PAGE_DIRTY                                    \
                      | _PAGE_CB)
 
 #define _PAGE_LEAF (_PAGE_READ | _PAGE_WRITE | _PAGE_EXEC)

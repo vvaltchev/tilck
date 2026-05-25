@@ -371,37 +371,37 @@ tracing_set_printk_lvl(int lvl)
 }
 
 
-#define trace_sys_enter(sn, ...)                                               \
-   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      if (UNLIKELY(get_curr_task()->traced))                                   \
-         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                          \
-            trace_syscall_enter_int(sn, __VA_ARGS__);                          \
+#define trace_sys_enter(sn, ...)                                      \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {               \
+      if (UNLIKELY(get_curr_task()->traced))                          \
+         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                 \
+            trace_syscall_enter_int(sn, __VA_ARGS__);                 \
    }
 
-#define trace_sys_exit(sn, ret, ...)                                           \
-   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      if (UNLIKELY(get_curr_task()->traced))                                   \
-         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                          \
-            trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);              \
+#define trace_sys_exit(sn, ret, ...)                                  \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {               \
+      if (UNLIKELY(get_curr_task()->traced))                          \
+         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                 \
+            trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);     \
    }
 
-#define trace_printk(lvl, fmt, ...)                                            \
-   if (MOD_tracing && UNLIKELY(trace_printk_is_enabled())) {                   \
-      trace_printk_int((lvl), fmt, ##__VA_ARGS__);                             \
+#define trace_printk(lvl, fmt, ...)                                   \
+   if (MOD_tracing && UNLIKELY(trace_printk_is_enabled())) {          \
+      trace_printk_int((lvl), fmt, ##__VA_ARGS__);                    \
    }
 
-#define trace_printk_raw(lvl, buf, buf_sz)                                     \
-   if (MOD_tracing && UNLIKELY(trace_printk_is_enabled())) {                   \
-      trace_printk_raw_int((lvl), (buf), (buf_sz));                            \
+#define trace_printk_raw(lvl, buf, buf_sz)                            \
+   if (MOD_tracing && UNLIKELY(trace_printk_is_enabled())) {          \
+      trace_printk_raw_int((lvl), (buf), (buf_sz));                   \
    }
 
 
-#define trace_signal_delivered(target_tid, signum)                             \
-   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      trace_signal_delivered_int(target_tid, signum);                          \
+#define trace_signal_delivered(target_tid, signum)                    \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {               \
+      trace_signal_delivered_int(target_tid, signum);                 \
    }
 
-#define trace_task_killed(signum)                                              \
-   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      trace_task_killed_int(signum);                                           \
+#define trace_task_killed(signum)                                     \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {               \
+      trace_task_killed_int(signum);                                  \
    }

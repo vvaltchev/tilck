@@ -299,11 +299,11 @@ __vfs_path_funcs_wrapper(const char *path,
    return rc;
 }
 
-#define vfs_path_funcs_wrapper(path, exlock, rsl, func, a1, a2, a3)           \
-   __vfs_path_funcs_wrapper(path,                                             \
-                            exlock,                                           \
-                            rsl,                                              \
-                            (vfs_func_impl)(void *)func,                      \
+#define vfs_path_funcs_wrapper(path, exlock, rsl, func, a1, a2, a3)   \
+   __vfs_path_funcs_wrapper(path,                                     \
+                            exlock,                                   \
+                            rsl,                                      \
+                            (vfs_func_impl)(void *)func,              \
                             (ulong)a1, (ulong)a2, (ulong)a3)
 
 static ALWAYS_INLINE int

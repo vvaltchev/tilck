@@ -88,10 +88,10 @@ snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
    ctx->hash_sign = false;
 }
 
-#define WRITE_CHAR(c)                                         \
-   do {                                                       \
-      if (!write_in_buf_char(&ctx->buf, ctx->buf_end, (c)))   \
-         goto out_of_dest_buffer;                             \
+#define WRITE_CHAR(c)                                                 \
+   do {                                                               \
+      if (!write_in_buf_char(&ctx->buf, ctx->buf_end, (c)))           \
+         goto out_of_dest_buffer;                                     \
    } while (0)
 
 static bool

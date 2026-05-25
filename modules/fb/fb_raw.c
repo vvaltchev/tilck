@@ -379,16 +379,16 @@ void debug_dump_glyph(u32 n)
 
 #endif
 
-#define draw_char_partial(b)                                               \
-   do {                                                                    \
-      fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);    \
-      fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);    \
-      fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);    \
-      fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);    \
-      fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);    \
-      fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);    \
-      fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);    \
-      fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
+#define draw_char_partial(b)                                            \
+   do {                                                                 \
+      fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]); \
+      fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]); \
+      fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]); \
+      fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]); \
+      fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]); \
+      fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]); \
+      fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]); \
+      fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]); \
    } while (0)
 
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)

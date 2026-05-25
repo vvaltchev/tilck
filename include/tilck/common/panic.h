@@ -30,10 +30,10 @@ static ALWAYS_INLINE bool in_kernel_shutdown(void)
 
    #define DEBUG_ONLY(x) x
    #define DEBUG_ONLY_UNSAFE(x) x
-   #define DEBUG_CHECKED_SUCCESS(x)       \
-      do {                                \
-         bool __checked_success = x;      \
-         ASSERT(__checked_success);       \
+   #define DEBUG_CHECKED_SUCCESS(x)                                   \
+      do {                                                            \
+         bool __checked_success = x;                                  \
+         ASSERT(__checked_success);                                   \
       } while (0)
 
    /* NO_TEST_ASSERT is like ASSERT(x) but it's ignored in unit tests */
@@ -53,11 +53,11 @@ static ALWAYS_INLINE bool in_kernel_shutdown(void)
 #endif
 
 /* VERIFY is like ASSERT, but it's always enabled */
-#define VERIFY(x)                                                    \
-   do {                                                              \
-      if (UNLIKELY(!(x))) {                                          \
-         assert_failed(#x , __FILE__, __LINE__);                     \
-      }                                                              \
+#define VERIFY(x)                                                     \
+   do {                                                               \
+      if (UNLIKELY(!(x))) {                                           \
+         assert_failed(#x , __FILE__, __LINE__);                      \
+      }                                                               \
    } while (0)
 
 

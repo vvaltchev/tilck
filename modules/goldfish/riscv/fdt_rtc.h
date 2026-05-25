@@ -16,16 +16,16 @@ struct fdt_rtc_dev {
    int (* rtc_get)(void *priv, struct datetime *d);
 };
 
-#define REGISTER_FDT_RTC(__name, __id_table, __init)      \
-                                                          \
-   static struct fdt_rtc fdt_rtc_##__name = {             \
-      .id_table = __id_table,                             \
-      .init = __init                                      \
-   };                                                     \
-                                                          \
-   __attribute__((constructor))                           \
-   static void __register_fdt_rtc_##__name(void) {        \
-      fdt_rtc_drv_register(&fdt_rtc_##__name);            \
+#define REGISTER_FDT_RTC(__name, __id_table, __init)                  \
+                                                                      \
+   static struct fdt_rtc fdt_rtc_##__name = {                         \
+      .id_table = __id_table,                                         \
+      .init = __init                                                  \
+   };                                                                 \
+                                                                      \
+   __attribute__((constructor))                                       \
+   static void __register_fdt_rtc_##__name(void) {                    \
+      fdt_rtc_drv_register(&fdt_rtc_##__name);                        \
    }
 
 void fdt_rtc_drv_register(struct fdt_rtc *drv);

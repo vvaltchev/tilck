@@ -286,12 +286,12 @@ struct k_stat64 {
    #define O_PATH __O_PATH
 #endif
 
-#define FCNTL_CHANGEABLE_FL (         \
-   O_APPEND      |                    \
-   O_ASYNC       |                    \
-   O_DIRECT      |                    \
-   O_NOATIME     |                    \
-   O_NONBLOCK                         \
+#define FCNTL_CHANGEABLE_FL (                                         \
+   O_APPEND      |                                                    \
+   O_ASYNC       |                                                    \
+   O_DIRECT      |                                                    \
+   O_NOATIME     |                                                    \
+   O_NONBLOCK                                                         \
 )
 
 #define EXITCODE(ret, sig)    ((ret) << 8 | (sig))

@@ -39,14 +39,14 @@ typedef unsigned long long ull_t;
 /* utils */
 #define RDTSC()                     __rdtsc()
 #define DEBUG_BREAK()               asmVolatile("int $3")
-#define DEVSHELL_CMD_ASSERT(x)                                              \
-   do {                                                                     \
-      if (!(x)) {                                                           \
-         fprintf(stderr, PFX "ASSERT '%s' FAILED.\n\t"                      \
-                 "On:\t%s:%d\n\tERRNO:\t%s\n",                              \
-                 #x, __FILE__, __LINE__, strerror(errno));                  \
-         do_cmd_exit(1);                                                    \
-      }                                                                     \
+#define DEVSHELL_CMD_ASSERT(x)                                        \
+   do {                                                               \
+      if (!(x)) {                                                     \
+         fprintf(stderr, PFX "ASSERT '%s' FAILED.\n\t"                \
+                 "On:\t%s:%d\n\tERRNO:\t%s\n",                        \
+                 #x, __FILE__, __LINE__, strerror(errno));            \
+         do_cmd_exit(1);                                              \
+      }                                                               \
    } while(0)
 
 /* --- */

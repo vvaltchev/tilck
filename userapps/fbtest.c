@@ -16,10 +16,10 @@
 #define FB_DEVICE "/dev/fb0"
 #define TTY_DEVICE "/dev/tty"
 
-#define FB_ASSUMPTION(x)                                        \
-   if (!(x)) {                                                  \
-      fprintf(stderr, "fb mode assumption '%s' failed\n", #x);  \
-      return false;                                             \
+#define FB_ASSUMPTION(x)                                              \
+   if (!(x)) {                                                        \
+      fprintf(stderr, "fb mode assumption '%s' failed\n", #x);        \
+      return false;                                                   \
    }
 
 static struct fb_var_screeninfo fbi;

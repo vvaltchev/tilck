@@ -25,11 +25,11 @@ NORETURN void assert_failed(const char *expr, const char *file, int line);
 
 #ifndef NDEBUG
 
-   #define ASSERT(x)                                                    \
-      do {                                                              \
-         if (UNLIKELY(!(x))) {                                          \
-            assert_failed(#x , __FILE__, __LINE__);                     \
-         }                                                              \
+   #define ASSERT(x)                                                  \
+      do {                                                            \
+         if (UNLIKELY(!(x))) {                                        \
+            assert_failed(#x , __FILE__, __LINE__);                   \
+         }                                                            \
       } while (0)
 
 #else

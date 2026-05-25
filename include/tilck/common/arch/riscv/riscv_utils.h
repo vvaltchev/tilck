@@ -13,8 +13,8 @@
 
 /* Defines useful when calling fault_resumable_call() */
 #define ALL_FAULTS_MASK (0xFFFFFFFF)
-#define PAGE_FAULT_MASK    ((1 << EXC_INST_PAGE_FAULT) \
-                         | (1 << EXC_LOAD_PAGE_FAULT) \
+#define PAGE_FAULT_MASK    ((1 << EXC_INST_PAGE_FAULT)                \
+                         | (1 << EXC_LOAD_PAGE_FAULT)                 \
                          | (1 << EXC_STORE_PAGE_FAULT))
 
 #define X86_PC_TIMER_IRQ           0
@@ -39,64 +39,64 @@
 
 #define __STR(csr) #csr
 
-#define csr_swap(csr, val)                    \
-({                                            \
-   unsigned long __v = (unsigned long)(val);  \
-   asmVolatile("csrrw %0, " __STR(csr) ", %1" \
-               : "=r" (__v) : "rK" (__v)      \
-               : "memory");                   \
-   __v;                                       \
+#define csr_swap(csr, val)                                            \
+({                                                                    \
+   unsigned long __v = (unsigned long)(val);                          \
+   asmVolatile("csrrw %0, " __STR(csr) ", %1"                         \
+               : "=r" (__v) : "rK" (__v)                              \
+               : "memory");                                           \
+   __v;                                                               \
 })
 
-#define csr_read(csr)                         \
-({                                            \
-   volatile unsigned long __v;                \
-   asmVolatile("csrr %0, " __STR(csr)         \
-               : "=r" (__v) :                 \
-               : "memory");                   \
-   __v;                                       \
+#define csr_read(csr)                                                 \
+({                                                                    \
+   volatile unsigned long __v;                                        \
+   asmVolatile("csrr %0, " __STR(csr)                                 \
+               : "=r" (__v) :                                         \
+               : "memory");                                           \
+   __v;                                                               \
 })
 
-#define csr_write(csr, val)                   \
-({                                            \
-   unsigned long __v = (unsigned long)(val);  \
-   asmVolatile("csrw " __STR(csr) ", %0"      \
-               : : "rK" (__v)                 \
-               : "memory");                   \
+#define csr_write(csr, val)                                           \
+({                                                                    \
+   unsigned long __v = (unsigned long)(val);                          \
+   asmVolatile("csrw " __STR(csr) ", %0"                              \
+               : : "rK" (__v)                                         \
+               : "memory");                                           \
 })
 
-#define csr_read_set(csr, val)                \
-({                                            \
-   unsigned long __v = (unsigned long)(val);  \
-   asmVolatile("csrrs %0, " __STR(csr) ", %1" \
-               : "=r" (__v) : "rK" (__v)      \
-               : "memory");                   \
-   __v;                                       \
+#define csr_read_set(csr, val)                                        \
+({                                                                    \
+   unsigned long __v = (unsigned long)(val);                          \
+   asmVolatile("csrrs %0, " __STR(csr) ", %1"                         \
+               : "=r" (__v) : "rK" (__v)                              \
+               : "memory");                                           \
+   __v;                                                               \
 })
 
-#define csr_set(csr, val)                     \
-({                                            \
-   unsigned long __v = (unsigned long)(val);  \
-   asmVolatile("csrs " __STR(csr) ", %0"      \
-               : : "rK" (__v)                 \
-               : "memory");                   \
+#define csr_set(csr, val)                                             \
+({                                                                    \
+   unsigned long __v = (unsigned long)(val);                          \
+   asmVolatile("csrs " __STR(csr) ", %0"                              \
+               : : "rK" (__v)                                         \
+               : "memory");                                           \
 })
 
-#define csr_read_clear(csr, val)              \
-({                        \
-   unsigned long __v = (unsigned long)(val);  \
-   asmVolatile("csrrc %0, " __STR(csr) ", %1" \
-               : "=r" (__v) : "rK" (__v)      \
-               : "memory");                   \
-   __v;                                       \
+#define csr_read_clear(csr, val)                                      \
+({                                                                    \
+   unsigned long __v = (unsigned long)(val);                          \
+   asmVolatile("csrrc %0, " __STR(csr) ", %1"                         \
+               : "=r" (__v) : "rK" (__v)                              \
+               : "memory");                                           \
+   __v;                                                               \
 })
 
-#define csr_clear(csr, val)                   \
-({                                            \
-   unsigned long __v = (unsigned long)(val);  \
-   asmVolatile("csrc " __STR(csr) ", %0"      \
-               : : "rK" (__v)                 \
-               : "memory");                   \
+#define csr_clear(csr, val)                                           \
+({                                                                    \
+   unsigned long __v = (unsigned long)(val);                          \
+   asmVolatile("csrc " __STR(csr) ", %0"                              \
+               : : "rK" (__v)                                         \
+               : "memory");                                           \
 })
 
 

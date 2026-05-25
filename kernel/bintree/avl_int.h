@@ -61,22 +61,22 @@ update_height(struct bintree_node *node, long bintree_offset)
  *      with the potential problems that macros like that might cause
  *      when the code is changed often enough
  */
-#define AVL_BUILD_PATH_TO_OBJ()                                        \
-   do {                                                                \
-      ASSERT(root_obj_ref != NULL);                                    \
-      STACK_PUSH(root_obj_ref);                                        \
-                                                                       \
-      while (*STACK_TOP()) {                                           \
-                                                                       \
-         long c;                                                       \
-         void **obj_ref = STACK_TOP();                                 \
-         struct bintree_node *node = OBJTN(*obj_ref);                  \
-                                                                       \
-         if (!(c = CMP(*obj_ref, obj_or_value)))                       \
-            break;                                                     \
-                                                                       \
-         STACK_PUSH(c < 0 ? &node->right_obj : &node->left_obj);       \
-      }                                                                \
+#define AVL_BUILD_PATH_TO_OBJ()                                       \
+   do {                                                               \
+      ASSERT(root_obj_ref != NULL);                                   \
+      STACK_PUSH(root_obj_ref);                                       \
+                                                                      \
+      while (*STACK_TOP()) {                                          \
+                                                                      \
+         long c;                                                      \
+         void **obj_ref = STACK_TOP();                                \
+         struct bintree_node *node = OBJTN(*obj_ref);                 \
+                                                                      \
+         if (!(c = CMP(*obj_ref, obj_or_value)))                      \
+            break;                                                    \
+                                                                      \
+         STACK_PUSH(c < 0 ? &node->right_obj : &node->left_obj);      \
+      }                                                               \
    } while (0)
 
 void rotate_left_child(void **obj_ref, long bintree_offset);

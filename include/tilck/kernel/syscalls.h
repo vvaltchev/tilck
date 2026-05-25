@@ -15,15 +15,15 @@
 
 #ifdef __SYSCALLS_C__
 
-   #define CREATE_STUB_SYSCALL_IMPL(name)                          \
-      int name()                                                   \
-      {                                                            \
-         if (KRN_NO_SYS_WARN) {                                    \
-            printk("[TID: %d] NOT IMPLEMENTED: %s()\n",            \
-                   get_curr_tid(), #name);                         \
-         }                                                         \
-         trace_printk(5, "Syscall NOT IMPLEMENTED: %s()", #name);  \
-         return -ENOSYS;                                           \
+   #define CREATE_STUB_SYSCALL_IMPL(name)                             \
+      int name()                                                      \
+      {                                                               \
+         if (KRN_NO_SYS_WARN) {                                       \
+            printk("[TID: %d] NOT IMPLEMENTED: %s()\n",               \
+                   get_curr_tid(), #name);                            \
+         }                                                            \
+         trace_printk(5, "Syscall NOT IMPLEMENTED: %s()", #name);     \
+         return -ENOSYS;                                              \
       }
 
 #else

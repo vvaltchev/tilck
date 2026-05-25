@@ -139,220 +139,220 @@ typedef struct { void *v;               } atomic_ptr_t;
  *  read, not its target).
  */
 
-#define _DEFINE_ATOMIC_INT_OPS(name, T)                                  \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_load_##name(atomic_##name##_t *p)                              \
-   {                                                                     \
-      return __atomic_load_n(                                            \
-         (T volatile *)&p->v,                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE void                                             \
-   atomic_store_##name(atomic_##name##_t *p, T val)                      \
-   {                                                                     \
-      __atomic_store_n(                                                  \
-         (T volatile *)&p->v,                                            \
-         val,                                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_fetch_add_##name(atomic_##name##_t *p, T val)                  \
-   {                                                                     \
-      return __atomic_fetch_add(                                         \
-         (T volatile *)&p->v,                                            \
-         val,                                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_fetch_sub_##name(atomic_##name##_t *p, T val)                  \
-   {                                                                     \
-      return __atomic_fetch_sub(                                         \
-         (T volatile *)&p->v,                                            \
-         val,                                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_exchange_##name(atomic_##name##_t *p, T val)                   \
-   {                                                                     \
-      return __atomic_exchange_n(                                        \
-         (T volatile *)&p->v,                                            \
-         val,                                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE bool                                             \
-   atomic_cas_weak_##name(atomic_##name##_t *p, T *exp, T des)           \
-   {                                                                     \
-      return __atomic_compare_exchange_n(                                \
-         (T volatile *)&p->v,                                            \
-         exp,                                                            \
-         des,                                                            \
-         1,                                                              \
-         __ATOMIC_RELAXED,                                               \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE bool                                             \
-   atomic_cas_strong_##name(atomic_##name##_t *p, T *exp, T des)         \
-   {                                                                     \
-      return __atomic_compare_exchange_n(                                \
-         (T volatile *)&p->v,                                            \
-         exp,                                                            \
-         des,                                                            \
-         0,                                                              \
-         __ATOMIC_RELAXED,                                               \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
+#define _DEFINE_ATOMIC_INT_OPS(name, T)                               \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_load_##name(atomic_##name##_t *p)                           \
+   {                                                                  \
+      return __atomic_load_n(                                         \
+         (T volatile *)&p->v,                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE void                                          \
+   atomic_store_##name(atomic_##name##_t *p, T val)                   \
+   {                                                                  \
+      __atomic_store_n(                                               \
+         (T volatile *)&p->v,                                         \
+         val,                                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_fetch_add_##name(atomic_##name##_t *p, T val)               \
+   {                                                                  \
+      return __atomic_fetch_add(                                      \
+         (T volatile *)&p->v,                                         \
+         val,                                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_fetch_sub_##name(atomic_##name##_t *p, T val)               \
+   {                                                                  \
+      return __atomic_fetch_sub(                                      \
+         (T volatile *)&p->v,                                         \
+         val,                                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_exchange_##name(atomic_##name##_t *p, T val)                \
+   {                                                                  \
+      return __atomic_exchange_n(                                     \
+         (T volatile *)&p->v,                                         \
+         val,                                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE bool                                          \
+   atomic_cas_weak_##name(atomic_##name##_t *p, T *exp, T des)        \
+   {                                                                  \
+      return __atomic_compare_exchange_n(                             \
+         (T volatile *)&p->v,                                         \
+         exp,                                                         \
+         des,                                                         \
+         1,                                                           \
+         __ATOMIC_RELAXED,                                            \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE bool                                          \
+   atomic_cas_strong_##name(atomic_##name##_t *p, T *exp, T des)      \
+   {                                                                  \
+      return __atomic_compare_exchange_n(                             \
+         (T volatile *)&p->v,                                         \
+         exp,                                                         \
+         des,                                                         \
+         0,                                                           \
+         __ATOMIC_RELAXED,                                            \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
    }
 
-#define _DEFINE_ATOMIC_NONINT_OPS(name, T)                               \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_load_##name(atomic_##name##_t *p)                              \
-   {                                                                     \
-      return __atomic_load_n(                                            \
-         (T volatile *)&p->v,                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE void                                             \
-   atomic_store_##name(atomic_##name##_t *p, T val)                      \
-   {                                                                     \
-      __atomic_store_n(                                                  \
-         (T volatile *)&p->v,                                            \
-         val,                                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_exchange_##name(atomic_##name##_t *p, T val)                   \
-   {                                                                     \
-      return __atomic_exchange_n(                                        \
-         (T volatile *)&p->v,                                            \
-         val,                                                            \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE bool                                             \
-   atomic_cas_weak_##name(atomic_##name##_t *p, T *exp, T des)           \
-   {                                                                     \
-      return __atomic_compare_exchange_n(                                \
-         (T volatile *)&p->v,                                            \
-         exp,                                                            \
-         des,                                                            \
-         1,                                                              \
-         __ATOMIC_RELAXED,                                               \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE bool                                             \
-   atomic_cas_strong_##name(atomic_##name##_t *p, T *exp, T des)         \
-   {                                                                     \
-      return __atomic_compare_exchange_n(                                \
-         (T volatile *)&p->v,                                            \
-         exp,                                                            \
-         des,                                                            \
-         0,                                                              \
-         __ATOMIC_RELAXED,                                               \
-         __ATOMIC_RELAXED                                                \
-      );                                                                 \
+#define _DEFINE_ATOMIC_NONINT_OPS(name, T)                            \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_load_##name(atomic_##name##_t *p)                           \
+   {                                                                  \
+      return __atomic_load_n(                                         \
+         (T volatile *)&p->v,                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE void                                          \
+   atomic_store_##name(atomic_##name##_t *p, T val)                   \
+   {                                                                  \
+      __atomic_store_n(                                               \
+         (T volatile *)&p->v,                                         \
+         val,                                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_exchange_##name(atomic_##name##_t *p, T val)                \
+   {                                                                  \
+      return __atomic_exchange_n(                                     \
+         (T volatile *)&p->v,                                         \
+         val,                                                         \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE bool                                          \
+   atomic_cas_weak_##name(atomic_##name##_t *p, T *exp, T des)        \
+   {                                                                  \
+      return __atomic_compare_exchange_n(                             \
+         (T volatile *)&p->v,                                         \
+         exp,                                                         \
+         des,                                                         \
+         1,                                                           \
+         __ATOMIC_RELAXED,                                            \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE bool                                          \
+   atomic_cas_strong_##name(atomic_##name##_t *p, T *exp, T des)      \
+   {                                                                  \
+      return __atomic_compare_exchange_n(                             \
+         (T volatile *)&p->v,                                         \
+         exp,                                                         \
+         des,                                                         \
+         0,                                                           \
+         __ATOMIC_RELAXED,                                            \
+         __ATOMIC_RELAXED                                             \
+      );                                                              \
    }
 
-#define _DEFINE_ATOMIC_INT_OPS_I386_64(name, T)                          \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_load_##name(atomic_##name##_t *p)                              \
-   {                                                                     \
-      /*                                                                 \
-       * CAS(0,0): reads atomically via `lock cmpxchg8b`;                \
-       * writes 0 only when *p is already 0 (no-op store).               \
-       * Same trick Linux's atomic64_read uses on 32-bit x86.            \
-       */                                                                \
-      return __sync_val_compare_and_swap(&p->v, (T)0, (T)0);             \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE void                                             \
-   atomic_store_##name(atomic_##name##_t *p, T val)                      \
-   {                                                                     \
-      T old;                                                             \
-      do {                                                               \
-         old = *(T volatile *)&p->v;                                     \
-      } while (!__sync_bool_compare_and_swap(&p->v, old, val));          \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_fetch_add_##name(atomic_##name##_t *p, T val)                  \
-   {                                                                     \
-      return __sync_fetch_and_add(&p->v, val);                           \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_fetch_sub_##name(atomic_##name##_t *p, T val)                  \
-   {                                                                     \
-      return __sync_fetch_and_sub(&p->v, val);                           \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE T                                                \
-   atomic_exchange_##name(atomic_##name##_t *p, T val)                   \
-   {                                                                     \
-      /* CAS loop -- full barrier, matches the rest of the API. */     \
-      T old;                                                             \
-      do {                                                               \
-         old = *(T volatile *)&p->v;                                     \
-      } while (!__sync_bool_compare_and_swap(&p->v, old, val));          \
-      return old;                                                        \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE bool                                             \
-   atomic_cas_weak_##name(atomic_##name##_t *p, T *exp, T des)           \
-   {                                                                     \
-      T old = __sync_val_compare_and_swap(&p->v, *exp, des);             \
-      if (old == *exp)                                                   \
-         return true;                                                    \
-      *exp = old;                                                        \
-      return false;                                                      \
-   }                                                                     \
-                                                                         \
-   static ALWAYS_INLINE bool                                             \
-   atomic_cas_strong_##name(atomic_##name##_t *p, T *exp, T des)         \
-   {                                                                     \
-      T old = __sync_val_compare_and_swap(&p->v, *exp, des);             \
-      if (old == *exp)                                                   \
-         return true;                                                    \
-      *exp = old;                                                        \
-      return false;                                                      \
+#define _DEFINE_ATOMIC_INT_OPS_I386_64(name, T)                       \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_load_##name(atomic_##name##_t *p)                           \
+   {                                                                  \
+      /*                                                              \
+       * CAS(0,0): reads atomically via `lock cmpxchg8b`;             \
+       * writes 0 only when *p is already 0 (no-op store).            \
+       * Same trick Linux's atomic64_read uses on 32-bit x86.         \
+       */                                                             \
+      return __sync_val_compare_and_swap(&p->v, (T)0, (T)0);          \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE void                                          \
+   atomic_store_##name(atomic_##name##_t *p, T val)                   \
+   {                                                                  \
+      T old;                                                          \
+      do {                                                            \
+         old = *(T volatile *)&p->v;                                  \
+      } while (!__sync_bool_compare_and_swap(&p->v, old, val));       \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_fetch_add_##name(atomic_##name##_t *p, T val)               \
+   {                                                                  \
+      return __sync_fetch_and_add(&p->v, val);                        \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_fetch_sub_##name(atomic_##name##_t *p, T val)               \
+   {                                                                  \
+      return __sync_fetch_and_sub(&p->v, val);                        \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE T                                             \
+   atomic_exchange_##name(atomic_##name##_t *p, T val)                \
+   {                                                                  \
+      /* CAS loop -- full barrier, matches the rest of the API. */    \
+      T old;                                                          \
+      do {                                                            \
+         old = *(T volatile *)&p->v;                                  \
+      } while (!__sync_bool_compare_and_swap(&p->v, old, val));       \
+      return old;                                                     \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE bool                                          \
+   atomic_cas_weak_##name(atomic_##name##_t *p, T *exp, T des)        \
+   {                                                                  \
+      T old = __sync_val_compare_and_swap(&p->v, *exp, des);          \
+      if (old == *exp)                                                \
+         return true;                                                 \
+      *exp = old;                                                     \
+      return false;                                                   \
+   }                                                                  \
+                                                                      \
+   static ALWAYS_INLINE bool                                          \
+   atomic_cas_strong_##name(atomic_##name##_t *p, T *exp, T des)      \
+   {                                                                  \
+      T old = __sync_val_compare_and_swap(&p->v, *exp, des);          \
+      if (old == *exp)                                                \
+         return true;                                                 \
+      *exp = old;                                                     \
+      return false;                                                   \
    }
 
-#define _ATOMIC_INT_TYPES_LE32(X)                                        \
-   X(s8,   s8)                                                           \
-   X(u8,   u8)                                                           \
-   X(s16,  s16)                                                          \
-   X(u16,  u16)                                                          \
-   X(s32,  s32)                                                          \
-   X(u32,  u32)                                                          \
+#define _ATOMIC_INT_TYPES_LE32(X)                                     \
+   X(s8,   s8)                                                        \
+   X(u8,   u8)                                                        \
+   X(s16,  s16)                                                       \
+   X(u16,  u16)                                                       \
+   X(s32,  s32)                                                       \
+   X(u32,  u32)                                                       \
    X(int,  int)
 
-#define _ATOMIC_INT_TYPES_64(X)                                          \
-   X(s64,  s64)                                                          \
+#define _ATOMIC_INT_TYPES_64(X)                                       \
+   X(s64,  s64)                                                       \
    X(u64,  u64)
 
-#define _ATOMIC_NONINT_TYPES(X)                                          \
-   X(bool, bool)                                                         \
+#define _ATOMIC_NONINT_TYPES(X)                                       \
+   X(bool, bool)                                                      \
    X(ptr,  void *)
 
 _ATOMIC_INT_TYPES_LE32(_DEFINE_ATOMIC_INT_OPS)
@@ -394,105 +394,105 @@ _ATOMIC_NONINT_TYPES(_DEFINE_ATOMIC_NONINT_OPS)
 
 #ifndef __cplusplus
 
-   #define atomic_load(p)                                                \
-      (_Generic((p),                                                     \
-         atomic_s8_t    *: atomic_load_s8,                               \
-         atomic_u8_t    *: atomic_load_u8,                               \
-         atomic_s16_t   *: atomic_load_s16,                              \
-         atomic_u16_t   *: atomic_load_u16,                              \
-         atomic_s32_t   *: atomic_load_s32,                              \
-         atomic_u32_t   *: atomic_load_u32,                              \
-         atomic_s64_t   *: atomic_load_s64,                              \
-         atomic_u64_t   *: atomic_load_u64,                              \
-         atomic_int_t   *: atomic_load_int,                              \
-         atomic_bool_t  *: atomic_load_bool,                             \
-         atomic_ptr_t   *: atomic_load_ptr                               \
+   #define atomic_load(p)                                             \
+      (_Generic((p),                                                  \
+         atomic_s8_t    *: atomic_load_s8,                            \
+         atomic_u8_t    *: atomic_load_u8,                            \
+         atomic_s16_t   *: atomic_load_s16,                           \
+         atomic_u16_t   *: atomic_load_u16,                           \
+         atomic_s32_t   *: atomic_load_s32,                           \
+         atomic_u32_t   *: atomic_load_u32,                           \
+         atomic_s64_t   *: atomic_load_s64,                           \
+         atomic_u64_t   *: atomic_load_u64,                           \
+         atomic_int_t   *: atomic_load_int,                           \
+         atomic_bool_t  *: atomic_load_bool,                          \
+         atomic_ptr_t   *: atomic_load_ptr                            \
       )((p)))
 
-   #define atomic_store(p, val)                                          \
-      (_Generic((p),                                                     \
-         atomic_s8_t    *: atomic_store_s8,                              \
-         atomic_u8_t    *: atomic_store_u8,                              \
-         atomic_s16_t   *: atomic_store_s16,                             \
-         atomic_u16_t   *: atomic_store_u16,                             \
-         atomic_s32_t   *: atomic_store_s32,                             \
-         atomic_u32_t   *: atomic_store_u32,                             \
-         atomic_s64_t   *: atomic_store_s64,                             \
-         atomic_u64_t   *: atomic_store_u64,                             \
-         atomic_int_t   *: atomic_store_int,                             \
-         atomic_bool_t  *: atomic_store_bool,                            \
-         atomic_ptr_t   *: atomic_store_ptr                              \
+   #define atomic_store(p, val)                                       \
+      (_Generic((p),                                                  \
+         atomic_s8_t    *: atomic_store_s8,                           \
+         atomic_u8_t    *: atomic_store_u8,                           \
+         atomic_s16_t   *: atomic_store_s16,                          \
+         atomic_u16_t   *: atomic_store_u16,                          \
+         atomic_s32_t   *: atomic_store_s32,                          \
+         atomic_u32_t   *: atomic_store_u32,                          \
+         atomic_s64_t   *: atomic_store_s64,                          \
+         atomic_u64_t   *: atomic_store_u64,                          \
+         atomic_int_t   *: atomic_store_int,                          \
+         atomic_bool_t  *: atomic_store_bool,                         \
+         atomic_ptr_t   *: atomic_store_ptr                           \
       )((p), (val)))
 
-   #define atomic_fetch_add(p, val)                                      \
-      (_Generic((p),                                                     \
-         atomic_s8_t    *: atomic_fetch_add_s8,                          \
-         atomic_u8_t    *: atomic_fetch_add_u8,                          \
-         atomic_s16_t   *: atomic_fetch_add_s16,                         \
-         atomic_u16_t   *: atomic_fetch_add_u16,                         \
-         atomic_s32_t   *: atomic_fetch_add_s32,                         \
-         atomic_u32_t   *: atomic_fetch_add_u32,                         \
-         atomic_s64_t   *: atomic_fetch_add_s64,                         \
-         atomic_u64_t   *: atomic_fetch_add_u64,                         \
-         atomic_int_t   *: atomic_fetch_add_int                          \
+   #define atomic_fetch_add(p, val)                                   \
+      (_Generic((p),                                                  \
+         atomic_s8_t    *: atomic_fetch_add_s8,                       \
+         atomic_u8_t    *: atomic_fetch_add_u8,                       \
+         atomic_s16_t   *: atomic_fetch_add_s16,                      \
+         atomic_u16_t   *: atomic_fetch_add_u16,                      \
+         atomic_s32_t   *: atomic_fetch_add_s32,                      \
+         atomic_u32_t   *: atomic_fetch_add_u32,                      \
+         atomic_s64_t   *: atomic_fetch_add_s64,                      \
+         atomic_u64_t   *: atomic_fetch_add_u64,                      \
+         atomic_int_t   *: atomic_fetch_add_int                       \
       )((p), (val)))
 
-   #define atomic_fetch_sub(p, val)                                      \
-      (_Generic((p),                                                     \
-         atomic_s8_t    *: atomic_fetch_sub_s8,                          \
-         atomic_u8_t    *: atomic_fetch_sub_u8,                          \
-         atomic_s16_t   *: atomic_fetch_sub_s16,                         \
-         atomic_u16_t   *: atomic_fetch_sub_u16,                         \
-         atomic_s32_t   *: atomic_fetch_sub_s32,                         \
-         atomic_u32_t   *: atomic_fetch_sub_u32,                         \
-         atomic_s64_t   *: atomic_fetch_sub_s64,                         \
-         atomic_u64_t   *: atomic_fetch_sub_u64,                         \
-         atomic_int_t   *: atomic_fetch_sub_int                          \
+   #define atomic_fetch_sub(p, val)                                   \
+      (_Generic((p),                                                  \
+         atomic_s8_t    *: atomic_fetch_sub_s8,                       \
+         atomic_u8_t    *: atomic_fetch_sub_u8,                       \
+         atomic_s16_t   *: atomic_fetch_sub_s16,                      \
+         atomic_u16_t   *: atomic_fetch_sub_u16,                      \
+         atomic_s32_t   *: atomic_fetch_sub_s32,                      \
+         atomic_u32_t   *: atomic_fetch_sub_u32,                      \
+         atomic_s64_t   *: atomic_fetch_sub_s64,                      \
+         atomic_u64_t   *: atomic_fetch_sub_u64,                      \
+         atomic_int_t   *: atomic_fetch_sub_int                       \
       )((p), (val)))
 
-   #define atomic_exchange(p, val)                                       \
-      (_Generic((p),                                                     \
-         atomic_s8_t    *: atomic_exchange_s8,                           \
-         atomic_u8_t    *: atomic_exchange_u8,                           \
-         atomic_s16_t   *: atomic_exchange_s16,                          \
-         atomic_u16_t   *: atomic_exchange_u16,                          \
-         atomic_s32_t   *: atomic_exchange_s32,                          \
-         atomic_u32_t   *: atomic_exchange_u32,                          \
-         atomic_s64_t   *: atomic_exchange_s64,                          \
-         atomic_u64_t   *: atomic_exchange_u64,                          \
-         atomic_int_t   *: atomic_exchange_int,                          \
-         atomic_bool_t  *: atomic_exchange_bool,                         \
-         atomic_ptr_t   *: atomic_exchange_ptr                           \
+   #define atomic_exchange(p, val)                                    \
+      (_Generic((p),                                                  \
+         atomic_s8_t    *: atomic_exchange_s8,                        \
+         atomic_u8_t    *: atomic_exchange_u8,                        \
+         atomic_s16_t   *: atomic_exchange_s16,                       \
+         atomic_u16_t   *: atomic_exchange_u16,                       \
+         atomic_s32_t   *: atomic_exchange_s32,                       \
+         atomic_u32_t   *: atomic_exchange_u32,                       \
+         atomic_s64_t   *: atomic_exchange_s64,                       \
+         atomic_u64_t   *: atomic_exchange_u64,                       \
+         atomic_int_t   *: atomic_exchange_int,                       \
+         atomic_bool_t  *: atomic_exchange_bool,                      \
+         atomic_ptr_t   *: atomic_exchange_ptr                        \
       )((p), (val)))
 
-   #define atomic_cas_weak(p, exp, des)                                  \
-      (_Generic((p),                                                     \
-         atomic_s8_t    *: atomic_cas_weak_s8,                           \
-         atomic_u8_t    *: atomic_cas_weak_u8,                           \
-         atomic_s16_t   *: atomic_cas_weak_s16,                          \
-         atomic_u16_t   *: atomic_cas_weak_u16,                          \
-         atomic_s32_t   *: atomic_cas_weak_s32,                          \
-         atomic_u32_t   *: atomic_cas_weak_u32,                          \
-         atomic_s64_t   *: atomic_cas_weak_s64,                          \
-         atomic_u64_t   *: atomic_cas_weak_u64,                          \
-         atomic_int_t   *: atomic_cas_weak_int,                          \
-         atomic_bool_t  *: atomic_cas_weak_bool,                         \
-         atomic_ptr_t   *: atomic_cas_weak_ptr                           \
+   #define atomic_cas_weak(p, exp, des)                               \
+      (_Generic((p),                                                  \
+         atomic_s8_t    *: atomic_cas_weak_s8,                        \
+         atomic_u8_t    *: atomic_cas_weak_u8,                        \
+         atomic_s16_t   *: atomic_cas_weak_s16,                       \
+         atomic_u16_t   *: atomic_cas_weak_u16,                       \
+         atomic_s32_t   *: atomic_cas_weak_s32,                       \
+         atomic_u32_t   *: atomic_cas_weak_u32,                       \
+         atomic_s64_t   *: atomic_cas_weak_s64,                       \
+         atomic_u64_t   *: atomic_cas_weak_u64,                       \
+         atomic_int_t   *: atomic_cas_weak_int,                       \
+         atomic_bool_t  *: atomic_cas_weak_bool,                      \
+         atomic_ptr_t   *: atomic_cas_weak_ptr                        \
       )((p), (exp), (des)))
 
-   #define atomic_cas_strong(p, exp, des)                                \
-      (_Generic((p),                                                     \
-         atomic_s8_t    *: atomic_cas_strong_s8,                         \
-         atomic_u8_t    *: atomic_cas_strong_u8,                         \
-         atomic_s16_t   *: atomic_cas_strong_s16,                        \
-         atomic_u16_t   *: atomic_cas_strong_u16,                        \
-         atomic_s32_t   *: atomic_cas_strong_s32,                        \
-         atomic_u32_t   *: atomic_cas_strong_u32,                        \
-         atomic_s64_t   *: atomic_cas_strong_s64,                        \
-         atomic_u64_t   *: atomic_cas_strong_u64,                        \
-         atomic_int_t   *: atomic_cas_strong_int,                        \
-         atomic_bool_t  *: atomic_cas_strong_bool,                       \
-         atomic_ptr_t   *: atomic_cas_strong_ptr                         \
+   #define atomic_cas_strong(p, exp, des)                             \
+      (_Generic((p),                                                  \
+         atomic_s8_t    *: atomic_cas_strong_s8,                      \
+         atomic_u8_t    *: atomic_cas_strong_u8,                      \
+         atomic_s16_t   *: atomic_cas_strong_s16,                     \
+         atomic_u16_t   *: atomic_cas_strong_u16,                     \
+         atomic_s32_t   *: atomic_cas_strong_s32,                     \
+         atomic_u32_t   *: atomic_cas_strong_u32,                     \
+         atomic_s64_t   *: atomic_cas_strong_s64,                     \
+         atomic_u64_t   *: atomic_cas_strong_u64,                     \
+         atomic_int_t   *: atomic_cas_strong_int,                     \
+         atomic_bool_t  *: atomic_cas_strong_bool,                    \
+         atomic_ptr_t   *: atomic_cas_strong_ptr                      \
       )((p), (exp), (des)))
 
 #else /* __cplusplus */
@@ -505,50 +505,50 @@ extern "C++" {
     * does in C.
     */
 
-   #define _DEFINE_ATOMIC_GENERIC_CPP(name, T)                           \
-                                                                         \
-      static ALWAYS_INLINE T                                             \
-      atomic_load(atomic_##name##_t *p)                                  \
-      {                                                                  \
-         return atomic_load_##name(p);                                   \
-      }                                                                  \
-                                                                         \
-      static ALWAYS_INLINE void                                          \
-      atomic_store(atomic_##name##_t *p, T val)                          \
-      {                                                                  \
-         atomic_store_##name(p, val);                                    \
-      }                                                                  \
-                                                                         \
-      static ALWAYS_INLINE T                                             \
-      atomic_exchange(atomic_##name##_t *p, T val)                       \
-      {                                                                  \
-         return atomic_exchange_##name(p, val);                          \
-      }                                                                  \
-                                                                         \
-      static ALWAYS_INLINE bool                                          \
-      atomic_cas_weak(atomic_##name##_t *p, T *exp, T des)               \
-      {                                                                  \
-         return atomic_cas_weak_##name(p, exp, des);                     \
-      }                                                                  \
-                                                                         \
-      static ALWAYS_INLINE bool                                          \
-      atomic_cas_strong(atomic_##name##_t *p, T *exp, T des)             \
-      {                                                                  \
-         return atomic_cas_strong_##name(p, exp, des);                   \
+   #define _DEFINE_ATOMIC_GENERIC_CPP(name, T)                        \
+                                                                      \
+      static ALWAYS_INLINE T                                          \
+      atomic_load(atomic_##name##_t *p)                               \
+      {                                                               \
+         return atomic_load_##name(p);                                \
+      }                                                               \
+                                                                      \
+      static ALWAYS_INLINE void                                       \
+      atomic_store(atomic_##name##_t *p, T val)                       \
+      {                                                               \
+         atomic_store_##name(p, val);                                 \
+      }                                                               \
+                                                                      \
+      static ALWAYS_INLINE T                                          \
+      atomic_exchange(atomic_##name##_t *p, T val)                    \
+      {                                                               \
+         return atomic_exchange_##name(p, val);                       \
+      }                                                               \
+                                                                      \
+      static ALWAYS_INLINE bool                                       \
+      atomic_cas_weak(atomic_##name##_t *p, T *exp, T des)            \
+      {                                                               \
+         return atomic_cas_weak_##name(p, exp, des);                  \
+      }                                                               \
+                                                                      \
+      static ALWAYS_INLINE bool                                       \
+      atomic_cas_strong(atomic_##name##_t *p, T *exp, T des)          \
+      {                                                               \
+         return atomic_cas_strong_##name(p, exp, des);                \
       }
 
-   #define _DEFINE_ATOMIC_GENERIC_FETCH_CPP(name, T)                     \
-                                                                         \
-      static ALWAYS_INLINE T                                             \
-      atomic_fetch_add(atomic_##name##_t *p, T val)                      \
-      {                                                                  \
-         return atomic_fetch_add_##name(p, val);                         \
-      }                                                                  \
-                                                                         \
-      static ALWAYS_INLINE T                                             \
-      atomic_fetch_sub(atomic_##name##_t *p, T val)                      \
-      {                                                                  \
-         return atomic_fetch_sub_##name(p, val);                         \
+   #define _DEFINE_ATOMIC_GENERIC_FETCH_CPP(name, T)                  \
+                                                                      \
+      static ALWAYS_INLINE T                                          \
+      atomic_fetch_add(atomic_##name##_t *p, T val)                   \
+      {                                                               \
+         return atomic_fetch_add_##name(p, val);                      \
+      }                                                               \
+                                                                      \
+      static ALWAYS_INLINE T                                          \
+      atomic_fetch_sub(atomic_##name##_t *p, T val)                   \
+      {                                                               \
+         return atomic_fetch_sub_##name(p, val);                      \
       }
 
    _ATOMIC_INT_TYPES_LE32(_DEFINE_ATOMIC_GENERIC_CPP)

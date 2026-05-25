@@ -115,13 +115,13 @@ bintree_remove_ptr_internal(void **root_obj_ref,
                             long field_off);
 
 
-#define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)          \
-   bintree_insert_internal((void **)(rootref), (void*)obj, cmpfun,            \
+#define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)  \
+   bintree_insert_internal((void **)(rootref), (void*)obj, cmpfun,    \
                            OFFSET_OF(struct_type, elem_name))
 
-#define bintree_insert_ptr(rootref, obj, struct_type, elem_name, field_name)  \
-   bintree_insert_ptr_internal((void **)(rootref), (void*)obj,                \
-                               OFFSET_OF(struct_type, elem_name),             \
+#define bintree_insert_ptr(rootref, obj, struct_type, elem_name, field_name) \
+   bintree_insert_ptr_internal((void **)(rootref), (void*)obj,               \
+                               OFFSET_OF(struct_type, elem_name),            \
                                OFFSET_OF(struct_type, field_name))
 
 /*
@@ -135,9 +135,9 @@ bintree_remove_ptr_internal(void **root_obj_ref,
  * use bintree_find_ptr() because it's faster. But WARNING: bintree_find_ptr()
  * treats `value` as a value, not as a pointer to a value and that's hard-coded.
  */
-#define bintree_find(root_obj, value, objval_cmpfun, struct_type, elem_name)  \
-   bintree_find_internal((void*)(root_obj),                                   \
-                         (value), (objval_cmpfun),                            \
+#define bintree_find(root_obj, value, objval_cmpfun, struct_type, elem_name) \
+   bintree_find_internal((void*)(root_obj),                                  \
+                         (value), (objval_cmpfun),                           \
                          OFFSET_OF(struct_type, elem_name))
 
 /*
@@ -162,10 +162,10 @@ bintree_remove_ptr_internal(void **root_obj_ref,
                            OFFSET_OF(struct_type, elem_name),                  \
                            OFFSET_OF(struct_type, field_name))
 
-#define bintree_in_order_visit(root_obj, cb, cb_arg, struct_type, elem_name)  \
-   bintree_in_order_visit_internal((void *)(root_obj),                        \
-                                   (cb), (cb_arg),                            \
-                                   OFFSET_OF(struct_type, elem_name),         \
+#define bintree_in_order_visit(root_obj, cb, cb_arg, struct_type, elem_name) \
+   bintree_in_order_visit_internal((void *)(root_obj),                       \
+                                   (cb), (cb_arg),                           \
+                                   OFFSET_OF(struct_type, elem_name),        \
                                    false)
 
 #define bintree_in_rorder_visit(root_obj, cb, cb_arg, struct_type, elem_name) \
@@ -174,16 +174,16 @@ bintree_remove_ptr_internal(void **root_obj_ref,
                                    OFFSET_OF(struct_type, elem_name),         \
                                    true)
 
-#define bintree_get_first_obj(root_obj, struct_type, elem_name)               \
-   bintree_get_first_obj_internal((void *)(root_obj),                         \
+#define bintree_get_first_obj(root_obj, struct_type, elem_name)       \
+   bintree_get_first_obj_internal((void *)(root_obj),                 \
                                   OFFSET_OF(struct_type, elem_name))
 
-#define bintree_get_last_obj(root_obj, struct_type, elem_name)               \
-   bintree_get_last_obj_internal((void *)(root_obj),                         \
+#define bintree_get_last_obj(root_obj, struct_type, elem_name)        \
+   bintree_get_last_obj_internal((void *)(root_obj),                  \
                                  OFFSET_OF(struct_type, elem_name))
 
-#define bintree_in_order_visit_start(ctx, obj, struct_type, elem_name, rev)  \
-   bintree_in_order_visit_start_internal(ctx,                                \
-                                         (void*)(obj),                       \
-                                         OFFSET_OF(struct_type, elem_name),  \
+#define bintree_in_order_visit_start(ctx, obj, struct_type, elem_name, rev) \
+   bintree_in_order_visit_start_internal(ctx,                               \
+                                         (void*)(obj),                      \
+                                         OFFSET_OF(struct_type, elem_name), \
                                          rev)

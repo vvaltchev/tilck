@@ -43,12 +43,12 @@ struct ramfs_block {
  * current kmalloc implementation.
  */
 #define RAMFS_ENTRY_SIZE 256
-#define RAMFS_ENTRY_MAX_LEN (                   \
-   RAMFS_ENTRY_SIZE                             \
-   - sizeof(struct bintree_node)                \
-   - sizeof(struct list_node)                   \
-   - sizeof(struct ramfs_inode *)               \
-   - sizeof(u8)                                 \
+#define RAMFS_ENTRY_MAX_LEN (                                         \
+   RAMFS_ENTRY_SIZE                                                   \
+   - sizeof(struct bintree_node)                                      \
+   - sizeof(struct list_node)                                         \
+   - sizeof(struct ramfs_inode *)                                     \
+   - sizeof(u8)                                                       \
 )
 
 struct ramfs_entry {

@@ -23,12 +23,12 @@
 
 #include "common_int.h"
 
-#define CHECK(cond)                                  \
-   do {                                              \
-      if (!(cond)) {                                 \
-         printk("CHECK '%s' FAILED\n", #cond);       \
-         return false;                               \
-      }                                              \
+#define CHECK(cond)                                                   \
+   do {                                                               \
+      if (!(cond)) {                                                  \
+         printk("CHECK '%s' FAILED\n", #cond);                        \
+         return false;                                                \
+      }                                                               \
    } while(0)
 
 static video_mode_t selected_mode = INVALID_VIDEO_MODE;

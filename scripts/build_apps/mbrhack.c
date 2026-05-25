@@ -14,10 +14,10 @@
 #define DISK_UUID_OFFSET            0x1b8
 #define MAX_EBPB_SIZE                 128
 
-#define INFO(fmt, ...)                                       \
-   do {                                                      \
-      if (!opt_quiet)                                        \
-         fprintf(stdout, "INFO: " fmt, ##__VA_ARGS__);       \
+#define INFO(fmt, ...)                                                \
+   do {                                                               \
+      if (!opt_quiet)                                                 \
+         fprintf(stdout, "INFO: " fmt, ##__VA_ARGS__);                \
    } while (0)
 
 #define WARNING(fmt, ...)     fprintf(stderr, "WARNING: " fmt, ##__VA_ARGS__)

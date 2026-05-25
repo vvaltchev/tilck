@@ -10,13 +10,13 @@
 extern char *kernel_initial_stack[KERNEL_STACK_SIZE];
 
 /* See the comments below in setup_sig_handler() */
-#define SIG_HANDLER_ALIGN_ADJUST                        \
-   (                                                    \
-      (                                                 \
-         + USERMODE_STACK_ALIGN                         \
-         - sizeof(regs_t)               /* regs */      \
-         - sizeof(ulong)                /* signum */    \
-      ) % USERMODE_STACK_ALIGN                          \
+#define SIG_HANDLER_ALIGN_ADJUST                                      \
+   (                                                                  \
+      (                                                               \
+         + USERMODE_STACK_ALIGN                                       \
+         - sizeof(regs_t)               /* regs */                    \
+         - sizeof(ulong)                /* signum */                  \
+      ) % USERMODE_STACK_ALIGN                                        \
    )
 
 void switch_to_initial_kernel_stack(void);

@@ -48,8 +48,8 @@
 #define LOAD_ARG_FROM_STACK(n, t)                                      \
    ((t)(ulong)STACK_VAR[STACK_SIZE_VAR-1].arg##n)
 
-#define DECLARE_SHADOW_STACK(size, nargs)                              \
-   struct explicit_stack_elem##nargs STACK_VAR[size];                  \
+#define DECLARE_SHADOW_STACK(size, nargs)                             \
+   struct explicit_stack_elem##nargs STACK_VAR[size];                 \
    int STACK_SIZE_VAR;
 
 /*
@@ -70,59 +70,59 @@
  * case where no such call existed. That's why we zero the stack and
  * HANDLE_SIMULATED_RETURN() checks if the address is != NULL before jumping.
  */
-#define INIT_SHADOW_STACK()                                            \
-   do {                                                                \
-      STACK_SIZE_VAR = 0;                                              \
-      bzero(STACK_VAR, sizeof(STACK_VAR));                             \
+#define INIT_SHADOW_STACK()                                           \
+   do {                                                               \
+      STACK_SIZE_VAR = 0;                                             \
+      bzero(STACK_VAR, sizeof(STACK_VAR));                            \
    } while (0)
 
-#define CREATE_SHADOW_STACK(size, nargs)                               \
-   DECLARE_SHADOW_STACK(size, nargs)                                   \
+#define CREATE_SHADOW_STACK(size, nargs)                              \
+   DECLARE_SHADOW_STACK(size, nargs)                                  \
    INIT_SHADOW_STACK()
 
-#define SIMULATE_RETURN_NULL()                                         \
-   {                                                                   \
-      STACK_SIZE_VAR--;                                                \
-      ASSERT(STACK_VAR[STACK_SIZE_VAR].ret_addr || !STACK_SIZE_VAR);   \
-      continue;                                                        \
+#define SIMULATE_RETURN_NULL()                                        \
+   {                                                                  \
+      STACK_SIZE_VAR--;                                               \
+      ASSERT(STACK_VAR[STACK_SIZE_VAR].ret_addr || !STACK_SIZE_VAR);  \
+      continue;                                                       \
    }
 
-#define SIMULATE_YIELD(val)                                            \
-   {                                                                   \
-      STACK_VAR[STACK_SIZE_VAR].ret_addr =                             \
-         &&CONCAT(after_, __LINE__);                                   \
-      return val;                                                      \
-      CONCAT(after_, __LINE__):;                                       \
+#define SIMULATE_YIELD(val)                                           \
+   {                                                                  \
+      STACK_VAR[STACK_SIZE_VAR].ret_addr =                            \
+         &&CONCAT(after_, __LINE__);                                  \
+      return val;                                                     \
+      CONCAT(after_, __LINE__):;                                      \
    }
 
-#define HANDLE_SIMULATED_RETURN()                                      \
-   {                                                                   \
-      void *addr = STACK_VAR[STACK_SIZE_VAR].ret_addr;                 \
-      if (addr != NULL)                                                \
-         goto *addr;                                                   \
+#define HANDLE_SIMULATED_RETURN()                                     \
+   {                                                                  \
+      void *addr = STACK_VAR[STACK_SIZE_VAR].ret_addr;                \
+      if (addr != NULL)                                               \
+         goto *addr;                                                  \
    }
 
-#define SIMULATE_CALL1(a1)                                             \
-   {                                                                   \
-      VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));             \
-      STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {           \
-         &&CONCAT(after_, __LINE__),                                   \
-         TO_PTR(a1)                                                    \
-      };                                                               \
-      STACK_VAR[STACK_SIZE_VAR].ret_addr = NULL;                       \
-      goto loop_end;                                                   \
-      CONCAT(after_, __LINE__):;                                       \
+#define SIMULATE_CALL1(a1)                                            \
+   {                                                                  \
+      VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));            \
+      STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {          \
+         &&CONCAT(after_, __LINE__),                                  \
+         TO_PTR(a1)                                                   \
+      };                                                              \
+      STACK_VAR[STACK_SIZE_VAR].ret_addr = NULL;                      \
+      goto loop_end;                                                  \
+      CONCAT(after_, __LINE__):;                                      \
    }
 
-#define SIMULATE_CALL2(a1, a2)                                         \
-   {                                                                   \
-      VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));             \
-      STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {           \
-         &&CONCAT(after_, __LINE__),                                   \
-         TO_PTR(a1),                                                   \
-         TO_PTR(a2)                                                    \
-      };                                                               \
-      STACK_VAR[STACK_SIZE_VAR].ret_addr = NULL;                       \
-      goto loop_end;                                                   \
-      CONCAT(after_, __LINE__):;                                       \
+#define SIMULATE_CALL2(a1, a2)                                        \
+   {                                                                  \
+      VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));            \
+      STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {          \
+         &&CONCAT(after_, __LINE__),                                  \
+         TO_PTR(a1),                                                  \
+         TO_PTR(a2)                                                   \
+      };                                                              \
+      STACK_VAR[STACK_SIZE_VAR].ret_addr = NULL;                      \
+      goto loop_end;                                                  \
+      CONCAT(after_, __LINE__):;                                      \
    }

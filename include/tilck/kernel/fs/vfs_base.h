@@ -45,17 +45,17 @@ enum vfs_entry_type {
  */
 typedef void *vfs_inode_ptr_t;
 
-#define CREATE_FS_PATH_STRUCT(name, inode_type, fs_entry_type)            \
-                                                                          \
-   STATIC_ASSERT(sizeof(inode_type) == sizeof(vfs_inode_ptr_t));          \
-   STATIC_ASSERT(sizeof(fs_entry_type) == sizeof(void *));                \
-                                                                          \
-   struct name {                                                          \
-      inode_type inode;                                                   \
-      inode_type dir_inode;                                               \
-      fs_entry_type dir_entry;                                            \
-      enum vfs_entry_type type;                                           \
-   }                                                                      \
+#define CREATE_FS_PATH_STRUCT(name, inode_type, fs_entry_type)        \
+                                                                      \
+   STATIC_ASSERT(sizeof(inode_type) == sizeof(vfs_inode_ptr_t));      \
+   STATIC_ASSERT(sizeof(fs_entry_type) == sizeof(void *));            \
+                                                                      \
+   struct name {                                                      \
+      inode_type inode;                                               \
+      inode_type dir_inode;                                           \
+      fs_entry_type dir_entry;                                        \
+      enum vfs_entry_type type;                                       \
+   }                                                                  \
 
 CREATE_FS_PATH_STRUCT(fs_path, vfs_inode_ptr_t, void *);
 
@@ -93,17 +93,17 @@ struct mnt_fs {
  * thread support.
  */
 
-#define FS_HANDLE_BASE_FIELDS                         \
-   struct process *pi;                                \
-   struct mnt_fs *fs;                                 \
-   const struct file_ops *fops;                       \
-   int fl_flags;                                      \
-   u16 fd_flags;                                      \
-   u16 spec_flags;                                    \
-   struct locked_file *lf;                            \
-   union {                                            \
-      offt h_fpos;               /* file offset  */   \
-      offt dir_pos;              /* dir position */   \
+#define FS_HANDLE_BASE_FIELDS                                         \
+   struct process *pi;                                                \
+   struct mnt_fs *fs;                                                 \
+   const struct file_ops *fops;                                       \
+   int fl_flags;                                                      \
+   u16 fd_flags;                                                      \
+   u16 spec_flags;                                                    \
+   struct locked_file *lf;                                            \
+   union {                                                            \
+      offt h_fpos;               /* file offset  */                   \
+      offt dir_pos;              /* dir position */                   \
    };
 
 struct fs_handle_base {
