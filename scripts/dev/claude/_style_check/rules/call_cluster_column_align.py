@@ -10,6 +10,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -33,6 +34,22 @@ from .. import tokens as _tokens_mod
 _CALL_PREFIX = re.compile(r'^(\s*\w+\s*\()')
 
 MIN_CLUSTER = 3
+
+
+def _last_toplevel_comma(line):
+   depth = 0
+   last = -1
+
+   for i, ch in enumerate(line):
+
+      if ch == '(':
+         depth += 1
+      elif ch == ')':
+         depth -= 1
+      elif ch == ',' and depth == 1:
+         last = i
+
+   return last
 
 
 def _last_arg_start(line):
@@ -152,6 +169,27 @@ class CallClusterColumnAlign(Rule):
             line_text = ctx.lines[ln_idx] \
                if ln_idx < len(ctx.lines) else ''
 
+            delta = majority_col - col
+            fixes = []
+
+            if delta != 0 and line_text:
+               comma_pos = _last_toplevel_comma(line_text)
+
+               if comma_pos >= 0:
+
+                  if delta > 0:
+                     fixed = (line_text[:comma_pos + 1]
+                              + ' ' * delta
+                              + line_text[comma_pos + 1:])
+                  else:
+                     after = line_text[comma_pos + 1:]
+                     ws = len(after) - len(after.lstrip(' '))
+                     trim = min(-delta, ws)
+                     fixed = (line_text[:comma_pos + 1]
+                              + after[trim:])
+
+                  fixes = [Fix(line_no, line_no, [fixed])]
+
             out.append(Diagnostic(
                file=str(ctx.file_path),
                line=line_no,
@@ -167,6 +205,7 @@ class CallClusterColumnAlign(Rule):
                ).format(col + 1, majority_col + 1,
                         majority_n, len(cluster)),
                snippet=line_text.rstrip(),
+               fixes=fixes,
             ))
 
       return out

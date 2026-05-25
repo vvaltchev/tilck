@@ -37,6 +37,21 @@ class Cols80(Rule):
          if length <= MAX_COLS:
             continue
 
+         over = length - MAX_COLS
+
+         if over <= 3:
+            hint = (
+               'over by {} col(s) -- try: compact `, ` to `,`, '
+               'remove spaces around +/- in pointer math, '
+               'shorten a trailing comment, move {{ to own line, '
+               'reduce column padding in the block'
+            ).format(over)
+         else:
+            hint = (
+               'over by {} cols -- consider wrapping the line '
+               'or extracting a local variable'
+            ).format(over)
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=i,
@@ -47,6 +62,7 @@ class Cols80(Rule):
             severity=self.severity,
             message='line is {} cols (max {})'.format(length, MAX_COLS),
             snippet=stripped[:MAX_COLS] + ' ...',
+            suggestion=hint,
          ))
 
       return out

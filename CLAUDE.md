@@ -376,6 +376,18 @@ of "done", not polish.
    Older files have legacy drift; emulate the newer ones.
 3. After drafting, grep your patterns against `kernel/*.c`. Patterns
    absent from the kernel are probably wrong, even if they compile.
+4. **After editing ANY file, run `style_check check <file>` (all
+   rules) and CANNOT proceed if there are warnings.** Either fix
+   all warnings, or — if the tool is wrong — STOP and ask,
+   showing the snippet and the error. Apply the tool's `--diff`
+   output first; only attempt manual fixes when the tool has no
+   auto-fix for a rule. Iterate until zero warnings.
+5. **For cols_80 violations (1-3 chars over):** before wrapping the
+   line, exhaust these cheaper fixes: remove optional spaces
+   around `+`/`-` in pointer arithmetic (`buf+OFFSET`), use
+   compact comma form (`,arg` instead of `, arg`), shorten a
+   trailing comment, move `{` to its own line. Only wrap the line
+   when none of these recover enough columns.
 
 ### Summary of explicit rules (from contributing.md)
 
@@ -389,6 +401,9 @@ of "done", not polish.
   cols. Only when padding reduction can't work (a single field is
   inherently too long) should you consider renaming or refactoring.
   Always look at the surrounding context before touching a long line.
+  When reducing padding, do the **minimal reduction necessary** —
+  just enough to fit in 80 cols. Don't collapse padding to the
+  minimum; the original generous padding was intentional.
 - **snake_case** everywhere
 - Opening brace on same line for control flow, **new line for
   functions and array initializers**
