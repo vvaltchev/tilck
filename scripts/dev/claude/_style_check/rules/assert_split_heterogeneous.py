@@ -29,6 +29,44 @@ from .. import tokens as _tokens_mod
 
 _ASSERT_OPEN = re.compile(r'\bASSERT\s*\(')
 
+_CMP_PAT = re.compile(
+   r'^\s*(\w[\w\[\].>-]*)\s*(<=?|>=?)\s*(\w[\w\[\].>-]*)\s*$'
+)
+
+
+def _is_chained_ordering(body):
+   """Return True if every &&-clause is a simple comparison and
+   adjacent clauses share an operand (chained range check like
+   a <= b && b < c && c <= d)."""
+
+   clauses = [c.strip() for c in body.split('&&')]
+   prev_rhs = None
+
+   for clause in clauses:
+
+      m = _CMP_PAT.match(clause)
+
+      if not m:
+         return False
+
+      lhs, op, rhs = m.group(1), m.group(2), m.group(3)
+
+      if op in ('<', '<='):
+
+         if prev_rhs is not None and lhs != prev_rhs:
+            return False
+
+         prev_rhs = rhs
+
+      elif op in ('>', '>='):
+
+         if prev_rhs is not None and rhs != prev_rhs:
+            return False
+
+         prev_rhs = lhs
+
+   return True
+
 
 class AssertSplitHeterogeneous(Rule):
 
@@ -74,6 +112,9 @@ class AssertSplitHeterogeneous(Rule):
             continue
 
          if '||' in body:
+            continue
+
+         if _is_chained_ordering(body):
             continue
 
          line, col = _tokens_mod.offset_to_line_col(masked, m.start())
