@@ -310,10 +310,10 @@ _VERDICT_COLOR = {
 }
 
 _VERDICT_TAG = {
-   'clean':  ' CLEAN',
-   'drift':  ' DRIFT',
-   'ugly':   '  UGLY',
-   'broken': 'BROKEN',
+   'clean':  ' CLEAN ',
+   'drift':  ' DRIFT ',
+   'ugly':   '  UGLY ',
+   'broken': ' BROKEN ',
 }
 
 
@@ -368,10 +368,11 @@ def emit_function_summaries(file_summary,
          pct = math.floor(f.prettiness * 100)
          parts.append('pretty {}%'.format(pct))
 
-      parts.append('total {:+.1f}'.format(f.total_score))
-      parts.append('norm {:+.2f}'.format(f.normalized_score))
-      parts.append('hard {}'.format(f.hard_violations))
-      parts.append('soft {}'.format(f.soft_violations))
+      if f.total_score != 0:
+         parts.append('total {:+.1f}'.format(f.total_score))
+         parts.append('hard {}'.format(f.hard_violations))
+         parts.append('soft {}'.format(f.soft_violations))
+
       rhs = '  '.join(parts)
 
       out.write('{}  [{}]  {}\n'.format(lhs, tag_colored, rhs))
