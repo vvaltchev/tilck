@@ -45,7 +45,7 @@ enum printk_width {
    pw_long      = 1,
    pw_default   = 2,
    pw_short     = 3,
-   pw_char      = 4
+   pw_char      = 4,
 };
 
 static const ulong width_val[] =
