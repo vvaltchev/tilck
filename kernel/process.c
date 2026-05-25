@@ -327,10 +327,9 @@ struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
    struct task *ti;
 
    ASSERT(pi != NULL);
-
    process_task = get_process_task(pi);
-   ti = kzalloc_obj(struct task);
 
+   ti = kzalloc_obj(struct task);
    if (!ti || !(ti->pi = pi) || !do_common_task_allocs(ti, alloc_bufs)) {
 
       if (ti) /* do_common_task_allocs() failed */

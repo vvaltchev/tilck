@@ -36,10 +36,8 @@ static void textmode_set_row(u16 row, u16 *data, bool fpu_allowed)
    void *src_addr;
 
    ASSERT(row < VIDEO_ROWS);
-
    dest_addr = VIDEO_ADDR + row * VIDEO_COLS;
    src_addr = data;
-
    memcpy32(dest_addr, src_addr, VIDEO_COLS >> 1);
 }
 

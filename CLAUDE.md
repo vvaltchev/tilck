@@ -433,6 +433,33 @@ gets the diff rejected.
   `const` locals are softer: mid-function const computed from in-flight
   state is fine (and often preferred over a forward-declared mutable
   written once); trivially-static const should go at the top.
+- **Semantic grouping of statements.** After the declaration block,
+  group related statements together and separate groups with blank
+  lines. In particular: an assignment and its error check belong
+  in the same group (no blank line between them); an ASSERT
+  validating a parameter belongs with the code that uses that
+  parameter, not isolated between two blank lines. When moving
+  declarations to the top of a block, don't let the blank-line-
+  after-decls rule break existing semantic groups — tighten the
+  groups instead.
+  ```c
+  /* Good: assignment grouped with its error check,
+   * ASSERT grouped with the setup it guards */
+  int rc;
+  struct termios saved = t->c_term;
+
+  rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
+  if (rc < 0) {
+     t->c_term = saved;
+     return -EFAULT;
+  }
+  ```
+  ```c
+  /* Bad: copy_from_user isolated from its error check */
+  rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
+
+  if (rc < 0) {
+  ```
 - **No `(void)expr` casts.** Kernel never uses them. Reasons:
   `-Wno-unused-parameter` is on (unused params don't warn); musl on
   i386 doesn't `warn_unused_result` on `read`/`write`/`getpid`/...
