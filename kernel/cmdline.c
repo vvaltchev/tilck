@@ -476,7 +476,7 @@ fail:
 
 void register_kopts_sysfs(void) { /* no-op */ }
 
-#endif
+#endif /* MOD_sysfs */
 
 void parse_kernel_cmdline(const char *cmdline)
 {

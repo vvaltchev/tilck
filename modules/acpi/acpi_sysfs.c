@@ -664,4 +664,4 @@ register_acpi_obj_in_sysfs(ACPI_HANDLE parent_obj,
    return AE_OK;
 }
 
-#endif
+#endif /* MOD_sysfs */

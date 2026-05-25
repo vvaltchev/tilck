@@ -188,13 +188,13 @@
 
       #error Non-test aarch64 is not supported
 
-   #endif
+   #endif /* UNIT_TEST_ENVIRONMENT */
 
 #else
 
    #error Unsupported architecture.
 
-#endif
+#endif /* __i386__ || __x86_64__ */
 
 #ifdef UNIT_TEST_ENVIRONMENT
    /*

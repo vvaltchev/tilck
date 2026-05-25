@@ -199,4 +199,4 @@ void setup_uefi_runtime_services(void)
    /* do nothing */
 }
 
-#endif
+#endif /* !KERNEL_TEST && (__i386__ || __x86_64__) */

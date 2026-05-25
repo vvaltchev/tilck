@@ -165,4 +165,4 @@ void selftest_fault_res_perf(void)
 }
 
 REGISTER_SELF_TEST(fault_res_perf, se_short, &selftest_fault_res_perf)
-#endif
+#endif /* __i386__ */

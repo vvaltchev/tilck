@@ -233,7 +233,7 @@ struct k_stat64 {
    u32 __unused5;
 };
 
-#endif
+#endif /* __i386__ */
 
 
 /*

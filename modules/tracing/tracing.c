@@ -1215,7 +1215,7 @@ register_tracing_sysfs_obj(void)
 static void tracing_init_meta_blob(void) { /* no-op */ }
 static void register_tracing_sysfs_obj(void) { /* no-op */ }
 
-#endif
+#endif /* MOD_sysfs */
 
 void
 init_trace_printk(void)

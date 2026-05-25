@@ -549,7 +549,7 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
    return -EOPNOTSUPP;
 }
 
-#endif
+#endif /* arch_x86_family */
 
 /* ---------------------------- RUNTIME INFO -------------------------- */
 

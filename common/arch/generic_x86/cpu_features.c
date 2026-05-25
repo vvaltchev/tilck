@@ -183,4 +183,4 @@ void dump_x86_features(void)
       printk("%s\n", buf);
 }
 
-#endif
+#endif /* __TILCK_KERNEL__ */

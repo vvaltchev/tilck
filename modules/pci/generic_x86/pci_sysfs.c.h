@@ -169,4 +169,4 @@ pci_create_sysfs_view(void)
    return 0;
 }
 
-#endif
+#endif /* MOD_sysfs */
