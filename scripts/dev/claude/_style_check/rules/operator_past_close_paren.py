@@ -29,7 +29,7 @@ from .. import tokens as _tokens_mod
 # paren column on the final line.
 
 _COND_OPEN = re.compile(r'\b(if|while|for)\s*\(')
-_OP_END = re.compile(r'(&&|\|\|)\s*$')
+_OP_END = re.compile(r'(&&|\|\||\||\&)\s*$')
 
 
 class OperatorPastClosePAren(Rule):  # pylint: disable=invalid-name

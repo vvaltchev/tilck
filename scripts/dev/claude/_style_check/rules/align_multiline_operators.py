@@ -26,10 +26,12 @@ from .. import tokens as _tokens_mod
 # required to align with each other.
 #
 # Detection: scan masked source for RUNS of consecutive lines that
-# each end with `&&` or `||`.  Within a run, compute the paren depth
-# at each trailing operator and group by depth.  Within each depth
-# group (>= 2 entries), all operators should be at the same column.
-_OP_END_PAT = re.compile(r'^(.*?)(&&|\|\|)\s*$')
+# each end with `&&`, `||`, `|`, or `&`.  Within a run, compute the
+# paren depth at each trailing operator and group by depth.  Within
+# each depth group (>= 2 entries), all operators should be at the
+# same column.  Two-char operators (`&&`, `||`) are matched first
+# so a trailing `||` is not split into `|` + `|`.
+_OP_END_PAT = re.compile(r'^(.*?)(&&|\|\||\||\&)\s*$')
 
 
 def _paren_delta(text):
