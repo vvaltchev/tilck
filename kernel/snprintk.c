@@ -279,6 +279,7 @@ static const enum printk_width single_mods[2] =
 static bool
 process_seq(struct snprintk_ctx *ctx)
 {
+   /* style_check: disable switch_case_indent */
    /* Here're just after '%' */
    if (*ctx->fmt == '%' || (u8)*ctx->fmt >= 128) {
       /* %% or % followed by non-ascii char */
