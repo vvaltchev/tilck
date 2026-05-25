@@ -391,6 +391,7 @@ void debug_dump_glyph(u32 n)
       fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]); \
    } while (0)
 
+/* style_check: disable else_same_line_as_brace */
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
    u8 *data = font_glyph_data + font_bytes_per_glyph * vgaentry_get_char(e);
