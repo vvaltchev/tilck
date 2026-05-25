@@ -1,2 +1,1 @@
-disabled:
-  - spdx_header
+ignore: true
