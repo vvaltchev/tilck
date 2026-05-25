@@ -36,6 +36,7 @@ from .. import tokens as _tokens_mod
 # This is a text-based rule -- no libclang needed.
 
 _RETURN_LINE = re.compile(r'^\s*return\b')
+_RETURN_COMPLEX = re.compile(r'^\s*return\s+.*(?:&&|\|\|)')
 _OPEN_BRACE = re.compile(r'^\s*\{\s*$')
 _CLOSE_BRACE = re.compile(r'^\s*\}\s*$')
 _BLANK_LINE = re.compile(r'^\s*$')
@@ -280,6 +281,13 @@ class BlankLineBeforeReturn(Rule):
          # nearest preceding blank line (cleanup blocks after labels
          # don't need additional blank-line separation)
          if _has_label_before(masked_lines, last_return_idx, body_start):
+            continue
+
+         # Only flag complex return expressions (containing && or ||).
+         # Simple returns (return var; return 0; return true;) don't
+         # need the blank line — the visual separation between "do
+         # stuff" and "return result" is already clear.
+         if not _RETURN_COMPLEX.match(masked_lines[last_return_idx]):
             continue
 
          # Check if there's already a blank line before the return
