@@ -13,7 +13,7 @@ from .base import (
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
-   SCORE_MEDIUM_PREF,
+   SCORE_SOFT,
 )
 from .. import tokens as _tokens_mod
 
@@ -42,7 +42,7 @@ class AssertSplitHeterogeneous(Rule):
    )
    layers = LAYER_TOKENS
    severity = SEVERITY_WARNING
-   default_score = SCORE_MEDIUM_PREF
+   default_score = SCORE_SOFT
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 
@@ -71,6 +71,9 @@ class AssertSplitHeterogeneous(Rule):
          pos = close + 1
 
          if and_count < 2:
+            continue
+
+         if '||' in body:
             continue
 
          line, col = _tokens_mod.offset_to_line_col(masked, m.start())
