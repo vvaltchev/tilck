@@ -149,8 +149,7 @@ static void dp_show_chunks(void)
 
       if (load_errno == EOPNOTSUPP || load_errno == ENOTSUP) {
 
-         dp_writeln(
-            "Not available: recompile with KRN_KMALLOC_HEAVY_STATS=1");
+         dp_writeln("Not available: recompile with KRN_KMALLOC_HEAVY_STATS=1");
 
       } else {
 

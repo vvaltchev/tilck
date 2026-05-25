@@ -499,7 +499,8 @@ dump_iov_inner(unsigned long orig,
          MIN(len, 16),
          maybe_tot_data_size >= 0 ? MIN(tot_rem, len) : len,
          buf,
-         sizeof(buf));
+         sizeof(buf)
+      );
 
       if (!ok)
          return false;
