@@ -382,10 +382,28 @@ def emit_function_summaries(file_summary,
    if file_summary.file_level_diagnostics:
 
       flv = file_summary.file_level_diagnostics
-      total = sum(d.score for d in flv)
-      out.write('    {} file-level diagnostic(s) total {:+.1f}\n'.format(
-         len(flv), total
-      ))
+      vis = [d for d in flv if not d.is_gradient]
+      grad = [d for d in flv if d.is_gradient]
+
+      if vis:
+         total = sum(d.score for d in vis)
+         out.write(
+            '    {} file-level diagnostic(s)'
+            ' total {:+.1f}\n'.format(len(vis), total)
+         )
+
+      if grad:
+         out.write(
+            '    {} file-level gradient(s)\n'.format(len(grad))
+         )
+
+   fp = file_summary.file_prettiness
+
+   if fp < 0.999:
+      pct = math.floor(fp * 100)
+      out.write(
+         wrap(_BOLD, '    file prettiness: {}%\n'.format(pct))
+      )
 
    out.flush()
 

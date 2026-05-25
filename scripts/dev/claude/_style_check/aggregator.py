@@ -96,6 +96,38 @@ class FileSummary:
    file_level_diagnostics: List[Diagnostic] = field(default_factory=list)
 
    @property
+   def file_prettiness(self) -> float:
+      """Weighted mean of per-function prettiness. File-level
+      gradient diagnostics reduce a separate pool proportional
+      to the file's scoreable line count."""
+
+      if not self.functions:
+         return 1.0
+
+      total_stmts = sum(f.stmt_count for f in self.functions)
+
+      if total_stmts == 0:
+         return 1.0
+
+      weighted = sum(
+         f.prettiness * f.stmt_count for f in self.functions
+      )
+      base = weighted / total_stmts
+
+      # File-level gradient diagnostics (e.g. ifdef_density)
+      # reduce the file score proportionally.
+      file_gradient_cost = sum(
+         d.prettiness_cost for d in self.file_level_diagnostics
+         if d.is_gradient and d.prettiness_cost > 0
+      )
+
+      if file_gradient_cost > 0 and total_stmts > 0:
+         per_line = file_gradient_cost / total_stmts
+         base = max(0.0, base - per_line)
+
+      return base
+
+   @property
    def total_score(self) -> float:
       func_total = sum(f.total_score for f in self.functions)
       file_total = sum(d.score for d in self.file_level_diagnostics)

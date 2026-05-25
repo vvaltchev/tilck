@@ -60,6 +60,11 @@ from . import multiline_call_style
 from . import multiline_call_vs_long_neighbor  # harmony: wrapped-arg vs long neighbor
 from . import call_cluster_column_align        # columnar alignment in call tables
 from . import else_after_return                # Q49
+from . import blank_line_before_return
+
+# Gradient-only density rules
+from . import ifdef_density
+from . import cast_density
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
 # CLAUDE.md claims this is a hard rule ("declare at top of enclosing
@@ -131,6 +136,9 @@ ALL_RULES = [
    call_cluster_column_align.RULE,
    define_backslash_align.RULE,
    else_after_return.RULE,
+   blank_line_before_return.RULE,
+   ifdef_density.RULE,
+   cast_density.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }
