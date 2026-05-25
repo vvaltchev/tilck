@@ -1023,7 +1023,7 @@ int main(int argc, char **argv)
             write_back = true;
          }
 
-         if (memcmp(&i.disk_uuid, buf + DISK_UUID_OFFSET, sizeof(i.disk_uuid))) {
+         if (memcmp(&i.disk_uuid, buf+DISK_UUID_OFFSET, sizeof(i.disk_uuid))) {
             INFO("DISK UUID changed, write it back\n");
             memcpy(buf + DISK_UUID_OFFSET, &i.disk_uuid, sizeof(i.disk_uuid));
             write_back = true;

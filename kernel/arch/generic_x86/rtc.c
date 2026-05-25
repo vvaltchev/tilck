@@ -29,13 +29,13 @@
 #define STATUS_REG_A_UPDATE_IN_PROGRESS   0x80
 
 /* Register B (control) bits */
-#define REG_B_UIE                        (1u << 4)   /* update-ended IRQ enable */
+#define REG_B_UIE    (1u << 4) /* update-ended IRQ enable */
 
 /* Register C (interrupt flags, read-clear) bits */
-#define REG_C_UF                         (1u << 4)   /* update-ended flag */
-#define REG_C_AF                         (1u << 5)   /* alarm flag */
-#define REG_C_PF                         (1u << 6)   /* periodic flag */
-#define REG_C_IRQF                       (1u << 7)   /* any of the above */
+#define REG_C_UF     (1u << 4) /* update-ended flag */
+#define REG_C_AF     (1u << 5) /* alarm flag */
+#define REG_C_PF     (1u << 6) /* periodic flag */
+#define REG_C_IRQF   (1u << 7) /* any of the above */
 
 static inline u8 bcd_to_dec(u8 bcd)
 {

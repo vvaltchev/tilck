@@ -300,7 +300,8 @@ fat_walk(struct fat_walk_static_params *p, u32 cluster)
          if (ctx && ctx->lname_sz > 0 && ctx->is_valid)
             long_name_ptr = finalize_long_name(ctx, &dentries[i]);
 
-         const int ret = p->cb(p->h, p->ft, dentries + i, long_name_ptr, p->arg);
+         const int ret = p->cb(p->h, p->ft, dentries + i,
+                               long_name_ptr, p->arg);
 
          if (ctx) {
             ctx->lname_sz = 0;

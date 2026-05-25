@@ -32,7 +32,10 @@ struct elfhack_cmd {
    const char *opt;
    const char *help;
    int nargs;
-   int (*func)(struct elf_file_info *, const void *, const void *, const void *);
+   int (*func)(struct elf_file_info *,
+               const void *,
+               const void *,
+               const void *);
 };
 
 int show_help(struct elf_file_info *nfo, ...);
