@@ -5,6 +5,7 @@
 
 import re
 
+from collections import defaultdict
 from typing import List
 
 from .base import (
@@ -19,16 +20,25 @@ from .. import tokens as _tokens_mod
 
 # Q10: when a boolean expression wraps across multiple lines, the
 # connecting operators (`||`, `&&`) should be column-aligned across
-# the wrapped lines. Pad with extra space before the operator if
-# needed.
+# the wrapped lines at the SAME paren nesting depth.  Operators at
+# different depths belong to different sub-expressions and are not
+# required to align with each other.
 #
 # Detection: scan masked source for RUNS of consecutive lines that
-# each end with `&&` or `||`. Within a run, all operators should be
-# at the same column. If they aren't, flag the misaligned ones.
-# `break_before_operator_forbidden` (HARD) already handles the
-# "operator at start of line" form; this rule applies only to the
-# break-after-operator shape.
+# each end with `&&` or `||`.  Within a run, compute the paren depth
+# at each trailing operator and group by depth.  Within each depth
+# group (>= 2 entries), all operators should be at the same column.
 _OP_END_PAT = re.compile(r'^(.*?)(&&|\|\|)\s*$')
+
+
+def _paren_delta(text):
+   d = 0
+   for ch in text:
+      if ch == '(':
+         d += 1
+      elif ch == ')':
+         d -= 1
+   return d
 
 
 class AlignMultilineOperators(Rule):
@@ -36,8 +46,9 @@ class AlignMultilineOperators(Rule):
    id = 'align_multiline_operators'
    description = (
       'Multi-line boolean expressions: trailing `||` / `&&` should '
-      'be column-aligned across the wrapped lines (pad with extra '
-      'space before the operator if needed). Q10 preference.'
+      'be column-aligned across the wrapped lines at the same '
+      'paren nesting depth (pad with extra space before the '
+      'operator if needed). Q10 preference.'
    )
    layers = LAYER_TOKENS
    severity = SEVERITY_WARNING
@@ -48,8 +59,7 @@ class AlignMultilineOperators(Rule):
       masked = _tokens_mod.mask_non_code(ctx.source_text)
       masked_lines = masked.split('\n')
 
-      # Group consecutive lines ending with && / || into runs.
-      runs = []         # list of [(line_idx, op_col, op_str)]
+      runs = []
       current = []
 
       for i, line in enumerate(masked_lines):
@@ -65,8 +75,6 @@ class AlignMultilineOperators(Rule):
             continue
 
          op = m.group(2)
-         # Op column is 1-based; find the last occurrence of op
-         # since the match is at end of line.
          op_col = line.rfind(op) + 1
          current.append((i, op_col, op))
 
@@ -77,37 +85,50 @@ class AlignMultilineOperators(Rule):
 
       for run in runs:
 
-         cols = [c for _, c, _ in run]
+         depth = 0
+         by_depth = defaultdict(list)
 
-         # The "target" column for this run is the rightmost --
-         # padding adds spaces, never removes them, so the leftmost
-         # ops are the misaligned ones.
-         target_col = max(cols)
+         for line_idx, op_col, op in run:
 
-         for line_idx, col, op in run:
+            line = masked_lines[line_idx]
+            m = _OP_END_PAT.match(line)
+            prefix = m.group(1)
+            op_depth = depth + _paren_delta(prefix)
+            by_depth[op_depth].append((line_idx, op_col, op))
+            depth += _paren_delta(line)
 
-            if col == target_col:
+         for _, group in by_depth.items():
+
+            if len(group) < 2:
                continue
 
-            line_no = line_idx + 1
-            line_text = ctx.lines[line_idx] \
-               if line_idx < len(ctx.lines) else ''
+            cols = [c for _, c, _ in group]
+            target_col = max(cols)
 
-            out.append(Diagnostic(
-               file=str(ctx.file_path),
-               line=line_no,
-               col=col,
-               end_line=line_no,
-               end_col=col + len(op),
-               rule=self.id,
-               severity=self.severity,
-               message=(
-                  'operator `{}` at column {}; other operators in '
-                  'this wrapped expression are at column {} -- pad '
-                  'with spaces to align'
-               ).format(op, col, target_col),
-               snippet=line_text,
-            ))
+            for line_idx, col, op in group:
+
+               if col == target_col:
+                  continue
+
+               line_no = line_idx + 1
+               line_text = ctx.lines[line_idx] \
+                  if line_idx < len(ctx.lines) else ''
+
+               out.append(Diagnostic(
+                  file=str(ctx.file_path),
+                  line=line_no,
+                  col=col,
+                  end_line=line_no,
+                  end_col=col + len(op),
+                  rule=self.id,
+                  severity=self.severity,
+                  message=(
+                     'operator `{}` at column {}; other operators '
+                     'at same nesting level are at column {} -- '
+                     'pad with spaces to align'
+                  ).format(op, col, target_col),
+                  snippet=line_text,
+               ))
 
       return out
 
