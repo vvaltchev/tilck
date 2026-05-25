@@ -6,8 +6,9 @@
 from typing import List
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_RAW_TEXT,
    SEVERITY_WARNING,
@@ -37,7 +38,6 @@ class TrailingWs(Rule):
          if len(stripped) == len(line):
             continue
 
-         # Blank lines that are pure whitespace -- still a violation.
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=i,
@@ -50,6 +50,7 @@ class TrailingWs(Rule):
                len(line) - len(stripped)
             ),
             snippet=line[:80] if line else '',
+            fixes=[Fix(i, i, [stripped])],
          ))
 
       return out

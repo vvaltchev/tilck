@@ -8,8 +8,9 @@ import re
 from typing import List
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -57,6 +58,21 @@ class CastNoAsymmetricForm(Rule):
          line_text = ctx.lines[line - 1] \
             if line - 1 < len(ctx.lines) else ''
 
+         start = col - 1
+         end = start + len(m.group(0))
+         matched = line_text[start:end]
+         close_idx = matched.index(')')
+         cast_inside = matched[:close_idx]
+         after_close = matched[close_idx + 1:]
+         expr_char = after_close.lstrip()
+
+         star_idx = cast_inside.rfind('*')
+         spaced_cast = cast_inside[:star_idx] + ' *'
+         fix_default = line_text[:start] + spaced_cast + ')' + \
+            expr_char + line_text[end:]
+         fix_both = line_text[:start] + spaced_cast + ')' + \
+            after_close + line_text[end:]
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=line,
@@ -66,9 +82,13 @@ class CastNoAsymmetricForm(Rule):
             rule=self.id,
             severity=self.severity,
             message=('asymmetric cast: no space before `*)` but space '
-                     'after `)` -- use `(Type *)expr` or `(Type*)expr` '
-                     '(compact form for line-fit only)'),
+                     'after `)` -- use `(Type *)expr` (preferred) or '
+                     '`(Type *) expr` (also acceptable)'),
             snippet=line_text.strip(),
+            fixes=[
+               Fix(line, line, [fix_default], '(Type *)expr'),
+               Fix(line, line, [fix_both], '(Type *) expr'),
+            ],
          ))
 
       return out

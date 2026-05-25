@@ -8,8 +8,9 @@ import re
 from typing import List
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_RAW_TEXT,
    SEVERITY_WARNING,
@@ -89,6 +90,10 @@ class EndifAnnotationLongBlocks(Rule):
             problem = ('`#endif` trailing content `{}` is not a valid '
                        'annotation').format(trailing[:30])
 
+         leading = line[:len(line) - len(line.lstrip())]
+         tag = cond or 'CONDITION'
+         fixed_line = '{}#endif /* {} */'.format(leading, tag)
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=i,
@@ -99,10 +104,10 @@ class EndifAnnotationLongBlocks(Rule):
             severity=self.severity,
             message=('{} -- annotate with `/* {} */` or `// {}` '
                      'to make the block end traceable').format(
-               problem, cond or 'CONDITION', cond or 'CONDITION'
+               problem, tag, tag
             ),
             snippet=line.rstrip(),
-            suggestion='#endif /* {} */'.format(cond or 'CONDITION'),
+            fixes=[Fix(i, i, [fixed_line])],
          ))
 
       return out

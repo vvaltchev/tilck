@@ -11,6 +11,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -114,6 +115,11 @@ class AlignMultilineOperators(Rule):
                line_text = ctx.lines[line_idx] \
                   if line_idx < len(ctx.lines) else ''
 
+               pad = target_col - col
+               op_pos = line_text.rfind(op)
+               fixed_line = line_text[:op_pos] + ' ' * pad + \
+                  line_text[op_pos:]
+
                out.append(Diagnostic(
                   file=str(ctx.file_path),
                   line=line_no,
@@ -128,6 +134,7 @@ class AlignMultilineOperators(Rule):
                      'pad with spaces to align'
                   ).format(op, col, target_col),
                   snippet=line_text,
+                  fixes=[Fix(line_no, line_no, [fixed_line])],
                ))
 
       return out

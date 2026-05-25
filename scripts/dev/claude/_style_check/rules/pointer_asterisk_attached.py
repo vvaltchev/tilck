@@ -10,8 +10,9 @@ import clang.cindex
 from clang.cindex import CursorKind, TypeKind
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
@@ -131,6 +132,8 @@ class PointerAsteriskAttached(Rule):
 
          seen.add(key)
 
+         fixed_line = line[:star_pos + 1] + line[col_zero:]
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=loc.line,
@@ -144,6 +147,7 @@ class PointerAsteriskAttached(Rule):
                cursor.spelling, cursor.spelling
             ),
             snippet=line.strip(),
+            fixes=[Fix(loc.line, loc.line, [fixed_line])],
          ))
 
       return out

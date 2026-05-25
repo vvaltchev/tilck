@@ -9,6 +9,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -16,8 +17,6 @@ from .base import (
 )
 from .. import tokens as _tokens_mod
 
-# Match 0x<hex...> where at least one hex digit is uppercase A-F.
-# 0X (uppercase prefix) is also flagged.
 _PAT_UPPER_X = re.compile(r'\b0X[0-9a-fA-F]+\b')
 _PAT_UPPER_DIGIT = re.compile(r'\b0x[0-9a-fA-F]*[A-F][0-9a-fA-F]*\b')
 
@@ -47,6 +46,11 @@ class HexLiteralLowercase(Rule):
             line_text = ctx.lines[line - 1] \
                if line - 1 < len(ctx.lines) else ''
 
+            start = col - 1
+            end = start + len(m.group(0))
+            lowered = m.group(0).lower()
+            fixed_line = line_text[:start] + lowered + line_text[end:]
+
             out.append(Diagnostic(
                file=str(ctx.file_path),
                line=line,
@@ -57,6 +61,7 @@ class HexLiteralLowercase(Rule):
                severity=self.severity,
                message='hex literal must use lowercase: ' + m.group(0),
                snippet=line_text.strip(),
+               fixes=[Fix(line, line, [fixed_line])],
             ))
 
       return out

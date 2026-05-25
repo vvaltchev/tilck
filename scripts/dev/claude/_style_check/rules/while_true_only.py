@@ -7,8 +7,9 @@ import re
 from typing import List
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -50,6 +51,10 @@ class WhileTrueOnly(Rule):
             line_text = ctx.lines[line - 1] \
                if line - 1 < len(ctx.lines) else ''
 
+            start = col - 1
+            end = start + len(m.group(0))
+            fixed_line = line_text[:start] + 'while (true)' + line_text[end:]
+
             out.append(Diagnostic(
                file=str(ctx.file_path),
                line=line,
@@ -61,7 +66,7 @@ class WhileTrueOnly(Rule):
                message=('infinite loop should use `while (true)`; '
                         '`{}` is forbidden').format(what),
                snippet=line_text.strip(),
-               suggestion='while (true) { ... }',
+               fixes=[Fix(line, line, [fixed_line])],
             ))
 
       return out

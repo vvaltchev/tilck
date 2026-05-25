@@ -42,6 +42,14 @@ SCORE_CONTEXT_OK  = +0.5
 
 
 @dataclass
+class Fix:
+   start_line: int        # 1-based, first line of the replaced range
+   end_line: int           # 1-based, last line (inclusive)
+   new_lines: list         # replacement lines (list of str, no trailing \n)
+   description: str = ''
+
+
+@dataclass
 class Diagnostic:
    file: str
    line: int
@@ -52,8 +60,9 @@ class Diagnostic:
    severity: str
    message: str
    snippet: Optional[str] = None
-   score: float = 0.0          # v2 prettiness penalty for this issue
-   suggestion: Optional[str] = None   # v2 alternative snippet, if any
+   score: float = 0.0
+   suggestion: Optional[str] = None
+   fixes: list = field(default_factory=list)  # List[Fix]
 
 
 @dataclass

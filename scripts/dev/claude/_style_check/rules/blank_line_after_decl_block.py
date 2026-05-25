@@ -10,8 +10,9 @@ import clang.cindex
 from clang.cindex import CursorKind
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
@@ -145,7 +146,9 @@ class BlankLineAfterDeclBlock(Rule):
 
          seen.add(key)
 
-         line_text = ctx.lines[first_non_decl_line - 1] \
+         last_decl_text = ctx.lines[last_decl_line - 1] \
+            if last_decl_line - 1 < len(ctx.lines) else ''
+         first_code_text = ctx.lines[first_non_decl_line - 1] \
             if first_non_decl_line - 1 < len(ctx.lines) else ''
 
          out.append(Diagnostic(
@@ -153,13 +156,19 @@ class BlankLineAfterDeclBlock(Rule):
             line=first_non_decl_line,
             col=1,
             end_line=first_non_decl_line,
-            end_col=len(line_text) + 1,
+            end_col=len(first_code_text) + 1,
             rule=self.id,
             severity=self.severity,
             message=('blank line required between the declaration '
                      'block (last decl at line {}) and the first '
                      'non-declaration statement').format(last_decl_line),
-            snippet=line_text.strip(),
+            snippet=first_code_text.strip(),
+            fixes=[Fix(
+               last_decl_line,
+               first_non_decl_line,
+               [last_decl_text, '', first_code_text],
+               'insert blank line',
+            )],
          ))
 
       return out

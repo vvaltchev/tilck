@@ -92,6 +92,37 @@ def _emit_context(d, all_lines, context_n, out, wrap):
          out.write('   {} {}\n'.format(prefix, text))
 
 
+def _emit_fixes(d, all_lines, out, wrap):
+
+   for i, fix in enumerate(d.fixes):
+
+      label = 'fix'
+
+      if len(d.fixes) > 1:
+         label = 'fix {}/{}'.format(i + 1, len(d.fixes))
+
+      desc = fix.description or ''
+
+      if desc:
+         out.write('   {} {}\n'.format(
+            wrap(_GREEN + _BOLD, label + ':'), desc
+         ))
+      else:
+         out.write('   {}\n'.format(wrap(_GREEN + _BOLD, label + ':')))
+
+      for ln in range(fix.start_line, fix.end_line + 1):
+
+         old = ''
+
+         if all_lines and 0 < ln <= len(all_lines):
+            old = all_lines[ln - 1].rstrip('\n')
+
+         out.write('   {} {}\n'.format(wrap(_RED, '-'), old))
+
+      for new_ln in fix.new_lines:
+         out.write('   {} {}\n'.format(wrap(_GREEN, '+'), new_ln))
+
+
 def emit_text(diags: List[Diagnostic],
               stream=None,
               color_mode: str = 'auto',
@@ -147,7 +178,9 @@ def emit_text(diags: List[Diagnostic],
             wrap(_DIM, d.snippet),
          ))
 
-      if d.suggestion:
+      if d.fixes:
+         _emit_fixes(d, all_lines, out, wrap)
+      elif d.suggestion:
          out.write('   {} {}\n'.format(
             wrap(_GREEN, 'suggest:'),
             d.suggestion,
