@@ -462,14 +462,9 @@ fail:
       kfree_array_obj(props, struct sysobj_prop *, n + 1);
    }
 
-   if (prop_data)
-      kfree_array_obj(prop_data, void *, n);
-
-   if (type)
-      kfree_obj(type, struct sysobj_type);
-
-   if (obj)
-      kfree_obj(obj, struct sysobj);
+   kfree_array_obj(prop_data, void *, n);
+   kfree_obj(type, struct sysobj_type);
+   kfree_obj(obj, struct sysobj);
 }
 
 #else  /* !MOD_sysfs */
