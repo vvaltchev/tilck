@@ -164,7 +164,7 @@ read_skip_strays(const char *name, struct dp_trace_event *out)
 {
    char r[80];
 
-   for (;;) {
+   while (true) {
 
       ssize_t n = read(events_fd, out, sizeof(*out));
 
@@ -989,7 +989,7 @@ tr_run_stress_test(void)
    }
 
    /* Drain and validate. */
-   while (1) {
+   while (true) {
 
       struct dp_trace_event back;
       struct dp_render_ctx rctx = {0};

@@ -180,7 +180,7 @@ init_console(void)
 we_are_doomed:
    disable_interrupts_forced();
 
-   while (1)
+   while (true)
       halt();
 }
 

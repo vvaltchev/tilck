@@ -56,7 +56,7 @@ read_single_byte(char *buf, int len)
    char c;
    bool esc_timeout = false;
 
-   while (1) {
+   while (true) {
 
       rc = read(STDIN_FILENO, &c, 1);
 
@@ -377,7 +377,7 @@ int tui_read_line(char *buf, int buf_size)
 
    term_write("%s", line);
 
-   while (1) {
+   while (true) {
 
       rc = tui_read_ke(&ke);
 

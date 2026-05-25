@@ -576,7 +576,7 @@ int main(int argc, char **argv, char **env)
 
    if (stat(shell_args[0], &statbuf) < 0) {
       printf("[init] FATAL: the shell `%s` does not exist.\n", shell_args[0]);
-      while (1) {
+      while (true) {
          pause();
       }
    }

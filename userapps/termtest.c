@@ -105,7 +105,7 @@ void echo_read(void)
    printf("echo_read()\n");
    term_set_raw_mode();
 
-   while (1) {
+   while (true) {
 
       ret = read(0, buf, sizeof(buf));
       write(1, buf, ret);
@@ -393,7 +393,7 @@ static void poll_and_read(void)
    printf("Setting TTY in raw mode\n");
    term_set_raw_mode();
 
-   while (1) {
+   while (true) {
 
       rc = poll(fds, 1 /* nfds */, 1000 /* ms */);
       printf("poll() -> %d\r\n", rc);

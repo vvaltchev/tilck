@@ -360,7 +360,7 @@ static int parse_and_set_traced_pids(const char *str)
    const char *s = str;
    int traced_cnt = 0;
 
-   while (1) {
+   while (true) {
 
       char *endp = NULL;
       size_t i = 0;
@@ -468,7 +468,7 @@ trace_live_loop(int events_fd)
    struct dp_render_ctx ctx = {0};
    bool keep_banner = false;
 
-   while (1) {
+   while (true) {
 
       n = read(STDIN_FILENO, &c, 1);
 
@@ -537,7 +537,7 @@ static int dump_remaining_events(int events_fd)
                 rem);
 
    /* Read a single key; loop until we accept it. */
-   while (1) {
+   while (true) {
 
       ssize_t n = read(STDIN_FILENO, &c, 1);
 
@@ -559,7 +559,7 @@ static int dump_remaining_events(int events_fd)
    /* Drain. The events fd's kernel-side read is non-blocking-friendly
     * (returns -EAGAIN when empty), so loop until we hit that or EOF. */
 
-   while (1) {
+   while (true) {
 
       ssize_t n = read(events_fd, &ev, sizeof(ev));
 

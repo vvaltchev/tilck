@@ -350,7 +350,7 @@ int dp_run_panel(void)
    need_buffer = true;
    need_paint  = true;
 
-   while (1) {
+   while (true) {
 
       rc = dp_main_body(ke);
 
