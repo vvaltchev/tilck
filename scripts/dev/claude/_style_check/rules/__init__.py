@@ -58,6 +58,7 @@ from . import operator_past_close_paren        # Q25 refinement
 
 from . import multiline_call_style
 from . import multiline_call_vs_long_neighbor  # harmony: wrapped-arg vs long neighbor
+from . import call_cluster_column_align        # columnar alignment in call tables
 from . import else_after_return                # Q49
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
@@ -127,6 +128,7 @@ ALL_RULES = [
    assert_split_heterogeneous.RULE,
    operator_past_close_paren.RULE,
    multiline_call_vs_long_neighbor.RULE,
+   call_cluster_column_align.RULE,
    define_backslash_align.RULE,
    else_after_return.RULE,
 ]
