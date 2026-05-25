@@ -157,7 +157,7 @@ select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
       if (!u_sets[i])
          continue;
 
-      sets[i] = ((fd_set*) curr->args_copybuf) + i;
+      sets[i] = ((fd_set *)curr->args_copybuf) + i;
 
       if (copy_from_user(sets[i], u_sets[i], sizeof(fd_set)))
          return -EFAULT;

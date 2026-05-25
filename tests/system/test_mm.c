@@ -80,7 +80,7 @@ int cmd_mmap(int argc, char **argv)
                     -1,
                     0);
 
-         if (res == (void*) -1) {
+         if (res == (void *)-1) {
             i--;
             break;
          }
@@ -139,7 +139,7 @@ static void no_munmap_bad_child(void)
                     -1,
                     0);
 
-   if (res == (void*) -1) {
+   if (res == (void *)-1) {
       printf(STR_CHILD "mmap %zu KB failed!\n", alloc_size / KB);
       exit(1);
    }
