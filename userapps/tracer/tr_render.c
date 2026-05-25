@@ -481,8 +481,8 @@ static void dump_trace_printk_event(struct sbuf *sb,
 
    if (ctx->last_tp_incomplete_line) {
 
-      if (ctx->last_tp_tid == e->tid                 &&
-          ctx->last_tp_sys_time == e->sys_time       &&
+      if (ctx->last_tp_tid == e->tid                      &&
+          ctx->last_tp_sys_time == e->sys_time            &&
           ctx->last_tp_in_irq == (e->p_ev.in_irq ? 1 : 0))
       {
          continuation = true;
@@ -507,7 +507,7 @@ static void dump_trace_printk_event(struct sbuf *sb,
       ctx->last_tp_in_irq = e->p_ev.in_irq ? 1 : 0;
    }
 
-   if (len >= trunc_str_len &&
+   if (len >= trunc_str_len                                   &&
        !strcmp(buf + len - trunc_str_len, TRACE_PRINTK_TRUNC))
    {
       len -= trunc_str_len;

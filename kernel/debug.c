@@ -262,7 +262,7 @@ static void sched_alive_thread(void *unused)
 
          if (KERNEL_SELFTESTS) {
 
-            if (counter > SAT_WARMUP_INTERVALS &&
+            if (counter > SAT_WARMUP_INTERVALS     &&
                 delta < SAT_STUCK_SWITCH_THRESHOLD)
             {
                printk(

@@ -421,7 +421,7 @@ dp_mini_debugger_tool(void)
 
          const struct debugger_cmd *cmd = &all_debug_cmds[i];
 
-         if (!strcmp(cmd->name, args[0]) ||
+         if (!strcmp(cmd->name, args[0])                   ||
              (cmd->alias && !strcmp(cmd->alias, args[0])))
          {
             rc = cmd->handler(n_args - 1, args + 1);

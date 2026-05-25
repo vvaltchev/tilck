@@ -129,8 +129,8 @@ void handle_fault(regs_t *r)
    if (UNLIKELY(in_panic()))
       return fault_in_panic(r);
 
-   if (LIKELY((int_num == EXC_INST_PAGE_FAULT) ||
-              (int_num == EXC_LOAD_PAGE_FAULT) ||
+   if (LIKELY((int_num == EXC_INST_PAGE_FAULT)   ||
+              (int_num == EXC_LOAD_PAGE_FAULT)   ||
               (int_num == EXC_STORE_PAGE_FAULT))) {
 
       cow = handle_potential_cow(r);

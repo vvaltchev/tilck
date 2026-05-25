@@ -1001,8 +1001,8 @@ tr_run_stress_test(void)
 
       n_read++;
 
-      if (back.type != dp_te_sys_enter ||
-          back.tid != INJ_TID          ||
+      if (back.type != dp_te_sys_enter  ||
+          back.tid != INJ_TID           ||
           back.sys_ev.sys != SYS_getpid)
       {
          n_bad++;

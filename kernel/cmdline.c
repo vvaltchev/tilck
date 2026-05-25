@@ -327,16 +327,16 @@ static void debug_check_all_kopts(void)
          const char *ai = all_kopts[i].alias;
          const char *aj = all_kopts[j].alias;
 
-         if (!strcmp(ni, nj)                ||
-             (aj[0] && !strcmp(ni, aj))     ||
-             (ai[0] && !strcmp(ai, nj))     ||
+         if (!strcmp(ni, nj)                     ||
+             (aj[0] && !strcmp(ni, aj))          ||
+             (ai[0] && !strcmp(ai, nj))          ||
              (ai[0] && aj[0] && !strcmp(ai, aj)))
          {
             panic("Name conflict between kopt[%u] and kopt[%u]", i, j);
          }
       }
 
-      if (!strcmp(all_kopts[i].name, "cmd") ||
+      if (!strcmp(all_kopts[i].name, "cmd")  ||
           !strcmp(all_kopts[i].alias, "cmd"))
       {
          panic("Cannot use 'cmd' as name or alias for kopt[%u]", i);

@@ -603,7 +603,7 @@ set_sym_strval(struct elf_file_info *nfo,
       return 1;
    }
 
-   if (sym->st_value < section->sh_addr ||
+   if (sym->st_value < section->sh_addr                                    ||
        sym->st_value + sym->st_size > section->sh_addr + section->sh_size)
    {
       fprintf(stderr,

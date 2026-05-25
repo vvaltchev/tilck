@@ -565,7 +565,7 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    if (count != page_count)
       panic("kmalloc: unable to map regions in the virtual space");
 
-   if (still_using_orig_pdir() &&
+   if (still_using_orig_pdir()                          &&
        pend >= KERNEL_VA_TO_PA(KERNEL_BASE_VA) + 4 * MB)
    {
       set_curr_pdir(get_kernel_pdir());

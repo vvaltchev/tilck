@@ -114,7 +114,7 @@ void *general_kmalloc(size_t *size, u32 flags)
    {
       const size_t orig_size = *size;
 
-      if (*size <= SMALL_HEAP_MAX_ALLOC ||
+      if (*size <= SMALL_HEAP_MAX_ALLOC                                  ||
           UNLIKELY(sub_block_sz && sub_block_sz <= SMALL_HEAP_MAX_ALLOC))
       {
          /* Small DMA allocations are not allowed */

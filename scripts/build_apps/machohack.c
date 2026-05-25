@@ -188,7 +188,7 @@ patch_relocs(void *buf, size_t size, bool is64, uint32_t ncmds,
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
 
-               if (relocs[k].r_extern &&
+               if (relocs[k].r_extern               &&
                    relocs[k].r_symbolnum == old_idx) {
                   relocs[k].r_symbolnum = new_idx;
                }
@@ -214,7 +214,7 @@ patch_relocs(void *buf, size_t size, bool is64, uint32_t ncmds,
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
 
-               if (relocs[k].r_extern &&
+               if (relocs[k].r_extern               &&
                    relocs[k].r_symbolnum == old_idx) {
                   relocs[k].r_symbolnum = new_idx;
                }
@@ -263,7 +263,7 @@ shift_reloc_indices(void *buf, size_t size, bool is64, uint32_t ncmds,
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
 
-               if (relocs[k].r_extern &&
+               if (relocs[k].r_extern                    &&
                    relocs[k].r_symbolnum >= insert_point) {
                   relocs[k].r_symbolnum += shift;
                }
@@ -289,7 +289,7 @@ shift_reloc_indices(void *buf, size_t size, bool is64, uint32_t ncmds,
 
             for (uint32_t k = 0; k < sect[j].nreloc; k++) {
 
-               if (relocs[k].r_extern &&
+               if (relocs[k].r_extern                    &&
                    relocs[k].r_symbolnum >= insert_point) {
                   relocs[k].r_symbolnum += shift;
                }

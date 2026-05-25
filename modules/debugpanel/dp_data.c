@@ -190,14 +190,17 @@ tilck_sys_dp_get_heaps(ulong u_buf, ulong max_count, ulong u_stats, ulong _4)
    if (max_count > KMALLOC_HEAPS_COUNT)
       max_count = KMALLOC_HEAPS_COUNT;
 
-   if (max_count > 0 &&
-       user_out_of_range((void *)u_buf,
-                         max_count * sizeof(struct dp_heap_info)))
-      return -EFAULT;
+   if (max_count > 0) {
+      if (user_out_of_range((void *)u_buf,
+                            max_count * sizeof(struct dp_heap_info)))
+         return -EFAULT;
+   }
 
-   if (u_stats &&
-       user_out_of_range((void *)u_stats, sizeof(struct dp_small_heaps_stats)))
-      return -EFAULT;
+   if (u_stats) {
+      if (user_out_of_range((void *)u_stats,
+                            sizeof(struct dp_small_heaps_stats)))
+         return -EFAULT;
+   }
 
    for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
 
@@ -423,7 +426,7 @@ tilck_sys_dp_get_mem_global_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
 
          get_mem_region(i, &ma);
 
-         if (ma.type == MULTIBOOT_MEMORY_AVAILABLE ||
+         if (ma.type == MULTIBOOT_MEMORY_AVAILABLE                       ||
              (ma.extra & (MEM_REG_EXTRA_RAMDISK | MEM_REG_EXTRA_KERNEL)))
          {
             out.tot_usable += ma.len;
@@ -463,10 +466,11 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
    if (u_info && user_out_of_range((void *)u_info, sizeof(info)))
       return -EFAULT;
 
-   if (max_count > 0 &&
-       user_out_of_range((void *)u_buf,
-                         max_count * sizeof(struct dp_mtrr_entry)))
-      return -EFAULT;
+   if (max_count > 0) {
+      if (user_out_of_range((void *)u_buf,
+                            max_count * sizeof(struct dp_mtrr_entry)))
+         return -EFAULT;
+   }
 
    info.supported = (n > 0) ? 1 : 0;
 

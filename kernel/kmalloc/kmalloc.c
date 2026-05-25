@@ -477,7 +477,7 @@ per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
    const size_t rounded_up_size =
       MAX(roundup_next_power_of_2(original_desired_size), h->min_block_size);
 
-   if (!multi_step_alloc ||
+   if (!multi_step_alloc                                               ||
        ((rounded_up_size - original_desired_size) < h->min_block_size))
    {
       /*

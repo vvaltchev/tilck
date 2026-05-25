@@ -589,7 +589,7 @@ pci_discover_device_func(struct pci_device_loc loc,
       return false; /* OOM (out of memory) */
    }
 
-   if (nfo->class_id == PCI_CLASS_BRIDGE &&
+   if (nfo->class_id == PCI_CLASS_BRIDGE           &&
        nfo->subclass_id == PCI_SUBCLASS_PCI_BRIDGE)
    {
       if (pci_config_read(loc, PCI_HDR1_SECOND_BUS, 8, &secondary_bus)) {

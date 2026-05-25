@@ -46,7 +46,7 @@ read_sysfs_value(const char *path, char *out, size_t out_sz)
    out[n] = '\0';
 
    /* Trim trailing whitespace/newline */
-   while (n > 0 && (out[n-1] == '\n' || out[n-1] == '\r' ||
+   while (n > 0 && (out[n-1] == '\n' || out[n-1] == '\r'  ||
                     out[n-1] == ' '  || out[n-1] == '\t'))
    {
       out[--n] = '\0';
