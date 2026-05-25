@@ -56,6 +56,7 @@ from . import assert_split_heterogeneous       # Q43
 from . import operator_past_close_paren        # Q25 refinement
 
 from . import multiline_call_style
+from . import multiline_call_vs_long_neighbor  # harmony: wrapped-arg vs long neighbor
 from . import else_after_return                # Q49
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
@@ -124,6 +125,7 @@ ALL_RULES = [
    free_no_null_guard.RULE,
    assert_split_heterogeneous.RULE,
    operator_past_close_paren.RULE,
+   multiline_call_vs_long_neighbor.RULE,
    else_after_return.RULE,
 ]
 
