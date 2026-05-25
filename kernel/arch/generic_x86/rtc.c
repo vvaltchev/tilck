@@ -85,13 +85,13 @@ void hw_read_clock_cmos(struct datetime *out)
    use_24h = !!(reg_b & (1 << 1));
    use_binary = !!(reg_b & (1 << 2));
 
-   while (cmos_is_update_in_progress()); // wait an eventual update to complete
+   while (cmos_is_update_in_progress()) { }
    cmod_read_datetime_raw(&d);
 
    do {
 
       dlast = d;
-      while (cmos_is_update_in_progress());//wait an eventual update to complete
+      while (cmos_is_update_in_progress()) { }
       cmod_read_datetime_raw(&d);
 
       /*

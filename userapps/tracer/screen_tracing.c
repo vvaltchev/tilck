@@ -743,8 +743,7 @@ int dp_run_tracer(void)
    term_move_cursor(1, 1);
    show_banner();
 
-   while (tracer_handle_one_key(-1))
-      ; /* loop */
+   while (tracer_handle_one_key(-1)) { }
 
    dp_cmd_set_enabled(0);
    tui_term_restore();
