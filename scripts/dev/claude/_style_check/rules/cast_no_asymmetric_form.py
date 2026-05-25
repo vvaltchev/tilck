@@ -68,10 +68,20 @@ class CastNoAsymmetricForm(Rule):
 
          star_idx = cast_inside.rfind('*')
          spaced_cast = cast_inside[:star_idx] + ' *'
-         fix_default = line_text[:start] + spaced_cast + ')' + \
-            expr_char + line_text[end:]
-         fix_both = line_text[:start] + spaced_cast + ')' + \
-            after_close + line_text[end:]
+
+         if expr_char.startswith('('):
+            fixed = line_text[:start] + spaced_cast + ')' + \
+               expr_char + line_text[end:]
+            fixes = [Fix(line, line, [fixed], '(Type *)(expr)')]
+         else:
+            fix_default = line_text[:start] + spaced_cast + ')' + \
+               expr_char + line_text[end:]
+            fix_both = line_text[:start] + spaced_cast + ')' + \
+               after_close + line_text[end:]
+            fixes = [
+               Fix(line, line, [fix_default], '(Type *)expr'),
+               Fix(line, line, [fix_both], '(Type *) expr'),
+            ]
 
          out.append(Diagnostic(
             file=str(ctx.file_path),
@@ -85,10 +95,7 @@ class CastNoAsymmetricForm(Rule):
                      'after `)` -- use `(Type *)expr` (preferred) or '
                      '`(Type *) expr` (also acceptable)'),
             snippet=line_text.strip(),
-            fixes=[
-               Fix(line, line, [fix_default], '(Type *)expr'),
-               Fix(line, line, [fix_both], '(Type *) expr'),
-            ],
+            fixes=fixes,
          ))
 
       return out
