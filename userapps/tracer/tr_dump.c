@@ -55,75 +55,137 @@ bool tr_get_dump_big_bufs(void)     { return g_dump_big_bufs; }
 /* Verbatim port of modules/tracing/errno_names.c. Keep in sync if
  * the kernel-side table is updated. */
 static const char *errno_names[] = {
-   [EPERM] = "EPERM",         [ENOENT] = "ENOENT",
-   [ESRCH] = "ESRCH",         [EINTR]  = "EINTR",
-   [EIO]   = "EIO",           [ENXIO]  = "ENXIO",
-   [E2BIG] = "E2BIG",         [ENOEXEC]= "ENOEXEC",
-   [EBADF] = "EBADF",         [ECHILD] = "ECHILD",
-   [EAGAIN]= "EAGAIN",        [ENOMEM] = "ENOMEM",
-   [EACCES]= "EACCES",        [EFAULT] = "EFAULT",
-   [ENOTBLK]="ENOTBLK",       [EBUSY]  = "EBUSY",
-   [EEXIST]= "EEXIST",        [EXDEV]  = "EXDEV",
-   [ENODEV]= "ENODEV",        [ENOTDIR]= "ENOTDIR",
-   [EISDIR]= "EISDIR",        [EINVAL] = "EINVAL",
-   [ENFILE]= "ENFILE",        [EMFILE] = "EMFILE",
-   [ENOTTY]= "ENOTTY",        [ETXTBSY]= "ETXTBSY",
-   [EFBIG] = "EFBIG",         [ENOSPC] = "ENOSPC",
-   [ESPIPE]= "ESPIPE",        [EROFS]  = "EROFS",
-   [EMLINK]= "EMLINK",        [EPIPE]  = "EPIPE",
-   [EDOM]  = "EDOM",          [ERANGE] = "ERANGE",
-   [EDEADLK]="EDEADLK",       [ENAMETOOLONG]="ENAMETOOLONG",
-   [ENOLCK]= "ENOLCK",        [ENOSYS] = "ENOSYS",
-   [ENOTEMPTY]="ENOTEMPTY",   [ELOOP]  = "ELOOP",
-   [ENOMSG]= "ENOMSG",        [EIDRM]  = "EIDRM",
-   [ECHRNG]= "ECHRNG",        [EL2NSYNC]="EL2NSYNC",
-   [EL3HLT]= "EL3HLT",        [EL3RST] = "EL3RST",
-   [ELNRNG]= "ELNRNG",        [EUNATCH]= "EUNATCH",
-   [ENOCSI]= "ENOCSI",        [EL2HLT] = "EL2HLT",
-   [EBADE] = "EBADE",         [EBADR]  = "EBADR",
-   [EXFULL]= "EXFULL",        [ENOANO] = "ENOANO",
-   [EBADRQC]="EBADRQC",       [EBADSLT]= "EBADSLT",
-   [EBFONT]= "EBFONT",        [ENOSTR] = "ENOSTR",
-   [ENODATA]="ENODATA",       [ETIME]  = "ETIME",
-   [ENOSR] = "ENOSR",         [ENONET] = "ENONET",
-   [ENOPKG]= "ENOPKG",        [EREMOTE]= "EREMOTE",
-   [ENOLINK]="ENOLINK",       [EADV]   = "EADV",
-   [ESRMNT]= "ESRMNT",        [ECOMM]  = "ECOMM",
-   [EPROTO]= "EPROTO",        [EMULTIHOP]="EMULTIHOP",
-   [EDOTDOT]="EDOTDOT",       [EBADMSG]= "EBADMSG",
-   [EOVERFLOW]="EOVERFLOW",   [ENOTUNIQ]="ENOTUNIQ",
-   [EBADFD]= "EBADFD",        [EREMCHG]= "EREMCHG",
-   [ELIBACC]="ELIBACC",       [ELIBBAD]= "ELIBBAD",
-   [ELIBSCN]="ELIBSCN",       [ELIBMAX]= "ELIBMAX",
-   [ELIBEXEC]="ELIBEXEC",     [EILSEQ] = "EILSEQ",
-   [ERESTART]="ERESTART",     [ESTRPIPE]="ESTRPIPE",
-   [EUSERS]= "EUSERS",        [ENOTSOCK]="ENOTSOCK",
-   [EDESTADDRREQ]="EDESTADDRREQ", [EMSGSIZE]="EMSGSIZE",
-   [EPROTOTYPE]="EPROTOTYPE", [ENOPROTOOPT]="ENOPROTOOPT",
-   [EPROTONOSUPPORT]="EPROTONOSUPPORT",
-   [ESOCKTNOSUPPORT]="ESOCKTNOSUPPORT",
-   [EOPNOTSUPP]="EOPNOTSUPP", [EPFNOSUPPORT]="EPFNOSUPPORT",
-   [EAFNOSUPPORT]="EAFNOSUPPORT",
-   [EADDRINUSE]="EADDRINUSE", [EADDRNOTAVAIL]="EADDRNOTAVAIL",
-   [ENETDOWN]="ENETDOWN",     [ENETUNREACH]="ENETUNREACH",
-   [ENETRESET]="ENETRESET",
-   [ECONNABORTED]="ECONNABORTED",
-   [ECONNRESET]="ECONNRESET", [ENOBUFS]="ENOBUFS",
-   [EISCONN]="EISCONN",       [ENOTCONN]="ENOTCONN",
-   [ESHUTDOWN]="ESHUTDOWN",   [ETOOMANYREFS]="ETOOMANYREFS",
-   [ETIMEDOUT]="ETIMEDOUT",   [ECONNREFUSED]="ECONNREFUSED",
-   [EHOSTDOWN]="EHOSTDOWN",   [EHOSTUNREACH]="EHOSTUNREACH",
-   [EALREADY]="EALREADY",     [EINPROGRESS]="EINPROGRESS",
-   [ESTALE]="ESTALE",         [EUCLEAN]="EUCLEAN",
-   [ENOTNAM]="ENOTNAM",       [ENAVAIL]="ENAVAIL",
-   [EISNAM]="EISNAM",         [EREMOTEIO]="EREMOTEIO",
-   [EDQUOT]="EDQUOT",         [ENOMEDIUM]="ENOMEDIUM",
-   [EMEDIUMTYPE]="EMEDIUMTYPE", [ECANCELED]="ECANCELED",
-   [ENOKEY]="ENOKEY",         [EKEYEXPIRED]="EKEYEXPIRED",
-   [EKEYREVOKED]="EKEYREVOKED", [EKEYREJECTED]="EKEYREJECTED",
-   [EOWNERDEAD]="EOWNERDEAD",
-   [ENOTRECOVERABLE]="ENOTRECOVERABLE",
-   [ERFKILL]="ERFKILL",       [EHWPOISON]="EHWPOISON",
+   [EPERM]            = "EPERM",
+   [ENOENT]           = "ENOENT",
+   [ESRCH]            = "ESRCH",
+   [EINTR]            = "EINTR",
+   [EIO]              = "EIO",
+   [ENXIO]            = "ENXIO",
+   [E2BIG]            = "E2BIG",
+   [ENOEXEC]          = "ENOEXEC",
+   [EBADF]            = "EBADF",
+   [ECHILD]           = "ECHILD",
+   [EAGAIN]           = "EAGAIN",
+   [ENOMEM]           = "ENOMEM",
+   [EACCES]           = "EACCES",
+   [EFAULT]           = "EFAULT",
+   [ENOTBLK]          = "ENOTBLK",
+   [EBUSY]            = "EBUSY",
+   [EEXIST]           = "EEXIST",
+   [EXDEV]            = "EXDEV",
+   [ENODEV]           = "ENODEV",
+   [ENOTDIR]          = "ENOTDIR",
+   [EISDIR]           = "EISDIR",
+   [EINVAL]           = "EINVAL",
+   [ENFILE]           = "ENFILE",
+   [EMFILE]           = "EMFILE",
+   [ENOTTY]           = "ENOTTY",
+   [ETXTBSY]          = "ETXTBSY",
+   [EFBIG]            = "EFBIG",
+   [ENOSPC]           = "ENOSPC",
+   [ESPIPE]           = "ESPIPE",
+   [EROFS]            = "EROFS",
+   [EMLINK]           = "EMLINK",
+   [EPIPE]            = "EPIPE",
+   [EDOM]             = "EDOM",
+   [ERANGE]           = "ERANGE",
+   [EDEADLK]          = "EDEADLK",
+   [ENAMETOOLONG]     = "ENAMETOOLONG",
+   [ENOLCK]           = "ENOLCK",
+   [ENOSYS]           = "ENOSYS",
+   [ENOTEMPTY]        = "ENOTEMPTY",
+   [ELOOP]            = "ELOOP",
+   [ENOMSG]           = "ENOMSG",
+   [EIDRM]            = "EIDRM",
+   [ECHRNG]           = "ECHRNG",
+   [EL2NSYNC]         = "EL2NSYNC",
+   [EL3HLT]           = "EL3HLT",
+   [EL3RST]           = "EL3RST",
+   [ELNRNG]           = "ELNRNG",
+   [EUNATCH]          = "EUNATCH",
+   [ENOCSI]           = "ENOCSI",
+   [EL2HLT]           = "EL2HLT",
+   [EBADE]            = "EBADE",
+   [EBADR]            = "EBADR",
+   [EXFULL]           = "EXFULL",
+   [ENOANO]           = "ENOANO",
+   [EBADRQC]          = "EBADRQC",
+   [EBADSLT]          = "EBADSLT",
+   [EBFONT]           = "EBFONT",
+   [ENOSTR]           = "ENOSTR",
+   [ENODATA]          = "ENODATA",
+   [ETIME]            = "ETIME",
+   [ENOSR]            = "ENOSR",
+   [ENONET]           = "ENONET",
+   [ENOPKG]           = "ENOPKG",
+   [EREMOTE]          = "EREMOTE",
+   [ENOLINK]          = "ENOLINK",
+   [EADV]             = "EADV",
+   [ESRMNT]           = "ESRMNT",
+   [ECOMM]            = "ECOMM",
+   [EPROTO]           = "EPROTO",
+   [EMULTIHOP]        = "EMULTIHOP",
+   [EDOTDOT]          = "EDOTDOT",
+   [EBADMSG]          = "EBADMSG",
+   [EOVERFLOW]        = "EOVERFLOW",
+   [ENOTUNIQ]         = "ENOTUNIQ",
+   [EBADFD]           = "EBADFD",
+   [EREMCHG]          = "EREMCHG",
+   [ELIBACC]          = "ELIBACC",
+   [ELIBBAD]          = "ELIBBAD",
+   [ELIBSCN]          = "ELIBSCN",
+   [ELIBMAX]          = "ELIBMAX",
+   [ELIBEXEC]         = "ELIBEXEC",
+   [EILSEQ]           = "EILSEQ",
+   [ERESTART]         = "ERESTART",
+   [ESTRPIPE]         = "ESTRPIPE",
+   [EUSERS]           = "EUSERS",
+   [ENOTSOCK]         = "ENOTSOCK",
+   [EDESTADDRREQ]     = "EDESTADDRREQ",
+   [EMSGSIZE]         = "EMSGSIZE",
+   [EPROTOTYPE]       = "EPROTOTYPE",
+   [ENOPROTOOPT]      = "ENOPROTOOPT",
+   [EPROTONOSUPPORT]  = "EPROTONOSUPPORT",
+   [ESOCKTNOSUPPORT]  = "ESOCKTNOSUPPORT",
+   [EOPNOTSUPP]       = "EOPNOTSUPP",
+   [EPFNOSUPPORT]     = "EPFNOSUPPORT",
+   [EAFNOSUPPORT]     = "EAFNOSUPPORT",
+   [EADDRINUSE]       = "EADDRINUSE",
+   [EADDRNOTAVAIL]    = "EADDRNOTAVAIL",
+   [ENETDOWN]         = "ENETDOWN",
+   [ENETUNREACH]      = "ENETUNREACH",
+   [ENETRESET]        = "ENETRESET",
+   [ECONNABORTED]     = "ECONNABORTED",
+   [ECONNRESET]       = "ECONNRESET",
+   [ENOBUFS]          = "ENOBUFS",
+   [EISCONN]          = "EISCONN",
+   [ENOTCONN]         = "ENOTCONN",
+   [ESHUTDOWN]        = "ESHUTDOWN",
+   [ETOOMANYREFS]     = "ETOOMANYREFS",
+   [ETIMEDOUT]        = "ETIMEDOUT",
+   [ECONNREFUSED]     = "ECONNREFUSED",
+   [EHOSTDOWN]        = "EHOSTDOWN",
+   [EHOSTUNREACH]     = "EHOSTUNREACH",
+   [EALREADY]         = "EALREADY",
+   [EINPROGRESS]      = "EINPROGRESS",
+   [ESTALE]           = "ESTALE",
+   [EUCLEAN]          = "EUCLEAN",
+   [ENOTNAM]          = "ENOTNAM",
+   [ENAVAIL]          = "ENAVAIL",
+   [EISNAM]           = "EISNAM",
+   [EREMOTEIO]        = "EREMOTEIO",
+   [EDQUOT]           = "EDQUOT",
+   [ENOMEDIUM]        = "ENOMEDIUM",
+   [EMEDIUMTYPE]      = "EMEDIUMTYPE",
+   [ECANCELED]        = "ECANCELED",
+   [ENOKEY]           = "ENOKEY",
+   [EKEYEXPIRED]      = "EKEYEXPIRED",
+   [EKEYREVOKED]      = "EKEYREVOKED",
+   [EKEYREJECTED]     = "EKEYREJECTED",
+   [EOWNERDEAD]       = "EOWNERDEAD",
+   [ENOTRECOVERABLE]  = "ENOTRECOVERABLE",
+   [ERFKILL]          = "ERFKILL",
+   [EHWPOISON]        = "EHWPOISON",
 };
 
 const char *tr_get_errno_name(int err)
@@ -139,21 +201,36 @@ const char *tr_get_errno_name(int err)
 const char *tr_get_signal_name(int signum)
 {
    static const char *sig_names[NSIG] = {
-      [SIGHUP]    = "SIGHUP",    [SIGINT]    = "SIGINT",
-      [SIGQUIT]   = "SIGQUIT",   [SIGILL]    = "SIGILL",
-      [SIGABRT]   = "SIGABRT",   [SIGFPE]    = "SIGFPE",
-      [SIGKILL]   = "SIGKILL",   [SIGSEGV]   = "SIGSEGV",
-      [SIGPIPE]   = "SIGPIPE",   [SIGALRM]   = "SIGALRM",
-      [SIGTERM]   = "SIGTERM",   [SIGUSR1]   = "SIGUSR1",
-      [SIGUSR2]   = "SIGUSR2",   [SIGCHLD]   = "SIGCHLD",
-      [SIGCONT]   = "SIGCONT",   [SIGSTOP]   = "SIGSTOP",
-      [SIGTSTP]   = "SIGTSTP",   [SIGTTIN]   = "SIGTTIN",
-      [SIGTTOU]   = "SIGTTOU",   [SIGBUS]    = "SIGBUS",
-      [SIGPOLL]   = "SIGPOLL",   [SIGPROF]   = "SIGPROF",
-      [SIGSYS]    = "SIGSYS",    [SIGTRAP]   = "SIGTRAP",
-      [SIGURG]    = "SIGURG",    [SIGVTALRM] = "SIGVTALRM",
-      [SIGXCPU]   = "SIGXCPU",   [SIGXFSZ]   = "SIGXFSZ",
-      [SIGPWR]    = "SIGPWR",    [SIGWINCH]  = "SIGWINCH",
+      [SIGHUP]    = "SIGHUP",
+      [SIGINT]    = "SIGINT",
+      [SIGQUIT]   = "SIGQUIT",
+      [SIGILL]    = "SIGILL",
+      [SIGABRT]   = "SIGABRT",
+      [SIGFPE]    = "SIGFPE",
+      [SIGKILL]   = "SIGKILL",
+      [SIGSEGV]   = "SIGSEGV",
+      [SIGPIPE]   = "SIGPIPE",
+      [SIGALRM]   = "SIGALRM",
+      [SIGTERM]   = "SIGTERM",
+      [SIGUSR1]   = "SIGUSR1",
+      [SIGUSR2]   = "SIGUSR2",
+      [SIGCHLD]   = "SIGCHLD",
+      [SIGCONT]   = "SIGCONT",
+      [SIGSTOP]   = "SIGSTOP",
+      [SIGTSTP]   = "SIGTSTP",
+      [SIGTTIN]   = "SIGTTIN",
+      [SIGTTOU]   = "SIGTTOU",
+      [SIGBUS]    = "SIGBUS",
+      [SIGPOLL]   = "SIGPOLL",
+      [SIGPROF]   = "SIGPROF",
+      [SIGSYS]    = "SIGSYS",
+      [SIGTRAP]   = "SIGTRAP",
+      [SIGURG]    = "SIGURG",
+      [SIGVTALRM] = "SIGVTALRM",
+      [SIGXCPU]   = "SIGXCPU",
+      [SIGXFSZ]   = "SIGXFSZ",
+      [SIGPWR]    = "SIGPWR",
+      [SIGWINCH]  = "SIGWINCH",
    };
 
    if (signum < 0 || signum >= (int)(sizeof(sig_names)/sizeof(sig_names[0])))
@@ -171,14 +248,14 @@ const char *tr_get_signal_name(int signum)
 
 /* ------------------------- simple integer ------------------------- */
 
-static bool dump_int(unsigned long uval, long unused, char *dst, size_t bs)
+static bool dump_int(ulong uval, long unused, char *dst, size_t bs)
 {
    const long val = (long)uval;
    const int rc = snprintf(dst, bs, "%ld", val);
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_voidp(unsigned long val, long unused, char *dst, size_t bs)
+static bool dump_voidp(ulong val, long unused, char *dst, size_t bs)
 {
    const int rc = (val != 0)
       ? snprintf(dst, bs, "%p", (void *)val)
@@ -186,14 +263,14 @@ static bool dump_voidp(unsigned long val, long unused, char *dst, size_t bs)
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_oct(unsigned long val, long unused, char *dst, size_t bs)
+static bool dump_oct(ulong val, long unused, char *dst, size_t bs)
 {
    const int rc = snprintf(dst, bs, "0%03o", (int)val);
    return rc >= 0 && (size_t)rc < bs;
 }
 
 static bool
-dump_errno_or_val(unsigned long uval, long unused, char *dst, size_t bs)
+dump_errno_or_val(ulong uval, long unused, char *dst, size_t bs)
 {
    const int val = (int)uval;
    const int rc = (val >= 0)
@@ -203,7 +280,7 @@ dump_errno_or_val(unsigned long uval, long unused, char *dst, size_t bs)
 }
 
 static bool
-dump_errno_or_ptr(unsigned long uval, long unused, char *dst, size_t bs)
+dump_errno_or_ptr(ulong uval, long unused, char *dst, size_t bs)
 {
    const long val = (long)uval;
    const int rc = (val >= 0 || val < -500 /* smallest errno */)
@@ -226,6 +303,7 @@ static bool buf_append(char *dst, int *used, int *rem, const char *str)
 
    *used += n;
    *rem -= n;
+
    return true;
 }
 
@@ -236,7 +314,7 @@ static bool buf_append(char *dst, int *used, int *rem, const char *str)
             return false;                                             \
    } while (0)
 
-static bool dump_open_flags(unsigned long fl, long unused, char *dst, size_t bs)
+static bool dump_open_flags(ulong fl, long unused, char *dst, size_t bs)
 {
    int rem = (int)bs;
    int used = 0;
@@ -287,16 +365,16 @@ static bool dump_open_flags(unsigned long fl, long unused, char *dst, size_t bs)
 
 /* ------------------------- doff64 / whence / int_pair / u64_ptr --- */
 
-static bool dump_doff64(unsigned long hi, long hlp, char *dst, size_t bs)
+static bool dump_doff64(ulong hi, long hlp, char *dst, size_t bs)
 {
-   const unsigned long low = (unsigned long)hlp;
-   const unsigned long long val = ((unsigned long long)hi << 32) |
-                                  (unsigned long long)low;
+   const ulong low = (ulong)hlp;
+   const u64 val = ((u64)hi << 32) | (u64)low;
    const int rc = snprintf(dst, bs, "%llu", val);
+
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_whence(unsigned long val, long unused, char *dst, size_t bs)
+static bool dump_whence(ulong val, long unused, char *dst, size_t bs)
 {
    const char *s;
 
@@ -310,6 +388,7 @@ static bool dump_whence(unsigned long val, long unused, char *dst, size_t bs)
    const int rc = s
       ? snprintf(dst, bs, "%s", s)
       : snprintf(dst, bs, "unknown: %d", (int)val);
+
    return rc >= 0 && (size_t)rc < bs;
 }
 
@@ -322,7 +401,7 @@ struct tr_saved_int_pair {
 };
 
 static bool
-dump_int_pair_with_data(unsigned long orig,
+dump_int_pair_with_data(ulong orig,
                         char *data,
                         long unused1,
                         long unused2,
@@ -339,7 +418,7 @@ dump_int_pair_with_data(unsigned long orig,
 /* The kernel's save_param_u64_ptr wrote a stringified u64 directly
  * into the slot; the dump callback just memcpy's it out. */
 static bool
-dump_u64_ptr_with_data(unsigned long orig,
+dump_u64_ptr_with_data(ulong orig,
                        char *data,
                        long unused1,
                        long unused2,
@@ -356,7 +435,7 @@ dump_u64_ptr_with_data(unsigned long orig,
 
 /* ------------------------- signum --------------------------------- */
 
-static bool dump_signum(unsigned long val, long unused, char *dst, size_t bs)
+static bool dump_signum(ulong val, long unused, char *dst, size_t bs)
 {
    const int signum = (int)val;
    const int rc = snprintf(dst, bs, "%d [%s]",
@@ -372,7 +451,7 @@ static bool dump_signum(unsigned long val, long unused, char *dst, size_t bs)
  * tracing_are_dump_big_bufs_on() reads our local flag.
  */
 static bool
-dump_buffer_with_data(unsigned long orig,
+dump_buffer_with_data(ulong orig,
                       char *data,
                       long data_bs,
                       long real_sz,
@@ -412,6 +491,7 @@ dump_buffer_with_data(unsigned long orig,
          case '\r': memcpy(minibuf, "\\r", 3); break;
          case '\"': memcpy(minibuf, "\\\"", 3); break;
          case '\\': memcpy(minibuf, "\\\\", 3); break;
+         /* style_check: disable verbose_type_name */
          default:
             if (isprint((unsigned char)c)) {
                minibuf[0] = c;
@@ -465,7 +545,7 @@ dump_buffer_with_data(unsigned long orig,
  * We mirror the same layout when reading back.
  */
 static bool
-dump_iov_inner(unsigned long orig,
+dump_iov_inner(ulong orig,
                char *data,
                long u_iovcnt,
                long maybe_tot_data_size,
@@ -486,9 +566,8 @@ dump_iov_inner(unsigned long orig,
 
    for (int i = 0; i < iovcnt; i++) {
 
-      const long len   = ((long *)         (void *)(data + 0))[i];
-      const unsigned long base =
-                          ((unsigned long *)(void *)(data + 32))[i];
+      const long len = ((long *)(void *)data)[i];
+      const ulong base = ((ulong *)(void *)(data + 32))[i];
 
       if (!buf_append(dst, &used, &rem, "   {base: "))
          return false;
@@ -537,7 +616,7 @@ dump_iov_inner(unsigned long orig,
 }
 
 static bool
-dump_iov_in_with_data(unsigned long orig,
+dump_iov_in_with_data(ulong orig,
                       char *data,
                       long u_iovcnt,
                       long unused,
@@ -547,7 +626,7 @@ dump_iov_in_with_data(unsigned long orig,
 }
 
 static bool
-dump_iov_out_with_data(unsigned long orig,
+dump_iov_out_with_data(ulong orig,
                        char *data,
                        long u_iovcnt,
                        long real_sz,
@@ -574,11 +653,11 @@ dump_iov_out_with_data(unsigned long orig,
  * pairs. Generic helper: scan a table, return the matching name or
  * NULL on miss. */
 struct enum_pair {
-   unsigned long value;
+   ulong value;
    const char *name;
 };
 
-static const char *enum_lookup(const struct enum_pair *t, unsigned long v)
+static const char *enum_lookup(const struct enum_pair *t, ulong v)
 {
    for (; t->name; t++)
       if (t->value == v)
@@ -590,12 +669,12 @@ static const char *enum_lookup(const struct enum_pair *t, unsigned long v)
 /* Bitmask helper. Walks a table, appends "NAME|" to dst for each
  * matching bit. Returns true if everything fit. */
 static bool
-bitmask_dump(const struct enum_pair *t, unsigned long v,
+bitmask_dump(const struct enum_pair *t, ulong v,
              char *dst, size_t bs)
 {
    int used = 0, rem = (int)bs;
    bool any = false;
-   unsigned long matched = 0;
+   ulong matched = 0;
 
    if (v == 0) {
       const int rc = snprintf(dst, bs, "0");
@@ -619,7 +698,7 @@ bitmask_dump(const struct enum_pair *t, unsigned long v,
 
    /* Any leftover bits not matched by the table → render as hex
     * trailing (e.g. "MAP_PRIVATE|MAP_ANONYMOUS|0x100000"). */
-   const unsigned long rest = v & ~matched;
+   const ulong rest = v & ~matched;
    if (rest) {
       char hex[16];
       snprintf(hex, sizeof(hex), "0x%lx", rest);
@@ -650,7 +729,7 @@ static const struct enum_pair tab_mmap_prot[] = {
    { 0, NULL }
 };
 
-static bool dump_mmap_prot(unsigned long v, long unused, char *dst, size_t bs)
+static bool dump_mmap_prot(ulong v, long unused, char *dst, size_t bs)
 {
    if (v == 0) {
       int rc = snprintf(dst, bs, "PROT_NONE");
@@ -703,7 +782,7 @@ static const struct enum_pair tab_mmap_flags[] = {
    { 0, NULL }
 };
 
-static bool dump_mmap_flags(unsigned long v, long unused, char *dst, size_t bs)
+static bool dump_mmap_flags(ulong v, long unused, char *dst, size_t bs)
 {
    return bitmask_dump(tab_mmap_flags, v, dst, bs);
 }
@@ -723,7 +802,7 @@ static const struct enum_pair tab_wait_options[] = {
 };
 
 static bool
-dump_wait_options(unsigned long v, long unused, char *dst, size_t bs)
+dump_wait_options(ulong v, long unused, char *dst, size_t bs)
 {
    return bitmask_dump(tab_wait_options, v, dst, bs);
 }
@@ -736,7 +815,7 @@ static const struct enum_pair tab_access_mode[] = {
    { 0, NULL }
 };
 
-static bool dump_access_mode(unsigned long v, long unused, char *dst, size_t bs)
+static bool dump_access_mode(ulong v, long unused, char *dst, size_t bs)
 {
    if (v == 0) {
       int rc = snprintf(dst, bs, "F_OK");
@@ -768,7 +847,7 @@ static const struct enum_pair tab_ioctl_cmd[] = {
    { 0, NULL }
 };
 
-static bool dump_ioctl_cmd(unsigned long v, long unused, char *dst, size_t bs)
+static bool dump_ioctl_cmd(ulong v, long unused, char *dst, size_t bs)
 {
    const char *name = enum_lookup(tab_ioctl_cmd, v);
    const int rc = name
@@ -791,7 +870,7 @@ static const struct enum_pair tab_fcntl_cmd[] = {
    { 0, NULL }
 };
 
-static bool dump_fcntl_cmd(unsigned long v, long unused, char *dst, size_t bs)
+static bool dump_fcntl_cmd(ulong v, long unused, char *dst, size_t bs)
 {
    const char *name = enum_lookup(tab_fcntl_cmd, v);
    const int rc = name
@@ -802,7 +881,7 @@ static bool dump_fcntl_cmd(unsigned long v, long unused, char *dst, size_t bs)
 
 /* ----- sigprocmask.how ------------------------------------------- */
 static bool
-dump_sigprocmask_how(unsigned long v, long unused, char *dst, size_t bs)
+dump_sigprocmask_how(ulong v, long unused, char *dst, size_t bs)
 {
    const char *name;
    switch (v) {
@@ -814,6 +893,7 @@ dump_sigprocmask_how(unsigned long v, long unused, char *dst, size_t bs)
    const int rc = name
       ? snprintf(dst, bs, "%s", name)
       : snprintf(dst, bs, "%lu", v);
+
    return rc >= 0 && (size_t)rc < bs;
 }
 
@@ -831,7 +911,7 @@ static const struct enum_pair tab_prctl_option[] = {
 };
 
 static bool
-dump_prctl_option(unsigned long v, long unused, char *dst, size_t bs)
+dump_prctl_option(ulong v, long unused, char *dst, size_t bs)
 {
    const char *name = enum_lookup(tab_prctl_option, v);
    const int rc = name
@@ -862,13 +942,13 @@ static const struct enum_pair tab_clone_flags[] = {
    { 0, NULL }
 };
 
-static bool dump_clone_flags(unsigned long v, long unused, char *dst, size_t bs)
+static bool dump_clone_flags(ulong v, long unused, char *dst, size_t bs)
 {
    /* The low byte of clone flags is actually the exit_signal sent
     * to the parent on child exit (e.g. SIGCHLD = 17). Render that
     * separately from the flag bits. */
-   const unsigned long sig = v & 0xff;
-   const unsigned long flags = v & ~0xfful;
+   const ulong sig = v & 0xff;
+   const ulong flags = v & ~0xfful;
    int used = 0, rem = (int)bs;
 
    if (sig) {
@@ -934,7 +1014,7 @@ static const struct enum_pair tab_mount_flags[] = {
    { 0, NULL }
 };
 
-static bool dump_mount_flags(unsigned long v, long unused, char *dst, size_t bs)
+static bool dump_mount_flags(ulong v, long unused, char *dst, size_t bs)
 {
    return bitmask_dump(tab_mount_flags, v, dst, bs);
 }
@@ -954,7 +1034,7 @@ static const struct enum_pair tab_madvise_advice[] = {
 };
 
 static bool
-dump_madvise_advice(unsigned long v, long unused, char *dst, size_t bs)
+dump_madvise_advice(ulong v, long unused, char *dst, size_t bs)
 {
    const char *name = enum_lookup(tab_madvise_advice, v);
    const int rc = name
@@ -966,7 +1046,7 @@ dump_madvise_advice(unsigned long v, long unused, char *dst, size_t bs)
 /* ============================ dispatch ============================ */
 
 bool tr_dump_from_val(unsigned type_id,
-                      unsigned long val,
+                      ulong val,
                       long helper,
                       char *dst, size_t bs)
 {
@@ -1036,7 +1116,7 @@ bool tr_dump_from_val(unsigned type_id,
 }
 
 bool tr_dump(unsigned type_id,
-             unsigned long orig,
+             ulong orig,
              char *data, long data_size,
              long helper,
              char *dst, size_t bs)
