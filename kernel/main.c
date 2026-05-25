@@ -83,7 +83,7 @@ init_video_console(void)
           * module is _not_ built-in.
           */
 
-         if (MOD_acpi &&
+         if (MOD_acpi                                         &&
              get_acpi_init_status() >= ais_tables_initialized &&
              acpi_is_vga_text_mode_avail() == tri_no)
          {

@@ -257,8 +257,8 @@ find_event(const struct capture *cap, int type, unsigned sys_n)
 
       const struct dp_trace_event *e = &cap->events[i];
 
-      if (e->type == type &&
-          e->tid == cap->child_tid &&
+      if (e->type == type              &&
+          e->tid == cap->child_tid     &&
           e->sys_ev.sys == sys_n)
       {
          return e;
@@ -283,9 +283,9 @@ find_event_arg(const struct capture *cap,
 
       const struct dp_trace_event *e = &cap->events[i];
 
-      if (e->type == type &&
-          e->tid == cap->child_tid &&
-          e->sys_ev.sys == sys_n &&
+      if (e->type == type                           &&
+          e->tid == cap->child_tid                  &&
+          e->sys_ev.sys == sys_n                    &&
           e->sys_ev.args[arg_idx] == arg_value)
       {
          return e;

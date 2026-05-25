@@ -224,7 +224,7 @@ tty_handle_non_printable_key(struct kb_dev *kb,
 
 static inline bool tty_is_line_delim_char(struct tty *t, u8 c)
 {
-   return c == '\n' ||
+   return c == '\n'                 ||
           c == t->c_term.c_cc[VEOF] ||
           c == t->c_term.c_cc[VEOL] ||
           c == t->c_term.c_cc[VEOL2];

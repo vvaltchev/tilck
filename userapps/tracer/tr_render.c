@@ -150,7 +150,7 @@ static inline bool should_full_dump_param(bool exp_b,
                                           unsigned kind,
                                           int event_type)
 {
-   return kind == TR_KIND_IN_OUT ||
+   return kind == TR_KIND_IN_OUT                                ||
           (event_type == dp_te_sys_enter && kind == TR_KIND_IN) ||
           (event_type == dp_te_sys_exit  &&
               (!exp_b || kind == TR_KIND_OUT));
@@ -481,8 +481,8 @@ static void dump_trace_printk_event(struct sbuf *sb,
 
    if (ctx->last_tp_incomplete_line) {
 
-      if (ctx->last_tp_tid == e->tid &&
-          ctx->last_tp_sys_time == e->sys_time &&
+      if (ctx->last_tp_tid == e->tid                 &&
+          ctx->last_tp_sys_time == e->sys_time       &&
           ctx->last_tp_in_irq == (e->p_ev.in_irq ? 1 : 0))
       {
          continuation = true;

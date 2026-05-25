@@ -268,9 +268,9 @@ sb16_ioctl_sound_setup(struct tilck_sound_params *user_params)
    if (copy_from_user(&dsp_params, user_params, sizeof(dsp_params)))
       return -EFAULT;
 
-   if (dsp_params.sample_rate <= 44100 &&
-       (dsp_params.bits == 8 || dsp_params.bits == 16) &&
-       (dsp_params.channels == 1 || dsp_params.channels == 2) &&
+   if (dsp_params.sample_rate <= 44100                          &&
+       (dsp_params.bits == 8 || dsp_params.bits == 16)          &&
+       (dsp_params.channels == 1 || dsp_params.channels == 2)   &&
        (dsp_params.sign == 0 || dsp_params.sign == 1))
    {
       sb16_have_slot[0] = false;

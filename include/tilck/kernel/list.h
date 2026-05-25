@@ -51,7 +51,7 @@ static inline bool list_is_empty(struct list *n) {
 
 static inline bool list_is_node_in_list(struct list_node *node) {
    return !list_node_is_empty(node) &&
-          node->prev->next == node &&
+          node->prev->next == node  &&
           node->next->prev == node;
 }
 

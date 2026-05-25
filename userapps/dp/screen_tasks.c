@@ -142,7 +142,7 @@ render_one_task(const struct dp_task_info *t, bool kernel_tasks)
     * "current attrs" outside of a single call).
     */
    const bool selected = (mode == tm_sel) &&
-                         (sel_tid > 0) &&
+                         (sel_tid > 0)    &&
                          (t->tid == sel_tid);
 
    if (selected) {
