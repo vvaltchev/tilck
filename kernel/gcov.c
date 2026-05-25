@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable comment_block_multiline_format */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -60,7 +61,7 @@ typedef u32 gcov_unsigned_t;
  *  86ce5d2fc19 Time profiler introduced
  *     BASE-VER: 4.9.0
  *     GCOV_COUNTERS: 9
-
+ *
  * Before that, the value of GCOV_COUNTERS was 8, but it doesn't make sense to
  * go further back, because older GCC versions than 4.9.0 are not supported
  * anyway.
