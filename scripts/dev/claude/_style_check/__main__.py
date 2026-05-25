@@ -280,9 +280,11 @@ def cmd_check(args) -> int:
 
    # Per-file progress display: text format + (--all or multi-file
    # input). JSONL stays a clean stream of records.
-   show_progress = (fmt == 'text') and (args.all or len(files) > 1)
+   show_progress = (fmt == 'text') and (args.all or len(files) > 1) \
+      and not args.diff
 
    all_diags = []
+   file_lines_map = {}
 
    for f in files:
 
@@ -331,6 +333,9 @@ def cmd_check(args) -> int:
          sys.stdout.flush()
 
       ctx = build_context(f, parser_obj, need_tu, need_cm)
+
+      if args.diff:
+         file_lines_map[str(f)] = ctx.source_text.splitlines(True)
 
       file_diags = []
 
@@ -431,7 +436,7 @@ def cmd_check(args) -> int:
 
                sys.stdout.write('\n')
 
-      elif file_diags and not args.json:
+      elif file_diags and not args.json and not args.diff:
 
          # Single-file text mode: always emit diagnostics.
          reporter.emit(
@@ -484,6 +489,10 @@ def cmd_check(args) -> int:
    # Single-file text mode: per-file emit already happened in the
    # elif branch above (or no diagnostics, no emit). Nothing left
    # to print here.
+
+   if args.diff and all_diags:
+      reporter.emit_diff(all_diags, file_lines_map,
+                         repo_root=repo_root)
 
    return 0
 
@@ -827,6 +836,13 @@ def build_argparser():
       metavar='N',
       help=('Show N lines of context around each violation, like '
             'git diff -U<N>. The violation line is highlighted.')
+   )
+
+   check_p.add_argument(
+      '--diff',
+      action='store_true',
+      help=('Emit a unified diff for all auto-fixable violations. '
+            'Pipe to `git apply` to apply all fixes at once.')
    )
 
    check_p.set_defaults(func=cmd_check)

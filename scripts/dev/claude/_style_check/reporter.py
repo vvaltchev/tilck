@@ -6,6 +6,7 @@ import os
 import json
 import sys
 
+from collections import defaultdict
 from dataclasses import asdict
 from typing import List
 
@@ -219,6 +220,78 @@ def emit(diags: List[Diagnostic],
       )
    else:
       raise ValueError("unknown format: {}".format(fmt))
+
+
+# Unified-diff output ------------------------------------------------
+
+def emit_diff(diags: List[Diagnostic],
+              file_lines: dict,
+              stream=None,
+              repo_root=None) -> int:
+   """Emit a unified diff for all fixable diagnostics.
+
+   `file_lines` maps file path (str) to list of original lines.
+   For each diagnostic with fixes, the FIRST fix is applied.
+   Returns the number of fixable diagnostics emitted."""
+
+   from difflib import unified_diff
+   from pathlib import Path
+
+   out = stream if stream is not None else sys.stdout
+   by_file = defaultdict(list)
+
+   for d in diags:
+
+      if not d.fixes:
+         continue
+
+      by_file[d.file].append(d)
+
+   count = 0
+
+   for fpath in sorted(by_file):
+
+      orig = file_lines.get(fpath)
+
+      if not orig:
+         continue
+
+      patched = list(orig)
+
+      fixable = sorted(by_file[fpath],
+                       key=lambda d: d.fixes[0].start_line,
+                       reverse=True)
+
+      for d in fixable:
+
+         fix = d.fixes[0]
+         s = fix.start_line - 1
+         e = fix.end_line
+
+         patched[s:e] = [l + '\n' for l in fix.new_lines]
+         count += 1
+
+      rel = fpath
+
+      if repo_root:
+
+         try:
+            rel = str(Path(fpath).relative_to(repo_root))
+         except ValueError:
+            pass
+
+      old = list(orig)
+      new = list(patched)
+
+      diff = unified_diff(old, new,
+                          fromfile='a/' + rel,
+                          tofile='b/' + rel)
+
+      for line in diff:
+         out.write(line)
+
+   out.flush()
+   return count
 
 
 # Per-function summary block ----------------------------------------

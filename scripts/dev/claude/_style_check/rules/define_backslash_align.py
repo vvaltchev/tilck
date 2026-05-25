@@ -18,13 +18,24 @@ from .base import (
 )
 
 
+# Preferred backslash column (1-based line length including the \).
+# The corpus overwhelmingly uses column 71; the doc says "column 80"
+# but in practice that means 80-col lines with the \ at position 71
+# (content up to ~69, space, \).  When any content line exceeds
+# PREFERRED_COL - 2 chars, fall back to body-aligned (longest
+# content + 2).
+PREFERRED_COL = 71
+
+
 class DefineBackslashAlign(Rule):
 
    id = 'define_backslash_align'
    description = (
       'Multi-line #define: all backslash continuations must be '
-      'at the same column within a single macro definition.'
-   )
+      'at the same column.  Preferred column is {} (matching the '
+      'corpus convention); when content is too long, fall back to '
+      'body-aligned (longest line + 2).'
+   ).format(PREFERRED_COL)
    layers = LAYER_RAW_TEXT
    severity = SEVERITY_WARNING
    default_score = SCORE_MEDIUM_PREF
@@ -49,7 +60,6 @@ class DefineBackslashAlign(Rule):
             i += 1
             continue
 
-         macro_start = i
          macro_lines = []
 
          while i < len(lines):
@@ -65,40 +75,49 @@ class DefineBackslashAlign(Rule):
          if len(macro_lines) < 2:
             continue
 
-         cols = []
+         entries = []
 
          for ln_idx, ln_text in macro_lines:
+            content = ln_text.rstrip('\\').rstrip()
             bs_col = len(ln_text)
-            cols.append((ln_idx, bs_col))
+            entries.append((ln_idx, content, bs_col))
 
-         target = max(c for _, c in cols)
+         max_content = max(len(c) for _, c, _ in entries)
+         body_target = max_content + 2
 
-         for ln_idx, bs_col in cols:
+         if body_target <= PREFERRED_COL:
+            target = PREFERRED_COL
+         else:
+            target = body_target
 
-            if bs_col == target:
-               continue
+         if all(bs_col == target for _, _, bs_col in entries):
+            continue
 
-            line_no = ln_idx + 1
-            line_text = lines[ln_idx]
-            content = line_text.rstrip().rstrip('\\').rstrip()
-            pad = target - len(content) - 1
-            fixed = content + ' ' * pad + ' \\'
+         first_ln = entries[0][0] + 1
+         last_ln = entries[-1][0] + 1
 
-            out.append(Diagnostic(
-               file=str(ctx.file_path),
-               line=line_no,
-               col=bs_col,
-               end_line=line_no,
-               end_col=bs_col + 1,
-               rule=self.id,
-               severity=self.severity,
-               message=(
-                  'backslash at column {}; other continuations '
-                  'in this macro are at column {} -- align'
-               ).format(bs_col, target),
-               snippet=line_text.rstrip(),
-               fixes=[Fix(line_no, line_no, [fixed])],
-            ))
+         new_lines = []
+
+         for _, content, _ in entries:
+            pad = target - len(content) - 2
+            new_lines.append(content + ' ' * max(pad, 0) + ' \\')
+
+         out.append(Diagnostic(
+            file=str(ctx.file_path),
+            line=first_ln,
+            col=1,
+            end_line=last_ln,
+            end_col=1,
+            rule=self.id,
+            severity=self.severity,
+            message=(
+               'backslash continuations in this macro are not '
+               'column-aligned (lines {}-{}) -- align all to '
+               'column {}'
+            ).format(first_ln, last_ln, target),
+            snippet=lines[entries[0][0]].rstrip(),
+            fixes=[Fix(first_ln, last_ln, new_lines)],
+         ))
 
       return out
 
