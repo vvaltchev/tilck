@@ -23,8 +23,9 @@ static void write_buf_on_screen(void *buf, unsigned size)
    free(b64);
 }
 
-static void compress_buf(void *buf, unsigned buf_size,
-                         void *zbuf, unsigned *zbuf_size)
+static void
+compress_buf(void *buf, unsigned buf_size,
+             void *zbuf, unsigned *zbuf_size)
 {
    z_stream defstream;
 

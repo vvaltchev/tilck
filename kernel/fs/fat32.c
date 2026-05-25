@@ -301,9 +301,10 @@ fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
    return (tilck_ino_t)((long)e - (long)hdr);
 }
 
-STATIC int fat_stat(struct mnt_fs *fs,
-                    vfs_inode_ptr_t i,
-                    struct k_stat64 *statbuf)
+STATIC int
+fat_stat(struct mnt_fs *fs,
+         vfs_inode_ptr_t i,
+         struct k_stat64 *statbuf)
 {
    struct datetime crt_time, wrt_time;
    struct fat_entry *e = i;

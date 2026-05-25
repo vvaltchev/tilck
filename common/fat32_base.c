@@ -147,8 +147,9 @@ bool fat32_is_valid_filename_character(char c)
 /*
  * WARNING: this implementation supports only the ASCII subset of UTF16.
  */
-static void fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
-                                      struct fat_long_entry *le)
+static void
+fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
+                          struct fat_long_entry *le)
 {
    int ebuf_size=0;
    char entrybuf[13] = {0};

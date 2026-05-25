@@ -34,11 +34,12 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
    return !r ? 0 : -1;
 }
 
-static void internal_copy_user_str(void *dest,
-                                   const void *user_ptr,
-                                   void *dest_end,
-                                   size_t *written_ptr,
-                                   int *rc)
+static void
+internal_copy_user_str(void *dest,
+                       const void *user_ptr,
+                       void *dest_end,
+                       size_t *written_ptr,
+                       int *rc)
 {
    const char *ptr = user_ptr;
    char *d = dest;

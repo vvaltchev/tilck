@@ -86,8 +86,9 @@ static long dp_cmd_get_gstats(struct dp_mem_global_stats *out)
                   (long)out, 0L, 0L, 0L);
 }
 
-static long dp_cmd_get_mtrrs(struct dp_mtrr_entry *buf, unsigned long max,
-                             struct dp_mtrr_info *info)
+static long
+dp_cmd_get_mtrrs(struct dp_mtrr_entry *buf, unsigned long max,
+                 struct dp_mtrr_info *info)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_GET_MTRRS,

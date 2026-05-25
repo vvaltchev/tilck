@@ -321,11 +321,12 @@ struct tr_saved_int_pair {
    int  pair[2];
 };
 
-static bool dump_int_pair_with_data(unsigned long orig,
-                                    char *data,
-                                    long unused1,
-                                    long unused2,
-                                    char *dst, size_t bs)
+static bool
+dump_int_pair_with_data(unsigned long orig,
+                        char *data,
+                        long unused1,
+                        long unused2,
+                        char *dst, size_t bs)
 {
    const struct tr_saved_int_pair *d = (const void *)data;
 
@@ -337,11 +338,12 @@ static bool dump_int_pair_with_data(unsigned long orig,
 
 /* The kernel's save_param_u64_ptr wrote a stringified u64 directly
  * into the slot; the dump callback just memcpy's it out. */
-static bool dump_u64_ptr_with_data(unsigned long orig,
-                                   char *data,
-                                   long unused1,
-                                   long unused2,
-                                   char *dst, size_t bs)
+static bool
+dump_u64_ptr_with_data(unsigned long orig,
+                       char *data,
+                       long unused1,
+                       long unused2,
+                       char *dst, size_t bs)
 {
    const size_t len = strnlen(data, bs);
 
@@ -369,11 +371,12 @@ static bool dump_signum(unsigned long val, long unused, char *dst, size_t bs)
  * differences: (1) snprintk → snprintf, (2)
  * tracing_are_dump_big_bufs_on() reads our local flag.
  */
-static bool dump_buffer_with_data(unsigned long orig,
-                                  char *data,
-                                  long data_bs,
-                                  long real_sz,
-                                  char *dst, size_t bs)
+static bool
+dump_buffer_with_data(unsigned long orig,
+                      char *data,
+                      long data_bs,
+                      long real_sz,
+                      char *dst, size_t bs)
 {
    char minibuf[8];
    char *dest_end;
@@ -461,11 +464,12 @@ static bool dump_buffer_with_data(unsigned long orig,
  * ulongs (iov_base) at +32, then 4 × 16-byte mini-buffers at +64.
  * We mirror the same layout when reading back.
  */
-static bool dump_iov_inner(unsigned long orig,
-                           char *data,
-                           long u_iovcnt,
-                           long maybe_tot_data_size,
-                           char *dst, size_t bs)
+static bool
+dump_iov_inner(unsigned long orig,
+               char *data,
+               long u_iovcnt,
+               long maybe_tot_data_size,
+               char *dst, size_t bs)
 {
    char buf[32];
    int used = 0, rem = (int)bs;
@@ -531,20 +535,22 @@ static bool dump_iov_inner(unsigned long orig,
    return true;
 }
 
-static bool dump_iov_in_with_data(unsigned long orig,
-                                  char *data,
-                                  long u_iovcnt,
-                                  long unused,
-                                  char *dst, size_t bs)
+static bool
+dump_iov_in_with_data(unsigned long orig,
+                      char *data,
+                      long u_iovcnt,
+                      long unused,
+                      char *dst, size_t bs)
 {
    return dump_iov_inner(orig, data, u_iovcnt, -1, dst, bs);
 }
 
-static bool dump_iov_out_with_data(unsigned long orig,
-                                   char *data,
-                                   long u_iovcnt,
-                                   long real_sz,
-                                   char *dst, size_t bs)
+static bool
+dump_iov_out_with_data(unsigned long orig,
+                       char *data,
+                       long u_iovcnt,
+                       long real_sz,
+                       char *dst, size_t bs)
 {
    return dump_iov_inner(orig, data, u_iovcnt, real_sz, dst, bs);
 }

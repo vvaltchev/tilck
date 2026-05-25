@@ -88,11 +88,12 @@ struct debug_fat_walk_ctx {
    int level;
 };
 
-static int dump_dir_entry(struct fat_hdr *hdr,
-                          enum fat_type ft,
-                          struct fat_entry *entry,
-                          const char *long_name,
-                          void *arg)
+static int
+dump_dir_entry(struct fat_hdr *hdr,
+               enum fat_type ft,
+               struct fat_entry *entry,
+               const char *long_name,
+               void *arg)
 {
    char shortname[16];
    char indentbuf[4*16] = {0};

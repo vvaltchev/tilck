@@ -128,8 +128,9 @@ void selftest_fault_res(void)
 
 REGISTER_SELF_TEST(fault_res, se_short, &selftest_fault_res)
 
-static NO_INLINE void do_nothing(ulong a1, ulong a2, ulong a3,
-                                 ulong a4, ulong a5, ulong a6)
+static NO_INLINE void
+do_nothing(ulong a1, ulong a2, ulong a3,
+           ulong a4, ulong a5, ulong a6)
 {
    DO_NOT_OPTIMIZE_AWAY(a1);
    DO_NOT_OPTIMIZE_AWAY(a2);

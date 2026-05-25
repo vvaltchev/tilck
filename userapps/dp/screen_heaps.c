@@ -36,8 +36,9 @@ static long tot_diff;
 /* File-scope `row` for the dp_writeln macro. */
 static int row;
 
-static long dp_cmd_get_heaps(struct dp_heap_info *buf, unsigned long max,
-                             struct dp_small_heaps_stats *stats)
+static long
+dp_cmd_get_heaps(struct dp_heap_info *buf, unsigned long max,
+                 struct dp_small_heaps_stats *stats)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_GET_HEAPS,
