@@ -33,6 +33,21 @@ _ARGC_ARGV_PAT = re.compile(
    r'^\s*\w+\s*[-+]{2}\s*;\s*\w+\s*[-+]{2}\s*;'
 )
 
+# `p++; continue;` or `p--; continue;` — trivial advance + loop control.
+_INCDEC_CONTINUE_PAT = re.compile(
+   r'^\s*\w+\s*[-+]{2}\s*;\s*continue\s*;'
+)
+
+# `NOT_REACHED(); return ...;` — unreachable return after noreturn call.
+_NOT_REACHED_RET_PAT = re.compile(
+   r'NOT_REACHED\(\)\s*;\s*return\b'
+)
+
+# `ASSERT(x); (void)x;` — suppress unused-var in release builds.
+_ASSERT_VOID_PAT = re.compile(
+   r'ASSERT\s*\(.*\)\s*;\s*\(void\)\s*\w+\s*;'
+)
+
 
 class OneStmtPerLine(Rule):
 
@@ -114,6 +129,27 @@ class OneStmtPerLine(Rule):
                      # Skip paired inc/dec idioms:
                      # `argc--; argv++;`
                      if _ARGC_ARGV_PAT.match(line_text):
+                        last_semi_pos = i
+                        last_semi_brace_depth = brace_depth
+                        i += 1
+                        continue
+
+                     # Skip `p++; continue;` / `p--; continue;`
+                     if _INCDEC_CONTINUE_PAT.match(line_text):
+                        last_semi_pos = i
+                        last_semi_brace_depth = brace_depth
+                        i += 1
+                        continue
+
+                     # Skip `NOT_REACHED(); return ...;`
+                     if _NOT_REACHED_RET_PAT.search(line_text):
+                        last_semi_pos = i
+                        last_semi_brace_depth = brace_depth
+                        i += 1
+                        continue
+
+                     # Skip `ASSERT(x); (void)x;`
+                     if _ASSERT_VOID_PAT.search(line_text):
                         last_semi_pos = i
                         last_semi_brace_depth = brace_depth
                         i += 1
