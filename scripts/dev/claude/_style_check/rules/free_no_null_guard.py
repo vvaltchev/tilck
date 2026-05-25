@@ -17,12 +17,15 @@ from .base import (
 )
 from .. import tokens as _tokens_mod
 
-# Q11: free functions in this codebase are no-ops on NULL, so a
-# guard `if (ptr) free_X(ptr);` (or `!= NULL`) is an idiom error.
-# Detect:
-#   if (<ID>)     free_<...>(<ID>);
-#   if (<ID> != NULL)  free_<...>(<ID>);
-# All on one or two lines.
+# Q11: kfree/kfree2/vfree2/free are no-ops on NULL, so a guard
+# `if (ptr) kfree(ptr);` (or `!= NULL`) is unnecessary.
+# Only flag functions KNOWN to accept NULL -- not every function
+# with "free"/"release" in its name does.
+
+_NULL_SAFE = (
+   r'kfree|kfree2|kfree_obj|kfree_array_obj|'
+   r'vfree2|kvfree|aligned_kfree2|free'
+)
 
 _PAT_GUARD = re.compile(
    r'\bif\s*\(\s*'
@@ -30,9 +33,10 @@ _PAT_GUARD = re.compile(
    r'(?:\s*!=\s*NULL)?'
    r'\s*\)\s*'
    r'(?:\n\s*)?'
-   r'(?P<fn>(?:k?free|kvfree|destroy|release|put|drop|unref)_\w+)'
+   r'(?P<fn>' + _NULL_SAFE + r')'
    r'\s*\(\s*'
    r'(?P=v)'
+   r'(?:\s*,\s*[^)]+)?'     # optional second arg (kfree2 size)
    r'\s*\)\s*;'
 )
 
