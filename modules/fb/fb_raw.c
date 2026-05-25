@@ -66,7 +66,7 @@ u32 vga_rgb_colors[16];
 
 static inline u32 fb_make_color(u32 r, u32 g, u32 b)
 {
-   return ((r << fb_red_pos) & fb_red_mask) |
+   return ((r << fb_red_pos) & fb_red_mask)     |
           ((g << fb_green_pos) & fb_green_mask) |
           ((b << fb_blue_pos) & fb_blue_mask);
 }

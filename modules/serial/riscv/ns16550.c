@@ -214,9 +214,9 @@ static void ns16550_uart_init(struct ns16550 *uart, int baud_divisor)
 {
    ns16550_reg_wr(uart, UART_IER, IER_NO_INTR);
    ns16550_reg_wr(uart, UART_MCR, MCR_DTR | MCR_RTS);
-   ns16550_reg_wr(uart, UART_FCR, FCR_ENABLE_FIFOs |
-                                 FCR_CLEAR_RECV_FIFO |
-                                 FCR_CLEAR_TR_FIFO);
+   ns16550_reg_wr(uart, UART_FCR, FCR_ENABLE_FIFOs     |
+                                  FCR_CLEAR_RECV_FIFO  |
+                                  FCR_CLEAR_TR_FIFO);
    ns16550_reg_wr(uart, UART_LCR, LCR_8_BITS | LCR_1_STOP_BIT | LCR_NO_PARITY);
 
    /*

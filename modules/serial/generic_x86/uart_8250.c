@@ -120,9 +120,9 @@ void init_serial_port(u16 port)
 
    outb(port + UART_LCR, LCR_8_BITS | LCR_1_STOP_BIT | LCR_NO_PARITY);
 
-   outb(port + UART_FCR, FCR_ENABLE_FIFOs |
+   outb(port + UART_FCR, FCR_ENABLE_FIFOs    |
                          FCR_CLEAR_RECV_FIFO |
-                         FCR_CLEAR_TR_FIFO |
+                         FCR_CLEAR_TR_FIFO   |
                          FCR_INT_TRIG_LEVEL_3);
 
    outb(port + UART_MCR, MCR_DTR | MCR_RTS | MCR_AUX_OUTPUT_2);

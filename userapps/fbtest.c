@@ -39,7 +39,7 @@ static inline void memset32(void *s, uint32_t val, size_t n)
 
 static inline uint32_t make_color(uint8_t red, uint8_t green, uint8_t blue)
 {
-   return (red << fbi.red.offset) |
+   return (red << fbi.red.offset)     |
           (green << fbi.green.offset) |
           (blue << fbi.blue.offset);
 }

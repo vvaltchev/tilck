@@ -433,10 +433,10 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, ulong hw_flags)
       ASSERT(IS_PAGE_ALIGNED(pt));
 
       pdir->entries[pd_index].raw =
-         PG_PRESENT_BIT |
-         PG_RW_BIT |
-         (hw_flags & PG_US_BIT) |
-         (hw_flags & PG_CD_BIT) |
+         PG_PRESENT_BIT          |
+         PG_RW_BIT               |
+         (hw_flags & PG_US_BIT)  |
+         (hw_flags & PG_CD_BIT)  |
          LIN_VA_TO_PA(pt);
    }
 
@@ -575,8 +575,8 @@ map_zero_page(pdir_t *pdir, void *vaddrp, u32 pg_flags)
       map_page_int(pdir,
                    vaddrp,
                    KERNEL_VA_TO_PA(&zero_page),
-                   (u32)(us << PG_US_BIT_POS) |
-                   (u32)(avail_bits << PG_CUSTOM_B0_POS) |
+                   (u32)(us << PG_US_BIT_POS)              |
+                   (u32)(avail_bits << PG_CUSTOM_B0_POS)   |
                    (u32)((!us) << PG_GLOBAL_BIT_POS));
                    /* Kernel pages are global */
 }

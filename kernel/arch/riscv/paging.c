@@ -566,9 +566,9 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
       ASSERT(~pg_flags & PAGING_FL_ZERO_PG);
    }
 
-   hw_pg_flags = _PAGE_BASE |
-                 (rw ? _PAGE_WRITE : 0) |
-                 (us ? _PAGE_USER : _PAGE_GLOBAL) |
+   hw_pg_flags = _PAGE_BASE                          |
+                 (rw ? _PAGE_WRITE : 0)              |
+                 (us ? _PAGE_USER : _PAGE_GLOBAL)    |
                  avail_bits;
 
    rc = map_page_int(pdir, vaddrp, paddr, hw_pg_flags);
@@ -594,8 +594,8 @@ map_zero_page(pdir_t *pdir, void *vaddrp, u32 pg_flags)
    if (pg_flags & PAGING_FL_RW)
       avail_bits |= PAGE_COW_ORIG_RW;
 
-   hw_pg_flags = _PAGE_BASE |
-                 (us ? _PAGE_USER : _PAGE_GLOBAL) |
+   hw_pg_flags = _PAGE_BASE                          |
+                 (us ? _PAGE_USER : _PAGE_GLOBAL)    |
                  avail_bits;
 
    return
@@ -624,9 +624,9 @@ map_pages(pdir_t *pdir,
    if (pg_flags & PAGING_FL_DO_ALLOC)
       NOT_IMPLEMENTED();
 
-   hw_pg_flags = _PAGE_BASE |
-                 (rw ? _PAGE_WRITE : 0) |
-                 (us ? _PAGE_USER : _PAGE_GLOBAL) |
+   hw_pg_flags = _PAGE_BASE                          |
+                 (rw ? _PAGE_WRITE : 0)              |
+                 (us ? _PAGE_USER : _PAGE_GLOBAL)    |
                  avail_bits;
 
    return

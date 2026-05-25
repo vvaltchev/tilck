@@ -187,7 +187,7 @@ map_framebuffer(pdir_t *pdir,
 
    size_t count;
    const size_t page_count = pow2_round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
-   const u32 pg_flags = PAGING_FL_RW |
+   const u32 pg_flags = PAGING_FL_RW     |
                         PAGING_FL_SHARED |
                         (user_mmap ? PAGING_FL_US : 0);
 
