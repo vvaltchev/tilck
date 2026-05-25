@@ -10,6 +10,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -73,9 +74,11 @@ class OperatorPastClosePAren(Rule):  # pylint: disable=invalid-name
          if close_line == open_line:
             continue   # single-line condition
 
-         # Walk the lines [open_line, close_line - 1] and find
-         # trailing && / || operators.
          lines = masked.split('\n')
+         target = close_col + 1
+
+         # Collect all trailing operators in this condition.
+         ops = []
 
          for ln_idx in range(open_line - 1, close_line - 1):
 
@@ -89,12 +92,21 @@ class OperatorPastClosePAren(Rule):  # pylint: disable=invalid-name
                continue
 
             op_col = l.rfind(mm.group(1)) + 1
+            ops.append((ln_idx, op_col, mm.group(1)))
+
+         # Check for under-padded operators.
+         for ln_idx, op_col, op in ops:
 
             if op_col > close_col:
-               continue   # operator already past `)` column
+               continue
 
             line_text = ctx.lines[ln_idx] \
                if ln_idx < len(ctx.lines) else ''
+
+            pad = target - op_col
+            op_pos = line_text.rfind(op)
+            fixed = line_text[:op_pos] + ' ' * pad + \
+               line_text[op_pos:]
 
             out.append(Diagnostic(
                file=str(ctx.file_path),
@@ -109,9 +121,52 @@ class OperatorPastClosePAren(Rule):  # pylint: disable=invalid-name
                   'closing `)` is at column {} on line {} -- pad '
                   'with spaces so the operator column is to the '
                   'right of `)`'
-               ).format(mm.group(1), op_col, close_col, close_line),
+               ).format(op, op_col, close_col, close_line),
                snippet=line_text,
+               fixes=[Fix(ln_idx + 1, ln_idx + 1, [fixed])],
             ))
+
+         # Check for over-padded operators, but only when there
+         # is a single operator.  When multiple operators align
+         # to the longest expression, the column is set by
+         # align_multiline_operators and shouldn't be questioned.
+         if len(ops) != 1:
+            continue
+
+         ln_idx, op_col, op = ops[0]
+
+         if op_col <= target + 2:
+            continue
+
+         line_text = ctx.lines[ln_idx] \
+            if ln_idx < len(ctx.lines) else ''
+         op_pos = line_text.rfind(op)
+         pre = line_text[:op_pos]
+         gap = len(pre) - len(pre.rstrip())
+
+         if gap <= 1:
+            continue
+
+         trim = op_col - target
+         fixed = line_text[:op_pos - trim] + line_text[op_pos:]
+
+         out.append(Diagnostic(
+            file=str(ctx.file_path),
+            line=ln_idx + 1,
+            col=op_col,
+            end_line=ln_idx + 1,
+            end_col=op_col + 2,
+            rule=self.id,
+            severity=self.severity,
+            message=(
+               'operator `{}` at column {} is over-padded; '
+               'the condition\'s closing `)` is at column {} '
+               'on line {} -- place the operator close to '
+               'the `)`, not far past it'
+            ).format(op, op_col, close_col, close_line),
+            snippet=line_text,
+            fixes=[Fix(ln_idx + 1, ln_idx + 1, [fixed])],
+         ))
 
       return out
 
