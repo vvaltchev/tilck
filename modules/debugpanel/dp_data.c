@@ -588,9 +588,6 @@ tilck_sys_dp_get_runtime_info(ulong u_out, ulong _2, ulong _3, ulong _4)
 
    clock_get_resync_stats(&cstats);
    out.clk_full_resync_count          = cstats.full_resync_count;
-   out.clk_full_resync_fail_count     = cstats.full_resync_fail_count;
-   out.clk_full_resync_success_count  = cstats.full_resync_success_count;
-   out.clk_full_resync_abs_drift_gt_1 = cstats.full_resync_abs_drift_gt_1;
    out.clk_multi_second_resync_count  = cstats.multi_second_resync_count;
 
    if (copy_to_user((void *)u_out, &out, sizeof(out)))

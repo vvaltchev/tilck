@@ -107,13 +107,10 @@ static void dp_show_runtime(void)
     * 26-char name column and the colons stay aligned.
     */
    render_section_label(&row, col, "Clock Sync");
-   render_rt_int(&row, col, "clk_in_rs",        ri.clk_in_resync);
-   render_rt_int(&row, col, "clk_in_full_rs",   ri.clk_in_full_resync);
-   render_rt_int(&row, col, "clk_full_rs_cnt",  ri.clk_full_resync_count);
-   render_rt_int(&row, col, "clk_full_rs_fail", ri.clk_full_resync_fail_count);
-   render_rt_int(&row, col, "clk_full_rs_succ", ri.clk_full_resync_success_count);
-   render_rt_int(&row, col, "clk_full_rs_adg1", ri.clk_full_resync_abs_drift_gt_1);
-   render_rt_int(&row, col, "clk_resync_cnt",   ri.clk_multi_second_resync_count);
+   render_rt_int(&row, col, "clk_in_rs",      ri.clk_in_resync);
+   render_rt_int(&row, col, "clk_in_full_rs", ri.clk_in_full_resync);
+   render_rt_int(&row, col, "clk_full_rs_cnt",ri.clk_full_resync_count);
+   render_rt_int(&row, col, "clk_resync_cnt", ri.clk_multi_second_resync_count);
 }
 
 static struct dp_screen dp_runtime_screen = {
