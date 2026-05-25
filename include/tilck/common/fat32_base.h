@@ -186,7 +186,7 @@ static inline u32 fat_get_root_dir_sectors(struct fat_hdr *hdr)
 
 static inline u32 fat_get_first_cluster(struct fat_entry *e)
 {
-   return (u32)e->DIR_FstClusHI << 16u | e->DIR_FstClusLO;
+   return ((u32)e->DIR_FstClusHI << 16u) | e->DIR_FstClusLO;
 }
 
 static inline void fat_set_first_cluster(struct fat_entry *e, u32 clu)
