@@ -16,7 +16,7 @@ from . import no_void_cast_discard
 
 # M2b -- structural rules via libclang + raw text
 from . import void_arglist
-from . import no_trailing_enum_comma
+from . import enum_trailing_comma
 from . import one_stmt_per_line
 
 # M2c -- control flow + brace placement
@@ -95,7 +95,7 @@ ALL_RULES = [
    hex_literal_lowercase.RULE,
    no_void_cast_discard.RULE,
    void_arglist.RULE,
-   no_trailing_enum_comma.RULE,
+   enum_trailing_comma.RULE,
    one_stmt_per_line.RULE,
    else_same_line_as_brace.RULE,
    fn_body_brace_own_line.RULE,

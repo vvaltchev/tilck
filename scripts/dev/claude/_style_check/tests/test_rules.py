@@ -158,13 +158,13 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(len(diags), 1)
       self.assertEqual(diags[0].rule, 'void_arglist')
 
-   def test_bad_no_trailing_enum_comma(self):
+   def test_bad_enum_trailing_comma(self):
 
-      r = RULES_BY_ID['no_trailing_enum_comma']
+      r = RULES_BY_ID['enum_trailing_comma']
       diags = _run_rule(
-         r, FIXTURES / 'bad_no_trailing_enum_comma.c', self.parser
+         r, FIXTURES / 'bad_enum_trailing_comma.c', self.parser
       )
-      self.assertEqual(len(diags), 1)
+      self.assertEqual(len(diags), 2)
 
    def test_bad_one_stmt_per_line(self):
 

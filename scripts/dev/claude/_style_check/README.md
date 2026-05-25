@@ -34,7 +34,7 @@ below):
   `blank_line_after_non_final_return`).
 - **Structural (libclang)** -- AST-driven rules
   (`static_fn_def_type_own_line`, `void_arglist`,
-  `no_trailing_enum_comma`, `one_stmt_per_line`,
+  `enum_trailing_comma`, `one_stmt_per_line`,
   `fn_body_brace_own_line`, `multiline_call_style`,
   `pointer_asterisk_attached`, `switch_case_indent`,
   `blank_line_after_decl_block`, `non_const_locals_top_of_block`,

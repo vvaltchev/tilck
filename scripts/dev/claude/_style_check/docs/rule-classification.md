@@ -74,7 +74,7 @@ on cosmetics.
 | Rule | Source |
 |------|--------|
 | `hex_literal_lowercase` | User-confirmed soft preference |
-| `no_trailing_enum_comma` | Cosmetic |
+| `enum_trailing_comma` | Cosmetic |
 | `trailing_ws` | Hygiene, doesn't break anything |
 
 ## Total
