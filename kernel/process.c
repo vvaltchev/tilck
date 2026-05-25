@@ -325,6 +325,7 @@ struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
 {
    struct task *process_task;
    struct task *ti;
+
    ASSERT(pi != NULL);
 
    process_task = get_process_task(pi);

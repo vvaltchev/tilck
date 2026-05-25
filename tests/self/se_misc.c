@@ -10,6 +10,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/timer.h>
 
+/* style_check: disable blank_line_after_decl_block */
 void simple_test_kthread(void *arg)
 {
    u32 i;

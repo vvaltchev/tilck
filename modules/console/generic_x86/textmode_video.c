@@ -34,6 +34,7 @@ static void textmode_set_row(u16 row, u16 *data, bool fpu_allowed)
 {
    void *dest_addr;
    void *src_addr;
+
    ASSERT(row < VIDEO_ROWS);
 
    dest_addr = VIDEO_ADDR + row * VIDEO_COLS;

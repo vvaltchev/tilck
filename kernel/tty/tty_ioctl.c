@@ -98,6 +98,7 @@ static int tty_ioctl_tcsets(struct tty *t, void *argp)
 {
    int rc;
    struct termios saved = t->c_term;
+
    rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
 
    if (rc < 0) {
