@@ -6,6 +6,7 @@
    #ifndef CLANGD
       #error Never include this header directly. #include <tilck/kernel/hal.h>.
    #else
+      /* style_check: disable typed_literal_suffix */
       #define get_stack_ptr()  ((ulong)0) // CLANGD-ONLY!
    #endif
 #endif
