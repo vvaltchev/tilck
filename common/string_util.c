@@ -360,8 +360,8 @@ char *strrchr(const char *s, int c)
 
    if (*last != (char)c)
       return NULL;
-   else
-      return (char *)last;
+
+   return (char *)last;
 }
 
 char *strchr(const char *s, int c)

@@ -111,8 +111,8 @@ long sys_openat(int dfd, const char *u_path, int flags, mode_t mode)
 
    if (dfd == AT_FDCWD)
       return sys_open(u_path, flags, mode);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_creat(const char *u_path, mode_t mode)
@@ -199,8 +199,8 @@ long sys_mkdirat(int dfd, const char *pathname, mode_t mode)
 
    if (dfd == AT_FDCWD)
       return sys_mkdir(pathname, mode);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_read(int fd, void *u_buf, size_t count)
@@ -525,8 +525,8 @@ long sys_symlinkat(const char *u_oldname,
 
    if (newdfd == AT_FDCWD)
       return sys_symlink(u_oldname, u_newname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
@@ -568,8 +568,8 @@ long sys_readlinkat(int dfd, const char *u_pathname,
 
    if (dfd == AT_FDCWD)
       return sys_readlink(u_pathname, u_buf, u_bufsize);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_ia32_truncate64(const char *u_path, s64 len)
@@ -1028,8 +1028,8 @@ long sys_fchmodat(int dfd, const char *u_path, mode_t mode)
 
    if (dfd == AT_FDCWD)
       return sys_chmod(u_path, mode);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 static int
@@ -1068,8 +1068,8 @@ long sys_renameat2(int olddfd, const char *oldname,
 
    if (olddfd == AT_FDCWD && newdfd == AT_FDCWD && !flags)
       return sys_rename(oldname, newname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_link(const char *u_oldpath, const char *u_newpath)
@@ -1084,8 +1084,8 @@ long sys_linkat(int olddfd, const char *oldname,
 
    if (olddfd == AT_FDCWD && newdfd == AT_FDCWD && !flags)
       return sys_link(oldname, newname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_pipe(int u_pipefd[2])

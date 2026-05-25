@@ -146,8 +146,8 @@ static int ns16550_reg_rd(struct ns16550 *uart, int offset)
 
    if (uart->reg_width == 4)
       return mmio_readl(addr);
-   else
-      return mmio_readb(addr);
+
+   return mmio_readb(addr);
 }
 
 static bool ns16550_read_ready(void *priv)
