@@ -241,6 +241,7 @@ bool is_rw_mapped(pdir_t *pdir, void *vaddrp)
 
    pt = PA_TO_LIN_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    page = pt->pages[pt_index];
+
    return page.present && page.rw;
 }
 
