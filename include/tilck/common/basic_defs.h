@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable verbose_type_name */
 
 #pragma once
 #define _TILCK_BASIC_DEFS_H_

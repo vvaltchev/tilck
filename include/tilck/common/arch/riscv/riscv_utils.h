@@ -41,7 +41,7 @@
 
 #define csr_swap(csr, val)                                            \
 ({                                                                    \
-   unsigned long __v = (unsigned long)(val);                          \
+   ulong __v = (ulong)(val);                                          \
    asmVolatile("csrrw %0, " __STR(csr) ", %1"                         \
                : "=r" (__v) : "rK" (__v)                              \
                : "memory");                                           \
@@ -50,7 +50,7 @@
 
 #define csr_read(csr)                                                 \
 ({                                                                    \
-   volatile unsigned long __v;                                        \
+   volatile ulong __v;                                                \
    asmVolatile("csrr %0, " __STR(csr)                                 \
                : "=r" (__v) :                                         \
                : "memory");                                           \
@@ -59,7 +59,7 @@
 
 #define csr_write(csr, val)                                           \
 ({                                                                    \
-   unsigned long __v = (unsigned long)(val);                          \
+   ulong __v = (ulong)(val);                                          \
    asmVolatile("csrw " __STR(csr) ", %0"                              \
                : : "rK" (__v)                                         \
                : "memory");                                           \
@@ -67,7 +67,7 @@
 
 #define csr_read_set(csr, val)                                        \
 ({                                                                    \
-   unsigned long __v = (unsigned long)(val);                          \
+   ulong __v = (ulong)(val);                                          \
    asmVolatile("csrrs %0, " __STR(csr) ", %1"                         \
                : "=r" (__v) : "rK" (__v)                              \
                : "memory");                                           \
@@ -76,7 +76,7 @@
 
 #define csr_set(csr, val)                                             \
 ({                                                                    \
-   unsigned long __v = (unsigned long)(val);                          \
+   ulong __v = (ulong)(val);                                          \
    asmVolatile("csrs " __STR(csr) ", %0"                              \
                : : "rK" (__v)                                         \
                : "memory");                                           \
@@ -84,7 +84,7 @@
 
 #define csr_read_clear(csr, val)                                      \
 ({                                                                    \
-   unsigned long __v = (unsigned long)(val);                          \
+   ulong __v = (ulong)(val);                                          \
    asmVolatile("csrrc %0, " __STR(csr) ", %1"                         \
                : "=r" (__v) : "rK" (__v)                              \
                : "memory");                                           \
@@ -93,7 +93,7 @@
 
 #define csr_clear(csr, val)                                           \
 ({                                                                    \
-   unsigned long __v = (unsigned long)(val);                          \
+   ulong __v = (ulong)(val);                                          \
    asmVolatile("csrc " __STR(csr) ", %0"                              \
                : : "rK" (__v)                                         \
                : "memory");                                           \
