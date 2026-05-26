@@ -9,6 +9,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -112,6 +113,18 @@ class VerboseTypeName(Rule):
 
          line_text = ctx.lines[line - 1] if line <= len(ctx.lines) else ''
 
+         # Build fix: replace the verbose type with the short typedef.
+         fixes = []
+
+         if line_text:
+            fixed_line = (line_text[:col - 1] +
+                          short +
+                          line_text[col - 1 + len(matched_text):])
+            fixes.append(Fix(line, line,
+                              [fixed_line.rstrip()],
+                              "replace '{}' with '{}'".format(
+                                 norm, short)))
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=line,
@@ -124,6 +137,7 @@ class VerboseTypeName(Rule):
                "Use '{}' instead of '{}'".format(short, norm)
             ),
             snippet=line_text.strip(),
+            fixes=fixes,
          ))
 
       return out

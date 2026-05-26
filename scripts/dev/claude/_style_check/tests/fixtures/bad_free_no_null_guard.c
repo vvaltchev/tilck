@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-extern void free_foo(void *);
-extern void kfree_bar(void *);
+extern void kfree(void *, int);
+extern void free(void *);
 
 void cleanup(void *a, void *b)
 {
    if (a)
-      free_foo(a);                  /* idiom error: unguarded form */
+      kfree(a, 32);
 
    if (b != NULL)
-      kfree_bar(b);                 /* idiom error: != NULL guard */
+      free(b);
 }

@@ -149,7 +149,8 @@ class TestRulesOnFixtures(unittest.TestCase):
       diags = _run_rule(
          r, FIXTURES / 'bad_no_void_cast_discard.c', self.parser
       )
-      self.assertEqual(len(diags), 2)
+      self.assertEqual(len(diags), 1)
+      self.assertTrue(diags[0].is_gradient)
 
    def test_bad_void_arglist(self):
 
@@ -467,6 +468,111 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(len(diags), 1)
       self.assertEqual(diags[0].rule, 'align_multiline_operators')
       self.assertEqual(diags[0].severity, 'warning')
+
+   def test_bad_blank_line_before_return(self):
+
+      r = RULES_BY_ID['blank_line_before_return']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_blank_line_before_return.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'blank_line_before_return')
+
+   def test_bad_verbose_type_name(self):
+
+      r = RULES_BY_ID['verbose_type_name']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_verbose_type_name.c', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'verbose_type_name' for d in diags)
+      )
+
+   def test_bad_designator_init_spacing(self):
+
+      r = RULES_BY_ID['designator_init_spacing']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_designator_init_spacing.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'designator_init_spacing')
+
+   def test_bad_sizeof_parens(self):
+
+      r = RULES_BY_ID['sizeof_parens']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_sizeof_parens.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'sizeof_parens')
+
+   def test_bad_cast_density(self):
+
+      r = RULES_BY_ID['cast_density']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_cast_density.c', self.parser
+      )
+      self.assertEqual(len(diags), 4)
+      self.assertTrue(all(d.is_gradient for d in diags))
+      self.assertTrue(all(d.rule == 'cast_density' for d in diags))
+
+   def test_bad_ifdef_density(self):
+
+      r = RULES_BY_ID['ifdef_density']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_ifdef_density.c', self.parser
+      )
+      self.assertEqual(len(diags), 3)
+      self.assertTrue(all(d.is_gradient for d in diags))
+      self.assertTrue(all(d.rule == 'ifdef_density' for d in diags))
+
+   def test_bad_else_after_return(self):
+
+      r = RULES_BY_ID['else_after_return']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_else_after_return.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertTrue(diags[0].is_gradient)
+      self.assertEqual(diags[0].rule, 'else_after_return')
+
+   def test_bad_call_cluster_column_align(self):
+
+      r = RULES_BY_ID['call_cluster_column_align']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_call_cluster_column_align.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertTrue(diags[0].is_gradient)
+      self.assertEqual(diags[0].rule, 'call_cluster_column_align')
+
+   def test_bad_static_fn_def_type_own_line(self):
+
+      r = RULES_BY_ID['static_fn_def_type_own_line']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_static_fn_def_type_own_line.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'static_fn_def_type_own_line')
+
+   def test_bad_define_backslash_align(self):
+
+      r = RULES_BY_ID['define_backslash_align']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_define_backslash_align.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'define_backslash_align')
+
+   def test_bad_cols_80(self):
+
+      r = RULES_BY_ID['cols_80']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_cols_80.c', self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'cols_80')
 
    def test_bad_endif_annotation_long_blocks(self):
 

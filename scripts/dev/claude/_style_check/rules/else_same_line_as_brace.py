@@ -9,6 +9,7 @@ from typing import List
 from .base import (
       Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -45,6 +46,19 @@ class ElseSameLineAsBrace(Rule):
          line_text = ctx.lines[line - 1] \
             if line - 1 < len(ctx.lines) else ''
 
+         # Build fix: merge the `}` line and the `else ...` line.
+         # The `}` is on the previous line (line - 2 in 0-based).
+         fixes = []
+         brace_line_idx = line - 2  # 0-based index of `}` line
+
+         if brace_line_idx >= 0 and brace_line_idx < len(ctx.lines):
+            brace_line = ctx.lines[brace_line_idx].rstrip()
+            else_rest = ctx.lines[line - 1].strip()
+            merged = brace_line + ' ' + else_rest
+            fixes.append(Fix(line - 1, line,
+                              [merged],
+                              'join } and else onto one line'))
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=line,
@@ -55,6 +69,7 @@ class ElseSameLineAsBrace(Rule):
             severity=self.severity,
             message='"else" must be on the same line as the closing brace',
             snippet=line_text.strip(),
+            fixes=fixes,
          ))
 
       return out

@@ -10,6 +10,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_RAW_TEXT,
    SEVERITY_WARNING,
@@ -327,6 +328,9 @@ class BlankLineBeforeReturn(Rule):
             ),
             snippet=line_text.strip(),
             suggestion='add a blank line before this return',
+            fixes=[Fix(line_no, line_no,
+                        ['', line_text.rstrip()],
+                        'insert blank line before return')],
          ))
 
       return out

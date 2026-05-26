@@ -268,11 +268,22 @@ def emit_diff(diags: List[Diagnostic],
                        key=lambda d: d.fixes[0].start_line,
                        reverse=True)
 
+      applied = set()
+
       for d in fixable:
 
          fix = d.fixes[0]
          s = fix.start_line - 1
          e = fix.end_line
+
+         # Skip if another fix already touched this range
+         rng = range(s, e)
+
+         if any(ln in applied for ln in rng):
+            continue
+
+         for ln in rng:
+            applied.add(ln)
 
          patched[s:e] = [l + '\n' for l in fix.new_lines]
          count += 1

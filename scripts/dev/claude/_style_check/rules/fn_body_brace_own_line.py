@@ -8,6 +8,7 @@ from typing import List
 from .base import (
       Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
@@ -108,6 +109,20 @@ class FnBodyBraceOwnLine(Rule):
          line_text = ctx.lines[line - 1] \
             if line - 1 < len(ctx.lines) else ''
 
+         # Build fix: remove `{` from the signature line and put it
+         # on its own line below.
+         fixes = []
+
+         if line_text:
+            # Strip the trailing ` {` from the signature line
+            sig_line = line_text.rstrip()
+
+            if sig_line.endswith('{'):
+               sig_line = sig_line[:-1].rstrip()
+               fixes.append(Fix(line, line,
+                                 [sig_line, '{'],
+                                 'move { to its own line'))
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=line,
@@ -119,6 +134,7 @@ class FnBodyBraceOwnLine(Rule):
             message=('function "{}": body brace {{ must be on its own line').
                      format(ext.spelling),
             snippet=line_text.strip(),
+            fixes=fixes,
          ))
 
       return out

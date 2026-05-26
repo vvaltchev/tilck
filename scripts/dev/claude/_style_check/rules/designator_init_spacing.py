@@ -9,6 +9,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_RAW_TEXT,
    SEVERITY_WARNING,
@@ -128,6 +129,16 @@ class DesignatorInitSpacing(Rule):
 
          col = entries[0].start() + 1  # 1-based
 
+         # Build fix for spacing issues only (not for multi-entry
+         # splitting which requires context about indentation).
+         fixes = []
+
+         if has_spacing_issue:
+            fixed = re.sub(r'(\[\w+\])\s*=\s*', r'\1 = ', raw_line)
+            fixes.append(Fix(lineno, lineno,
+                              [fixed.rstrip()],
+                              'add space around = in designator'))
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=lineno,
@@ -138,6 +149,7 @@ class DesignatorInitSpacing(Rule):
             severity=self.severity,
             message='; '.join(parts),
             snippet=raw_line.strip(),
+            fixes=fixes,
          ))
 
       return out

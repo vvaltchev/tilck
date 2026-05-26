@@ -12,6 +12,7 @@ from clang.cindex import CursorKind
 from .base import (
       Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
@@ -89,6 +90,19 @@ class EmptyBodyBraces(Rule):
          if not raw_at.startswith(kw):
             continue
 
+         # Build fix: replace the bare `;` body with `{ }`.
+         # Use the closing-paren position to find the `;` that is
+         # the empty body, avoiding any `;` inside trailing comments.
+         fixed_line = line_text
+         close_paren = line_text.rfind(')')
+
+         if close_paren >= 0:
+            semi_pos = line_text.find(';', close_paren)
+            if semi_pos >= 0:
+               after = line_text[semi_pos + 1:]
+               fixed_line = (line_text[:semi_pos].rstrip()
+                             + ' { }' + after)
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=loc.line,
@@ -101,6 +115,9 @@ class EmptyBodyBraces(Rule):
                      'empty loop body').format(kw),
             snippet=line_text.strip(),
             suggestion='{} (...) {{ }}'.format(kw),
+            fixes=[Fix(loc.line, loc.line,
+                        [fixed_line.rstrip()],
+                        'replace bare ; with { }')],
          ))
 
       return out

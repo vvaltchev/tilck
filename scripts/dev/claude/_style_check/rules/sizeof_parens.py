@@ -9,6 +9,7 @@ from typing import List
 from .base import (
       Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -21,6 +22,10 @@ from .. import tokens as _tokens_mod
 # excludes comment / string content so we won't false-positive on
 # /* sizeof foo */ or "sizeof foo".
 _PAT = re.compile(r'\bsizeof\b([ \t]*)([^( \t\n])')
+
+# Match the argument of a bare `sizeof` -- one or more identifiers
+# (covers `sizeof int`, `sizeof unsigned long`, `sizeof foo`).
+_ARG = re.compile(r'\bsizeof\s+(\w+(?:\s+\w+)*)')
 
 
 class SizeofParens(Rule):
@@ -49,6 +54,21 @@ class SizeofParens(Rule):
 
          line_text = ctx.lines[line - 1] if line <= len(ctx.lines) else ''
 
+         # Build a fix: find the argument and wrap it in parens.
+         fixes = []
+         arg_match = _ARG.match(masked, m.start())
+
+         if arg_match and line_text:
+            arg_text = arg_match.group(1)
+            old_expr = arg_match.group(0)  # "sizeof  arg"
+            new_expr = 'sizeof({})'.format(arg_text)
+            fixed_line = line_text.replace(old_expr, new_expr, 1)
+
+            if fixed_line != line_text:
+               fixes.append(Fix(line, line,
+                                [fixed_line.rstrip()],
+                                'add parens: sizeof({})'.format(arg_text)))
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=line,
@@ -59,6 +79,7 @@ class SizeofParens(Rule):
             severity=self.severity,
             message='sizeof requires parens: write sizeof(X), not sizeof X',
             snippet=line_text.strip(),
+            fixes=fixes,
          ))
 
       return out
