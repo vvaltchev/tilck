@@ -50,8 +50,9 @@ below):
 # Linux
 sudo apt install python3-clang libclang-cpp14
 
-# macOS
-pip install clang
+# macOS (Homebrew Python is PEP 668-managed, hence --break-system-packages;
+# libclang.dylib itself ships with Xcode Command Line Tools)
+python3 -m pip install --break-system-packages clang
 
 # FreeBSD
 pkg install py311-clang
