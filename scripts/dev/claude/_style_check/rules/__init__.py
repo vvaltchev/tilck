@@ -70,6 +70,12 @@ from . import verbose_type_name
 from . import ifdef_density
 from . import cast_density
 
+# C++-specific rules
+from . import prefer_cpp_cast
+from . import prefer_nullptr
+from . import using_namespace_in_header
+from . import void_arglist_cpp
+
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
 # CLAUDE.md claims this is a hard rule ("declare at top of enclosing
 # block"), but the corpus regularly uses C99 mixed-declaration style:
@@ -145,6 +151,10 @@ ALL_RULES = [
    verbose_type_name.RULE,
    ifdef_density.RULE,
    cast_density.RULE,
+   prefer_cpp_cast.RULE,
+   prefer_nullptr.RULE,
+   using_namespace_in_header.RULE,
+   void_arglist_cpp.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

@@ -33,6 +33,11 @@ from .. import tokens as _tokens_mod
 # so a trailing `||` is not split into `|` + `|`.
 _OP_END_PAT = re.compile(r'^(.*?)(&&|\|\||\||\&)\s*$')
 
+# In C++ files, `&&` at end of line in a declaration context is a
+# rvalue reference, not a logical operator.  Skip when the line has
+# no comparison or other logical operator preceding the trailing `&&`.
+_CMP_OR_LOGIC_PAT = re.compile(r'==|!=|<=|>=|<|>|\|\||&&(?![\s]*$)')
+
 
 def _paren_delta(text):
    d = 0
@@ -78,6 +83,22 @@ class AlignMultilineOperators(Rule):
             continue
 
          op = m.group(2)
+
+         # In C++ files, trailing `&&` without any comparison or
+         # logical operator on the same line is likely a rvalue
+         # reference in a declaration, not a boolean expression.
+         # Treat as a non-operator line to break the run.
+         if ctx.is_cpp and op == '&&':
+            prefix = m.group(1)
+
+            if not _CMP_OR_LOGIC_PAT.search(prefix):
+
+               if len(current) >= 2:
+                  runs.append(current)
+
+               current = []
+               continue
+
          op_col = line.rfind(op) + 1
          current.append((i, op_col, op))
 

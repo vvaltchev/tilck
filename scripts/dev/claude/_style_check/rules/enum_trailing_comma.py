@@ -26,7 +26,7 @@ class EnumTrailingComma(Rule):
    )
    layers = 'S+T'
    needs_tu = True
-   applies_to = {'.c', '.h'}
+   applies_to = {'.c', '.h', '.cpp', '.hpp'}
    severity = SEVERITY_WARNING
    default_score = SCORE_SOFT
 

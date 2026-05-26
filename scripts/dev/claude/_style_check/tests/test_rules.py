@@ -27,8 +27,8 @@ def _ctx_for(file_path, parser_obj, need_tu=False, need_comments=False):
       source_bytes=source_bytes,
       source_text=source_text,
       lines=source_text.split('\n'),
-      is_header=file_path.suffix == '.h',
-      is_cpp=False,
+      is_header=file_path.suffix in ('.h', '.hpp'),
+      is_cpp=file_path.suffix in ('.cpp', '.hpp'),
    )
 
    if need_tu and parser_obj is not None:
@@ -601,6 +601,53 @@ class TestRulesOnFixtures(unittest.TestCase):
          diags[0].rule, 'multiline_call_vs_long_neighbor'
       )
 
+   # ----- C++ rules -----
+
+   def test_bad_prefer_cpp_cast(self):
+
+      r = RULES_BY_ID['prefer_cpp_cast']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_prefer_cpp_cast.cpp', self.parser
+      )
+      self.assertGreaterEqual(len(diags), 2)
+      self.assertTrue(all(d.rule == 'prefer_cpp_cast' for d in diags))
+      self.assertTrue(all(d.is_gradient for d in diags))
+
+   def test_bad_prefer_nullptr(self):
+
+      r = RULES_BY_ID['prefer_nullptr']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_prefer_nullptr.cpp', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(all(d.rule == 'prefer_nullptr' for d in diags))
+      self.assertTrue(all(d.is_gradient for d in diags))
+
+   def test_bad_using_namespace_in_header(self):
+
+      r = RULES_BY_ID['using_namespace_in_header']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_using_namespace_in_header.hpp',
+         self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'using_namespace_in_header' for d in diags)
+      )
+
+   def test_bad_void_arglist_cpp(self):
+
+      r = RULES_BY_ID['void_arglist_cpp']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_void_arglist_cpp.cpp', self.parser
+      )
+      self.assertEqual(len(diags), 2)
+      self.assertTrue(
+         all(d.rule == 'void_arglist_cpp' for d in diags)
+      )
+      self.assertTrue(all(len(d.fixes) > 0 for d in diags))
+
 
 class TestRulesNoFalsePositives(unittest.TestCase):
    """Synthetic `good_*` fixtures exercise the no-violation code paths
@@ -798,6 +845,29 @@ class TestRulesNoFalsePositives(unittest.TestCase):
    def test_good_indent_3sp(self):
       self._assert_no_diags(
          'indent_3sp', 'good_indent_3sp.c'
+      )
+
+   # ----- C++ rules -----
+
+   def test_good_prefer_cpp_cast(self):
+      self._assert_no_diags(
+         'prefer_cpp_cast', 'good_prefer_cpp_cast.cpp'
+      )
+
+   def test_good_prefer_nullptr(self):
+      self._assert_no_diags(
+         'prefer_nullptr', 'good_prefer_nullptr.cpp'
+      )
+
+   def test_good_using_namespace_in_header(self):
+      self._assert_no_diags(
+         'using_namespace_in_header',
+         'good_using_namespace_in_header.hpp'
+      )
+
+   def test_good_void_arglist_cpp(self):
+      self._assert_no_diags(
+         'void_arglist_cpp', 'good_void_arglist_cpp.cpp'
       )
 
 

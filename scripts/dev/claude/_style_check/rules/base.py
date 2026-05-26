@@ -157,13 +157,15 @@ class Rule:
    needs_comments: bool = False
 
    # File-type filter: set of file extensions this rule applies to.
-   # None means: all C source files (.c and .h). The tool does NOT
-   # check .cpp/.hpp in v1.
+   # None means: all C/C++ source files (.c, .h, .cpp, .hpp).
+   # Use {'.c'} or {'.c', '.h'} for C-only rules.
    applies_to: Optional[set] = None  # e.g. {'.c'} or {'.h'}
+
+   ALL_EXTENSIONS = {'.c', '.h', '.cpp', '.hpp'}
 
    def applies_to_file(self, path: Path) -> bool:
       if self.applies_to is None:
-         return path.suffix in ('.c', '.h')
+         return path.suffix in self.ALL_EXTENSIONS
       return path.suffix in self.applies_to
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:

@@ -59,7 +59,7 @@ def collect_files(args, repo_root: Path) -> list:
          if not line:
             continue
 
-         if line.endswith('.c') or line.endswith('.h'):
+         if line.endswith(('.c', '.h', '.cpp', '.hpp')):
 
             p = root / line
 
@@ -71,7 +71,7 @@ def collect_files(args, repo_root: Path) -> list:
       try:
 
          out = subprocess.check_output(
-            ['git', 'ls-files', '*.c', '*.h'],
+            ['git', 'ls-files', '*.c', '*.h', '*.cpp', '*.hpp'],
             cwd=str(root),
             stderr=subprocess.DEVNULL,
             text=True
@@ -258,12 +258,12 @@ def cmd_check(args) -> int:
 
    files = collect_files(args, repo_root)
 
-   # v1 is C-only: drop .cpp/.hpp inputs silently.
-   files = [f for f in files if f.suffix in ('.c', '.h')]
+   files = [f for f in files
+            if f.suffix in ('.c', '.h', '.cpp', '.hpp')]
 
    if not files:
       sys.stderr.write(
-         "error: no .c or .h files to check (v1 is C-only)\n"
+         "error: no .c/.h/.cpp/.hpp files to check\n"
       )
       return 1
 

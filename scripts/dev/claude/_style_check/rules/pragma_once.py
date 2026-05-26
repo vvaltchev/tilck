@@ -80,7 +80,7 @@ class PragmaOnce(Rule):
       '`/* style_check: multi-include */`.'
    )
    layers = LAYER_RAW_TEXT
-   applies_to = {'.h'}
+   applies_to = {'.h', '.hpp'}
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

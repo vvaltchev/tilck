@@ -49,6 +49,28 @@ _TILCK_INCLUDE = re.compile(r'^\s*#\s*include\s+[<"]tilck/', re.MULTILINE)
 _SYS_FUNC = re.compile(r'\bsys_\w+\s*\(')
 
 
+def _inside_angle_brackets(line, pos):
+   """Return True if `pos` (0-based) sits inside `<...>` nesting on
+   the same line.  Used to skip C++ template arguments like
+   `std::is_same<unsigned long, ...>`."""
+
+   depth = 0
+
+   for i, ch in enumerate(line):
+
+      if i >= pos:
+         return depth > 0
+
+      if ch == '<':
+         depth += 1
+      elif ch == '>':
+
+         if depth > 0:
+            depth -= 1
+
+   return False
+
+
 def _in_sys_signature(lines, match_line_idx):
    """Return True if the match line is part of a sys_* function
    signature (multi-line signatures: scan backward from the match
@@ -111,7 +133,12 @@ class VerboseTypeName(Rule):
          if _in_sys_signature(ctx.lines, line - 1):
             continue
 
+         # In C++ files, skip verbose types inside template angle
+         # brackets (e.g. `std::is_same<unsigned long, ...>`).
          line_text = ctx.lines[line - 1] if line <= len(ctx.lines) else ''
+
+         if ctx.is_cpp and _inside_angle_brackets(line_text, col - 1):
+            continue
 
          # Build fix: replace the verbose type with the short typedef.
          fixes = []

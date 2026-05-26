@@ -3,6 +3,8 @@
 # pylint: disable=missing-class-docstring, missing-function-docstring
 # pylint: disable=broad-except, consider-using-f-string
 
+import re
+
 from pathlib import Path
 from typing import List
 
@@ -17,6 +19,12 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
 )
+from .. import tokens as _tokens_mod
+
+# Text-based pattern for C++ reference `&` attached to type instead
+# of variable name.  Matches `Type& var` but not `&var` (address-of)
+# or `&&` (rvalue ref / logical AND).
+_REF_ATTACHED_TO_TYPE = re.compile(r'\b(\w+)&\s+(\w+)')
 
 
 def _is_pointer_typed(cursor) -> bool:
@@ -150,7 +158,63 @@ class PointerAsteriskAttached(Rule):
             fixes=[Fix(loc.line, loc.line, [fixed_line])],
          ))
 
+      # In C++ files, also check for reference `&` attached to the
+      # type rather than the variable name (`Type& var` -> `Type &var`).
+      # Uses a text-based scan on masked source to avoid false positives
+      # inside comments and strings.
+      if ctx.is_cpp:
+         self._check_cpp_ref_attached_to_type(ctx, out, seen)
+
       return out
+
+   def _check_cpp_ref_attached_to_type(self, ctx, out, seen):
+
+      masked = _tokens_mod.mask_non_code(ctx.source_text)
+
+      for i, (masked_line, raw_line) in enumerate(
+         zip(masked.split('\n'), ctx.lines), start=1
+      ):
+
+         for m in _REF_ATTACHED_TO_TYPE.finditer(masked_line):
+
+            type_name = m.group(1)
+            var_name = m.group(2)
+
+            # Skip keywords that are not type names
+            if type_name in ('return', 'goto', 'case', 'sizeof',
+                             'if', 'while', 'for', 'switch',
+                             'delete', 'throw', 'new'):
+               continue
+
+            amp_pos = m.start() + len(type_name)  # 0-based position of &
+            key = (i, amp_pos + 1, var_name)
+
+            if key in seen:
+               continue
+
+            seen.add(key)
+
+            # Build fix: move `&` from type to variable name
+            # `Type& var` -> `Type &var`
+            fixed_line = (raw_line[:amp_pos] +
+                          ' &' +
+                          raw_line[amp_pos + 2:])
+
+            out.append(Diagnostic(
+               file=str(ctx.file_path),
+               line=i,
+               col=amp_pos + 1,
+               end_line=i,
+               end_col=amp_pos + 2,
+               rule=self.id,
+               severity=self.severity,
+               message=(
+                  'reference `&` attached to type instead of '
+                  'variable name "{}" -- use `Type &{}`'
+               ).format(var_name, var_name),
+               snippet=raw_line.strip(),
+               fixes=[Fix(i, i, [fixed_line])],
+            ))
 
 
 RULE = PointerAsteriskAttached()

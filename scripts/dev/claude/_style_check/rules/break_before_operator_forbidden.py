@@ -41,8 +41,9 @@ class BreakBeforeOperatorForbidden(Rule):
       out = []
 
       raw_lines = ctx.lines
+      masked_lines = masked.split('\n')
 
-      for i, line in enumerate(masked.split('\n'), start=1):
+      for i, line in enumerate(masked_lines, start=1):
 
          m = _PAT.match(line)
 
@@ -58,6 +59,25 @@ class BreakBeforeOperatorForbidden(Rule):
             continue
 
          op = m.group(1)
+
+         # In C++ files, `&&` at start of a continuation line could
+         # be a rvalue reference in a declaration context rather than
+         # a logical AND.  Skip when the previous non-blank masked
+         # line ends with `,` or `(` (parameter list context).
+         if ctx.is_cpp and op == '&&':
+
+            prev_masked = ''
+
+            for j in range(i - 2, -1, -1):
+               candidate = masked_lines[j].rstrip()
+
+               if candidate:
+                  prev_masked = candidate
+                  break
+
+            if prev_masked and prev_masked[-1] in (',', '('):
+               continue
+
          col = m.start(1) + 1
 
          line_text = raw_lines[i - 1] if i - 1 < len(raw_lines) else ''
