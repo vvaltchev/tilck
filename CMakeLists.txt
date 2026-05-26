@@ -1055,7 +1055,7 @@ unset(SEC_PER_CYL)
 # For qemu run scripts
 set(QEMU_CHS_GEOM         "cyls=${CHS_CYLS},heads=${CHS_HPC},secs=${CHS_SPT}")
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
-set(QEMU_COMMON_OPTS      "-rtc base=localtime")
+set(QEMU_COMMON_OPTS      "-rtc base=localtime,clock=vm")
 
 if (${ARCH} STREQUAL "i386")
 

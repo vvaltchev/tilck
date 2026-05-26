@@ -57,8 +57,8 @@ static u64 eevdf_vruntime[EEVDF_THREADS];
 
 static void eevdf_thread(void *arg)
 {
-   const int idx = (int)(ulong)arg;
    ulong var;
+   const int idx = (int)(ulong)arg;
 
    /* Same barrier idiom as selftest_fairness: every thread must
     * have been scheduled at least once before any of them starts
@@ -86,6 +86,8 @@ static void eevdf_thread(void *arg)
 void selftest_eevdf(void)
 {
    int tids[EEVDF_THREADS];
+   u64 min_total = (u64) -1;
+   u64 max_total = 0;
    const u32 min_slice =
       (u32) MIN_GRANULARITY_TICKS * EEVDF_VRUNTIME_SCALE;
    const u32 max_slice =
@@ -119,9 +121,9 @@ void selftest_eevdf(void)
 
       printk("eevdf: tid=%d total=%llu slice=%u vruntime=%llu\n",
              tids[i],
-             (unsigned long long) eevdf_total[i],
+             (ulonglong) eevdf_total[i],
              eevdf_slice[i],
-             (unsigned long long) eevdf_vruntime[i]);
+             (ulonglong) eevdf_vruntime[i]);
 
       /* No thread should be starved. */
       VERIFY(eevdf_total[i] > 0);
@@ -138,9 +140,6 @@ void selftest_eevdf(void)
     * Loose fairness sanity check: spread under 50%. This is a smoke
     * test -- the real fairness contract is selftest_fairness's job.
     */
-   u64 min_total = (u64) -1;
-   u64 max_total = 0;
-
    for (int i = 0; i < EEVDF_THREADS; i++) {
 
       if (eevdf_total[i] < min_total)
@@ -154,8 +153,8 @@ void selftest_eevdf(void)
    const u64 spread_pct = min_total ? (spread * 100) / min_total : 0;
 
    printk("eevdf: spread=%llu (%llu%% over min)\n",
-          (unsigned long long) spread,
-          (unsigned long long) spread_pct);
+          (ulonglong) spread,
+          (ulonglong) spread_pct);
 
    VERIFY(spread_pct <= 50);
    se_regular_end();

@@ -1,0 +1,3388 @@
+# Tilck style_check -- ranked-preference data for v2 prettiness scoring.
+#
+# This file is the machine-readable record of the ranked-preference Q&A
+# loop. The style_check tool reads it to fit prettiness coefficients
+# per topic. Each entry is one question.
+#
+# Schema for each entry under `questions:`:
+#
+#   id:        short kebab-case identifier, unique within this file
+#   topic:     one of the v2 categories (call-site / declarations /
+#              control-flow / function-shape / expressions / comments /
+#              naming / macros / whitespace / file-org / structs)
+#   date:      YYYY-MM-DD when the question was asked
+#   prompt:    one-line summary of the trade-off the question explores
+#   snippets:  list of code variants. Each:
+#                label:  "1" / "2" / ...
+#                code:   C source (literal, multi-line OK)
+#                desc:   one-line note on what makes this variant distinct
+#   guess:     Claude's pre-revealed ranking (e.g. [1, 3, 2])
+#   ranking:   user's actual ranking (same format)
+#   comment:   optional free-form user note
+#   notes:     optional Claude observations after seeing the ranking
+#   weight:    optional double; rough indication of how strongly the
+#              user felt about this ranking (default 1.0)
+#
+# Coefficient fitting consumes this file; Claude does not edit
+# entries after they're recorded (immutable history).
+
+version: 1
+questions:
+
+  - id: q1-call-site-4arg-wrap
+    topic: call-site
+    date: 2026-05-20
+    prompt: >
+      How to wrap a 4-arg function call that exceeds 80 cols on one
+      line. Args are independent (no semantic grouping).
+    snippets:
+      - label: "1"
+        desc: Style 1 (aligned to opening paren), args packed
+        code: |
+          result = compute_with_context(curr_session, the_buffer_ptr,
+                                        buffer_length, flags);
+      - label: "2"
+        desc: Style 2 strict -- `);` on its own line, one arg per line
+        code: |
+          result = compute_with_context(
+             curr_session,
+             the_buffer_ptr,
+             buffer_length,
+             flags
+          );
+      - label: "3"
+        desc: Style 2 hybrid -- `);` at end of last arg, one arg per line
+        code: |
+          result = compute_with_context(
+             curr_session,
+             the_buffer_ptr,
+             buffer_length,
+             flags);
+      - label: "4"
+        desc: Style 1 (aligned to opening paren), one arg per line
+        code: |
+          result = compute_with_context(curr_session,
+                                        the_buffer_ptr,
+                                        buffer_length,
+                                        flags);
+    guess: ["4", "1", "3", "2"]
+    ranking: ["2", "4", "1", "3"]
+    comment: >
+      Variants 2 and 4 are close, with a slight preference for 2.
+      Variant 3 is completely unacceptable and should be a HARD rule.
+    notes: >
+      Claude's guess was significantly wrong (V2 ranked last, actually
+      first). I had judged Style 2 strict as ceremonial overhead, but
+      the user values the closing-paren-on-its-own-line symmetry. V3
+      promoted from "acceptable Style 2 variant" to "hard-no": the
+      one-arg-per-line layout REQUIRES `);` on its own line.
+    weight: 1.0
+
+  - id: q1b-call-site-wrap-hierarchy
+    topic: call-site
+    date: 2026-05-20
+    prompt: >
+      Supplements Q1. The user surfaced a hierarchical decision tree
+      for call-site wrapping that Q1 missed: there are intermediate
+      preferred forms BEFORE you start spreading args across multiple
+      lines. Q1's ranking only applies as the sub-ranking once even
+      those intermediates don't fit.
+    snippets:
+      - label: "h1"
+        desc: Single line (always tried first)
+        code: |
+          context->result = very_long_function_name(arg1, arg2, arg3);
+      - label: "h2"
+        desc: >
+          Break at `=`. Assignment ends first line; full call (still
+          single-line) on the next line at +3 indent. Same shape as
+          the elf.c fix (`const ulong stack_top = ...`).
+        code: |
+          context->result =
+             very_long_function_name(arg1, arg2, arg3);
+      - label: "h3"
+        desc: >
+          `(` at end of name-line, ALL args on one indented line,
+          `)` on its own line aligned with statement start. Used
+          when h2 still doesn't fit but all args fit on one indented
+          line.
+        code: |
+          context->result = very_long_function_name(
+             arg1, arg2, arg3, arg4, arg5
+          );
+      - label: "h4"
+        desc: >
+          Args spill across multiple lines -- Q1's domain. Sub-
+          ranking applies: V2 > V4 > V1 > V3 (hard-no).
+        code: |
+          /* see Q1 entry for the four sub-variants */
+    guess: ["h1", "h2", "h3", "h4"]
+    ranking: ["h1", "h2", "h3", "h4"]
+    comment: >
+      User-directed correction to Q1. The full hierarchy is strictly
+      monotonic in this order; Q1's ranking is the sub-tree applied
+      at level h4 when level h3 cannot fit.
+    notes: >
+      Crucial v2 modeling implication: the call-site prettiness score
+      is not a single ranking over layouts but a *cascade* where each
+      level scores higher than the next, and the active level depends
+      on what fits given the line width, arg count, and surrounding
+      indent. The score function walks the hierarchy top-down and
+      returns the highest-fitting form's score.
+
+      The break-at-= pattern (h2) was already recorded as a
+      style-fix-strategy in memory (feedback_style_fix_strategies)
+      from the elf.c fix, but I had not generalized it from
+      "assignment wrapping" to "call-site layout." It is the same
+      pattern at a different abstraction.
+    weight: 1.5
+
+  - id: q2-control-flow-nested-struct-cond
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Two-clause if-condition that reads two fields of the same
+      nested struct. Single-line braced form exceeds 80 cols.
+    snippets:
+      - label: "1"
+        desc: Accept brace-on-own-line, keep condition as-is
+        code: |
+          if (sess->conn->state != STATE_OPEN ||
+              sess->conn->kind != KIND_TCP)
+          {
+             return -EINVAL;
+          }
+      - label: "2"
+        desc: Extract each sub-expression to a named local
+        code: |
+          const int state = sess->conn->state;
+          const int kind = sess->conn->kind;
+
+          if (state != STATE_OPEN || kind != KIND_TCP) {
+             return -EINVAL;
+          }
+      - label: "3"
+        desc: Introduce a convenience pointer one level up
+        code: |
+          const struct conn *const c = sess->conn;
+
+          if (c->state != STATE_OPEN || c->kind != KIND_TCP) {
+             return -EINVAL;
+          }
+    guess: ["3", "2", "1"]
+    ranking: ["3", "1", "2"]
+    comment: ""
+    notes: >
+      Claude got V3 right (top) but had V2 over V1 -- user has V1 over
+      V2. The "1-2 exprs" guidance in CLAUDE.md is the UPPER BOUND for
+      when individual-extract is acceptable, not the preferred form.
+      Two extracted locals (`state`, `kind`) lose semantic anchoring
+      and add to function-local count; accepting brace-on-own-line
+      preserves meaning at a single layout cost. Convenience pointer
+      wins because it is the minimal-disturbance refactor: shortens
+      the parent reference without renaming the leaf fields, so the
+      original semantic shape is preserved while the wrapping
+      disappears.
+    weight: 1.0
+
+  - id: q3-decl-const-short-types
+    topic: declarations
+    date: 2026-05-20
+    prompt: >
+      Function preamble with two read-only locals -- one struct
+      pointer (not reassigned, fields mutated through it) and one int
+      (read but never reassigned). Types are short; no visual-weight
+      argument either way.
+    snippets:
+      - label: "1"
+        desc: const where applicable, on both
+        code: |
+          struct task *const ti = get_curr_task();
+          const int prio = ti->priority;
+      - label: "2"
+        desc: const on the pointer only (*const), not on the int
+        code: |
+          struct task *const ti = get_curr_task();
+          int prio = ti->priority;
+      - label: "3"
+        desc: no const anywhere
+        code: |
+          struct task *ti = get_curr_task();
+          int prio = ti->priority;
+    guess: ["1", "3", "2"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      Claude got V1 right (top) but had V2 last, ranked V3 above V2.
+      I read "const on pointer but not on int" as an inconsistency
+      penalty -- the user doesn't see it that way. Const is
+      monotonically valuable: adding it where correct is a gain,
+      missing it is a loss, partial-const is strictly better than
+      no-const. There's no symmetry/consistency penalty for partial
+      application. The visual-weight exception only fires at higher
+      type-spelling thresholds (e.g. `enum task_state`).
+    weight: 1.0
+
+  - id: q4-function-def-signature-wrap
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      A 4-parameter function definition with a signature too long for
+      one line. Return type is on its own line per existing rule;
+      question is how to lay out the parameter list itself.
+    snippets:
+      - label: "1"
+        desc: Style 1 packed (aligned to opening paren)
+        code: |
+          static int
+          load_segment(fs_handle *elf_h, pdir_t *pdir,
+                       Elf_Phdr *phdr, ulong *end_vaddr_ref)
+          {
+             /* ... */
+          }
+      - label: "2"
+        desc: Style 1 one arg per line (aligned to opening paren)
+        code: |
+          static int
+          load_segment(fs_handle *elf_h,
+                       pdir_t *pdir,
+                       Elf_Phdr *phdr,
+                       ulong *end_vaddr_ref)
+          {
+             /* ... */
+          }
+      - label: "3"
+        desc: Style 2 strict (`(` ends line, args indented +3, `)` on own line)
+        code: |
+          static int
+          load_segment(
+             fs_handle *elf_h,
+             pdir_t *pdir,
+             Elf_Phdr *phdr,
+             ulong *end_vaddr_ref
+          )
+          {
+             /* ... */
+          }
+      - label: "4"
+        desc: Style 2 with `)` glued to last arg (one arg per line)
+        code: |
+          static int
+          load_segment(
+             fs_handle *elf_h,
+             pdir_t *pdir,
+             Elf_Phdr *phdr,
+             ulong *end_vaddr_ref)
+          {
+             /* ... */
+          }
+    guess: ["2", "1", "3", "4"]
+    ranking: ["2", "1", "3", "4"]
+    comment: >
+      V3 and V4 are equally ugly and unacceptable. HARD RULE.
+    notes: >
+      Claude got the top exactly right (V2 > V1) but had a slight
+      preference for V3 over V4 -- user ties them as equally
+      unacceptable. Key asymmetry with Q1: for CALLS, Style 2 strict
+      was the user's TOP pick (the `);` on its own line gives
+      statement-level closure); for DEFINITIONS, Style 2 in any form
+      is hard-no because the `{` of the body already provides closure
+      and a separate `)` line creates two adjacent single-character
+      lines without earning its keep. Function defs use Style 1 only;
+      within Style 1, one-arg-per-line beats packed.
+    weight: 1.0
+
+  - id: q5-multiline-ternary
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      RHS of an assignment is a ternary between two long function
+      calls. Single-line doesn't fit. How to lay out the ternary.
+    snippets:
+      - label: "1"
+        desc: >
+          Assignment alone on first line, condition + branches each
+          on its own indented line (CLAUDE.md-documented form).
+        code: |
+          new_term =
+             serial_port_fwd
+                ? tty_allocate_and_init_new_serial_term(serial_port_fwd)
+                : tty_allocate_and_init_new_video_term(rows_buf);
+      - label: "2"
+        desc: Condition on the assignment line, `?` and `:` branches indented
+        code: |
+          new_term = serial_port_fwd
+             ? tty_allocate_and_init_new_serial_term(serial_port_fwd)
+             : tty_allocate_and_init_new_video_term(rows_buf);
+      - label: "3"
+        desc: Flatten to `if`/`else` instead of using a ternary
+        code: |
+          if (serial_port_fwd)
+             new_term = tty_allocate_and_init_new_serial_term(serial_port_fwd);
+          else
+             new_term = tty_allocate_and_init_new_video_term(rows_buf);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 is technically best because `?` is one indent away from
+      `serial_port_fwd`. V2 and V3 are both a bit ugly. User
+      generally tries to avoid full if/else when possible.
+
+      Important higher-order alternative the user volunteered:
+      when the initialization is constant (cheap default), prefer
+      to declare with the common choice and conditionally override
+      the deviation:
+
+         int val = common_choice;
+         if (choice != expected)
+            val = other_choice;
+
+      This sidesteps the ternary entirely. Not applicable here
+      because both ternary branches are non-trivial calls.
+    notes: >
+      Claude's guess [1, 2, 3] mostly correct on top (V1 wins) but
+      had V2 and V3 in strict order; user treats them as roughly
+      tied ("both a bit ugly"). The structural argument for V1: `?`
+      is one indent step away from the condition `serial_port_fwd`,
+      yielding visual symmetry between condition / true-branch /
+      false-branch. V2 and V3 lose that.
+
+      The volunteered fourth variant (init-with-default + override)
+      is recorded as a cross-cutting pattern, not a Q5-internal
+      ranking option.
+    weight: 1.0
+
+  - id: q6-naming-tight-scope-alias
+    topic: naming
+    date: 2026-05-20
+    prompt: >
+      Convenience pointer alias for a nested struct reference,
+      used in ~5 statements in a small block; scope ends right
+      after. Three name choices.
+    snippets:
+      - label: "1"
+        desc: Single-letter, initial of purpose (`c` for conn)
+        code: |
+          const struct conn *const c = sess->conn;
+          if (c->state != OPEN)
+             return -EINVAL;
+          rc = conn_lock(c);
+          write_to_conn(c, buf, len);
+          c->last_used = now;
+          conn_unlock(c);
+      - label: "2"
+        desc: Name matches the type tag (`conn` shadowing struct conn)
+        code: |
+          const struct conn *const conn = sess->conn;
+          if (conn->state != OPEN)
+             return -EINVAL;
+          rc = conn_lock(conn);
+          write_to_conn(conn, buf, len);
+          conn->last_used = now;
+          conn_unlock(conn);
+      - label: "3"
+        desc: Descriptive with `_ptr` suffix (`conn_ptr`)
+        code: |
+          const struct conn *const conn_ptr = sess->conn;
+          if (conn_ptr->state != OPEN)
+             return -EINVAL;
+          rc = conn_lock(conn_ptr);
+          write_to_conn(conn_ptr, buf, len);
+          conn_ptr->last_used = now;
+          conn_unlock(conn_ptr);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH on first try. In tight scope where the referent is
+      unambiguous, the name should be a 1-2 letter abbreviation of
+      PURPOSE, not of type. The `_ptr` suffix is anti-pattern. Type-
+      matching name (V2) is acceptable as second-best (the
+      shadowing doesn't bother the user) but loses to the
+      single-letter purpose-initial. Pattern confirmed across
+      corpus: `ti` (task), `pi` (process), `h` (handle), `c`
+      (conn), `ct` (curr ticks), `st` (selected ticks).
+    weight: 1.0
+
+  - id: q7-comment-magic-constant
+    topic: comments
+    date: 2026-05-20
+    prompt: >
+      A magic constant with a rationale. Three comment shapes:
+      no comment, brief one-line above, full block above.
+    snippets:
+      - label: "1"
+        desc: No comment
+        code: |
+          const u32 max_retries = 5;
+      - label: "2"
+        desc: Brief one-line comment above
+        code: |
+          /* Tuned empirically; 5 retries covers ~30s with default backoff */
+          const u32 max_retries = 5;
+      - label: "3"
+        desc: Full block comment above
+        code: |
+          /*
+           * Tuned empirically: 5 retries with the default TCP backoff
+           * gives ~30 seconds total wait before giving up.
+           */
+          const u32 max_retries = 5;
+    guess: ["2", "3", "1"]
+    ranking: ["2", "3", "1"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Comments are appropriately sized: brief above-the-
+      line for one-sentence rationale (sweet spot); full block when
+      the explanation has genuine nuance; no comment is the worst
+      because it loses the "why" entirely. The user values comments
+      AND avoids over-commenting -- both at once, calibrated to the
+      rationale's actual complexity.
+    weight: 1.0
+
+  - id: q8-decl-const-verbose-type
+    topic: declarations
+    date: 2026-05-20
+    prompt: >
+      A single function-scope local with a verbose type
+      (`enum task_state` -- 15 chars). Read-only by intent.
+      Three variants on const + name length.
+    snippets:
+      - label: "1"
+        desc: Full const, descriptive name
+        code: |
+          const enum task_state state = atomic_load(&ti->state);
+      - label: "2"
+        desc: No const, descriptive name
+        code: |
+          enum task_state state = atomic_load(&ti->state);
+      - label: "3"
+        desc: Full const, short name to offset type's visual weight
+        code: |
+          const enum task_state s = atomic_load(&ti->state);
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Confirms the visual-weight rule for const: above
+      some type-spelling threshold (~15 chars, hit by `enum X`,
+      multi-word types), the const decoration's positive value flips
+      to a net negative. V3 (rename to offset) loses because it
+      addresses the wrong axis: the problem is type-weight, not
+      name-weight. Shortening the name doesn't reduce the
+      const-on-verbose-type cost. The right move is to drop const
+      and keep the descriptive name.
+    weight: 1.0
+
+  - id: q9-struct-field-comments
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      A small struct with three fields, each needing a brief
+      explanatory comment that fits as a trailing inline. Three
+      layouts.
+    snippets:
+      - label: "1"
+        desc: Aligned trailing comments (all at same column)
+        code: |
+          struct sched_ticks {
+             atomic_u64_t vruntime;        /* virtual runtime */
+             atomic_u64_t deadline;        /* absolute deadline */
+             u32 slice_remaining;          /* unused ticks left */
+          };
+      - label: "2"
+        desc: Unaligned trailing (one space after `;`)
+        code: |
+          struct sched_ticks {
+             atomic_u64_t vruntime; /* virtual runtime */
+             atomic_u64_t deadline; /* absolute deadline */
+             u32 slice_remaining; /* unused ticks left */
+          };
+      - label: "3"
+        desc: Comment above each field
+        code: |
+          struct sched_ticks {
+             /* virtual runtime */
+             atomic_u64_t vruntime;
+             /* absolute deadline */
+             atomic_u64_t deadline;
+             /* unused ticks left */
+             u32 slice_remaining;
+          };
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH (fourth in a row). Aligned trailing comments are
+      the corpus standard for struct field annotations. Above-the-
+      line is the fallback when trailing doesn't fit. Unaligned
+      trailing is the worst because it sacrifices the visual-
+      alignment property for no gain.
+    weight: 1.0
+
+  - id: q10-extract-vs-inline-vs-helper
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      Test whether a task's state is in a set of three values
+      (sleeping / stopped / traced). Compare three approaches:
+      inline OR-chain, extract `ti->state` to local then OR-chain,
+      or define a `task_is_blocked()` helper. Context-sensitive: how
+      does the answer change with number of call sites (1, 2, 3+)?
+    snippets:
+      - label: "1"
+        desc: Inline OR-chain, brace on own line
+        code: |
+          if (ti->state == TASK_STATE_SLEEPING ||
+              ti->state == TASK_STATE_STOPPED  ||
+              ti->state == TASK_STATE_TRACED)
+          {
+             do_thing(ti);
+          }
+      - label: "2"
+        desc: Extract ti->state to a local, then OR-chain
+        code: |
+          enum task_state state = ti->state;
+
+          if (state == TASK_STATE_SLEEPING ||
+              state == TASK_STATE_STOPPED  ||
+              state == TASK_STATE_TRACED)
+          {
+             do_thing(ti);
+          }
+      - label: "3"
+        desc: Introduce a `task_is_blocked()` helper and call it
+        code: |
+          /* helper defined elsewhere in the same file: */
+          static bool
+          task_is_blocked(struct task *ti)
+          {
+             enum task_state state = ti->state;
+             return state == TASK_STATE_SLEEPING ||
+                    state == TASK_STATE_STOPPED  ||
+                    state == TASK_STATE_TRACED;
+          }
+
+          /* call site: */
+          if (task_is_blocked(ti))
+             do_thing(ti);
+    guess: ["3", "1", "2"]
+    ranking: ["3", "2", "1"]
+    comment: >
+      Three rankings by call-site count:
+      - 1 site:  [2, 1, 3] -- V3 overkill, V2 best (1 local saves
+        3 repeated references)
+      - 2 sites: [3, 2, 1] -- V3 wins but V2 close
+      - 3+ sites: [3, 2, 1] -- V3 a strong preference
+
+      Also: `||` (and presumably `&&`) operators on consecutive
+      lines should be COLUMN-ALIGNED, padding with extra space if
+      needed. My snippets had unaligned `||` -- corrected above.
+    notes: >
+      The 2-site case is recorded as canonical ranking since the
+      question stated "1-2 sites."
+
+      Major model correction: extraction is justified when
+      SAVINGS > COST. Cost = number of new locals introduced.
+      Savings = number of use sites where the local replaces a
+      repeated expression. This unifies Q2 (cost 2, savings 2 ->
+      loses to brace-on-own-line) and Q10 single-site (cost 1,
+      savings 3 -> beats brace-on-own-line).
+
+      Helper-function abstraction has a different cost shape:
+      one-time definition cost amortized across call sites. At
+      1 site it's overkill; at 2 sites it ties extract-local; at
+      3+ sites it dominates strongly.
+
+      New concrete rule surfaced: align `||` and `&&` operators
+      column-wise across multi-line boolean expressions. This is
+      a formatting rule that could eventually be enforced by the
+      linter.
+    weight: 1.5
+
+  - id: q12-switch-case-layout
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      switch over an enum with three short case bodies + default.
+      Three layouts compared: case +3 from switch, case flush with
+      switch (Linux-kernel style), case bodies braced per-case.
+    snippets:
+      - label: "1"
+        desc: case +3 from switch, body +3 from case
+        code: |
+          switch (op) {
+             case OP_READ:
+                rc = do_read(buf, len);
+                break;
+             case OP_WRITE:
+                rc = do_write(buf, len);
+                break;
+             case OP_FLUSH:
+                rc = do_flush();
+                break;
+             default:
+                return -EINVAL;
+          }
+      - label: "2"
+        desc: case flush with switch (Linux-kernel style)
+        code: |
+          switch (op) {
+          case OP_READ:
+             rc = do_read(buf, len);
+             break;
+          case OP_WRITE:
+             rc = do_write(buf, len);
+             break;
+          case OP_FLUSH:
+             rc = do_flush();
+             break;
+          default:
+             return -EINVAL;
+          }
+      - label: "3"
+        desc: braced case bodies (per-case scope blocks)
+        code: |
+          switch (op) {
+             case OP_READ: {
+                rc = do_read(buf, len);
+                break;
+             }
+             case OP_WRITE: {
+                rc = do_write(buf, len);
+                break;
+             }
+             case OP_FLUSH: {
+                rc = do_flush();
+                break;
+             }
+             default:
+                return -EINVAL;
+          }
+    guess: ["1", "2", "3"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V1 default. V3 is required (not optional) when per-case
+      variables are needed. V2 is forbidden -- hard rule.
+    notes: >
+      Two corrections to Claude's model:
+
+      1. V2 (Linux-kernel-style case-flush-with-switch) is a HARD
+         rule violation. Not "less preferred" -- forbidden.
+         Probably the same family-deviation as Tilck's 3-space
+         indent vs Linux's tab/8-space: the case-flush form
+         belongs to that other style family and is rejected as a
+         unit.
+
+      2. V3 is NOT a stylistic alternative to V1 -- it is a
+         MANDATORY escalation when a case has its own local
+         declarations. Without braces, declaring a local inside a
+         case is broken (case labels don't introduce scope in C).
+         The choice "V1 or V3" is decided by language semantics,
+         not aesthetics.
+
+      Revised model: switch-case has a hard rule (case must be
+      indented +3 from switch) and a conditional rule (per-case
+      braces required iff case has locals). Linter should flag V2
+      shape as a hard violation and verify the brace presence
+      matches the locals-present condition.
+    weight: 1.5
+
+  - id: q13-include-ordering
+    topic: file-org
+    date: 2026-05-20
+    prompt: >
+      `#include` ordering at the top of a kernel .c file with
+      headers from four subtrees (tilck_gen_headers, tilck/common,
+      tilck/kernel, tilck/mods). Three orderings compared.
+    snippets:
+      - label: "1"
+        desc: Grouped by subtree, blank lines between groups
+        code: |
+          #include <tilck_gen_headers/config_global.h>
+
+          #include <tilck/common/basic_defs.h>
+          #include <tilck/common/string_util.h>
+
+          #include <tilck/kernel/sync.h>
+          #include <tilck/kernel/process.h>
+          #include <tilck/kernel/sched.h>
+
+          #include <tilck/mods/console.h>
+      - label: "2"
+        desc: Single contiguous block, ordered by subtree, no blank lines
+        code: |
+          #include <tilck_gen_headers/config_global.h>
+          #include <tilck/common/basic_defs.h>
+          #include <tilck/common/string_util.h>
+          #include <tilck/kernel/sync.h>
+          #include <tilck/kernel/process.h>
+          #include <tilck/kernel/sched.h>
+          #include <tilck/mods/console.h>
+      - label: "3"
+        desc: Strict alphabetical, no semantic grouping
+        code: |
+          #include <tilck/common/basic_defs.h>
+          #include <tilck/common/string_util.h>
+          #include <tilck/kernel/process.h>
+          #include <tilck/kernel/sched.h>
+          #include <tilck/kernel/sync.h>
+          #include <tilck/mods/console.h>
+          #include <tilck_gen_headers/config_global.h>
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: V3 is forbidden -- hard rule.
+    notes: >
+      Claude got the order right [1, 2, 3] but missed that V3 is
+      not "least preferred" but a HARD RULE violation. The reason
+      is structural: alphabetical ordering forces
+      `tilck_gen_headers/config_global.h` to the LAST position,
+      whereas it must come FIRST -- it carries generated config
+      defines that other headers in the project depend on. V3
+      breaks two properties at once: required-first ordering for
+      gen_headers, and required-grouping by subtree.
+
+      The real V1 vs V2 soft choice is whether to insert blank
+      lines between subtree groups. V1 (with blanks) wins; V2
+      (single block) is acceptable.
+    weight: 1.0
+
+  - id: q14-helper-placement
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      A small helper called by exactly one caller in the same .c
+      file. Where do you place the helper? Three options: above the
+      caller (no fwd decl), below the caller (with fwd decl at top),
+      or in a separate .c file with a header.
+    snippets:
+      - label: "1"
+        desc: Helper above the caller (no forward declaration)
+        code: |
+          static int
+          validate_request(struct req *r)
+          {
+             /* ... validate, return -EINVAL on bad ... */
+             return 0;
+          }
+
+          static int
+          process_request(struct req *r)
+          {
+             int rc = validate_request(r);
+             if (rc < 0)
+                return rc;
+
+             /* ... do the actual work ... */
+             return 0;
+          }
+      - label: "2"
+        desc: Caller above; helper below with forward declaration at top of file
+        code: |
+          /* forward declaration at top of file */
+          static int validate_request(struct req *r);
+
+          static int
+          process_request(struct req *r)
+          {
+             int rc = validate_request(r);
+             if (rc < 0)
+                return rc;
+             /* ... */
+             return 0;
+          }
+
+          static int
+          validate_request(struct req *r)
+          {
+             /* ... */
+             return 0;
+          }
+      - label: "3"
+        desc: Helper in a separate .c file with a header declaration
+        code: |
+          /* request_helpers.h */
+          int validate_request(struct req *r);
+
+          /* request_helpers.c */
+          int
+          validate_request(struct req *r)
+          {
+             /* ... */
+             return 0;
+          }
+
+          /* request_main.c */
+          #include "request_helpers.h"
+
+          static int
+          process_request(struct req *r)
+          {
+             int rc = validate_request(r);
+             /* ... */
+             return 0;
+          }
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V2 (helper below caller with forward decl) is allowed ONLY
+      when re-ordering cannot avoid the forward declaration (e.g.
+      mutual recursion). Placing a helper below its caller is
+      "very bad" when reordering would work.
+
+      V3 ranks last only because this example stipulated a single
+      caller and a genuinely private helper. If the helper were
+      part of a broader interface used by multiple callers, V3
+      would WIN -- "each function should be placed in the right
+      file, not at random."
+    notes: >
+      Got the flat ranking right but missed two structural layers:
+
+      1. V2 is a HARD RULE violation whenever reordering would
+         eliminate the forward declaration. Forward decls are
+         allowed only when unavoidable (mutual recursion, or some
+         genuine forcing function). Placing a helper below its
+         caller for no language-imposed reason is rejected.
+
+      2. V3 is context-dependent. For a TRULY private single-
+         caller helper, V3 is overkill -- artificial file split.
+         For a helper that conceptually belongs to a shared
+         interface, V3 WINS -- the helper should live in the
+         appropriate .c/.h pair, not as a local static.
+
+      The real decision is a placement tree, not a ranking:
+
+        Helper conceptually private to one caller?
+          YES -> V1 (above caller, same file).
+                 V2 forbidden if reordering avoids fwd decl.
+                 V3 wrong (artificial split).
+          NO (part of broader interface) -> V3 (right file).
+
+      The under-appreciated insight: WHERE a function lives is a
+      style decision, not just "wherever it happens to be needed."
+      I keep treating file/scope choices as mechanical when they
+      carry conceptual weight.
+    weight: 1.5
+
+  - id: q15-phase-local-scope
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      A two-phase function with a temp variable `h` used only in
+      phase 1. Three placements for h's declaration: function-top
+      (C89), mid-block at point of use (C99), and explicit `{ }`
+      sub-block.
+    snippets:
+      - label: "1"
+        desc: Declare h at function top; stays in scope through phase 2
+        code: |
+          static int
+          do_work(struct task *ti)
+          {
+             struct fs_handle *h;
+             int rc;
+
+             /* phase 1: open file, parse config */
+             h = open_file(ti, "/etc/config");
+             if (!h)
+                return -ENOENT;
+             parse_config(h);
+             close_handle(h);
+
+             /* phase 2: apply config (h not used) */
+             rc = apply_config();
+             return rc;
+          }
+      - label: "2"
+        desc: Declare h mid-function at the point of use (C99 style)
+        code: |
+          static int
+          do_work(struct task *ti)
+          {
+             int rc;
+
+             /* phase 1: open file, parse config */
+             struct fs_handle *h = open_file(ti, "/etc/config");
+             if (!h)
+                return -ENOENT;
+             parse_config(h);
+             close_handle(h);
+
+             /* phase 2: apply config */
+             rc = apply_config();
+             return rc;
+          }
+      - label: "3"
+        desc: Scope h to an explicit `{ ... }` sub-block
+        code: |
+          static int
+          do_work(struct task *ti)
+          {
+             int rc;
+
+             /* phase 1 -- h scoped to this block */
+             {
+                struct fs_handle *h = open_file(ti, "/etc/config");
+                if (!h)
+                   return -ENOENT;
+                parse_config(h);
+                close_handle(h);
+             }
+
+             /* phase 2: apply config */
+             rc = apply_config();
+             return rc;
+          }
+    guess: ["2", "3", "1"]
+    ranking: ["3", "1", "2"]
+    comment: >
+      V3 is the most elegant when scope-narrowing pays off. V1 is
+      acceptable when phase 2 is minimal (V3 ~= V1 in such cases).
+      V2 (mid-function decls) is UGLY and should be avoided.
+
+      Escalation when the sub-block grows too large or would need
+      its own nested sub-block: extract to a separate function.
+    notes: >
+      Three model corrections relative to Claude's guess [2, 3, 1]:
+
+      1. V2 (C99 mid-block decl) is ugly and should be avoided.
+         The corpus has cases of it (kernel/signal.c:21-33,
+         kernel/poll.c:21) but those are unpolished/rushed code,
+         NOT a style endorsement. The CLAUDE.md-documented rule
+         "non-const locals at top of enclosing block" IS the rule.
+         My earlier inference (dropping the linter rule based on
+         corpus drift) was wrong; revisit re-enabling it.
+
+      2. V3 (explicit `{ }` sub-block) is the most elegant form,
+         not overkill. It's the user-endorsed escape valve for
+         narrowing scope without mid-block decls.
+
+      3. V1 is acceptable when phase 2 is minimal -- the "wasted
+         scope" cost is proportional to how much of the function
+         doesn't use the variable.
+
+      Refined rule: declare at top of ENCLOSING SCOPE (function
+      body, control-flow body, or sub-block) -- never mid-scope.
+      The sub-block exists precisely to enable narrowing without
+      breaking the top-of-scope rule.
+
+      Escalation cascade from Q15:
+        phase sizes minimal       -> V1 ~= V3 (V3 nicer but V1 ok)
+        phases non-trivial         -> V3 strongly preferred
+        sub-block becomes too big  -> EXTRACT to a helper function
+        would need nested sub-block-> also extract
+
+      This is the function-shape rule the user has been pointing
+      at: scope locals as narrowly as practical, but escalate to
+      function extraction before nesting gets deep.
+    weight: 2.0
+
+  - id: q16-macro-vs-inline
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      A small reusable computation (align-up to a power of 2)
+      used in ~10 places across the kernel. Three implementations:
+      function-like macro, static inline in a header, regular
+      non-inline function.
+    snippets:
+      - label: "1"
+        desc: Function-like macro
+        code: |
+          #define ALIGN_UP(n, a)   (((n) + (a) - 1) & ~((a) - 1))
+      - label: "2"
+        desc: static inline function in a header
+        code: |
+          static inline ulong
+          align_up(ulong n, ulong a)
+          {
+             return (n + a - 1) & ~(a - 1);
+          }
+      - label: "3"
+        desc: Regular non-inline function with header declaration
+        code: |
+          /* header */
+          ulong align_up(ulong n, ulong a);
+
+          /* implementation in .c */
+          ulong
+          align_up(ulong n, ulong a)
+          {
+             return (n + a - 1) & ~(a - 1);
+          }
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      Default ranking for a single-type small expression. Two
+      qualifications:
+
+      Type-genericity: when the operation must work across N
+      integer types, the calculus shifts. At 2 types, V1 ~= V2
+      (V2 requires two inline impls or a dispatch layer). At 3+
+      types, V1 wins outright -- macros are the most generic
+      form.
+
+      Compiler-inlining failure: in some cases -O3 doesn't
+      actually inline `static inline` functions (the user has
+      seen this in terminal code). When that happens, V1 is
+      forced. Document the pragmatic exception with a comment.
+    notes: >
+      EXACT MATCH on the default ranking. The valuable info is in
+      the qualifications.
+
+      Two model extensions surfaced:
+
+      1. Type-genericity dimension: C lacks templates, so multi-
+         type small operations don't fit V2 cleanly. Either
+         duplicate V2 per type, build a dispatch layer
+         (atomic_load/store style via _Generic or X-macros), or
+         use a macro. Threshold: 2 types ~= 50/50; 3+ types V1
+         dominates.
+
+      2. Compiler-inlining-failure escape: when `-O3` doesn't
+         actually inline the inline function (real example:
+         terminal code), the user falls back to V1 with a
+         comment explaining the why. This generalizes to a
+         broader rule: when going against the stated default
+         preference for pragmatic reasons, DOCUMENT the why in
+         a comment so the next reader (or v2 linter) knows it
+         is an intentional exception, not drift.
+    weight: 1.0
+
+  - id: q17-function-prologue-comment
+    topic: comments
+    date: 2026-05-20
+    prompt: >
+      Function with slightly non-obvious return-code behavior.
+      Three prologue-comment shapes: none, brief one-liner, full
+      block with purpose/params/return-codes.
+    snippets:
+      - label: "1"
+        desc: No prologue comment
+        code: |
+          static int
+          parse_config_file(struct task *ti, const char *path)
+          {
+             /* ... */
+          }
+      - label: "2"
+        desc: Brief one-line comment above (paraphrase of the name)
+        code: |
+          /* Parse the config file at `path` for task `ti` */
+          static int
+          parse_config_file(struct task *ti, const char *path)
+          {
+             /* ... */
+          }
+      - label: "3"
+        desc: Full block documenting purpose, params, return-codes
+        code: |
+          /*
+           * Parse the config file at `path` for the given task.
+           *
+           * Returns 0 on success, -ENOENT if the file is missing,
+           * -EINVAL if the file is malformed.
+           */
+          static int
+          parse_config_file(struct task *ti, const char *path)
+          {
+             /* ... */
+          }
+    guess: null
+    ranking: null
+    comment: >
+      V2 is dismissed as "pro-forma" -- a one-liner that just
+      restates the function name adds no value. The fix is to
+      improve the name, not to add a paraphrase.
+
+      Interface vs implementation are distinct concerns. Interface
+      clarification (return-codes, preconditions, why-to-use)
+      goes in a V3-style prologue if needed (rare). Implementation
+      details go inside the function body. A prologue that mixes
+      both is wrong shape.
+
+      Escalation when implementation comments make the function
+      too long: SPLIT the function, then add V3-style prologues
+      on the split pieces.
+    notes: >
+      Major reframe. Claude had V2 modeled as the sweet spot for
+      simple functions. The user rejects V2 categorically:
+
+        - A one-liner that paraphrases the function name carries
+          no information beyond the name itself. The function
+          name is the primary documentation channel for purpose.
+          Comments are for things the name CAN'T carry.
+
+        - When the function NAME doesn't convey purpose, the
+          right move is to RENAME, not to add a V2 comment.
+
+      The user-corrected decision tree (NOT a flat ranking):
+
+        function needs commenting?
+          name doesn't convey purpose     -> fix the name (no V2)
+          interface has non-obvious bits  -> V3 prologue
+          implementation tricky details   -> inline body comments
+          too much to explain inline      -> SPLIT, then V3 prologues
+
+      This unifies with:
+        - Q14's "place functions in the right file/place"
+        - Q15's "extract to helper when sub-block grows"
+        - Q11's "if unsure, pick V3 (always safe)"
+
+      The recurring meta-principle: when a piece of code's shape
+      is fighting the desired comment/structure, the right
+      response is often to RESTRUCTURE (rename, split, move)
+      rather than to add scaffolding (V2-style comments, deep
+      nesting, mid-block decls).
+
+      Note: ranking field is null because the user's answer
+      structurally rejects the flat-ranking framing for this
+      question.
+    weight: 2.0
+
+  - id: q18-blank-line-placement
+    topic: whitespace
+    date: 2026-05-20
+    prompt: >
+      Function body with declarations and three short phases.
+      Three blank-line patterns compared: dense, blank only after
+      decl block, blank after decl block + between phases.
+    snippets:
+      - label: "1"
+        desc: Dense -- no blank lines
+        code: |
+          static int
+          process_event(struct event *e)
+          {
+             struct task *ti;
+             int rc;
+             if (!e || e->kind == EV_INVALID)
+                return -EINVAL;
+             ti = e->target;
+             if (!ti)
+                return -ESRCH;
+             rc = deliver(ti, e);
+             return rc;
+          }
+      - label: "2"
+        desc: Blank line only after the declaration block
+        code: |
+          static int
+          process_event(struct event *e)
+          {
+             struct task *ti;
+             int rc;
+
+             if (!e || e->kind == EV_INVALID)
+                return -EINVAL;
+             ti = e->target;
+             if (!ti)
+                return -ESRCH;
+             rc = deliver(ti, e);
+             return rc;
+          }
+      - label: "3"
+        desc: Blank after declarations + between phases
+        code: |
+          static int
+          process_event(struct event *e)
+          {
+             struct task *ti;
+             int rc;
+
+             if (!e || e->kind == EV_INVALID)
+                return -EINVAL;
+
+             ti = e->target;
+             if (!ti)
+                return -ESRCH;
+
+             rc = deliver(ti, e);
+             return rc;
+          }
+    guess: ["3", "2", "1"]
+    ranking: ["3", "2", "1"]
+    comment: >
+      Big gap between V3 and the others. V1 is totally
+      unacceptable (hard rule). V2 is very ugly (strong
+      preference against). V3 is perfect.
+
+      Concrete sub-rules surfaced:
+        - Blank line after the initial declaration block: required.
+        - Blank line after every `return` statement except the
+          last one in a function body.
+        - General principle: group by topic; blanks delimit
+          logical sections.
+    notes: >
+      EXACT MATCH on the ranking, but the value is in the
+      hard-rule promotions. Blank-line patterns are not soft
+      preferences here -- they are mechanically enforceable
+      rules:
+
+        1. Empty line after the declaration block at the top of
+           a function (or sub-block).
+        2. Empty line after each non-final return statement.
+        3. Group statements by topic with blank lines between
+           groups.
+
+      All three are detectable mechanically:
+        - Rule 1: find the first non-DECL_STMT child of a
+          COMPOUND_STMT; check whether the line above is blank.
+        - Rule 2: find every RETURN_STMT cursor; if not the last
+          statement in its enclosing COMPOUND_STMT, check that
+          the next line is blank.
+        - Rule 3: harder; "topic boundaries" is fuzzy. Defer to
+          a future heuristic (e.g. detect changes in target
+          object across statements as a boundary signal).
+    weight: 1.5
+
+  - id: q19-function-naming-predicate
+    topic: naming
+    date: 2026-05-20
+    prompt: >
+      Function name for a task-runnable predicate. Three forms:
+      subsystem prefix + is_, is_ prefix first, no `is_` at all.
+    snippets:
+      - label: "1"
+        desc: subsystem prefix + `is_` (`task_is_runnable`)
+        code: |
+          if (task_is_runnable(ti))
+             wake(ti);
+      - label: "2"
+        desc: `is_` predicate-first (`is_task_runnable`)
+        code: |
+          if (is_task_runnable(ti))
+             wake(ti);
+      - label: "3"
+        desc: subsystem prefix, no `is_` (`task_runnable`)
+        code: |
+          if (task_runnable(ti))
+             wake(ti);
+    guess: ["2", "1", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      Very soft ranking. The choice depends on whether `task_*`
+      already exists as a subsystem with multiple `task_is_*`
+      predicates -- if yes, V1. For one-off cases, V2 is also
+      good. V3 is less common in Tilck but not a hard rule.
+
+      Important scope note: this is a SEMANTIC question, not a
+      cosmetic one. The user explicitly says: "I don't think the
+      tool should try to understand that. That's our job (you and
+      me)." Naming-content decisions are out of the v2 tool's
+      scope.
+    notes: >
+      Two takeaways:
+
+      1. My guess [2, 1, 3] was wrong on V1 vs V2 ordering. I had
+         been reading `is_kernel_thread` / `is_preemption_enabled`
+         as evidence for V2-form dominance for predicates. The
+         user's actual preference is V1-form when a subsystem
+         convention exists, V2-form for one-off cases.
+
+      2. SCOPE BOUNDARY: this kind of question (name choice --
+         which subsystem prefix, which verb, semantic carving) is
+         OUT OF v2 tool scope. The tool should focus on
+         FORMATTING / LAYOUT / STRUCTURAL choices, not on the
+         content of identifier names.
+
+         Distinction from Q6 (which IS in scope): Q6 was about
+         name SHAPE (length, suffix conventions, capitalization).
+         Cosmetic. Q19 is about name CHOICE (semantic content).
+         Out of scope.
+
+         Going forward, only ask cosmetic/formatting questions.
+    weight: 0.5
+
+  - id: q20-define-backslash-placement
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      Backslash placement for line-continuation in a multi-line
+      function-like macro. Three placements: aligned to longest
+      body line, immediately after content, all at column 80.
+    snippets:
+      - label: "1"
+        desc: Backslashes aligned to longest body line + small pad
+        code: |
+          #define INIT_STATE(s)                  \
+             do {                                \
+                (s)->count = 0;                  \
+                (s)->head = NULL;                \
+                atomic_store(&(s)->ready, true); \
+             } while (0)
+      - label: "2"
+        desc: Backslashes immediately after content (one space)
+        code: |
+          #define INIT_STATE(s) \
+             do { \
+                (s)->count = 0; \
+                (s)->head = NULL; \
+                atomic_store(&(s)->ready, true); \
+             } while (0)
+      - label: "3"
+        desc: Backslashes all at column 80
+        code: |
+          #define INIT_STATE(s)                                                          \
+             do {                                                                        \
+                (s)->count = 0;                                                          \
+                (s)->head = NULL;                                                        \
+                atomic_store(&(s)->ready, true);                                         \
+             } while (0)
+    guess: ["1", "3", "2"]
+    ranking: ["3", "1", "2"]
+    comment: V2 is forbidden -- too ugly.
+    notes: >
+      Claude's guess [1, 3, 2] was wrong on V1 vs V3. The user's
+      actual preference is column-80 backslashes (V3) for visual
+      consistency across all macros in the project, regardless
+      of body width. V1 (body-aligned) is an acceptable fallback
+      but V3 is the canonical.
+
+      V2 (one space after content) is a HARD RULE violation.
+
+      Correction to earlier model: Agent A's original summary
+      ("`\` always at column 80") was right; I had distrusted
+      the rule-text in favor of the cited example
+      (STATIC_KSEM_INIT with backslashes at ~col 48). The
+      example was drift. When the rule-text and cited example
+      disagree, trust the rule-text -- the example may be drift.
+
+      Linter implication: detect multi-line #define directives,
+      check whether all backslashes within the same macro are at
+      the same column AND that column is at or near 80 (some
+      tolerance). The body-aligned form V1 is acceptable as a
+      lower-scored alternative; V2 (per-line varying positions)
+      is a hard violation.
+    weight: 1.5
+
+  - id: q21-pointer-asterisk-placement
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Asterisk placement in pointer declarations: attached to
+      variable name, attached to type, or with spaces both sides.
+    snippets:
+      - label: "1"
+        desc: Attached to variable name (`Type *var`)
+        code: |
+          struct task *ti = get_curr_task();
+          char *name = "hello";
+          int *count_ptr = &n;
+      - label: "2"
+        desc: Attached to type (`Type* var`)
+        code: |
+          struct task* ti = get_curr_task();
+          char* name = "hello";
+          int* count_ptr = &n;
+      - label: "3"
+        desc: Spaces on both sides (`Type * var`)
+        code: |
+          struct task * ti = get_curr_task();
+          char * name = "hello";
+          int * count_ptr = &n;
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 is the only acceptable form. V2 and V3 are both
+      forbidden as hard rules.
+    notes: >
+      Order matches pre-guess; the value is in the hard-rule
+      promotion. Linter implementation: walk VAR_DECL and
+      PARM_DECL cursors with pointer type; check the token
+      stream between the type and the variable name. Required
+      pattern: a single `*` immediately preceding the
+      variable-name token, with whitespace BEFORE the `*` and no
+      whitespace AFTER. Any other shape is a violation.
+    weight: 1.5
+
+  - id: q22-cast-spacing
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Spacing around a pointer cast: inside the cast, after the
+      closing paren. Three forms compared.
+    snippets:
+      - label: "1"
+        desc: Space inside (`Type *`) AND space after `)`
+        code: |
+          char *p = (char *) ptr;
+      - label: "2"
+        desc: Space inside (`Type *`), no space after `)`
+        code: |
+          char *p = (char *)ptr;
+      - label: "3"
+        desc: No space inside (`Type*`), space after `)`
+        code: |
+          char *p = (char*) ptr;
+    guess: ["1", "2", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      V3 is forbidden -- asymmetric: removes space inside cast but
+      keeps space after `)`. Wrong shape.
+
+      Compact form `(char*)ptr` (no spaces anywhere) is
+      conditionally acceptable, but ONLY when needed to keep an
+      81-col statement at 80 cols, AND only with symmetric
+      application across the whole expression.
+    notes: >
+      Major model corrections:
+
+      1. V2 (no space after cast `)`) is the preferred default,
+         not V1. Agent B's corpus citation
+         (kernel/elf.c:52: `(char *) expr`) was either drift or
+         the agent misread; the user's actual default is no
+         space after `)`.
+
+      2. NEW CROSS-CUTTING RULE: compact-form-for-line-fit.
+         When a statement is just over 80 cols (~81 cols), all
+         default-space rules can be tightened uniformly:
+
+           - Cast:     (char*)ptr        (drop space inside + outside)
+           - Args:     foo(1,2,3)        (drop spaces after commas)
+           - Operators: foo(1+2)         (drop spaces around binary ops)
+
+         Symmetry rule when applying compact form: tighten
+         EVERYTHING in the expression, never mix forms. The
+         user's example of what NOT to do:
+         `call(foo(1,2,3), bar(1, 2, 3))` -- mixed forms are
+         uglier than either pure form.
+
+      3. META-RULE: "If unsure, break the line." Compact form is
+         a last-resort hack. The user prefers wrapping over
+         space-omission in many cases.
+
+      4. V3 here (no space inside cast, space after `)`) is the
+         asymmetric form -- forbidden by the symmetry rule.
+         It removes space inside without removing the outside
+         space, half-applying the compactness.
+
+      Cross-cutting rules added to preferences-notes.md.
+    weight: 2.0
+
+  - id: q22b-compact-form-per-level-symmetry
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Supplements Q22. Claude initially recorded the compact-form
+      symmetry rule as "tighten the whole expression"; the user
+      clarified that symmetry is PER NESTING LEVEL, not global.
+    snippets:
+      - label: "ok"
+        desc: Symmetric within `call`'s args -- both foo/bar compact
+        code: |
+          call(foo(1,2,3), bar(1,2,3));
+      - label: "bad"
+        desc: Asymmetric within `call`'s args -- foo compact, bar not
+        code: |
+          call(foo(1,2,3), bar(1, 2, 3));   /* FORBIDDEN */
+      - label: "ok-nested"
+        desc: >
+          Outer-level keeps default spacing even though inner
+          args are compact. Each level decides independently.
+        code: |
+          something_else(call(foo(1,2,3), bar(1,2,3)), 42);
+    guess: null
+    ranking: null
+    comment: >
+      Clarification: compact-form symmetry is a per-argument-list
+      / per-paren-group property. Each level makes its own
+      compact-or-not decision; the choice must be uniform across
+      that level's peers but doesn't propagate up or down the
+      nesting tree.
+    notes: >
+      New cross-cutting principle also surfaced in this clarification:
+      VISUAL HARMONY. Line length isn't a binary "<=80 OK / >80 wrap" --
+      even an 80-col line that fits should be wrapped if it visually
+      stands out among shorter neighbors. The code wants rhythm with
+      the surrounding region, not just compliance with the column
+      limit. Recorded as its own section in preferences-notes.md.
+    weight: 2.0
+
+  - id: q23-enum-layout
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      A small enum representing severity levels. Numeric values
+      don't matter for this specific case. Three layouts.
+    snippets:
+      - label: "1"
+        desc: One per line, no values
+        code: |
+          enum log_level {
+             LOG_DEBUG,
+             LOG_INFO,
+             LOG_WARN,
+             LOG_ERROR,
+             LOG_FATAL
+          };
+      - label: "2"
+        desc: One per line, explicit aligned values
+        code: |
+          enum log_level {
+             LOG_DEBUG = 0,
+             LOG_INFO  = 1,
+             LOG_WARN  = 2,
+             LOG_ERROR = 3,
+             LOG_FATAL = 4
+          };
+      - label: "3"
+        desc: Packed, multiple enumerators per line
+        code: |
+          enum log_level {
+             LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL
+          };
+    guess: ["1", "2", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      V3 forbidden. V1 and V2 both OK. V2 preferred whenever
+      there is ANY value in having the numbers explicit; V1 only
+      when you're SURE numbers won't matter.
+    notes: >
+      Claude had V1 ahead of V2 in strict order; user signals a
+      LOW THRESHOLD preference for V2. The principle generalizes:
+      when explicit-X (here, explicit enum values) adds
+      information a future reader might use, prefer explicit-X
+      even at the cost of a few characters. This rhymes with the
+      Q3 const-monotonically-positive rule -- same shape: const
+      is monotonically positive when correct; explicit values are
+      monotonically positive when numbers might ever matter.
+
+      For the linter: default-toward-V2-style explicit values is
+      a soft preference. The threshold for "any value in explicit
+      numbers" is fuzzy (bitmask flags, protocol constants,
+      stable ABI numbers are all clear V2 cases; ordering-only
+      enums are V1). When in doubt, suggest V2.
+    weight: 1.0
+
+  - id: q24-struct-initializer-layout
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Struct initializer via compound literal with four named
+      fields. Three layouts: designators value-aligned,
+      designators with single space, or positional (no
+      designators).
+    snippets:
+      - label: "1"
+        desc: Designators with values column-aligned
+        code: |
+          *ctx = (struct request_ctx) {
+             .req       = r,
+             .session   = sess,
+             .flags     = flags,
+             .timestamp = now,
+          };
+      - label: "2"
+        desc: Designators with single-space, no alignment
+        code: |
+          *ctx = (struct request_ctx) {
+             .req = r,
+             .session = sess,
+             .flags = flags,
+             .timestamp = now,
+          };
+      - label: "3"
+        desc: Positional initializers (no designators)
+        code: |
+          *ctx = (struct request_ctx) {
+             r,
+             sess,
+             flags,
+             now,
+          };
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 is by far the best (strong default). V2 acceptable when
+      alignment forces lines too long. V3 acceptable ONLY when
+      all of:
+        a) the formatting helps fit each field init on a single
+           line,
+        b) the struct has 2-3 fields max,
+        c) the values are self-evident from position (NOT
+           multiple booleans).
+      Otherwise V3 is forbidden; fall back to V1 with line
+      splitting.
+    notes: >
+      EXACT MATCH on ordering. The valuable data is the cascade
+      and the "no multiple booleans" caveat.
+
+      Specialized compact-form-for-line-fit:
+        Default:        V1 (aligned designators).
+        Compact step 1: V2 (drop alignment to save width).
+        Compact step 2: V3 (drop designators entirely; tiny
+                        struct + self-identifying values).
+        Beyond:         V1 + wrap fields to multiple lines.
+
+      The "no multiple booleans" rule generalizes: positional
+      init only works when values are SELF-IDENTIFYING. Distinct
+      types or clearly distinguishable literals are OK; multiple
+      booleans, multiple ints with similar shapes, multiple
+      pointers of the same type -- all force back to designators.
+
+      For the linter: detect compound-literal initializers; rank
+      by alignment quality. Positional-init suggestions only when
+      field count <= 3 AND field types are heterogeneous /
+      self-identifying.
+    weight: 1.5
+
+  - id: q25-multiline-if-operator-break
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Three-clause && condition that doesn't fit on one line.
+      Three layouts: break before operator, break after operator,
+      flatten to early returns.
+    snippets:
+      - label: "1"
+        desc: Break BEFORE the operator (operator at start of continuation)
+        code: |
+          if (cond_one
+              && cond_two
+              && cond_three)
+          {
+             do_work();
+          }
+      - label: "2"
+        desc: >
+          Break AFTER the operator (operator at end of previous
+          line). Q25's snippet had `&&` immediately after the
+          expression; the user clarified the operators must be
+          column-aligned at a position to the RIGHT of where the
+          final `)` lands. Fixed example shown.
+        code: |
+          if (cond_one   &&
+              cond_two   &&
+              cond_three)
+          {
+             do_work();
+          }
+      - label: "3"
+        desc: >
+          Flatten to early-return guards. Q25's snippet had no
+          blank line between successive returns; per Q18 there
+          must be one. Fixed example shown.
+        code: |
+          if (!cond_one)
+             return;
+
+          if (!cond_two)
+             return;
+
+          if (!cond_three)
+             return;
+
+          do_work();
+    guess: ["2", "1", "3"]
+    ranking: null
+    comment: >
+      V1 is forbidden -- hard rule (break before operator).
+
+      V2 and V3 are context-dependent in this simple example;
+      "equally OK" after fixing the formatting bugs. The choice
+      depends on:
+        - Body complexity: V3 doesn't work if the rest of the
+          function should still execute regardless.
+        - Condition type: errors prefer V3 (early return, keeps
+          positive path unindented). Non-error conditions
+          ("might happen") prefer V2.
+
+      User needs a more complex example to choose between V2/V3.
+    notes: >
+      Three corrections:
+
+      1. V1 (break before operator) is forbidden, not just
+         dispreferred. Hard rule.
+
+      2. The operator-alignment rule from Q10 has an additional
+         constraint: the column of the `&&` / `||` must be to
+         the RIGHT of the column where the final `)` of the
+         condition lands. Padding lines with extra spaces so
+         operators reach that column is the norm. My Q25 V2
+         snippet had the operators at the natural end-of-
+         expression position; that's wrong on its own merits
+         even before Q10's column-alignment kicks in.
+
+      3. Q18's "blank line after every non-final return" rule
+         was not applied to my V3 snippet. Each return must be
+         followed by a blank line (except the final return at
+         function end).
+
+      Context-rule for V2 vs V3 (when neither is structurally
+      forbidden):
+
+        Body complexity check:
+          - Function continues after the check regardless?
+            -> V2 (V3 can't apply; we want to skip a block,
+               not exit the function).
+          - Function exits on failure? -> V3 candidate.
+
+        If V3 candidate, condition-type check:
+          - Condition is an error -> V3 wins ("if error return"
+            keeps positive path unindented).
+          - Condition is something that might happen -> V2
+            likely wins.
+
+      For the linter: rule is fuzzy and needs context. Provide
+      both forms as alternatives with a context-conditional
+      scoring -- not a flat ranking.
+    weight: 2.0
+
+  - id: q26-precondition-validation-form
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      An API function validates four heterogeneous preconditions
+      at entry. Any failure -> return -EINVAL. Three forms:
+      combined OR check, sequential early returns, nested ifs.
+    snippets:
+      - label: "1"
+        desc: Combined OR check, brace-on-own-line, single return
+        code: |
+          if (!dev                                ||
+              (flags & ~DEV_FLAGS_MASK) != 0      ||
+              dev->status == DEV_BUSY             ||
+              dev->refcount > MAX_REFCOUNT)
+          {
+             return -EINVAL;
+          }
+      - label: "2"
+        desc: Sequential early-return guards
+        code: |
+          if (!dev)
+             return -EINVAL;
+
+          if ((flags & ~DEV_FLAGS_MASK) != 0)
+             return -EINVAL;
+
+          if (dev->status == DEV_BUSY)
+             return -EINVAL;
+
+          if (dev->refcount > MAX_REFCOUNT)
+             return -EINVAL;
+      - label: "3"
+        desc: Nested ifs around the "happy path"
+        code: |
+          if (dev && (flags & ~DEV_FLAGS_MASK) == 0) {
+             if (dev->status != DEV_BUSY) {
+                if (dev->refcount <= MAX_REFCOUNT) {
+                   /* proceed */
+                   return 0;
+                }
+             }
+          }
+          return -EINVAL;
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      Ranking [2, 1, 3]. The user's qualifier (after a typo
+      correction): V2 is the STRONG preference for error
+      preconditions. V1 ("mix & match" applied to heterogeneous
+      conditions like Q26's) is "not very nice." V1 has a
+      narrow applicability window: when conditions are
+      SEMANTICALLY RELATED (peers of the same kind -- all range
+      checks, all auth checks), V1 reflects their conceptual
+      peerage. In Q26 the conditions are heterogeneous (null +
+      flags + state + refcount), so V1 is mix-and-match here.
+
+      V3 with this many nested cases is "pretty bad."
+    notes: >
+      Form choice for error-precondition validations:
+
+        Heterogeneous conditions (different KINDS -- null check,
+        flag check, state check, refcount check) -> V2
+        (sequential early-returns); each check stands as its
+        own visible step. STRONG preference.
+
+        Semantically related / homogeneous conditions (peers of
+        the same kind -- all range checks, all auth checks, all
+        type checks) -> V1 (combined OR); the natural grouping
+        of peers under one umbrella reflects their conceptual
+        unity.
+
+      Generalises: code SHAPE should match the conceptual
+      shape of what it expresses. Same principle as Q22's
+      per-level symmetry -- structure mirrors semantics.
+
+      IMPORTANT history correction: Claude's first interpretation
+      of this answer (before the user's typo correction) had the
+      direction REVERSED -- claimed V1 was for heterogeneous and
+      V2 for homogeneous. That was wrong; the user's typo
+      ("1 is my strong preference" should have been "2") had
+      caused me to invert the rule. Direction recorded here is
+      the corrected one.
+
+      For the linter: the V1-vs-V2 choice has a semantic
+      component the tool cannot mechanically determine. Emit
+      both as alternatives when a multi-clause condition is
+      detected, with the rule stated in the suggestion text:
+      "V2 if the conditions are heterogeneous (different kinds);
+      V1 if they are homogeneous / semantically related."
+    weight: 1.5
+
+  - id: q27-header-section-divider
+    topic: file-org
+    date: 2026-05-20
+    prompt: >
+      Section dividers between API groups in a header file.
+      Three styles: long banner, short comment label, no label.
+    snippets:
+      - label: "1"
+        desc: Long banner divider (3-line "===" style)
+        code: |
+          /* ==========================================================
+           *
+           * Locking API
+           *
+           * ========================================================== */
+          void lock_init(struct lock *l);
+          void lock_acquire(struct lock *l);
+          void lock_release(struct lock *l);
+
+          /* ==========================================================
+           *
+           * Allocation API
+           *
+           * ========================================================== */
+          void *kalloc(size_t n);
+          void kfree(void *p);
+      - label: "2"
+        desc: Short one-line comment label
+        code: |
+          /* Locking API */
+          void lock_init(struct lock *l);
+          void lock_acquire(struct lock *l);
+          void lock_release(struct lock *l);
+
+          /* Allocation API */
+          void *kalloc(size_t n);
+          void kfree(void *p);
+      - label: "3"
+        desc: Blank lines only, no labels
+        code: |
+          void lock_init(struct lock *l);
+          void lock_acquire(struct lock *l);
+          void lock_release(struct lock *l);
+
+          void *kalloc(size_t n);
+          void kfree(void *p);
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Short one-line section labels are the
+      preferred form; long banner dividers are acceptable but
+      heavy-handed; unlabeled blank-line separation loses
+      navigability.
+    weight: 1.0
+
+  - id: q28-multi-statement-macro-wrap
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      Multi-statement function-like macro wrap form. Three
+      options: do/while(0), braces-only, comma expression.
+    snippets:
+      - label: "1"
+        desc: do { ... } while (0) wrap
+        code: |
+          #define SET_AND_BUMP(p, val)                                                   \
+             do {                                                                        \
+                *(p) = (val);                                                            \
+                (p)++;                                                                   \
+             } while (0)
+      - label: "2"
+        desc: Braces only (no do/while)
+        code: |
+          #define SET_AND_BUMP(p, val) {                                                 \
+             *(p) = (val);                                                               \
+             (p)++;                                                                      \
+          }
+      - label: "3"
+        desc: Comma expression (single-statement form)
+        code: |
+          #define SET_AND_BUMP(p, val) ((*(p) = (val)), (p)++)
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V1 is preferred -- "widespread and preferred in this
+      project." V2 and V3 should both be avoided, but for
+      different reasons:
+
+        V2: does NOT require `;` at the call site, so the macro
+        invocation looks unnatural versus normal statements.
+        The `while (0)` in V1 forces the `;` and keeps call
+        sites visually consistent.
+
+        V3: technically works but too subtle ("comma
+        expression"). Claude should NEVER generate V3 even
+        though existing V3 code is not rewritten as a rule
+        violation.
+    notes: >
+      Important new meta-rule: V3 (comma expression) is in the
+      "Claude shouldn't generate this" category -- distinct
+      from a linter rule. The user is explicit: "Not a hard
+      rule that should trigger a code rewrite if I used it,
+      but please don't generate code like that yourself."
+
+      Same shape as Q19's naming-out-of-scope rule: this is a
+      rule about what Claude DOES, not what the linter
+      ENFORCES. Recording as a separate "process-rules"
+      section in preferences-notes.md.
+
+      Why V1 specifically: the `while (0)` forces a `;` at the
+      call site, keeping macro invocations visually consistent
+      with regular statements. V2's brace-only form lets the
+      caller omit the `;`, producing call sites that look
+      inconsistent with other statements.
+
+      For the linter: detect V2-shape macros (multi-line
+      `#define` ending with `}` and not `} while (0)`), flag
+      as recommend-V1. Detect V3-shape macros (multi-statement
+      expression with `,` operator) -- soft suggestion only,
+      not a hard rule. Existing V3 stays; new V3 from Claude
+      is forbidden.
+    weight: 1.5
+
+  - id: q29-comment-tag-choice
+    topic: comments
+    date: 2026-05-20
+    prompt: >
+      Tag choice for marking a known issue or pending work.
+      Three common conventions: TODO, FIXME, XXX.
+    snippets:
+      - label: "1"
+        desc: TODO
+        code: |
+          /* TODO: handle the case where the device disappears mid-init */
+          init_device(dev);
+      - label: "2"
+        desc: FIXME
+        code: |
+          /* FIXME: handle the case where the device disappears mid-init */
+          init_device(dev);
+      - label: "3"
+        desc: XXX
+        code: |
+          /* XXX: handle the case where the device disappears mid-init */
+          init_device(dev);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 (TODO) preferred. V2 (FIXME) acceptable. V3 (XXX)
+      NOT used in this project and should be avoided.
+
+      Tag taxonomy in this codebase: TODO, FIXME, NOTE, HACK.
+      Each has distinct semantic weight:
+        - TODO: things to do later.
+        - FIXME: accepted (used in corpus).
+        - NOTE: informational, no action required.
+        - HACK: known workaround / not the right solution.
+        - XXX: not used; don't introduce.
+    notes: >
+      Got the order right; the value is in the tag taxonomy
+      the user volunteered. Each tag has DIFFERENT semantics
+      and they're not interchangeable. The project-specific
+      consistency reason for avoiding XXX: it's not part of
+      the existing vocabulary, so introducing it would break
+      grep-ability and convention.
+
+      For the linter: detect `XXX:` comments and flag with
+      suggestion "use TODO/FIXME/NOTE/HACK instead." For
+      Claude-process: never generate XXX comments.
+
+      The TODO/FIXME distinction is fuzzy enough that the tool
+      shouldn't try to enforce one over the other; both are
+      accepted, with TODO being more common.
+    weight: 1.0
+
+  - id: q30-printk-long-format
+    topic: call-site
+    date: 2026-05-20
+    prompt: >
+      `printk`-style call with a long format string that doesn't
+      fit on one line. Three layouts: adjacent-literal split
+      with Style 1 alignment, Style 2 strict, format extracted
+      to a `static const` local.
+    snippets:
+      - label: "1"
+        desc: Split format string across adjacent literals; args Style 1
+        code: |
+          printk("first part of the long format string %d "
+                 "second part with more args %s and %s\n",
+                 val, str1, str2);
+      - label: "2"
+        desc: Style 2 strict (`(` ends line, args indented +3, `);` own line)
+        code: |
+          printk(
+             "first part of the long format string %d "
+             "second part with more args %s and %s\n",
+             val, str1, str2
+          );
+      - label: "3"
+        desc: Extract format to a `static const` local; single-line call
+        code: |
+          static const char fmt[] = "first part of the long format string %d "
+                                    "second part with more args %s and %s\n";
+          printk(fmt, val, str1, str2);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V3 is not used in this codebase. Avoid.
+
+      V1 vs V2 depends on the LENGTH of the callee expression.
+      Short callee (`printk`, ~6 chars): V1 wins -- args align
+      cleanly under the opening paren without much horizontal
+      padding. Long callee (e.g. `tracer_emit_event_with_full_
+      context`): V2 strict wins, because V1's alignment would
+      push args to the right margin, wasting horizontal space
+      and crowding line widths.
+    notes: >
+      Important refinement of the Q1b call-site hierarchy. I
+      had recorded the H4 sub-ranking as
+      "Style 2 strict > Style 1 one-per-line > Style 1 packed"
+      based on a moderately-long-callee example. The actual
+      rule is callee-length-conditional within H4:
+
+        Short callee (~<= 10 chars):  Style 1 wins.
+        Long callee:                  Style 2 strict wins.
+
+      The reason: Style 1's "args aligned to opening paren"
+      becomes wasteful when the opening paren is far to the
+      right. Style 2's "+3 indent" stays at column 6 regardless
+      of callee width.
+
+      Linter implication: when ranking H4 forms, the threshold
+      between Style 1 and Style 2 should be tied to the column
+      position of the opening paren. If that column is past
+      some threshold (rough cutoff around col 25-30 from line
+      start), Style 2 wins; otherwise Style 1.
+
+      Cross-cutting note updated in preferences-notes.md.
+    weight: 1.5
+
+  - id: q31-infinite-loop-form
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Infinite loop idiom. Three forms: while (true), while (1),
+      for (;;).
+    snippets:
+      - label: "1"
+        desc: while (true)
+        code: |
+          while (true) {
+             handle_event();
+             schedule_yield();
+          }
+      - label: "2"
+        desc: while (1)
+        code: |
+          while (1) {
+             handle_event();
+             schedule_yield();
+          }
+      - label: "3"
+        desc: for (;;)
+        code: |
+          for (;;) {
+             handle_event();
+             schedule_yield();
+          }
+    guess: ["2", "1", "3"]
+    ranking: ["1", "2", "3"]
+    comment: V1 is the only allowed form. V2 and V3 forbidden.
+    notes: >
+      Wrong on V1 vs V2. I had `while (1)` ahead of
+      `while (true)` based on Agent B's corpus inventory which
+      said "while (1) vs for (;;): only while (1) observed
+      (main.c:183)." Either the corpus has drift in main.c:183
+      or the agent's inventory was wrong. The user-canonical
+      form is `while (true)`.
+
+      Hard rule. Clean to enforce: detect WHILE_STMT cursors
+      with constant-1 / non-zero condition tokens; flag forms
+      other than `while (true)`. Also detect FOR_STMT with
+      empty init/cond/incr (the `for (;;)` form) and flag as a
+      violation.
+    weight: 1.5
+
+  - id: q32-function-size-threshold
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      An ~18-line function with three phases. Three layouts:
+      monolithic, extract buffer-prep helper, extract both
+      validation and buffer-prep helpers.
+    snippets:
+      - label: "1"
+        desc: Monolithic (~18 lines, three phases inline)
+        code: |
+          static int
+          process_request(struct request *req)
+          {
+             struct task *target;
+             void *buf;
+             int rc;
+
+             if (!req || req->size > MAX_REQ_SIZE)
+                return -EINVAL;
+
+             target = find_task_by_pid(req->target_pid);
+             if (!target)
+                return -ESRCH;
+
+             buf = kalloc(req->size);
+             if (!buf)
+                return -ENOMEM;
+
+             memcpy(buf, req->payload, req->size);
+             rc = dispatch_op(target, req->op, buf, req->size);
+             kfree(buf);
+             return rc;
+          }
+      - label: "2"
+        desc: Extract the buffer-prep step into a helper
+        code: |
+          /* prepare_buffer helper + caller (see question) */
+      - label: "3"
+        desc: Extract both validation and buffer-prep
+        code: |
+          /* validate_request + prepare_buffer helpers + caller (see question) */
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      V1 wins for this size. The principle the user articulated:
+      "smaller" is context-dependent, but at THIS size all
+      variants are small enough; V1 wins because there's nothing
+      big enough to be worth extracting.
+
+      Threshold for extraction isn't a line count -- it's
+      "can the sub-piece be shared, or is it just being pulled
+      out for its own sake?" If extraction doesn't unlock reuse,
+      it's over-engineering.
+
+      Over-splitting (too many helpers, each used once) is as
+      bad as 500+ LoC monoliths. Both anti-patterns.
+    notes: >
+      EXACT MATCH on ranking. The valuable extraction is the
+      generalization of the "restructure rather than scaffold"
+      meta-principle:
+
+      NOT EVERY RESTRUCTURE IS GOOD. Splitting also requires
+      justification. Default: write a function the size of the
+      work it does; extract a helper only when:
+        (a) the sub-piece has a name worth giving, AND
+        (b) the sub-piece is reusable (multiple callers, or
+            likely to be).
+
+      Without both signals, extraction is over-engineering and
+      should be skipped.
+
+      For the linter: any extraction-suggestion the v2 model
+      makes should pass these two gates. Don't suggest
+      extracting a sub-block to a helper unless there's some
+      indication it would be reused. "It's getting long" alone
+      is not enough -- a long function that does one cohesive
+      thing is fine.
+
+      Implementing this in the linter is hard because reuse-
+      potential is semantic. A safe heuristic: extract only
+      when the same sub-pattern appears in 2+ places.
+    weight: 2.0
+
+  - id: q33-decl-init-at-decl-vs-deferred
+    topic: declarations
+    date: 2026-05-20
+    prompt: >
+      Toy function with two read-only locals whose values are
+      known at the top. Three init patterns: at decl, deferred,
+      default-then-overwrite.
+    snippets:
+      - label: "1"
+        desc: Initialize at declaration
+        code: |
+          const int base = ti->priority;
+          const int weight = ti->nice;
+      - label: "2"
+        desc: Declare uninitialized, assign in body
+        code: |
+          int base;
+          int weight;
+
+          base = ti->priority;
+          weight = ti->nice;
+      - label: "3"
+        desc: Initialize to default then overwrite
+        code: |
+          int base = 0;
+          int weight = 0;
+
+          base = ti->priority;
+          weight = ti->nice;
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      User flagged the question as malformed: the example is
+      "way too small and unrealistic," and the const trade-off
+      was already covered in Q3 + Q8. Ranking [1, 2, 3] holds
+      for this specific example but the user warned not to
+      infer the general rule from this question.
+
+      The general rule remains: prefer const + init-at-decl
+      when type isn't too verbose; skip const (or skip init-at-
+      decl) only when the visual weight tips it over.
+    notes: >
+      Important Claude self-correction: this question was a
+      bad one. It re-covered ground from Q3/Q8 with an even
+      smaller, more artificial example. The user's feedback
+      ("you cannot infer so easily the general rule, just
+      from this question") flags that future questions should
+      use realistic functions, not toys, and should avoid
+      re-asking what's already in the YAML.
+
+      Recording with weight 0.5 -- the question is not a
+      reliable data point on its own.
+    weight: 0.5
+
+  - id: q34-do-while-vs-alternatives
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Poll loop -- do the work once, check, repeat. Three loop
+      shapes: do-while, while-true with break, pre-check-then-
+      while.
+    snippets:
+      - label: "1"
+        desc: do { ... } while (cond)
+        code: |
+          do {
+             poll_status();
+          } while (!is_ready());
+      - label: "2"
+        desc: while (true) with explicit break
+        code: |
+          while (true) {
+
+             poll_status();
+
+             if (is_ready())
+                break;
+          }
+      - label: "3"
+        desc: Pre-check then while (duplicated work)
+        code: |
+          poll_status();
+
+          while (!is_ready())
+             poll_status();
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. do-while is the natural shape for "do once
+      then check"; while-true-break is functionally equivalent
+      but more verbose; pre-check-then-while has duplicated
+      work and is the worst.
+    weight: 1.0
+
+  - id: q35-break-out-of-nested-loops
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Search a 2D grid for the first match and process the
+      indices. Three escape approaches: goto out of loops,
+      bool flag threaded through loop conditions, extract
+      inner row search to a helper.
+    snippets:
+      - label: "1"
+        desc: goto out of both loops
+        code: |
+          for (int i = 0; i < ROWS; i++) {
+             for (int j = 0; j < COLS; j++) {
+
+                if (matches(grid[i][j])) {
+                   found_i = i;
+                   found_j = j;
+                   goto found;
+                }
+             }
+          }
+          found:
+             process(found_i, found_j);
+      - label: "2"
+        desc: bool flag threaded through both loop conditions
+        code: |
+          bool done = false;
+
+          for (int i = 0; i < ROWS && !done; i++) {
+             for (int j = 0; j < COLS && !done; j++) {
+
+                if (matches(grid[i][j])) {
+                   found_i = i;
+                   found_j = j;
+                   done = true;
+                }
+             }
+          }
+
+          process(found_i, found_j);
+      - label: "3"
+        desc: Extract inner row search to helper, return j
+        code: |
+          static int
+          find_in_row(int *row, int cols)
+          {
+             for (int j = 0; j < cols; j++) {
+
+                if (matches(row[j]))
+                   return j;
+             }
+
+             return -1;
+          }
+
+          /* in caller: */
+          for (int i = 0; i < ROWS; i++) {
+
+             int j = find_in_row(grid[i], COLS);
+
+             if (j >= 0) {
+                found_i = i;
+                found_j = j;
+                break;
+             }
+          }
+
+          process(found_i, found_j);
+    guess: ["1", "3", "2"]
+    ranking: ["3", "1", "2"]
+    comment: >
+      For this specific example, [3, 1, 2]. But the IDEAL form
+      (not shown as a variant) is V1's shape with `return
+      result` instead of `goto`, and the WHOLE 2D search
+      extracted to a function. The caller checks the returned
+      result for NULL and processes:
+
+         static struct match *
+         find_match(int rows, int cols, int **grid) {
+            for (int i = 0; i < rows; i++)
+               for (int j = 0; j < cols; j++)
+                  if (matches(grid[i][j]))
+                     return make_match(i, j);
+            return NULL;
+         }
+
+      V3 wins this question only because it's the closest of
+      the three to that ideal V4 form.
+    notes: >
+      Two new principles articulated:
+
+      1. PREFER `return` OVER `goto` when the function can be
+         restructured to allow a direct return. Goto-for-
+         cleanup (Q11) is the canonical use of goto;
+         goto-for-flow-control out of nested loops is a sign
+         the function should be split so the nested loops can
+         `return` directly. The V4-style refactor turns "goto
+         + post-loop processing" into "extract search to
+         function + return result".
+
+      2. PREFER RETURN-VALUE OVER OUT-PARAM for a search's
+         answer. A function that finds something should
+         RETURN it (or NULL if not found). The caller checks
+         the return value. V3 in this question had the caller
+         maintaining `found_i/found_j` state; the V4 ideal
+         collapses that into a single returned pointer or
+         struct.
+
+      For the linter: these are semantic / structural
+      preferences, not mechanical. The "goto out of nested
+      loops" pattern can be DETECTED (look for goto labels
+      placed immediately after a nested loop end), but the
+      restructure to V4 form requires semantic understanding
+      of the function's purpose. Soft suggestion only.
+    weight: 2.0
+
+  - id: q36-midfunction-ifdef-placement
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      Arch-specific code inside a mostly-arch-neutral function.
+      Three approaches: #ifdef flush-left, #ifdef indented,
+      extract dispatch to arch-specific helper headers.
+    snippets:
+      - label: "1"
+        desc: "#ifdef flush left inside function body"
+        code: |
+          #ifdef ARCH_x86
+             x86_specific_init(ti);
+          #endif
+      - label: "2"
+        desc: "#ifdef indented to match surrounding code"
+        code: |
+             #ifdef ARCH_x86
+             x86_specific_init(ti);
+             #endif
+      - label: "3"
+        desc: >
+          Extract dispatch to arch-specific helper headers; main
+          function is preprocessor-free
+        code: |
+          /* arch-specific header */
+          #ifdef ARCH_x86
+          static inline void arch_specific_init(...) { x86_specific_init(...); }
+          #else
+          static inline void arch_specific_init(...) { }
+          #endif
+
+          /* main function calls `arch_specific_init(ti)` directly */
+    guess: ["3", "1", "2"]
+    ranking: ["3", "1", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. V3 wins decisively -- the canonical pattern
+      is to extract arch dispatch to arch-specific helpers in
+      the appropriate header/file so the main function stays
+      preprocessor-free. This is another instance of
+      "restructure rather than scaffold": preprocessor
+      conditionals inside function bodies are scaffolding;
+      the structural move is to lift the dispatch into a
+      cleaner abstraction layer.
+
+      When #ifdef inside a function body is genuinely
+      unavoidable (rare), flush-left beats indented.
+
+      For the linter: detect #ifdef directives inside function
+      bodies; flag with a suggestion to consider arch-helper
+      extraction. Soft suggestion -- some legitimate cases
+      remain. When the suggestion can't be taken, ensure the
+      #ifdef directive starts at column 1.
+    weight: 1.0
+
+  - id: q37-arithmetic-paren-explicitness
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      Bit-twiddle expression: mask the result of a left shift.
+      C operator precedence makes the parens optional, but
+      relying on that is fragile.
+    snippets:
+      - label: "1"
+        desc: Explicit parens around each sub-expression
+        code: |
+          const ulong addr = ((base << SHIFT) & MASK) | flag_bits;
+      - label: "2"
+        desc: Minimal parens (rely on precedence)
+        code: |
+          const ulong addr = base << SHIFT & MASK | flag_bits;
+      - label: "3"
+        desc: Extract intermediate to a named local
+        code: |
+          const ulong shifted = base << SHIFT;
+          const ulong addr = (shifted & MASK) | flag_bits;
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Clarity beats brevity for operator
+      precedence. The unifying principle across Q3 (const),
+      Q23 (enum values), and Q37 (parens): when an EXPLICIT
+      form costs only a few characters and prevents a misread,
+      the explicit form wins. Don't rely on the reader
+      recalling exact precedence between `<<`, `&`, `|`.
+
+      V3 (extract intermediate) is acceptable when the
+      intermediate has a name worth giving, but for a single-
+      use expression it's over-extraction per Q32.
+
+      For the linter: detect bit-twiddle expressions with
+      mixed `<<` / `&` / `|` operators (or other low-recall
+      precedence pairs like `&` / `&&`). If no parens around
+      the sub-expressions, flag with suggestion to
+      parenthesize. Soft suggestion -- some readers will know
+      the precedence; the rule is a clarity aid, not a hard
+      rule.
+    weight: 1.0
+
+  - id: q38-endif-trailing-annotation
+    topic: macros
+    date: 2026-05-20
+    prompt: >
+      `#endif` for a multi-line `#ifdef` block. Three forms:
+      bare, block-comment annotation, line-comment annotation.
+    snippets:
+      - label: "1"
+        desc: Bare `#endif`
+        code: |
+          #endif
+      - label: "2"
+        desc: "`#endif` with trailing block comment"
+        code: |
+          #endif /* KRN_HANG_DETECTION */
+      - label: "3"
+        desc: "`#endif` with trailing line comment"
+        code: |
+          #endif // KRN_HANG_DETECTION
+    guess: ["2", "1", "3"]
+    ranking: ["2", "3", "1"]
+    comment: >
+      For ~15 line blocks like the example, even V1 (bare) is
+      acceptable. For ~100+ line blocks, the annotation
+      becomes mandatory (V2 or V3 required).
+
+      V3 (`//` line comment) is acceptable -- it fits the
+      "brief one-liner" pattern from Q17. V2 still wins for
+      being the canonical block-comment form.
+    notes: >
+      Wrong on V3 -- I had it last (assumed `//` dispreferred)
+      but it's actually second. `//` for `#endif` annotations
+      is acceptable in .c files because the annotation is a
+      brief one-liner.
+
+      Length-based escalation:
+
+        Block length   | Required form
+        ---------------+-------------------
+        Short (<~30)   | V1/V2/V3 all OK; V2 preferred
+        Long (~100+)   | V2 or V3 mandatory (annotation
+                       | required); V1 forbidden
+
+      For the linter: detect `#ifdef` blocks. Measure the
+      span (lines from `#ifdef` to `#endif`). If span > some
+      threshold (~50 lines, conservatively), the `#endif`
+      MUST have a trailing annotation matching the `#ifdef`
+      condition. Soft suggestion for shorter blocks. V2
+      (block comment) preferred over V3 (line comment) as a
+      style nudge but neither flagged for the long case.
+    weight: 1.0
+
+  - id: q39-function-pointer-typedef-suffix
+    topic: naming
+    date: 2026-05-20
+    prompt: >
+      Typedef for a callback function pointer. Three suffix
+      conventions: _func, _cb, _t.
+    snippets:
+      - label: "1"
+        desc: _func suffix
+        code: |
+          typedef int (*event_handler_func)(struct event *ev);
+      - label: "2"
+        desc: _cb suffix
+        code: |
+          typedef int (*event_handler_cb)(struct event *ev);
+      - label: "3"
+        desc: _t suffix
+        code: |
+          typedef int (*event_handler_t)(struct event *ev);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      Revised at Q46 time (user-requested). The original
+      recorded ranking was [3, 1, 2] (_t preferred). At Q46,
+      the user revised: "_func" is actually preferred for
+      function-pointer typedefs; "_t" is reserved for other
+      (value) types. Updated ranking [1, 3, 2] reflects the
+      revision.
+    notes: >
+      ORIGINAL (pre-revision) interpretation: _t suffix was
+      reported as preferred. Claude's pre-guess [1, 2, 3] was
+      filed as "wrong on V3 (_t)."
+
+      AT Q46, the user revised: _func is actually preferred
+      for function pointers. _t reserved for value-type
+      typedefs (atomics, etc.). _cb (abbreviation) remains
+      dispreferred.
+
+      Final ranking: _func > _t > _cb = [1, 3, 2].
+
+      Claude's original pre-guess [1, 2, 3] was actually
+      closer to the revised answer than I credited at the
+      time.
+
+      Meta-observation: PREFERENCES CAN EVOLVE THROUGH THE
+      LOOP. The act of articulating a preference in one
+      context (Q39 in isolation) and then re-evaluating it
+      in a related context (Q46's typedef-for-function-
+      pointer question) can sharpen the user's underlying
+      intuition. YAML entries should be treated as "recorded
+      thought as of [date]" rather than immutable.
+    weight: 1.0
+
+  - id: q40-bitfield-struct-layout
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Bitfield struct with members of varying widths. Three
+      layouts: aligned colons no annotations, unaligned, aligned
+      + trailing field annotations.
+    snippets:
+      - label: "1"
+        desc: Colon column aligned, no annotations
+        code: |
+          struct status_flags {
+             unsigned ready    : 1;
+             unsigned active   : 1;
+             unsigned dirty    : 1;
+             unsigned reserved : 29;
+          };
+      - label: "2"
+        desc: Unaligned, single space after type
+        code: |
+          struct status_flags {
+             unsigned ready : 1;
+             unsigned active : 1;
+             unsigned dirty : 1;
+             unsigned reserved : 29;
+          };
+      - label: "3"
+        desc: Colon-aligned + trailing field annotations
+        code: |
+          struct status_flags {
+             unsigned ready    : 1;       /* set when initialized */
+             unsigned active   : 1;       /* set when actively in use */
+             unsigned dirty    : 1;       /* set when state has changed */
+             unsigned reserved : 29;
+          };
+    guess: ["3", "1", "2"]
+    ranking: ["3", "1", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Same pattern as Q9 (struct field comments):
+      aligned-with-annotations > aligned-no-annotations >
+      unaligned. The colon alignment is the same visual-column
+      principle that's been consistent across Q9, Q18 (blank
+      lines), Q20 (#define backslash col 80), Q23/Q24 (struct
+      init), Q40 (bitfields), and Q10's `||` / `&&` operator
+      alignment. Visual columns are a unified prettiness
+      signal in this codebase.
+    weight: 1.0
+
+  - id: q41-long-arg-types-function-decl
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      Function declaration with verbose struct-pointer arg types.
+      Single-line signature too long. Three approaches: Style 1
+      packed, Style 1 one-per-line, typedef the types to shorten.
+    snippets:
+      - label: "1"
+        desc: Style 1 packed
+        code: |
+          static int
+          register_handler(struct event_handler *h, struct subscription_filter *f,
+                           struct dispatch_context *ctx, int flags);
+      - label: "2"
+        desc: Style 1 one arg per line
+        code: |
+          static int
+          register_handler(struct event_handler *h,
+                           struct subscription_filter *f,
+                           struct dispatch_context *ctx,
+                           int flags);
+      - label: "3"
+        desc: Introduce typedefs to shorten types
+        code: |
+          typedef struct event_handler *evt_handler_t;
+          typedef struct subscription_filter *sub_filter_t;
+          typedef struct dispatch_context *disp_ctx_t;
+
+          static int
+          register_handler(evt_handler_t h, sub_filter_t f, disp_ctx_t ctx, int flags);
+    guess: ["2", "1", "3"]
+    ranking: ["2", "1", "3"]
+    comment: >
+      Introducing typedefs JUST to shorten a single function's
+      signature is usually not a good idea -- with the exception
+      of function-pointer typedefs (Q39), which have their own
+      rationale.
+
+      For struct-pointer types like the example, the types are
+      not THAT long; just format the signature with Style 1
+      one-per-line.
+    notes: >
+      EXACT MATCH. The principle: typedefs are for ABSTRACTION,
+      not for cosmetic line-fit hacks. A struct-pointer typedef
+      earns its keep when:
+
+        (a) reused widely across the codebase, OR
+        (b) hides implementation details for a stable API.
+
+      Introducing a typedef just to shorten one function's
+      signature is the same anti-pattern as extracting a helper
+      just to make a function smaller (Q32) -- restructure
+      without justification.
+
+      Function-pointer typedefs (Q39) clear this bar because
+      function-pointer syntax in C is hard to read inline; the
+      typedef provides real readability gain.
+
+      Linter implication: when v2 considers a typedef-introduction
+      suggestion, check whether the typedef would be reused 2+
+      times or hides genuine implementation detail. Otherwise
+      keep the inline form.
+    weight: 1.0
+
+  - id: q42-switch-multiple-case-labels
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Three case labels share a single body (no per-case work).
+      Three layouts: each label own line, packed on one line,
+      each with /* fallthrough */ annotation.
+    snippets:
+      - label: "1"
+        desc: Each case label on its own line, then shared body
+        code: |
+          switch (event) {
+             case EV_TIMEOUT:
+             case EV_CANCEL:
+             case EV_ERROR:
+                abort_request();
+                break;
+          }
+      - label: "2"
+        desc: Case labels packed on one line
+        code: |
+          switch (event) {
+             case EV_TIMEOUT: case EV_CANCEL: case EV_ERROR:
+                abort_request();
+                break;
+          }
+      - label: "3"
+        desc: Each case with `/* fallthrough */` annotation
+        code: |
+          switch (event) {
+             case EV_TIMEOUT:
+                /* fallthrough */
+             case EV_CANCEL:
+                /* fallthrough */
+             case EV_ERROR:
+                abort_request();
+                break;
+          }
+    guess: ["1", "2", "3"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V2 (packed) is FORBIDDEN.
+
+      Fallthrough rule conditional on case body content:
+        - Cases all empty (shared body only): NO fallthrough
+          comment; V1 is perfectly clear without it.
+        - Each case has its own body and falls through:
+          /* fallthrough */ comment is MANDATORY between each.
+    notes: >
+      Two corrections to Claude's model:
+
+      1. V2 (packed case labels) is hard rule violation.
+
+      2. The /* fallthrough */ comment has a CONDITIONAL
+         requirement -- not "always use" or "never use," but
+         based on whether intermediate cases have bodies:
+
+           empty cases -> NO comment (V3 here is over-decoration)
+           non-empty cases that fall through -> comment mandatory
+
+      This is mechanically detectable: walk CASE_STMT cursors;
+      if a case's body is non-empty AND ends without
+      break/return/goto AND falls through to the next case,
+      check that a /* fallthrough */ (or fallthrough)
+      comment appears immediately before the next case label.
+      Empty cases (no body between this case label and the
+      next) should NOT have such a comment.
+    weight: 1.5
+
+  - id: q43-multi-clause-assert
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Multi-clause ASSERT condition checking heterogeneous task
+      invariants. Doesn't fit on one line. Three approaches:
+      combined wrap, extract to local, split into multiple
+      ASSERTs.
+    snippets:
+      - label: "1"
+        desc: Combined condition wrapped, single ASSERT
+        code: |
+          ASSERT(ti->state == TASK_STATE_RUNNING  &&
+                 ti->process != NULL              &&
+                 ti->ref_count > 0                &&
+                 is_preemption_enabled());
+      - label: "2"
+        desc: Extract combined condition to a local
+        code: |
+          const bool task_runnable_with_owner =
+             ti->state == TASK_STATE_RUNNING  &&
+             ti->process != NULL              &&
+             ti->ref_count > 0                &&
+             is_preemption_enabled();
+
+          ASSERT(task_runnable_with_owner);
+      - label: "3"
+        desc: Split into multiple separate ASSERTs
+        code: |
+          ASSERT(ti->state == TASK_STATE_RUNNING);
+          ASSERT(ti->process != NULL);
+          ASSERT(ti->ref_count > 0);
+          ASSERT(is_preemption_enabled());
+    guess: ["3", "1", "2"]
+    ranking: ["3", "1", "2"]
+    comment: >
+      V2 "makes no sense" -- the local doesn't help anything;
+      ASSERT failure on a combined bool gives even less info
+      than V1.
+
+      V3 is much better because when an ASSERT fires you know
+      EXACTLY which case triggered it; V1 forces additional
+      debugging to identify the failing clause.
+    notes: >
+      EXACT MATCH on ordering. V2 promoted from "less
+      preferred" to "makes no sense" -- effectively forbidden
+      because it strictly loses information vs V1.
+
+      Principle: defensive checks should preserve DIAGNOSTIC
+      SPECIFICITY on failure. Same flavor as Q26 (heterogeneous
+      preconditions -> separate early-returns with specific
+      error codes): when a check fires, knowing which sub-
+      condition failed is high-value; collapsing them loses
+      that for nothing.
+
+      For the linter: detect ASSERT() with `&&`-conjoined
+      operands of heterogeneous shape (different fields of the
+      argument struct, different function calls, etc.); flag
+      with suggestion to split into multiple ASSERTs.
+
+      Homogeneous conjunctions (all range checks on the same
+      variable: `0 <= x && x < N`) stay combined -- that's
+      a single semantic check.
+    weight: 1.5
+
+  - id: q44-empty-body-poll-loop
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      A polling loop where work happens inside the condition;
+      body is empty. Three empty-body forms.
+    snippets:
+      - label: "1"
+        desc: Explicit empty braces
+        code: |
+          while (poll_status() != READY) { }
+      - label: "2"
+        desc: Bare semicolon
+        code: |
+          while (poll_status() != READY);
+      - label: "3"
+        desc: Explicit `continue;`
+        code: |
+          while (poll_status() != READY)
+             continue;
+    guess: ["1", "3", "2"]
+    ranking: ["1", "3", "2"]
+    comment: ""
+    notes: >
+      EXACT MATCH. V1 (`{ }`) per CLAUDE.md rule.
+      V3 (`continue;`) acceptable as an explicit alternative.
+      V2 (bare `;`) forbidden.
+    weight: 0.5
+
+  - id: q45-large-enum-categorical
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Large enum (~11 entries) with explicit ABI-fixed values
+      and three semantic categories. Three layouts: one-block
+      unordered, grouped by category, ordered by numeric value.
+    snippets:
+      - label: "1"
+        desc: One block, value-aligned, no grouping
+        code: |
+          /* unordered list -- numbers as given, no category grouping */
+      - label: "2"
+        desc: Grouped by category with section comments
+        code: |
+          /* groups: File I/O, Process mgmt, Network */
+      - label: "3"
+        desc: Ordered by numeric value (regardless of category)
+        code: |
+          /* sorted strictly by syscall number */
+    guess: ["2", "1", "3"]
+    ranking: ["2", "3", "1"]
+    comment: >
+      Layout choice depends on the LOOKUP PATTERN.
+
+      If numbers are flexible (can be assigned at will): a
+      hybrid V2-prime wins by far -- grouped by category AND
+      sequential per group. This wasn't a posed variant.
+
+      If numbers are fixed (ABI/protocol like the syscall
+      case): the ranking shifts to [3, 2, 1]. V3 wins because
+      the primary search axis becomes "find the syscall by
+      number" or "spot a missing number in a range," and
+      value-order serves that directly.
+
+      V1 (unordered without grouping) is the worst in all
+      cases -- provides neither semantic navigation nor
+      numeric navigation.
+    notes: >
+      Wrong on V3 vs V1. I had V1 second; user puts V3 above
+      V1 universally.
+
+      NEW PRINCIPLE: prettiness for enums (and similar
+      ordered collections) serves the INTENDED LOOKUP
+      PATTERN. The layout's job is to match how the
+      collection will actually be searched:
+
+        Lookup by concept   (find X among the file-I/O ones)
+                            -> semantic grouping wins.
+        Lookup by number    (what is value 42? Is value 51
+                            missing?)
+                            -> numeric ordering wins.
+
+      For flexible-numbering enums, the hybrid V2-prime
+      (grouped semantically AND assigned sequential per-group
+      values) is the global optimum.
+
+      Linter implication: for large enums, the lookup-pattern
+      signal is semantic (the linter can't tell whether
+      numbers are ABI-fixed). Surface this as a soft
+      suggestion only -- emit BOTH "consider grouping by
+      category" and "consider value-ordering" depending on
+      the visible numeric pattern, but defer the final choice
+      to the human.
+
+      Generalisation: this is a new dimension to the v2 model.
+      Beyond visual rhythm (Q22b harmony), conceptual shape
+      (Q22b/Q26), and semantic relatedness, layout also
+      serves the navigation pattern of the consumer. The
+      "Restructure to match conceptual shape" meta-principle
+      extends: structure also matches USAGE.
+    weight: 1.5
+
+  - id: q46-function-pointer-field
+    topic: structs
+    date: 2026-05-20
+    prompt: >
+      Struct with two function-pointer fields. Two layouts:
+      inline function-pointer types in the struct, or typedef
+      the function-pointer types first.
+    snippets:
+      - label: "1"
+        desc: Inline function-pointer types
+        code: |
+          struct event_ops {
+             int (*on_open)(struct event *ev, int flags);
+             void (*on_close)(struct event *ev);
+          };
+      - label: "2"
+        desc: Typedef the function pointers first, then use the typedefs
+        code: |
+          typedef int (*ev_open_func)(struct event *ev, int flags);
+          typedef void (*ev_close_func)(struct event *ev);
+
+          struct event_ops {
+             ev_open_func on_open;
+             ev_close_func on_close;
+          };
+    guess: ["2", "1"]
+    ranking: ["1", "2"]
+    comment: >
+      Context-dependent:
+        - Single-use (signature only here): [1, 2]. Inline
+          wins -- same rule as Q41 ("typedefs for abstraction,
+          not line-fit / single-use shortening").
+        - Multi-use (signature appears elsewhere): [2, 1].
+          Typedef wins because the abstraction earns its keep.
+
+      Also at this question time the user revised Q39: `_func`
+      is the preferred function-pointer typedef suffix, not
+      `_t`. Q39 entry updated to reflect the revision.
+    notes: >
+      The Q39 "function pointers always clear the typedef bar"
+      reading I had recorded was too strong. The actual rule
+      is uniform with Q41: typedefs (including function-
+      pointer typedefs) need REUSE justification. Single-use
+      function-pointer types stay inline.
+
+      Generalisation: the "typedef for abstraction not line-
+      fit" rule from Q41 extends to function pointers too.
+      The difference is the THRESHOLD: function-pointer
+      typedefs clear the bar at lower reuse counts because
+      inline function-pointer syntax is genuinely hard to
+      parse, whereas struct-pointer typedefs need stronger
+      justification to clear (the inline `struct foo *` form
+      is already readable).
+
+      Meta-observation surfaced (recorded on the Q39 entry
+      revision): preferences CAN evolve through the loop. The
+      YAML is "recorded thought as of [date]," not immutable.
+      When a later question prompts a revision, update the
+      earlier entry directly with a clear note.
+    weight: 1.5
+
+  - id: q47-explicit-type-constant
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      32-bit hex constant carrying explicit type info. Three
+      forms: literal with suffix, cast, type-specifying macro.
+    snippets:
+      - label: "1"
+        desc: Literal with type suffix
+        code: |
+          const u32 mask = 0x1000u;
+      - label: "2"
+        desc: Cast to desired type
+        code: |
+          const u32 mask = (u32)0x1000;
+      - label: "3"
+        desc: Portable type-specifying macro
+        code: |
+          const u32 mask = UINT32_C(0x1000);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: ""
+    notes: >
+      EXACT MATCH. Type-carrying literals (suffix style) are
+      the most natural way to express typed constants. Casts
+      work but add verbose noise. Standard-library type
+      macros (UINT32_C) are overkill for kernel-internal code.
+    weight: 0.5
+
+  - id: q48-return-computation
+    topic: expressions
+    date: 2026-05-20
+    prompt: >
+      A function computes and returns a moderately complex
+      result. Three forms: inline in return, single local for
+      the result, multiple intermediate locals.
+    snippets:
+      - label: "1"
+        desc: Compute inline in the return
+        code: |
+          return base + offset * stride + (flag ? bonus : 0);
+      - label: "2"
+        desc: Single local for the result, then return
+        code: |
+          const int result = base + offset * stride + (flag ? bonus : 0);
+
+          return result;
+      - label: "3"
+        desc: Split into named intermediate locals
+        code: |
+          const int scaled_offset = offset * stride;
+          const int bonus_value = flag ? bonus : 0;
+
+          return base + scaled_offset + bonus_value;
+    guess: ["1", "2", "3"]
+    ranking: ["1", "3", "2"]
+    comment: >
+      V2 adds no value -- it moves the same complex expression
+      to a different line and pays the cost of an extra local
+      without earning any simplification. "Very bad."
+
+      V3 is acceptable because the COMPONENTS are simpler;
+      named intermediate locals decompose the complex
+      expression into smaller named parts.
+
+      V1 vs V3 is a SOFT preference for this specific case
+      (the expression isn't that complex). V3 strongly wins as
+      the expression gets harder to parse.
+    notes: >
+      Wrong on V2 vs V3. Had V2 second; user puts V2 last
+      with "very bad."
+
+      Principle to add to extraction calculus: extraction
+      needs SUBSTANTIVE justification. The forms identified
+      so far:
+
+        1. Reuse (Q32): extract when the sub-piece is used in
+           multiple places.
+        2. Dedup (Q10): extract when a single local replaces
+           multiple references to the same expression.
+        3. SIMPLIFICATION VIA DECOMPOSITION (NEW, Q48):
+           extract when the resulting sub-expressions are
+           simpler / better-named than the inline form.
+
+      The Q48 V2 form fails ALL three -- it just relocates
+      the same expression without dedup, reuse, or
+      decomposition. That's why it ranks last as "very bad."
+
+      For the linter: when ranking extract-to-local
+      suggestions, check whether each proposed extraction
+      yields a SIMPLER named sub-expression (V3-style) or
+      just relocates the original (V2-style). Only the
+      former is worth suggesting.
+
+      Calibration of V1 vs V3 is fuzzy ("soft preference"
+      depending on expression complexity). The linter can
+      use rough proxies: number of operators, nesting depth,
+      number of distinct identifiers. Below some threshold,
+      keep V1; above, suggest V3.
+    weight: 1.5
+
+  - id: q49-function-many-args
+    topic: function-shape
+    date: 2026-05-20
+    prompt: >
+      Function with 6 parameters covering different aspects.
+      Three approaches: flat one-per-line, bundle into config
+      struct, split into smaller functions.
+    snippets:
+      - label: "1"
+        desc: Flat parameter list, Style 1 one-per-line
+        code: |
+          int register_event_handler(struct task *ti,
+                                     int event_type,
+                                     int priority,
+                                     int flags,
+                                     event_handler_func handler,
+                                     void *user_data);
+      - label: "2"
+        desc: Bundle related args into a config struct
+        code: |
+          struct event_handler_config { ... };
+          int register_event_handler(const struct event_handler_config *cfg);
+      - label: "3"
+        desc: Split into smaller cohesive functions
+        code: |
+          int create_event_handler(...);
+          int set_handler_priority(...);
+          int set_handler_flags(...);
+          int set_handler_user_data(...);
+    guess: ["1", "2", "3"]
+    ranking: ["1", "2", "3"]
+    comment: >
+      Context-dependent:
+
+        Default (no need to store / pass the param set):
+          [1, 2, 3]. Flat args win.
+
+        Need to store the param set OR pass it across multiple
+        functions (even if some don't use all fields):
+          V2 wins -- the bundling earns its keep.
+
+        V3 (split into many small functions) is usually
+        AVOIDED -- too API-fragmenting.
+
+      META: this is interface-design, not coding style. Out
+      of the v2 tool's scope per Q19's boundary (extends it).
+    notes: >
+      Scope clarification recorded: API-design decisions
+      (function decomposition, parameter bundling) are OUT
+      of the v2 tool's scope. The tool sees the SHAPE of
+      code, not the DESIGN of interfaces.
+
+      This extends Q19's "naming-content out of scope" rule:
+      both naming-content AND API-design are semantic
+      decisions that depend on intent/usage the linter
+      cannot mechanically determine.
+
+      Linter implication: when the v2 model sees a function
+      with many parameters, do NOT suggest "consider
+      bundling these into a struct" -- that's a design call.
+      The tool can verify the FORMATTING of the parameter
+      list (Style 1 one-per-line per Q4) but not the choice
+      of whether to bundle.
+    weight: 1.0
+
+  - id: q50-if-body-line-layout
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      Single-statement if body. Three layouts: condition and
+      body on same line, body on own indented line, braced.
+    snippets:
+      - label: "1"
+        desc: Condition and body on one line
+        code: |
+          if (rc < 0) return rc;
+      - label: "2"
+        desc: Body on its own indented line
+        code: |
+          if (rc < 0)
+             return rc;
+      - label: "3"
+        desc: Braced
+        code: |
+          if (rc < 0) {
+             return rc;
+          }
+    guess: ["2", "1", "3"]
+    ranking: ["2", "3", "1"]
+    comment: >
+      V2 is the standard form. V3 (braced) is acceptable as
+      a "defensive" alternative. V1 (one-line) is to be
+      avoided in general -- with one specific exception: an
+      if-else-if chain emulating a switch-case where the
+      case values cannot be constants (e.g. comparison-based
+      dispatch).
+    notes: >
+      Wrong on V1 vs V3. I had V1 (one-line) second on the
+      theory that compactness wins for short cases. The
+      user puts V1 last with "avoid" and V3 second.
+
+      Principle: an if body belongs on its own line. The
+      body never shares a line with the condition, with one
+      narrow exception:
+
+        SWITCH-CASE EMULATION via if-else-if chain when the
+        case values aren't constants. Example:
+
+          if (op == OP_READ)       handle_read();
+          else if (op == OP_WRITE) handle_write();
+          else if (op == OP_CLOSE) handle_close();
+          else                     handle_unknown();
+
+        The visual table-of-dispatches earns the one-line
+        form.
+
+      V3 (braces) being acceptable here is interesting --
+      CLAUDE.md "omit braces for single-statement" is a
+      preference, not a hard rule. Braced single-statement
+      bodies are tolerated as "defensive" without being
+      anti-pattern.
+
+      For the linter: detect `if (cond) stmt;` on one line.
+      Soft-flag with suggestion to use V2, EXCEPT when part
+      of an if-else-if chain with multiple peer-clauses on
+      consecutive lines (the switch-emulation pattern).
+    weight: 1.5
+
+  - id: q11-error-handling-cleanup
+    topic: control-flow
+    date: 2026-05-20
+    prompt: >
+      A function allocates two resources sequentially and must free
+      both on every exit path. Three control-flow shapes for the
+      error-handling structure.
+    snippets:
+      - label: "1"
+        desc: Nested ifs with cleanup inline in each branch
+        code: |
+          static int
+          do_work(void)
+          {
+             struct foo *a;
+             int rc = -ENOMEM;
+
+             a = alloc_foo();
+
+             if (a) {
+
+                struct bar *b = alloc_bar();
+
+                if (b) {
+                   rc = work(a, b);
+                   free_bar(b);
+                }
+
+                free_foo(a);
+             }
+
+             return rc;
+          }
+      - label: "2"
+        desc: >
+          Early returns with cleanup duplicated. Locals declared at
+          the top (NULL-initialised where the real assignment is
+          deferred) so we don't introduce mid-block decls that are
+          orthogonal to the variant being tested.
+        code: |
+          static int
+          do_work(void)
+          {
+             struct foo *a = NULL;
+             struct bar *b = NULL;
+             int rc;
+
+             a = alloc_foo();
+             if (!a)
+                return -ENOMEM;
+
+             b = alloc_bar();
+             if (!b) {
+                free_foo(a);
+                return -ENOMEM;
+             }
+
+             rc = work(a, b);
+             free_bar(b);
+             free_foo(a);
+             return rc;
+          }
+      - label: "3"
+        desc: >
+          goto-out with consolidated cleanup. free_X(NULL) is a
+          no-op in this codebase, so no `if (ptr)` guards before
+          the frees -- they are not needed.
+        code: |
+          static int
+          do_work(void)
+          {
+             struct foo *a = NULL;
+             struct bar *b = NULL;
+             int rc = -ENOMEM;
+
+             a = alloc_foo();
+             if (!a)
+                goto out;
+
+             b = alloc_bar();
+             if (!b)
+                goto out;
+
+             rc = work(a, b);
+
+          out:
+             free_bar(b);
+             free_foo(a);
+             return rc;
+          }
+    guess: ["3", "2", "1"]
+    ranking: ["3", "2", "1"]
+    comment: >
+      Default ranking for long fn with many allocations: [3, 2, 1].
+      For 2 resources only (this case), V3 ~= V2 -- V2 is maybe a
+      bit nicer than V3 because we avoid a goto. For a VERY short
+      function whose body essentially boils down to `work(a, b)`,
+      V1 becomes elegant -- could be the preferred form.
+
+      Meta-rule: "if you're unsure, always pick variant 3, as it's
+      never wrong."
+
+      Two snippet corrections relative to what Claude originally
+      posed: (a) V3 had `if (b)` / `if (a)` guards before the frees
+      -- removed, because free_X(NULL) must be a no-op in this
+      codebase; (b) V2 had mid-block declarations which are an
+      orthogonal style issue -- locals moved to the top with NULL
+      initialisation where the real assignment is deferred.
+    notes: >
+      Default ranking [3, 2, 1] matches my pre-guess. The richer
+      picture is a context-dependent cascade:
+
+        Function shape          | Preferred ranking
+        ------------------------|------------------
+        Very short body (V1 ~=  | [1, ...]    V1 best
+          single call)          |
+        Medium fn, 2 resources  | [3, 2, ...] or [2, 3, ...] (close)
+        Long fn, many alloc     | [3, 2, 1]    V3 dominant
+
+      The meta-rule "if unsure pick V3" works as a safe default --
+      V3 is never WRONG even when V1 or V2 would be slightly
+      nicer.
+
+      Two new concrete rules surfaced from this question (recorded
+      separately in preferences-notes.md):
+
+      1. free_X(NULL) must be a no-op in this codebase. Cleanup
+         code never needs `if (ptr)` guards before calling free.
+         Variants that include such guards have an idiom error.
+
+      2. For V2-style early-return-with-duplicated-cleanup, locals
+         that get assigned later should be declared at the top
+         with NULL initialisation, NOT introduced mid-block. The
+         orthogonal C99/mixed-decl question doesn't justify
+         propagating that pattern in error-handling examples.
+    weight: 1.5

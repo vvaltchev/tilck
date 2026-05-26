@@ -204,8 +204,8 @@ void init_process_lists(struct process *pi)
 struct task *
 allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 {
-   struct process *pi, *parent_pi = parent->pi;
    struct task_and_process *tp;
+   struct process *pi, *parent_pi = parent->pi;
    struct task *ti = NULL;
    bool common_allocs = false;
    bool arch_fields = false;
@@ -323,10 +323,13 @@ oom_case:
 
 struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
 {
-   ASSERT(pi != NULL);
-   struct task *process_task = get_process_task(pi);
-   struct task *ti = kzalloc_obj(struct task);
+   struct task *process_task;
+   struct task *ti;
 
+   ASSERT(pi != NULL);
+   process_task = get_process_task(pi);
+
+   ti = kzalloc_obj(struct task);
    if (!ti || !(ti->pi = pi) || !do_common_task_allocs(ti, alloc_bufs)) {
 
       if (ti) /* do_common_task_allocs() failed */
@@ -391,8 +394,8 @@ void free_task(struct task *ti)
 
 void *task_temp_kernel_alloc(size_t size)
 {
-   struct task *curr = get_curr_task();
    void *ptr = NULL;
+   struct task *curr = get_curr_task();
 
    disable_preemption();
    {
@@ -427,8 +430,8 @@ void *task_temp_kernel_alloc(size_t size)
 
 void task_temp_kernel_free(void *ptr)
 {
-   struct task *curr = get_curr_task();
    struct kernel_alloc *alloc;
+   struct task *curr = get_curr_task();
 
    if (!ptr)
       return;
@@ -474,6 +477,7 @@ mode_t sys_umask(mode_t mask)
 {
    struct process *pi = get_curr_proc();
    mode_t old = pi->umask;
+
    pi->umask = mask & 0777;
    return old;
 }
@@ -490,9 +494,9 @@ int sys_gettid(void)
 
 int kthread_join(int tid, bool ignore_signals)
 {
-   struct task *curr = get_curr_task();
    struct task *ti;
    int rc = 0;
+   struct task *curr = get_curr_task();
 
    ASSERT(is_preemption_enabled());
    disable_preemption();
@@ -614,8 +618,8 @@ int sys_getppid(void)
 /* create new session */
 int sys_setsid(void)
 {
-   struct process *pi = get_curr_proc();
    int rc = -EPERM;
+   struct process *pi = get_curr_proc();
 
    disable_preemption();
 
@@ -792,10 +796,10 @@ int setup_process(struct elf_program_info *pinfo,
                   struct task **ti_ref,
                   regs_t *r)
 {
+   pdir_t *old_pdir;
    int rc = 0;
    u32 argv_elems = 0;
    u32 env_elems = 0;
-   pdir_t *old_pdir;
    struct process *pi = NULL;
 
    ASSERT(!is_preemption_enabled());

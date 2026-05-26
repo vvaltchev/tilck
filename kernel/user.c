@@ -14,32 +14,38 @@
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
+   u32 r;
+
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   u32 r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, dest, user_ptr, n);
+   r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, dest, user_ptr, n);
    return !r ? 0 : -1;
 }
 
 int copy_to_user(void *user_ptr, const void *src, size_t n)
 {
+   u32 r;
+
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   u32 r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, user_ptr, src, n);
+   r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, user_ptr, src, n);
    return !r ? 0 : -1;
 }
 
-static void internal_copy_user_str(void *dest,
-                                   const void *user_ptr,
-                                   void *dest_end,
-                                   size_t *written_ptr,
-                                   int *rc)
+static void
+internal_copy_user_str(void *dest,
+                       const void *user_ptr,
+                       void *dest_end,
+                       size_t *written_ptr,
+                       int *rc)
 {
-   ASSERT(in_fault_resumable_code());
-
    const char *ptr = user_ptr;
    char *d = dest;
+
+   ASSERT(in_fault_resumable_code());
+
    *written_ptr = 0;
    *rc = 0;
 
@@ -104,9 +110,9 @@ internal_copy_str_array_from_user(void *dest,
                                   int *rc)
 {
    int argc;
+   char *after_ptrs_arr;
    char **dest_arr = (char **)dest;
    char *dest_end = (char *)dest + max_size;
-   char *after_ptrs_arr;
    size_t written = 0;
    *rc = 0;
 
@@ -226,6 +232,7 @@ int duplicate_user_argv(char *dest,
    int rc;
    size_t curr_written = 0;
 
+
    if (*written_ptr >= dest_size)
       return -E2BIG;
 
@@ -273,6 +280,7 @@ void push_string_on_user_stack(regs_t *r, const char *str)
    const size_t rem = len - aligned_len;
 
    ulong user_sp = regs_get_usersp(r);
+
    user_sp -= aligned_len + (rem > 0 ? USERMODE_STACK_ALIGN : 0);
    regs_set_usersp(r, user_sp);
    memcpy(TO_PTR(user_sp), str, aligned_len);

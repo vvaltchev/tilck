@@ -54,7 +54,7 @@ enum task_dump_str_t {
 int dp_tasks_refresh(void);
 
 /* Format the state byte (+ stopped/traced flags) as 1-3 chars. */
-void state_to_str(char *out, unsigned char state, bool stopped, bool traced);
+void state_to_str(char *out, u8 state, bool stopped, bool traced);
 
 /* Get one of the table format strings (lazily built on first call). */
 const char *task_dump_str(enum task_dump_str_t t);

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: multi-include */
 
 /*
  * List with all the system tests (shellcmds). DO NOT INCLUDE THIS FILE!

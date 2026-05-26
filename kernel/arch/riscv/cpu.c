@@ -22,8 +22,8 @@ struct riscv_fpu_regs {
 
 static void handle_inst_illegal_fpu_fault(regs_t *r)
 {
-   struct task *curr = get_curr_task();
    const int int_num = r->int_num;
+   struct task *curr = get_curr_task();
 
    if (is_kernel_thread(curr) || in_syscall(curr))
       goto normal_illegal_fault;
@@ -36,7 +36,7 @@ static void handle_inst_illegal_fpu_fault(regs_t *r)
        !riscv_cpu_features.isa_exts.q)
       goto normal_illegal_fault;
 
-   arch_task_members_t *arch_fields = get_task_arch_fields(curr);
+   arch_task_members_t *const arch_fields = get_task_arch_fields(curr);
 
 #if FORK_NO_COW
 
@@ -91,11 +91,14 @@ static struct riscv_fpu_regs fpu_kernel_regs;
 
 void save_current_fpu_regs(bool in_kernel)
 {
+   arch_task_members_t *arch_fields;
+   void *buf;
+
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_members_t *arch_fields = get_task_arch_fields(get_curr_task());
-   void *buf = in_kernel ? &fpu_kernel_regs : arch_fields->fpu_regs;
+   arch_fields = get_task_arch_fields(get_curr_task());
+   buf = in_kernel ? &fpu_kernel_regs : arch_fields->fpu_regs;
 
    ASSERT(buf != NULL);
    asm_save_fpu(buf);
@@ -103,11 +106,14 @@ void save_current_fpu_regs(bool in_kernel)
 
 void restore_fpu_regs(void *task, bool in_kernel)
 {
+   arch_task_members_t *arch_fields;
+   void *buf;
+
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_members_t *arch_fields = get_task_arch_fields((struct task *)task);
-   void *buf = in_kernel ? &fpu_kernel_regs : arch_fields->fpu_regs;
+   arch_fields = get_task_arch_fields((struct task *)task);
+   buf = in_kernel ? &fpu_kernel_regs : arch_fields->fpu_regs;
 
    ASSERT(buf != NULL);
    asm_restore_fpu(buf);

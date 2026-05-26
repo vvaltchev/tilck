@@ -133,10 +133,11 @@ STATIC void remove_mem_region(int i)
 
 STATIC void swap_mem_regions(int i, int j)
 {
+   struct mem_region temp;
    ASSERT(IN_RANGE(i, 0, mem_regions_count));
    ASSERT(IN_RANGE(j, 0, mem_regions_count));
 
-   struct mem_region temp = mem_regions[i];
+   temp = mem_regions[i];
    mem_regions[i] = mem_regions[j];
    mem_regions[j] = temp;
 }
@@ -539,7 +540,7 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    const ulong pend = MIN((ulong)(r->addr+r->len),
                           (ulong)LIN_VA_TO_PA(BASE_VA) + LINEAR_MAPPING_SIZE);
 
-   const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
+   const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE)        ||
                    (r->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE) ||
                    (r->extra & MEM_REG_EXTRA_KERNEL);
 
@@ -565,7 +566,7 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    if (count != page_count)
       panic("kmalloc: unable to map regions in the virtual space");
 
-   if (still_using_orig_pdir() &&
+   if (still_using_orig_pdir()                          &&
        pend >= KERNEL_VA_TO_PA(KERNEL_BASE_VA) + 4 * MB)
    {
       set_curr_pdir(get_kernel_pdir());
@@ -577,8 +578,9 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
 
 bool system_mmap_check_for_extra_ramdisk_region(void *rd)
 {
-   int ri = system_mmap_get_region_of(LIN_VA_TO_PA(rd));
    struct mem_region *r;
+   int ri = system_mmap_get_region_of(LIN_VA_TO_PA(rd));
+
    VERIFY(ri >= 0);
 
    if (ri == MAX_MEM_REGIONS - 1)

@@ -28,12 +28,12 @@ static int sysenter_fork(void)
 
 static int fork_test(int (*fork_func)(void))
 {
-   printf("Running infinite loop..\n");
-
    unsigned n = 1;
    int FORK_TEST_ITERS_hits_count = 0;
    bool inchild = false;
    bool exit_on_next_FORK_TEST_ITERS_hit = false;
+
+   printf("Running infinite loop..\n");
 
    while (true) {
 
@@ -49,9 +49,11 @@ static int fork_test(int (*fork_func)(void))
 
          if (FORK_TEST_ITERS_hits_count == 1) {
 
+            int pid;
+
             printf("forking..\n");
 
-            int pid = fork_func();
+            pid = fork_func();
 
             printf("Fork returned %i\n", pid);
 
@@ -59,10 +61,12 @@ static int fork_test(int (*fork_func)(void))
                printf("############## I'm the child!\n");
                inchild = true;
             } else {
+               int wstatus = 0;
+               int p;
+
                printf("############## I'm the parent, child's pid = %i\n", pid);
                printf(STR_PARENT "waiting the child to exit...\n");
-               int wstatus=0;
-               int p = waitpid(pid, &wstatus, 0);
+               p = waitpid(pid, &wstatus, 0);
                printf(STR_PARENT "child (pid: %i) exited with status: %i!\n",
                       p, WEXITSTATUS(wstatus));
                exit_on_next_FORK_TEST_ITERS_hit = true;
@@ -89,9 +93,9 @@ int cmd_fork0(int argc, char **argv)
 
 static int do_fork_perf(int (*fork_func)(void))
 {
-   const int iters = 150000;
    int rc, wstatus, child_pid;
    ull_t start, duration;
+   const int iters = 150000;
 
    start = RDTSC();
 
@@ -149,8 +153,8 @@ int cmd_execve0(int argc, char **argv)
    if (argc >= 2 && !strcmp(argv[0], "--test1")) {
 
       printf("[execve child] Trying to access mapped mem before fork\n");
-      ulong val = strtoul(argv[1], NULL, 16);
-      void *ptr = (void *)val;
+      const ulong val = strtoul(argv[1], NULL, 16);
+      void *const ptr = (void *)val;
       strcpy(ptr, "hello world\n");
       printf("[execve child] Something's wrong: I succeeded!\n");
       return 0;
@@ -164,12 +168,12 @@ int cmd_execve0(int argc, char **argv)
 
       printf(STR_CHILD "alloc 1 MB with mmap()\n");
 
-      void *res = mmap(NULL,
-                       1 * MB,
-                       PROT_READ | PROT_WRITE,
-                       MAP_ANONYMOUS | MAP_PRIVATE,
-                       -1,
-                       0);
+      void *const res = mmap(NULL,
+                             1 * MB,
+                             PROT_READ | PROT_WRITE,
+                             MAP_ANONYMOUS | MAP_PRIVATE,
+                             -1,
+                             0);
 
       DEVSHELL_CMD_ASSERT(res != (void *)-1);
       strcpy(res, "I can write here, for sure!");
@@ -249,7 +253,8 @@ int cmd_vfork0(int argc, char **argv)
    static const char child_hello[] = "Hello from the child!!";
    static const char parent_hello[] = "Hello from the parent!!";
 
-   int rc, pid, wstatus, failed = 0;
+   int rc, pid, wstatus;
+   int failed = 0;
    volatile int stack_var = 0;       /* changed by child: must be volatile */
    void *volatile mmap_addr = NULL;  /* changed by child: must be volatile */
 

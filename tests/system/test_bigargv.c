@@ -21,7 +21,9 @@ static void do_bigargv_test(size_t len)
    memset(big_arg, 'a', len);
    big_arg[len-1] = 0;
 
-   close(0); close(1); close(2);
+   close(0);
+   close(1);
+   close(2);
    execvpe(DEVSHELL_PATH, argv, shell_env);
 
    /* If we got here, execve() failed */
@@ -69,9 +71,9 @@ static bool fails_with_e2big(size_t len)
 
 int cmd_bigargv(int argc, char **argv)
 {
+   size_t a0;
    size_t l = 1024;
    size_t r = 16 * 4096;
-   size_t a0;
    size_t argv_len = 0, env_len = 0;
 
    if (!running_on_tilck()) {

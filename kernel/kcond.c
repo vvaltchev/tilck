@@ -26,6 +26,9 @@ bool kcond_is_anyone_waiting(struct kcond *c)
 
 bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 {
+   struct task *curr = get_curr_task();
+   bool ret;
+
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
@@ -36,9 +39,6 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
     * Reject the configuration up front (POSIX leaves it undefined too).
     */
    ASSERT(!m || !(m->flags & KMUTEX_FL_RECURSIVE) || m->lock_count == 1);
-
-   struct task *curr = get_curr_task();
-   bool ret;
 
 panic_retry_hack:
 
@@ -114,13 +114,14 @@ panic_retry_hack:
 static void
 kcond_signal_int(struct kcond *c, struct wait_obj *wo)
 {
+   struct task *ti;
+
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   struct task *ti =
-      wo->type != WOBJ_MWO_ELEM
-         ? CONTAINER_OF(wo, struct task, wobj)
-         : CONTAINER_OF(wo, struct mwobj_elem, wobj)->ti;
+   ti = wo->type != WOBJ_MWO_ELEM
+      ? CONTAINER_OF(wo, struct task, wobj)
+      : CONTAINER_OF(wo, struct mwobj_elem, wobj)->ti;
 
    if (UNLIKELY(in_panic())) {
 

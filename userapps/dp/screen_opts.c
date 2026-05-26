@@ -31,12 +31,13 @@
 static int
 read_sysfs_value(const char *path, char *out, size_t out_sz)
 {
+   ssize_t n;
    int fd = open(path, O_RDONLY);
 
    if (fd < 0)
       return -1;
 
-   ssize_t n = read(fd, out, out_sz - 1);
+   n = read(fd, out, out_sz - 1);
    close(fd);
 
    if (n < 0)
@@ -45,7 +46,7 @@ read_sysfs_value(const char *path, char *out, size_t out_sz)
    out[n] = '\0';
 
    /* Trim trailing whitespace/newline */
-   while (n > 0 && (out[n-1] == '\n' || out[n-1] == '\r' ||
+   while (n > 0 && (out[n-1] == '\n' || out[n-1] == '\r'  ||
                     out[n-1] == ' '  || out[n-1] == '\t'))
    {
       out[--n] = '\0';
@@ -73,10 +74,10 @@ val_color(const char *val)
 static void
 render_section(const char *dir_path, const char *label, int *row, int col)
 {
-   DIR *d = opendir(dir_path);
    struct dirent *e;
    char path[512];
    char val[OPT_VAL_MAX];
+   DIR *d = opendir(dir_path);
 
    dp_write((*row)++, col,
             E_COLOR_BR_WHITE "%s" RESET_ATTRS, label);

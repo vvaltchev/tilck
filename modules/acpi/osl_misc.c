@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable function_def_no_style2 */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
@@ -47,10 +48,11 @@ AcpiOsTerminate(void)
 ACPI_PHYSICAL_ADDRESS
 AcpiOsGetRootPointer(void)
 {
+   ACPI_PHYSICAL_ADDRESS ptr = 0;
+
    if (boot_acpi_root_ptr)
       return boot_acpi_root_ptr;
 
-   ACPI_PHYSICAL_ADDRESS ptr = 0;
    AcpiFindRootPointer(&ptr);
    return ptr;
 }

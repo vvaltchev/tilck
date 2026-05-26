@@ -257,11 +257,11 @@ acpi_generic_data_load(struct sysobj *s_obj,
                        offt buf_sz,
                        offt off)
 {
+   ACPI_OBJECT *val;
+   ACPI_BUFFER res;
    ACPI_HANDLE obj_handle = s_obj->extra;
    char child_buf[16] = {0};
    char *child = NULL;
-   ACPI_OBJECT *val;
-   ACPI_BUFFER res;
    int pidx = -1;
    int bitx = -1;
    offt len = 0;
@@ -320,13 +320,13 @@ acpi_prop_methods_load(struct sysobj *s_obj,
                        offt buf_sz,
                        offt off)
 {
-   ACPI_HANDLE obj_handle = s_obj->extra;
-   ACPI_HANDLE child = NULL;
    ACPI_STATUS rc;
    ACPI_BUFFER retbuf;
-   offt written = 0;
    char name[8];
    int len;
+   offt written = 0;
+   ACPI_HANDLE obj_handle = s_obj->extra;
+   ACPI_HANDLE child = NULL;
 
    retbuf.Length = sizeof(name);
    retbuf.Pointer = name;
@@ -549,11 +549,11 @@ register_acpi_obj_in_sysfs(ACPI_HANDLE parent_obj,
                            ACPI_HANDLE obj,
                            ACPI_DEVICE_INFO *obj_info)
 {
+   struct sysobj *s_obj;
+   ACPI_STATUS rc;
    struct create_acpi_sys_obj_ctx ctx = {0};
    struct sysobj *s_parent = NULL;
-   struct sysobj *s_obj;
    char name[8] = {0};
-   ACPI_STATUS rc;
 
    if (parent_obj) {
 
@@ -664,4 +664,4 @@ register_acpi_obj_in_sysfs(ACPI_HANDLE parent_obj,
    return AE_OK;
 }
 
-#endif
+#endif /* MOD_sysfs */

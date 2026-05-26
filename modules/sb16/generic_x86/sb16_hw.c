@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck/common/tilck_sound.h>
 #include <tilck/common/printk.h>
@@ -21,9 +22,11 @@ static u16 sb16_curr_rate;
 u8
 sb16_get_irq(void)
 {
-   outb(DSP_MIXER, 0x80);
-   u8 irq_code = inb(DSP_MIXER_DATA);
+   u8 irq_code;
    u8 irq;
+
+   outb(DSP_MIXER, 0x80);
+   irq_code = inb(DSP_MIXER_DATA);
 
    switch (irq_code) {
 
@@ -182,9 +185,9 @@ sb16_set_sample_rate(u16 sample_rate)
 void
 sb16_program(struct tilck_sound_params *p, u32 buf_sz)
 {
+   u32 samples_cnt;
    u8 prog_mode = 0;
    u8 sound_fmt = 0;
-   u32 samples_cnt;
 
    prog_mode |= DSP_PLAY;
 

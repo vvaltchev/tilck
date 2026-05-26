@@ -236,9 +236,9 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("filename", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("argv", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("envp", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("filename", &ptype_path,  sys_param_in),
+         SIMPLE_PARAM("argv",     &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("envp",     &ptype_voidp, sys_param_in),
       },
    },
 

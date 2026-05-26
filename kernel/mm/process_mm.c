@@ -20,21 +20,23 @@ char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 static void
 brk_syscall_int(struct process *pi, void *new_brk)
 {
+   void *vaddr;
+
    ASSERT(!is_preemption_enabled());
 
    if (new_brk < pi->brk) {
 
       /* we have to free pages */
 
-      for (void *vaddr = new_brk; vaddr < pi->brk; vaddr += PAGE_SIZE) {
-         unmap_page(pi->pdir, vaddr, true);
+      for (void *p = new_brk; p < pi->brk; p += PAGE_SIZE) {
+         unmap_page(pi->pdir, p, true);
       }
 
       pi->brk = new_brk;
       return;
    }
 
-   void *vaddr = pi->brk;
+   vaddr = pi->brk;
 
    while (vaddr < new_brk) {
 
@@ -213,13 +215,13 @@ long
 sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, size_t pgoffset)
 {
-   u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
-   struct task *curr = get_curr_task();
-   struct process *pi = curr->pi;
-   struct fs_handle_base *handle = NULL;
-   struct user_mapping *um = NULL;
    size_t actual_len;
    int rc, fl;
+   u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
+   struct fs_handle_base *handle = NULL;
+   struct user_mapping *um = NULL;
+   struct task *curr = get_curr_task();
+   struct process *pi = curr->pi;
 
    if ((flags & MAP_PRIVATE) && (flags & MAP_SHARED))
       return -EINVAL; /* non-sense parameters */
@@ -341,11 +343,11 @@ long sys_mmap(void *addr, size_t len, int prot,
 
 static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 {
+   size_t actual_len;
+   int rc;
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
    struct user_mapping *um = NULL, *um2 = NULL;
    ulong vaddr = (ulong) vaddrp;
-   size_t actual_len;
-   int rc;
 
    ASSERT(!is_preemption_enabled());
 
@@ -443,10 +445,10 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 
 int sys_munmap(void *vaddrp, size_t len)
 {
+   int rc;
+   ulong vaddr = (ulong) vaddrp;
    struct task *curr = get_curr_task();
    struct process *pi = curr->pi;
-   ulong vaddr = (ulong) vaddrp;
-   int rc;
 
    if (!len || !pi->mi->mmap_heap)
       return -EINVAL;

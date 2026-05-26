@@ -41,7 +41,7 @@ val_color(const char *val)
 }
 
 static void
-render_rt_int(int *row, int col, const char *name, unsigned long val)
+render_rt_int(int *row, int col, const char *name, ulong val)
 {
    char vbuf[16];
 
@@ -79,8 +79,8 @@ static void dp_show_runtime(void)
    row++;
 
    render_section_label(&row, col, "Console");
-   render_rt_int(&row, col, "term_rows",       (unsigned long)tui_rows);
-   render_rt_int(&row, col, "term_cols",       (unsigned long)tui_cols);
+   render_rt_int(&row, col, "term_rows",       (ulong)tui_rows);
+   render_rt_int(&row, col, "term_cols",       (ulong)tui_cols);
    render_rt_int(&row, col, "use_framebuffer", ri.use_framebuffer);
 
    /*
@@ -107,13 +107,10 @@ static void dp_show_runtime(void)
     * 26-char name column and the colons stay aligned.
     */
    render_section_label(&row, col, "Clock Sync");
-   render_rt_int(&row, col, "clk_in_rs",        ri.clk_in_resync);
-   render_rt_int(&row, col, "clk_in_full_rs",   ri.clk_in_full_resync);
-   render_rt_int(&row, col, "clk_full_rs_cnt",  ri.clk_full_resync_count);
-   render_rt_int(&row, col, "clk_full_rs_fail", ri.clk_full_resync_fail_count);
-   render_rt_int(&row, col, "clk_full_rs_succ", ri.clk_full_resync_success_count);
-   render_rt_int(&row, col, "clk_full_rs_adg1", ri.clk_full_resync_abs_drift_gt_1);
-   render_rt_int(&row, col, "clk_resync_cnt",   ri.clk_multi_second_resync_count);
+   render_rt_int(&row, col, "clk_in_rs",      ri.clk_in_resync);
+   render_rt_int(&row, col, "clk_in_full_rs", ri.clk_in_full_resync);
+   render_rt_int(&row, col, "clk_full_rs_cnt",ri.clk_full_resync_count);
+   render_rt_int(&row, col, "clk_resync_cnt", ri.clk_multi_second_resync_count);
 }
 
 static struct dp_screen dp_runtime_screen = {

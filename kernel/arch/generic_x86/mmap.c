@@ -8,7 +8,7 @@
 STATIC_ASSERT(MAX_DMA <= 16 * MB);
 STATIC_ASSERT((MAX_DMA & (64 * KB - 1)) == 0);
 
-void arch_add_initial_mem_regions()
+void arch_add_initial_mem_regions(void)
 {
    /* We want to keep the first 64 KB as reserved */
    append_mem_region((struct mem_region) {
@@ -32,13 +32,14 @@ void arch_add_initial_mem_regions()
    });
 }
 
-bool arch_add_final_mem_regions()
+bool arch_add_final_mem_regions(void)
 {
    u64 tot_dma = 0;
 
    for (int i = 0; i < mem_regions_count; i++) {
 
       struct mem_region *m = mem_regions + i;
+      u64 dma_len;
 
       if (m->type != MULTIBOOT_MEMORY_AVAILABLE || m->extra || m->addr > 16*MB)
          continue;
@@ -72,7 +73,7 @@ bool arch_add_final_mem_regions()
        *
        */
 
-      u64 dma_len = MIN(16 * MB - m->addr, MAX_DMA - tot_dma);
+      dma_len = MIN(16 * MB - m->addr, MAX_DMA - tot_dma);
 
       append_mem_region((struct mem_region) {
          .addr = m->addr,

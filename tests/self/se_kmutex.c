@@ -77,7 +77,7 @@ static void sek_thread(void *unused)
    } // for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++)
 }
 
-void selftest_kmutex()
+void selftest_kmutex(void)
 {
    int local_tids[3];
 
@@ -149,7 +149,7 @@ static void test_kmutex_thread_trylock(void *unused)
    }
 }
 
-void selftest_kmutex_rec()
+void selftest_kmutex_rec(void)
 {
    bool success;
    int local_tids[3];
@@ -231,6 +231,7 @@ static void kmutex_ord_th(void *arg)
 {
    int tid = get_curr_tid();
    int local_id = (int)(long)arg;
+
    ord_th_states[local_id] = 1;
 
    /*
@@ -330,9 +331,9 @@ kmutex_ord_supervisor_thread(void *unused)
 
       if (time_ms > 0 && (time_ms % 5000) == 0) {
 
-         printk("[kmutex_ord_supervisor] %d sec elapsed\n", time_ms / 1000);
-
          int cnt[10] = {0};
+
+         printk("[kmutex_ord_supervisor] %d sec elapsed\n", time_ms / 1000);
 
          for (int i = 0; i < KMUTEX_TH_COUNT; i++)
             cnt[ord_th_states[i]]++;
@@ -350,10 +351,10 @@ kmutex_ord_supervisor_thread(void *unused)
    }
 }
 
-void selftest_kmutex_ord()
+void selftest_kmutex_ord(void)
 {
-   u32 unlucky_threads = 0;
    int tid, supervisor_tid;
+   u32 unlucky_threads = 0;
 
    idx1 = idx2 = 0;
    ord_test_done = false;

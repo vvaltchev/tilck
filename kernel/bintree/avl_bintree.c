@@ -14,13 +14,16 @@
 
 void rotate_left_child(void **obj_ref, long bintree_offset)
 {
+   struct bintree_node *orig_node;
+   struct bintree_node *orig_left_child;
+
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   struct bintree_node *orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN(*obj_ref);
    ASSERT(orig_node->left_obj != NULL);
 
-   struct bintree_node *orig_left_child = OBJTN(orig_node->left_obj);
+   orig_left_child = OBJTN(orig_node->left_obj);
    *obj_ref = orig_node->left_obj;
    orig_node->left_obj = orig_left_child->right_obj;
    OBJTN(*obj_ref)->right_obj = NTOBJ(orig_node);
@@ -41,13 +44,16 @@ void rotate_left_child(void **obj_ref, long bintree_offset)
 
 void rotate_right_child(void **obj_ref, long bintree_offset)
 {
+   struct bintree_node *orig_node;
+   struct bintree_node *orig_right_child;
+
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   struct bintree_node *orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN(*obj_ref);
    ASSERT(orig_node->right_obj != NULL);
 
-   struct bintree_node *orig_right_child = OBJTN(orig_node->right_obj);
+   orig_right_child = OBJTN(orig_node->right_obj);
    *obj_ref = orig_node->right_obj;
    orig_node->right_obj = orig_right_child->left_obj;
    OBJTN(*obj_ref)->left_obj = NTOBJ(orig_node);
@@ -64,10 +70,9 @@ static void balance(void **obj_ref, long bintree_offset)
    if (*obj_ref == NULL)
       return;
 
-   void *left_obj = LEFT_OF(*obj_ref);
-   void *right_obj = RIGHT_OF(*obj_ref);
-
-   int bf = HEIGHT(left_obj) - HEIGHT(right_obj);
+   void *const left_obj = LEFT_OF(*obj_ref);
+   void *const right_obj = RIGHT_OF(*obj_ref);
+   const int bf = HEIGHT(left_obj) - HEIGHT(right_obj);
 
    if (bf > ALLOWED_IMBALANCE) {
 
@@ -123,7 +128,7 @@ bintree_remove_internal_aux(void **root_obj_ref,
       // *root_obj_ref and so it is its successor.
 
       // save *successor's right node (it has no left node!).
-      void *successors_right = RIGHT_OF(*successor_ref); // may be NULL.
+      void *const successors_right = RIGHT_OF(*successor_ref); // may be NULL.
 
       // replace *root_obj_ref (to be deleted) with *successor_ref
       *root_obj_ref = *successor_ref;
@@ -226,8 +231,8 @@ bintree_in_order_visit_internal(void *obj,
    NOREC_LOOP_BEGIN
    {
       obj = LOAD_ARG_FROM_STACK(1, void *);
-      void *left_obj = LIKELY(!reverse) ? LEFT_OF(obj) : RIGHT_OF(obj);
-      void *right_obj = LIKELY(!reverse) ? RIGHT_OF(obj) : LEFT_OF(obj);
+      void *const left_obj = LIKELY(!reverse) ? LEFT_OF(obj) : RIGHT_OF(obj);
+      void *const right_obj = LIKELY(!reverse) ? RIGHT_OF(obj) : LEFT_OF(obj);
 
       HANDLE_SIMULATED_RETURN();
 

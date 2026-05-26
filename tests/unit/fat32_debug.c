@@ -44,7 +44,7 @@ void fat_dump_common_header(void *data)
 
 static void dump_fat16_headers(struct fat_hdr *common_hdr)
 {
-   struct fat16_header2 *hdr = (struct fat16_header2*) (common_hdr+1);
+   struct fat16_header2 *hdr = (struct fat16_header2 *)(common_hdr + 1);
 
    printk("BS_DrvNum: %u\n", hdr->BS_DrvNum);
    printk("BS_BootSig: %u\n", hdr->BS_BootSig);
@@ -56,7 +56,7 @@ static void dump_fat16_headers(struct fat_hdr *common_hdr)
 
 static void dump_fat32_headers(struct fat_hdr *common_hdr)
 {
-   struct fat32_header2 *hdr = (struct fat32_header2*) (common_hdr+1);
+   struct fat32_header2 *hdr = (struct fat32_header2 *)(common_hdr + 1);
    printk("BPB_FATSz32: %u\n", hdr->BPB_FATSz32);
    printk("BPB_ExtFlags: %u\n", hdr->BPB_ExtFlags);
    printk("BPB_FSVer: %u\n", hdr->BPB_FSVer);
@@ -88,17 +88,19 @@ struct debug_fat_walk_ctx {
    int level;
 };
 
-static int dump_dir_entry(struct fat_hdr *hdr,
-                          enum fat_type ft,
-                          struct fat_entry *entry,
-                          const char *long_name,
-                          void *arg)
+static int
+dump_dir_entry(struct fat_hdr *hdr,
+               enum fat_type ft,
+               struct fat_entry *entry,
+               const char *long_name,
+               void *arg)
 {
    char shortname[16];
-   fat_get_short_name(entry, shortname);
+   char indentbuf[4*16] = {0};
    struct debug_fat_walk_ctx *ctx = arg;
 
-   char indentbuf[4*16] = {0};
+   fat_get_short_name(entry, shortname);
+
    for (int i = 0; i < 4 * ctx->level; i++)
       indentbuf[i] = ' ';
 
@@ -127,12 +129,15 @@ static int dump_dir_entry(struct fat_hdr *hdr,
 
 void fat_dump_info(void *fatpart_begin)
 {
+   enum fat_type ft;
+   struct debug_fat_walk_ctx ctx;
    struct fat_hdr *hdr = fatpart_begin;
+
    fat_dump_common_header(fatpart_begin);
 
    printk("\n");
 
-   enum fat_type ft = fat_get_type(hdr);
+   ft = fat_get_type(hdr);
    ASSERT(ft != fat12_type);
 
    if (ft == fat16_type) {
@@ -142,7 +147,7 @@ void fat_dump_info(void *fatpart_begin)
    }
    printk("\n");
 
-   struct debug_fat_walk_ctx ctx = {
+   ctx = (struct debug_fat_walk_ctx) {
 
       .walk_params = {
          .ctx = &ctx.walk_ctx,

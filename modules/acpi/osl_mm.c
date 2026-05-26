@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable function_def_no_style2 */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
@@ -100,6 +101,7 @@ AcpiOsReadable(
 {
    ulong va = (ulong)Pointer;
    ulong va_end = va + Length;
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (va < BASE_VA)
@@ -128,6 +130,7 @@ AcpiOsWritable(
    ulong va_end = va + Length;
    struct mem_region m;
    int reg_count = get_mem_regions_count();
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (va < BASE_VA)

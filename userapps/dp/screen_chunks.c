@@ -40,7 +40,7 @@ static int load_errno;
 static char order_by = 's';
 static int row;
 
-static long dp_cmd_get_chunks(struct dp_kmalloc_chunk *buf, unsigned long max)
+static long dp_cmd_get_chunks(struct dp_kmalloc_chunk *buf, ulong max)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_GET_KMALLOC_CHUNKS,
@@ -140,14 +140,16 @@ dp_chunks_keypress(struct key_event ke)
 
 static void dp_show_chunks(void)
 {
+   u64 lf_allocs = 0;
+   u64 lf_waste  = 0;
+
    row = tui_screen_start_row;
 
    if (!got_data) {
 
       if (load_errno == EOPNOTSUPP || load_errno == ENOTSUP) {
 
-         dp_writeln(
-            "Not available: recompile with KRN_KMALLOC_HEAVY_STATS=1");
+         dp_writeln("Not available: recompile with KRN_KMALLOC_HEAVY_STATS=1");
 
       } else {
 
@@ -160,17 +162,14 @@ static void dp_show_chunks(void)
    }
 
    /* Aggregate sums of allocated and waste */
-   unsigned long long lf_allocs = 0;
-   unsigned long long lf_waste  = 0;
-
    for (int i = 0; i < chunks_count; i++) {
 
-      lf_allocs += (unsigned long long)chunks[i].size *
-                   (unsigned long long)chunks[i].count;
+      lf_allocs += (u64)chunks[i].size *
+                   (u64)chunks[i].count;
       lf_waste  += chunks[i].max_waste;
    }
 
-   const unsigned long long lf_tot = lf_allocs + lf_waste;
+   const u64 lf_tot = lf_allocs + lf_waste;
 
    dp_writeln("Chunk sizes count:         %5d sizes", chunks_count);
    dp_writeln("Lifetime data allocated:   %5llu %s [actual: %llu %s]",
@@ -212,14 +211,14 @@ static void dp_show_chunks(void)
 
    for (int i = 0; i < chunks_count; i++) {
 
-      const unsigned long long waste = chunks[i].max_waste;
+      const u64 waste = chunks[i].max_waste;
 
       dp_writeln("%9llu "
                  TERM_VLINE " %7llu "
                  TERM_VLINE " %6llu %s "
                  TERM_VLINE " %6u.%u%%",
-                 (unsigned long long)chunks[i].size,
-                 (unsigned long long)chunks[i].count,
+                 (u64)chunks[i].size,
+                 (u64)chunks[i].count,
                  waste < KB_ ? waste : waste / KB_,
                  waste < KB_ ? "B " : "KB",
                  chunks[i].max_waste_p / 10,

@@ -20,8 +20,8 @@ static bool fp_is_valid(ulong fp, ulong sp)
 
    if (!fp || fp < low || fp > high || fp & 0x7)
       return false;
-   else
-      return true;
+
+   return true;
 }
 
 static size_t

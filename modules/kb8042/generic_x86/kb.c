@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck_gen_headers/mod_kb8042.h>
 
@@ -52,6 +53,9 @@ static inline void kb_led_update(void)
 
 static char translate_printable_key(u32 key)
 {
+   char *layout;
+   char c;
+
    if (key >= 256) {
 
       switch (key) {
@@ -67,10 +71,10 @@ static char translate_printable_key(u32 key)
       }
    }
 
-   char *layout =
+   layout =
       us_kb_layouts[kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)];
 
-   char c = layout[key];
+   c = layout[key];
 
    if (numLock)
       c |= numkey[key];
@@ -121,7 +125,9 @@ static bool handle_special_keys_pressed(u32 key)
 
       case KEY_DEL:
 
-         if (kb_is_pressed(KEY_LEFT_CTRL) && kb_is_pressed(KEY_LEFT_ALT)) {
+         if (kb_is_pressed(KEY_LEFT_CTRL) &&
+             kb_is_pressed(KEY_LEFT_ALT))
+         {
             printk("Ctrl + Alt + Del: Reboot!\n");
             reboot();
             NOT_REACHED();
@@ -217,7 +223,7 @@ static void kb_process_scancode(u8 scancode)
 static void kb_dump_regs(u8 ctr, u8 cto, u8 status)
 {
    bool masked = irq_is_masked(X86_PC_KEYBOARD_IRQ);
-   printk("KB: IRQ masked:                   %u\n", masked);
+   printk("KB: IRQ masked:                   %u\n",  masked);
    printk("KB: Ctrl Config. Byte (CTR):   0x%02x\n", ctr);
    printk("KB: Ctrl Output Port (CTO):    0x%02x\n", cto);
    printk("KB: Status register:           0x%02x\n", status);
@@ -421,6 +427,7 @@ static bool hw_8042_init(void)
 static void
 init_kb_internal(void)
 {
+   /* style_check: disable comment_block_multiline_format */
    const bool acpi_ok = get_acpi_init_status() == ais_fully_initialized;
 
    /*

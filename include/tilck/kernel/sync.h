@@ -156,11 +156,11 @@ struct ksem {
 #define KSEM_WAIT_FOREVER                       -1
 #define KSEM_NO_WAIT                             0
 
-#define STATIC_KSEM_INIT(s, val, max)            \
-   {                                             \
-      .max = (max),                              \
-      .counter = (val),                          \
-      .wait_list = STATIC_LIST_INIT(s.wait_list),\
+#define STATIC_KSEM_INIT(s, val, max)                                 \
+   {                                                                  \
+      .max = (max),                                                   \
+      .counter = (val),                                               \
+      .wait_list = STATIC_LIST_INIT(s.wait_list),                     \
    }
 
 void ksem_init(struct ksem *s, int val, int max);
@@ -185,12 +185,12 @@ struct kmutex {
 #endif
 };
 
-#define STATIC_KMUTEX_INIT(m, fl)                 \
-   {                                              \
-      .owner_task = NULL,                         \
-      .flags = 0,                                 \
-      .lock_count = 0,                            \
-      .wait_list = STATIC_LIST_INIT(m.wait_list), \
+#define STATIC_KMUTEX_INIT(m, fl)                                     \
+   {                                                                  \
+      .owner_task = NULL,                                             \
+      .flags = 0,                                                     \
+      .lock_count = 0,                                                \
+      .wait_list = STATIC_LIST_INIT(m.wait_list),                     \
    }
 
 #define KMUTEX_FL_RECURSIVE                                (1 << 0)
@@ -224,9 +224,9 @@ struct kcond {
    struct list wait_list;
 };
 
-#define STATIC_KCOND_INIT(s)                     \
-   {                                             \
-      .wait_list = STATIC_LIST_INIT(s.wait_list),\
+#define STATIC_KCOND_INIT(s)                                          \
+   {                                                                  \
+      .wait_list = STATIC_LIST_INIT(s.wait_list),                     \
    }
 
 #define KCOND_WAIT_FOREVER 0

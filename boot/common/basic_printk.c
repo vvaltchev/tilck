@@ -52,71 +52,71 @@ void vprintk(const char *fmt, va_list args)
 
       switch (*ptr) {
 
-      case '%':
-         intf->write_char(*ptr);
-         break;
+         case '%':
+            intf->write_char(*ptr);
+            break;
 
-      case 'l':
+         case 'l':
 
-         ptr++;
-
-         if (!*ptr)
-            return;
-
-         if (*ptr == 'l') {
-
-            /* OK, we've got %ll */
             ptr++;
 
             if (!*ptr)
                return;
 
-            print_ll(*ptr, buf, va_arg(args, u64));
+            if (*ptr == 'l') {
 
-         } else {
+               /* OK, we've got %ll */
+               ptr++;
 
-            if (sizeof(long) > sizeof(int)) {
+               if (!*ptr)
+                  return;
+
                print_ll(*ptr, buf, va_arg(args, u64));
+
             } else {
-               /* Just ignore %l and treat %ld as %d */
+
+               if (sizeof(long) > sizeof(int)) {
+                  print_ll(*ptr, buf, va_arg(args, u64));
+               } else {
+                  /* Just ignore %l and treat %ld as %d */
+               }
             }
-         }
 
-         break;
+            break;
 
-      case 'd':
-      case 'i':
-         itoa32(va_arg(args, s32), buf);
-         print_string(buf);
-         break;
+         case 'd':
+         case 'i':
+            itoa32(va_arg(args, s32), buf);
+            print_string(buf);
+            break;
 
-      case 'u':
-         uitoa32(va_arg(args, u32), buf, 10);
-         print_string(buf);
-         break;
+         case 'u':
+            uitoa32(va_arg(args, u32), buf, 10);
+            print_string(buf);
+            break;
 
-      case 'x':
-         uitoa32(va_arg(args, u32), buf, 16);
-         print_string(buf);
-         break;
+         case 'x':
+            uitoa32(va_arg(args, u32), buf, 16);
+            print_string(buf);
+            break;
 
-      case 'c':
-         intf->write_char((char)va_arg(args, int));
-         break;
+         case 'c':
+            intf->write_char((char)va_arg(args, int));
+            break;
 
-      case 's':
-         print_string(va_arg(args, const char *));
-         break;
+         case 's':
+            print_string(va_arg(args, const char *));
+            break;
 
-      case 'p':
-         uitoaN_hex_fixed(va_arg(args, ulong), buf);
-         print_string("0x");
-         print_string(buf);
-         break;
+         case 'p':
+            uitoaN_hex_fixed(va_arg(args, ulong), buf);
+            print_string("0x");
+            print_string(buf);
+            break;
 
-      default:
-         intf->write_char('%');
-         intf->write_char(*ptr);
+         default:
+            intf->write_char('%');
+            intf->write_char(*ptr);
       }
    }
 }

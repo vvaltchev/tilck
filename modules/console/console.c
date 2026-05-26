@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
@@ -54,12 +55,13 @@ void reset_console_data(struct tty *t)
 
 void tty_reset_filter_ctx(struct tty *t)
 {
+   struct twfilter_ctx *ctx;
    struct console_data *cd = t->console_data;
 
    if (!cd)
       return; /* serial tty */
 
-   struct twfilter_ctx *ctx = &cd->filter_ctx;
+   ctx = &cd->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
    ctx->t = t;
    ctx->cd = cd;
@@ -205,6 +207,7 @@ tty_csi_EF_handler(u32 *params,
 {
    struct tty *const t = ctx->t;
    const int n = (int)MAX(1u, params[0]);
+
    ASSERT(c == 'E' || c == 'F');
 
    if (c == 'E') {

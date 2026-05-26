@@ -104,7 +104,7 @@ bool handle_potential_cow(void *context)
    }
 
    // Allocate a new page.
-   void *new_page_vaddr = kmalloc(PAGE_SIZE);
+   void *const new_page_vaddr = kmalloc(PAGE_SIZE);
 
    if (!new_page_vaddr) {
 
@@ -166,6 +166,7 @@ kernel_page_fault_panic(regs_t *r, ulong vaddr, bool wr, bool ex, bool rd)
 
 void handle_page_fault_int(regs_t *r)
 {
+   struct user_mapping *um;
    ulong vaddr = r->sbadaddr;
    bool ex = (r->scause == EXC_INST_PAGE_FAULT);
    bool rd = (r->scause == EXC_LOAD_PAGE_FAULT);
@@ -173,7 +174,6 @@ void handle_page_fault_int(regs_t *r)
    bool us = !(r->sstatus & SR_SPP);
    bool p = 0;
    int sig = SIGSEGV;
-   struct user_mapping *um;
    page_table_t *pt = pdir_get_page_table(get_curr_pdir(), vaddr);
 
    if (!us) {
@@ -351,8 +351,8 @@ unmap_pages_permissive(pdir_t *pdir,
                        size_t page_count,
                        bool do_free)
 {
-   size_t unmapped_pages = 0;
    int rc;
+   size_t unmapped_pages = 0;
 
    for (size_t i = 0; i < page_count; i++) {
 
@@ -482,11 +482,11 @@ map_pages_int(pdir_t *pdir,
               bool big_pages_allowed,
               ulong hw_flags)
 {
+   ulong big_page_flags;
    int rc;
    size_t pages = 0;
    size_t big_pages = 0;
    size_t rem_pages = page_count;
-   ulong big_page_flags;
 
    ASSERT(IS_L0_PAGE_ALIGNED(vaddr));
    ASSERT(IS_L0_PAGE_ALIGNED(paddr));
@@ -566,9 +566,9 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
       ASSERT(~pg_flags & PAGING_FL_ZERO_PG);
    }
 
-   hw_pg_flags = _PAGE_BASE |
-                 (rw ? _PAGE_WRITE : 0) |
-                 (us ? _PAGE_USER : _PAGE_GLOBAL) |
+   hw_pg_flags = _PAGE_BASE                          |
+                 (rw ? _PAGE_WRITE : 0)              |
+                 (us ? _PAGE_USER : _PAGE_GLOBAL)    |
                  avail_bits;
 
    rc = map_page_int(pdir, vaddrp, paddr, hw_pg_flags);
@@ -594,8 +594,8 @@ map_zero_page(pdir_t *pdir, void *vaddrp, u32 pg_flags)
    if (pg_flags & PAGING_FL_RW)
       avail_bits |= PAGE_COW_ORIG_RW;
 
-   hw_pg_flags = _PAGE_BASE |
-                 (us ? _PAGE_USER : _PAGE_GLOBAL) |
+   hw_pg_flags = _PAGE_BASE                          |
+                 (us ? _PAGE_USER : _PAGE_GLOBAL)    |
                  avail_bits;
 
    return
@@ -624,9 +624,9 @@ map_pages(pdir_t *pdir,
    if (pg_flags & PAGING_FL_DO_ALLOC)
       NOT_IMPLEMENTED();
 
-   hw_pg_flags = _PAGE_BASE |
-                 (rw ? _PAGE_WRITE : 0) |
-                 (us ? _PAGE_USER : _PAGE_GLOBAL) |
+   hw_pg_flags = _PAGE_BASE                          |
+                 (rw ? _PAGE_WRITE : 0)              |
+                 (us ? _PAGE_USER : _PAGE_GLOBAL)    |
                  avail_bits;
 
    return
@@ -642,8 +642,8 @@ static int
 pdir_clone_int(pdir_t *old_pdir,pdir_t *new_pdir,
                u32 pd_idx, u32 level, bool deep)
 {
-   page_table_t *old_pt, *new_pt;
    int rc;
+   page_table_t *old_pt, *new_pt;
 
    if (level == 0) {
       /* Mark all the non-shared pages in that page-table as COW. */
@@ -680,12 +680,12 @@ pdir_clone_int(pdir_t *old_pdir,pdir_t *new_pdir,
 
             ASSERT(IS_L0_PAGE_ALIGNED(new_page));
 
-            ulong orig_page_paddr =
+            const ulong orig_page_paddr =
                (ulong)old_pdir->entries[j].pfn << PAGE_SHIFT;
 
-            void *orig_page = PA_TO_LIN_VA(orig_page_paddr);
+            void *const orig_page = PA_TO_LIN_VA(orig_page_paddr);
 
-            u32 new_page_paddr = LIN_VA_TO_PA(new_page);
+            const u32 new_page_paddr = LIN_VA_TO_PA(new_page);
             ASSERT(pf_ref_count_get(new_page_paddr) == 0);
             pf_ref_count_inc(new_page_paddr);
 
@@ -776,7 +776,7 @@ pdir_destroy_int(pdir_t *pdir, u32 pd_idx, u32 level)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = PA_TO_LIN_VA(pdir->entries[i].pfn << PAGE_SHIFT);
+      page_table_t *const pt = PA_TO_LIN_VA(pdir->entries[i].pfn << PAGE_SHIFT);
 
       level--;
       pdir_destroy_int((pdir_t *)pt, PTRS_PER_PT, level);
@@ -1077,8 +1077,8 @@ void set_pages_io(pdir_t *pdir, void *vaddr, size_t size)
 
 void early_init_paging(void)
 {
-   set_fault_handler(EXC_INST_PAGE_FAULT, handle_page_fault);
-   set_fault_handler(EXC_LOAD_PAGE_FAULT, handle_page_fault);
+   set_fault_handler(EXC_INST_PAGE_FAULT,  handle_page_fault);
+   set_fault_handler(EXC_LOAD_PAGE_FAULT,  handle_page_fault);
    set_fault_handler(EXC_STORE_PAGE_FAULT, handle_page_fault);
 
    __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(kpdir_buf));
@@ -1157,16 +1157,19 @@ void init_hi_vmem_heap(void)
 
 void *failsafe_map_framebuffer(ulong paddr, ulong size)
 {
+   ulong vaddr;
+   u32 big_pages_to_use;
+
    /*
     * Paging has not been initialized yet: probably we're in panic.
     * At this point, the kernel still uses page_size_buf as pdir, with only
     * the first 4 MB of the physical mapped at BASE_VA.
     */
 
-   ulong vaddr = FAILSAFE_FB_VADDR;
+   vaddr = FAILSAFE_FB_VADDR;
    __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(page_size_buf));
 
-   u32 big_pages_to_use = pow2_round_up_at(size, L1_PAGE_SIZE) / L1_PAGE_SIZE;
+   big_pages_to_use = pow2_round_up_at(size, L1_PAGE_SIZE) / L1_PAGE_SIZE;
 
    for (u32 i = 0; i < big_pages_to_use; i++) {
 

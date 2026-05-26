@@ -31,8 +31,8 @@ static struct mnt_fs *sysfs;
 static int
 sysfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
-   struct sysfs_path *sp = (struct sysfs_path *) &p->fs_path;
    const struct sysobj_prop_type *pt;
+   struct sysfs_path *sp = (struct sysfs_path *) &p->fs_path;
 
    if (sp->inode) {
 
@@ -73,9 +73,9 @@ sysfs_get_inode(fs_handle h)
 static int
 sysfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
+   const struct sysobj_prop_type *pt;
    struct sysfs_inode *inode = i;
    struct sysfs_data *d = fs->device_data;
-   const struct sysobj_prop_type *pt;
 
    bzero(statbuf, sizeof(struct k_stat64));
 
@@ -153,8 +153,8 @@ static int sysfs_readlink(struct vfs_path *p, char *buf)
 static void
 sysfs_syncfs(struct mnt_fs *fs)
 {
-   struct sysfs_data *d = fs->device_data;
    struct sysfs_handle *h;
+   struct sysfs_data *d = fs->device_data;
 
    while (true) {
 
@@ -325,10 +325,10 @@ sysfs_create_custom_obj_va(const char *type_name,
                            u32 args_cnt,
                            va_list args)
 {
-   const u32 prop_cnt = args_cnt / 2;
    struct sysobj_type *ot;
    struct sysobj *obj;
    void **dyn_prop_data;
+   const u32 prop_cnt = args_cnt / 2;
 
    if (args_cnt % 2) {
       /* Expects N <prop, value> pairs. Cannot have an odd number of args. */
@@ -409,7 +409,8 @@ sysfs_create_files_for_obj(struct mnt_fs *fs, struct sysobj *obj)
 {
    struct sysobj_prop **ptr, *prop;
    struct sysfs_inode *i;
-   int rc, idx = 0;
+   int rc;
+   int idx = 0;
 
    if (!obj->type)
       return 0;
@@ -714,28 +715,40 @@ main_sysfs_create_default_objects(void)
 
    if ((rc = REGISTER_SYSFS_HW_OBJ("power", &sysfs_power_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("storage", &sysfs_storage_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("network", &sysfs_network_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("display", &sysfs_display_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("media", &sysfs_media_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("bridge", &sysfs_bridge_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("comm", &sysfs_comm_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("generic", &sysfs_genp_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("input", &sysfs_input_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("serbus", &sysfs_serbus_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("wireless", &sysfs_wifi_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("sigproc", &sysfs_sigproc_obj)))
       return rc;
+
    if ((rc = REGISTER_SYSFS_HW_OBJ("other", &sysfs_other_obj)))
       return rc;
 

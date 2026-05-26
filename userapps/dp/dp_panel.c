@@ -82,18 +82,21 @@ void dp_buf_reset(void)
 static void
 dp_buf_append(int relrow, int col, const char *text, int text_len)
 {
+   struct dp_buf_line *L;
+   struct dp_buf_chunk *C;
+
    if (relrow < 0 || relrow >= DP_BUF_MAX_LINES)
       return;
 
    if (relrow >= dp_buf_lines)
       dp_buf_lines = relrow + 1;
 
-   struct dp_buf_line *L = &dp_buf[relrow];
+   L = &dp_buf[relrow];
 
    if (L->chunk_count >= DP_BUF_MAX_CHUNKS)
       return;
 
-   struct dp_buf_chunk *C = &L->chunks[L->chunk_count++];
+   C = &L->chunks[L->chunk_count++];
 
    C->col = col;
 
@@ -160,6 +163,7 @@ void dp_buf_paint(int row_off,
    const int clear_len = panel_w - 2 < (int)sizeof(spaces)
                          ? panel_w - 2
                          : (int)sizeof(spaces);
+
    memset(spaces, ' ', (size_t)clear_len);
 
    for (int i = 0; i < screen_rows; i++) {
@@ -192,18 +196,18 @@ void dp_buf_paint(int row_off,
 void dp_show_modal_msg(const char *msg)
 {
    static const char common_msg[] = "Press ANY key to continue";
+   char clear_buf[DP_W+1];
    const int max_line_len = DP_W - 2 - 2 - 2;
    const int msg_len = (int)strlen(msg);
 
    int row_len = msg_len < max_line_len ? msg_len : max_line_len;
+
    if (row_len < (int)sizeof(common_msg) - 1)
       row_len = (int)sizeof(common_msg) - 1;
    row_len += 2;
 
    const int srow = tui_start_row + DP_H / 2 - 5 / 2;
    const int scol = tui_cols / 2 - row_len / 2;
-
-   char clear_buf[DP_W+1];
 
    if (msg_len > max_line_len)
       return; /* for the moment, no multi-line */

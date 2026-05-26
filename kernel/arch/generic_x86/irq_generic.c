@@ -98,9 +98,9 @@ static inline void handle_irq_clear_mask(int irq)
 
 void arch_irq_handling(regs_t *r)
 {
+   struct irq_handler_node *pos;
    enum irq_action hret = IRQ_NOT_HANDLED;
    const int irq = r->int_num - 32;
-   struct irq_handler_node *pos;
 
    ASSERT(!are_interrupts_enabled());
    ASSERT(!is_preemption_enabled());

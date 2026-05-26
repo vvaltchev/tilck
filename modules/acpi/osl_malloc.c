@@ -66,9 +66,10 @@ acpi_osl_do_free(void *ptr)
 void *
 AcpiOsAllocate(ACPI_SIZE Size)
 {
-   const size_t sz = (size_t)Size;
    void *vaddr;
    ulong var;
+   const size_t sz = (size_t)Size;
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (Size >= 512 * MB) {
@@ -100,9 +101,10 @@ AcpiOsAllocate(ACPI_SIZE Size)
 void
 AcpiOsFree(void *Memory)
 {
+   ulong var;
+
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   ulong var;
    disable_interrupts(&var);
    {
       acpi_osl_do_free(Memory);

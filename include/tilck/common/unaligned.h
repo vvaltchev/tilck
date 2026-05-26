@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 /*
  * With modern GCC compilers, things like *(u32 *)(ptr + off) are undefined
  * behavior if `ptr+off` is not aligned correctly, even on architectures
@@ -20,15 +22,15 @@
  * access is not allowed.
  */
 
-#define SAFE_READ(addr, type) ({                                \
-   type __rres;                                                 \
-   __builtin_memcpy(&__rres, (void *)(addr), sizeof(__rres));   \
-   __rres;                                                      \
+#define SAFE_READ(addr, type) ({                                      \
+   type __rres;                                                       \
+   __builtin_memcpy(&__rres, (void *)(addr), sizeof(__rres));         \
+   __rres;                                                            \
 })
 
-#define SAFE_WRITE(addr, type, val) ({                          \
-   const type __wtmp = (val);                                   \
-   __builtin_memcpy((void *)(addr), &__wtmp, sizeof(__wtmp));   \
+#define SAFE_WRITE(addr, type, val) ({                                \
+   const type __wtmp = (val);                                         \
+   __builtin_memcpy((void *)(addr), &__wtmp, sizeof(__wtmp));         \
 })
 
 #define READ_U16(addr)          SAFE_READ((addr), u16)
@@ -54,13 +56,13 @@
 #define GET_FIELD_PTR(obj, field_name) \
    ((char *)(obj) + offsetof(typeof(*(obj)), field_name))
 
-#define READ_FIELD(obj, field) ({                                            \
-   typeof((obj)->field) result;                                              \
-   __builtin_memcpy(&result, GET_FIELD_PTR(obj, field), sizeof(result));     \
-   result;                                                                   \
+#define READ_FIELD(obj, field) ({                                        \
+   typeof((obj)->field) result;                                          \
+   __builtin_memcpy(&result, GET_FIELD_PTR(obj, field), sizeof(result)); \
+   result;                                                               \
 })
 
-#define WRITE_FIELD(obj, field, val) ({                                      \
-   ASSERT(sizeof((obj)->field) == sizeof(val));                              \
-   __builtin_memcpy(GET_FIELD_PTR((obj), field), &val, sizeof(val));         \
+#define WRITE_FIELD(obj, field, val) ({                               \
+   ASSERT(sizeof((obj)->field) == sizeof(val));                       \
+   __builtin_memcpy(GET_FIELD_PTR((obj), field), &val, sizeof(val));  \
 })

@@ -45,9 +45,9 @@ static int
 execve_get_path(const char *user_path, char **path_ref)
 {
    int rc = 0;
+   size_t written = 0;
    struct task *curr = get_curr_task();
    char *path = curr->misc_buf->path_buf;
-   size_t written = 0;
 
    if (!(rc = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       *path_ref = path;
@@ -165,10 +165,10 @@ execve_handle_script(struct execve_ctx *ctx,
                      const char *path,
                      const char *const *argv)
 {
+   int i;
    const char **new_argv = ctx->argv_stack[ctx->reclvl];
    char *hdr = ctx->hdr_stack[ctx->reclvl];
    const char **na = new_argv;
-   int i;
 
    hdr[ELF_RAW_HEADER_SIZE - 1] = 0;
 
@@ -250,8 +250,8 @@ execve_load_elf(struct execve_ctx *ctx,
                 const char *const *argv,
                 struct elf_program_info *pinfo)
 {
-   char *hdr = ctx->hdr_stack[ctx->reclvl];
    int rc;
+   char *hdr = ctx->hdr_stack[ctx->reclvl];
 
    bzero(hdr, ELF_RAW_HEADER_SIZE);
 
@@ -376,8 +376,8 @@ do_execve(struct task *curr_user_task,
           const char *const *argv,
           const char *const *env)
 {
-   struct task *ti = get_curr_task();
    const char *const default_argv[] = { path, NULL };
+   struct task *ti = get_curr_task();
 
    struct execve_ctx *ctx = (void *) ti->misc_buf->execve_ctx;
    STATIC_ASSERT(sizeof(*ctx) <= sizeof(ti->misc_buf->execve_ctx));
@@ -404,6 +404,7 @@ int sys_execve(const char *user_filename,
    char *const *env = NULL;
 
    struct task *curr = get_curr_task();
+
    ASSERT(curr != NULL);
 
    if ((rc = execve_get_path(user_filename, &path)))

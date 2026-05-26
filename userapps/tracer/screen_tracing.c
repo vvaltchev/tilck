@@ -61,7 +61,7 @@ dp_cmd_get_stats(struct dp_trace_stats *out)
 }
 
 static long
-dp_cmd_get_filter(char *buf, unsigned long buf_sz)
+dp_cmd_get_filter(char *buf, ulong buf_sz)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TRACE_GET_FILTER,
@@ -109,7 +109,7 @@ dp_cmd_set_printk_lvl(int lvl)
 }
 
 static long
-dp_cmd_get_traced_bitmap(unsigned char *buf, unsigned long buf_sz)
+dp_cmd_get_traced_bitmap(u8 *buf, ulong buf_sz)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TRACE_GET_TRACED_BITMAP,
@@ -125,7 +125,7 @@ dp_cmd_get_in_buf_count(void)
 }
 
 static long
-dp_cmd_get_traced_tids_and_clear(int *buf, unsigned long max)
+dp_cmd_get_traced_tids_and_clear(int *buf, ulong max)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR,
@@ -150,7 +150,7 @@ dp_cmd_set_task_traced(int tid, int enabled)
  */
 
 static long
-dp_cmd_get_sys_name(unsigned sys_n, char *buf, unsigned long buf_sz)
+dp_cmd_get_sys_name(unsigned sys_n, char *buf, ulong buf_sz)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TRACE_GET_SYS_NAME,
@@ -163,8 +163,8 @@ static char filter_buf[DP_TRACE_FILTER_MAX];
 
 static void show_banner(void)
 {
-   struct dp_trace_stats st = {0};
    long rc;
+   struct dp_trace_stats st = {0};
 
    if (dp_cmd_get_stats(&st) < 0) {
       term_write(E_COLOR_BR_RED
@@ -259,7 +259,7 @@ static void show_help(void)
 
 static void list_traced_syscalls(void)
 {
-   unsigned char bitmap[MAX_SYSCALLS];
+   u8 bitmap[MAX_SYSCALLS];
    long n;
 
    term_write("\r\n\r\n");
@@ -276,11 +276,12 @@ static void list_traced_syscalls(void)
 
    for (long i = 0; i < n; i++) {
 
+      char name[DP_SYS_NAME_MAX];
+
       if (!bitmap[i])
          continue;
 
-      char name[DP_SYS_NAME_MAX];
-      long len = dp_cmd_get_sys_name((unsigned)i, name, sizeof(name));
+      const long len = dp_cmd_get_sys_name((unsigned)i, name, sizeof(name));
 
       if (len < 0)
          continue;
@@ -321,6 +322,8 @@ static void edit_filter(void)
 static void edit_printk_level(void)
 {
    char buf[16];
+   char *endp = NULL;
+
    buf[0] = '\0';
 
    term_move_left(2);
@@ -329,8 +332,7 @@ static void edit_printk_level(void)
    tui_read_line(buf, sizeof(buf));
    tui_set_input_blocking(false);
 
-   char *endp = NULL;
-   long val = strtol(buf, &endp, 10);
+   const long val = strtol(buf, &endp, 10);
 
    if (!buf[0] || endp == buf || (*endp && *endp != '\0') ||
        val < 0 || val > 100)
@@ -354,11 +356,14 @@ static void edit_printk_level(void)
  */
 static int parse_and_set_traced_pids(const char *str)
 {
-   const char *s = str;
    char tok[32];
+   const char *s = str;
    int traced_cnt = 0;
 
-   while (1) {
+   while (true) {
+
+      char *endp = NULL;
+      size_t i = 0;
 
       while (*s == ',' || *s == ' ' || *s == '\t')
          s++;
@@ -366,7 +371,6 @@ static int parse_and_set_traced_pids(const char *str)
       if (!*s)
          break;
 
-      size_t i = 0;
       while (*s && *s != ',' && *s != ' ' && *s != '\t' &&
              i + 1 < sizeof(tok))
       {
@@ -374,8 +378,7 @@ static int parse_and_set_traced_pids(const char *str)
       }
       tok[i] = '\0';
 
-      char *endp = NULL;
-      long tid = strtol(tok, &endp, 10);
+      const long tid = strtol(tok, &endp, 10);
 
       if (endp == tok || (*endp && *endp != '\0'))
          return -1;
@@ -400,9 +403,9 @@ static void edit_traced_pids(void)
     * lives in TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR.
     */
    int traced[64];
+   char buf[DP_TRACE_FILTER_MAX];
    long n = dp_cmd_get_traced_tids_and_clear(traced, 64);
 
-   char buf[DP_TRACE_FILTER_MAX];
    buf[0] = '\0';
 
    if (n > 0) {
@@ -430,7 +433,7 @@ static void edit_traced_pids(void)
 
    term_write("\r\n");
 
-   int set = parse_and_set_traced_pids(buf);
+   const int set = parse_and_set_traced_pids(buf);
 
    if (set < 0)
       term_write("Invalid input\r\n");
@@ -459,13 +462,13 @@ static bool
 trace_live_loop(int events_fd)
 {
    struct dp_trace_event ev;
-   struct dp_render_ctx ctx = {0};
    char rbuf[RENDER_BUF_SZ];
    char c;
    ssize_t n;
+   struct dp_render_ctx ctx = {0};
    bool keep_banner = false;
 
-   while (1) {
+   while (true) {
 
       n = read(STDIN_FILENO, &c, 1);
 
@@ -521,7 +524,11 @@ trace_live_loop(int events_fd)
  */
 static int dump_remaining_events(int events_fd)
 {
-   long rem = dp_cmd_get_in_buf_count();
+   struct dp_trace_event ev;
+   char rbuf[RENDER_BUF_SZ];
+   char c;
+   struct dp_render_ctx ctx = {0};
+   const long rem = dp_cmd_get_in_buf_count();
 
    if (rem <= 0)
       return 0;
@@ -530,8 +537,7 @@ static int dump_remaining_events(int events_fd)
                 rem);
 
    /* Read a single key; loop until we accept it. */
-   char c;
-   while (1) {
+   while (true) {
 
       ssize_t n = read(STDIN_FILENO, &c, 1);
 
@@ -552,11 +558,8 @@ static int dump_remaining_events(int events_fd)
 
    /* Drain. The events fd's kernel-side read is non-blocking-friendly
     * (returns -EAGAIN when empty), so loop until we hit that or EOF. */
-   struct dp_trace_event ev;
-   struct dp_render_ctx ctx = {0};
-   char rbuf[RENDER_BUF_SZ];
 
-   while (1) {
+   while (true) {
 
       ssize_t n = read(events_fd, &ev, sizeof(ev));
 
@@ -740,8 +743,7 @@ int dp_run_tracer(void)
    term_move_cursor(1, 1);
    show_banner();
 
-   while (tracer_handle_one_key(-1))
-      ; /* loop */
+   while (tracer_handle_one_key(-1)) { }
 
    dp_cmd_set_enabled(0);
    tui_term_restore();

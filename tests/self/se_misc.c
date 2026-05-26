@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
@@ -9,9 +10,11 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/timer.h>
 
+/* style_check: disable blank_line_after_decl_block */
 void simple_test_kthread(void *arg)
 {
    u32 i;
+
    DEBUG_SAVE_ESP();
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);
@@ -49,15 +52,17 @@ void selftest_kthread(void)
 
 REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread)
 
-void selftest_sleep()
+void selftest_sleep(void)
 {
+   u64 after;
+   u64 elapsed;
    const u64 wait_ticks = KRN_TIMER_HZ;
    u64 before = get_ticks();
 
    kernel_sleep(wait_ticks);
 
-   u64 after = get_ticks();
-   u64 elapsed = after - before;
+   after = get_ticks();
+   elapsed = after - before;
 
    printk("[sleeping_kthread] elapsed ticks: %" PRIu64
           " (expected: %" PRIu64 ")\n", elapsed, wait_ticks);
@@ -68,7 +73,7 @@ void selftest_sleep()
 
 REGISTER_SELF_TEST(sleep, se_short, &selftest_sleep)
 
-void selftest_join()
+void selftest_join(void)
 {
    int tid;
 

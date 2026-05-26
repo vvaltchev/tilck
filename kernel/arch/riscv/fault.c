@@ -121,16 +121,16 @@ static void fault_in_panic(regs_t *r)
 
 void handle_fault(regs_t *r)
 {
-   const int int_num = r->int_num;
    bool cow = false;
+   const int int_num = r->int_num;
 
    ASSERT(is_fault(int_num));
 
    if (UNLIKELY(in_panic()))
       return fault_in_panic(r);
 
-   if (LIKELY((int_num == EXC_INST_PAGE_FAULT) ||
-              (int_num == EXC_LOAD_PAGE_FAULT) ||
+   if (LIKELY((int_num == EXC_INST_PAGE_FAULT)   ||
+              (int_num == EXC_LOAD_PAGE_FAULT)   ||
               (int_num == EXC_STORE_PAGE_FAULT))) {
 
       cow = handle_potential_cow(r);

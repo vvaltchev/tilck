@@ -62,9 +62,9 @@ int do_fork(regs_t *user_regs, bool vfork)
    int pid;
    int rc = -EAGAIN;
    struct task *child = NULL;
+   pdir_t *new_pdir = NULL;
    struct task *curr = get_curr_task();
    struct process *curr_pi = curr->pi;
-   pdir_t *new_pdir = NULL;
 
    disable_preemption();
 

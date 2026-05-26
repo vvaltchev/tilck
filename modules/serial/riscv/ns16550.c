@@ -126,10 +126,10 @@ struct ns16550 {
 
 static void ns16550_reg_wr(struct ns16550 *uart, int offset, int value)
 {
-   unsigned char *addr;
+   u8 *addr;
 
    offset *= 1 << uart->reg_shift;
-   addr = (unsigned char *)uart->base + offset + uart->reg_offset;
+   addr = (u8 *)uart->base + offset + uart->reg_offset;
 
    if (uart->reg_width == 4)
       mmio_writel(value, addr);
@@ -139,15 +139,15 @@ static void ns16550_reg_wr(struct ns16550 *uart, int offset, int value)
 
 static int ns16550_reg_rd(struct ns16550 *uart, int offset)
 {
-   unsigned char *addr;
+   u8 *addr;
 
    offset *= 1 << uart->reg_shift;
-   addr = (unsigned char *)uart->base + offset + uart->reg_offset;
+   addr = (u8 *)uart->base + offset + uart->reg_offset;
 
    if (uart->reg_width == 4)
       return mmio_readl(addr);
-   else
-      return mmio_readb(addr);
+
+   return mmio_readb(addr);
 }
 
 static bool ns16550_read_ready(void *priv)
@@ -164,8 +164,8 @@ static void ns16550_wait_for_read(void *priv)
 
 static char ns16550_read(void *priv)
 {
-   struct ns16550 *uart = priv;
    char c;
+   struct ns16550 *uart = priv;
 
    ns16550_wait_for_read(uart);
    c = (char)ns16550_reg_rd(uart, UART_RBR);
@@ -214,9 +214,9 @@ static void ns16550_uart_init(struct ns16550 *uart, int baud_divisor)
 {
    ns16550_reg_wr(uart, UART_IER, IER_NO_INTR);
    ns16550_reg_wr(uart, UART_MCR, MCR_DTR | MCR_RTS);
-   ns16550_reg_wr(uart, UART_FCR, FCR_ENABLE_FIFOs |
-                                 FCR_CLEAR_RECV_FIFO |
-                                 FCR_CLEAR_TR_FIFO);
+   ns16550_reg_wr(uart, UART_FCR, FCR_ENABLE_FIFOs     |
+                                  FCR_CLEAR_RECV_FIFO  |
+                                  FCR_CLEAR_TR_FIFO);
    ns16550_reg_wr(uart, UART_LCR, LCR_8_BITS | LCR_1_STOP_BIT | LCR_NO_PARITY);
 
    /*

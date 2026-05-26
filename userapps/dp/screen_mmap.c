@@ -72,7 +72,7 @@ static const char *mtrr_type_str[8] = {
    "UC ", "WC ", "?? ", "?? ", "WT ", "WP ", "WB ", "UC-",
 };
 
-static long dp_cmd_get_mmap(struct dp_mem_region *buf, unsigned long max)
+static long dp_cmd_get_mmap(struct dp_mem_region *buf, ulong max)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_GET_MEM_MAP,
@@ -86,8 +86,9 @@ static long dp_cmd_get_gstats(struct dp_mem_global_stats *out)
                   (long)out, 0L, 0L, 0L);
 }
 
-static long dp_cmd_get_mtrrs(struct dp_mtrr_entry *buf, unsigned long max,
-                             struct dp_mtrr_info *info)
+static long
+dp_cmd_get_mtrrs(struct dp_mtrr_entry *buf, ulong max,
+                 struct dp_mtrr_info *info)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_GET_MTRRS,
@@ -96,13 +97,15 @@ static long dp_cmd_get_mtrrs(struct dp_mtrr_entry *buf, unsigned long max,
 
 static void dp_mmap_on_enter(void)
 {
+   long mrc;
    long rc = dp_cmd_get_mmap(regions, MAX_MEM_REGIONS);
+
    region_count = (rc < 0) ? 0 : (int)rc;
 
    got_gstats = (dp_cmd_get_gstats(&gstats) == 0);
 
    memset(&mtrr_info, 0, sizeof(mtrr_info));
-   long mrc = dp_cmd_get_mtrrs(mtrrs, MAX_MTRRS, &mtrr_info);
+   mrc = dp_cmd_get_mtrrs(mtrrs, MAX_MTRRS, &mtrr_info);
    mtrr_count = (mrc < 0) ? 0 : (int)mrc;
 }
 
@@ -115,20 +118,20 @@ static void dump_global_stats(void)
    }
 
    dp_writeln("Total usable physical mem:   %8llu KB [ %s%llu MB ]",
-              (unsigned long long)gstats.tot_usable / KB_,
+              (u64)gstats.tot_usable / KB_,
               "\033(0g\033(B",
-              (unsigned long long)gstats.tot_usable / MB_);
+              (u64)gstats.tot_usable / MB_);
 
    dp_writeln("Used by kmalloc:             %8llu KB",
-              (unsigned long long)gstats.kmalloc_used / KB_);
+              (u64)gstats.kmalloc_used / KB_);
 
    dp_writeln("Used by initrd:              %8llu KB",
-              (unsigned long long)gstats.ramdisk_used / KB_);
+              (u64)gstats.ramdisk_used / KB_);
 
    dp_writeln("Used by kernel text + data:  %8llu KB",
-              (unsigned long long)gstats.kernel_used / KB_);
+              (u64)gstats.kernel_used / KB_);
 
-   const unsigned long long tot =
+   const u64 tot =
       gstats.kmalloc_used + gstats.ramdisk_used + gstats.kernel_used;
 
    dp_writeln("Tot used:                    %8llu KB", tot / KB_);
@@ -145,11 +148,11 @@ static void dump_regions(void)
 
       dp_writeln("%02d) 0x%016llx - 0x%016llx (%u, %s) [%8llu KB]",
                  i,
-                 (unsigned long long)r->addr,
-                 (unsigned long long)(r->addr + r->len - 1),
+                 (u64)r->addr,
+                 (u64)(r->addr + r->len - 1),
                  r->type,
                  extra_to_str(r->extra),
-                 (unsigned long long)r->len / KB_);
+                 (u64)r->len / KB_);
    }
 
    dp_writeln(" ");
@@ -172,13 +175,13 @@ static void dump_mtrrs(void)
       if (m->one_block) {
          dp_writeln("%02d) 0x%llx %s [%8llu KB]",
                     i,
-                    (unsigned long long)m->base,
+                    (u64)m->base,
                     mtrr_type_str[m->mem_type & 0x7],
-                    (unsigned long long)m->size_kb);
+                    (u64)m->size_kb);
       } else {
          dp_writeln("%02d) 0x%llx %s [%8s]",
                     i,
-                    (unsigned long long)m->base,
+                    (u64)m->base,
                     mtrr_type_str[m->mem_type & 0x7],
                     "???");
       }

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck_gen_headers/mod_console.h>
 
@@ -158,8 +159,8 @@ static inline bool tty_inbuf_drop_last_written_elem(struct tty *t)
 static void
 tty_inbuf_write_elem(struct tty *t, u8 c, bool block)
 {
-   ASSERT(in_panic() || !block || is_preemption_enabled());
    bool ok;
+   ASSERT(in_panic() || !block || is_preemption_enabled());
 
    while (true) {
 
@@ -223,7 +224,7 @@ tty_handle_non_printable_key(struct kb_dev *kb,
 
 static inline bool tty_is_line_delim_char(struct tty *t, u8 c)
 {
-   return c == '\n' ||
+   return c == '\n'                 ||
           c == t->c_term.c_cc[VEOF] ||
           c == t->c_term.c_cc[VEOL] ||
           c == t->c_term.c_cc[VEOL2];
@@ -391,6 +392,7 @@ static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)
 {
    struct tty_handle_extra *eh = (void *)&h->extra;
    offt rem = eh->read_buf_used - eh->read_pos;
+
    ASSERT(rem >= 0);
 
    size_t m = MIN((size_t)rem, size);
@@ -417,6 +419,7 @@ tty_internal_read_single_char_from_kb(struct tty *t,
 {
    struct tty_handle_extra *eh = (void *)&h->extra;
    u8 c = tty_inbuf_read_elem(t);
+
    eh->read_buf[eh->read_buf_used++] = (char)c;
 
    if (t->c_term.c_lflag & ICANON) {
@@ -476,9 +479,9 @@ ssize_t
 tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    struct tty_handle_extra *eh = (void *)&h->extra;
-   struct process *pi = get_curr_proc();
-   size_t read_count = 0;
    bool delim_break;
+   size_t read_count = 0;
+   struct process *pi = get_curr_proc();
 
    ASSERT(is_preemption_enabled());
 
@@ -579,8 +582,8 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
          ASSERT(eh->read_pos == 0);
       }
 
-      while (!tty_inbuf_is_empty(t) &&
-             eh->read_buf_used < TTY_READ_BS &&
+      while (!tty_inbuf_is_empty(t)                                    &&
+             eh->read_buf_used < TTY_READ_BS                           &&
              tty_internal_read_single_char_from_kb(t, h, &delim_break)) { }
 
       if (!(h->fl_flags & O_NONBLOCK) || !(t->c_term.c_lflag & ICANON))

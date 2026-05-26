@@ -134,10 +134,12 @@ set_entry_num2(u32 n,
 
 static NODISCARD int gdt_expand(void)
 {
-   void *old_gdt_ptr;
-   void *old_gdt_refcount_ptr;
    u32 old_gdt_size;
    u32 new_size;
+   void *old_gdt_ptr;
+   void *old_gdt_refcount_ptr;
+   void *new_gdt;
+   void *new_gdt_refcount;
 
    ASSERT(are_interrupts_enabled());
    disable_preemption();
@@ -152,8 +154,7 @@ static NODISCARD int gdt_expand(void)
          return -ENOMEM;
       }
 
-      void *new_gdt = kzalloc_array_obj(struct gdt_entry, new_size);
-      void *new_gdt_refcount;
+      new_gdt = kzalloc_array_obj(struct gdt_entry, new_size);
 
       if (!new_gdt) {
          enable_preemption();
@@ -237,20 +238,24 @@ void set_kernel_stack(ulong stack)
    enable_interrupts(&var);
 }
 
+/* The operand format expected by the `lgdt` instruction. */
+struct gdt_ptr_desc {
+
+   u16 size_minus_one;
+   struct gdt_entry *gdt_vaddr;
+
+} PACKED;
+
 static void load_gdt(struct gdt_entry *g, u32 entries_count)
 {
+   struct gdt_ptr_desc gdt_ptr;
+
    ASSERT(!are_interrupts_enabled());
    ASSERT(entries_count <= 64 * KB);
 
-   struct {
-
-      u16 size_minus_one;
-      struct gdt_entry *gdt_vaddr;
-
-   } PACKED gdt_ptr = {
-
-      (u16)(sizeof(struct gdt_entry) * entries_count - 1),
-      g,
+   gdt_ptr = (struct gdt_ptr_desc) {
+      .size_minus_one = (u16)(sizeof(struct gdt_entry) * entries_count - 1),
+      .gdt_vaddr = g,
    };
 
    asmVolatile("lgdt (%0)"
@@ -383,9 +388,10 @@ static void gdt_set_slot(struct process *pi, u16 slot, u16 gdt_index)
 
 int sys_set_thread_area(void *arg)
 {
+   int slot;
+   struct user_desc dc;
    int rc = 0;
    struct gdt_entry e = {0};
-   struct user_desc dc;
    struct user_desc *ud = arg;
 
    rc = copy_from_user(&dc, ud, sizeof(struct user_desc));
@@ -415,7 +421,7 @@ int sys_set_thread_area(void *arg)
 
    if (dc.entry_number == INVALID_ENTRY_NUM) {
 
-      int slot = find_available_slot_in_user_task();
+      slot = find_available_slot_in_user_task();
 
       if (slot < 0) {
          rc = -ESRCH;
@@ -443,7 +449,7 @@ int sys_set_thread_area(void *arg)
 
    /* Handling the case where the user specified a GDT entry number */
 
-   int slot = get_user_task_slot_for_gdt_entry(dc.entry_number);
+   slot = get_user_task_slot_for_gdt_entry(dc.entry_number);
 
    if (slot < 0) {
       /* A GDT entry with that index has never been allocated by this task */

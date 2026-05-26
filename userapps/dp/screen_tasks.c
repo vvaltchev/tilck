@@ -99,9 +99,9 @@ static bool is_tid_off_limits(int tid)
 static void
 render_one_task(const struct dp_task_info *t, bool kernel_tasks)
 {
-   const char *fmt = task_dump_str(TDS_ROW_FMT);
-   char path[80] = {0};
    char state_str[4];
+   char path[80] = {0};
+   const char *fmt = task_dump_str(TDS_ROW_FMT);
 
    if (t->is_kthread && !kernel_tasks)
       return;
@@ -142,7 +142,7 @@ render_one_task(const struct dp_task_info *t, bool kernel_tasks)
     * "current attrs" outside of a single call).
     */
    const bool selected = (mode == tm_sel) &&
-                         (sel_tid > 0) &&
+                         (sel_tid > 0)    &&
                          (t->tid == sel_tid);
 
    if (selected) {
@@ -353,6 +353,7 @@ static void sel_step(int direction)
  */
 static void dp_run_tracer_subprocess(void)
 {
+   int status;
    pid_t pid = fork();
 
    if (pid < 0)
@@ -368,7 +369,6 @@ static void dp_run_tracer_subprocess(void)
       _exit(127);
    }
 
-   int status;
    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
       continue;
 

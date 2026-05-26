@@ -68,9 +68,9 @@ int strncmp(const char *s1, const char *s2, size_t n)
 
 int memcmp(const void *_m1, const void *_m2, size_t n)
 {
-   size_t i = 0;
    const char *m1 = _m1;
    const char *m2 = _m2;
+   size_t i = 0;
 
    while(i < n && *m1 == *m2) {
       m1++; m2++; i++;
@@ -125,8 +125,8 @@ char *tilck_strcpy(char *dest, const char *src)
 
 char *tilck_strncpy(char *dest, const char *src, size_t n)
 {
-   char *p = dest;
    size_t i = 0;
+   char *p = dest;
 
    while (*src && i < n) {
       *p++ = *src++;
@@ -156,8 +156,8 @@ char *tilck_strcat(char *dest, const char *src)
 
 char *tilck_strncat(char *dest, const char *src, size_t n)
 {
-   char *p = dest + strlen(dest);
    size_t i = 0;
+   char *p = dest + strlen(dest);
 
    while (*src && i < n) {
       *p++ = *src++;
@@ -209,12 +209,14 @@ int stricmp(const char *s1, const char *s2)
  */
 inline void str_reverse(char *str, size_t len)
 {
+   char *end;
+
    ASSERT(len == strlen(str));
 
    if (!len)
       return;
 
-   char *end = str + len - 1;
+   end = str + len - 1;
 
    while (str < end) {
 
@@ -326,8 +328,7 @@ void bzero(void *s, size_t n)
 
 size_t strnlen(const char *str, size_t count)
 {
-   unsigned long ret = 0;
-
+   ulong ret = 0;
    while (*str != '\0' && ret < count) {
       ret++;
       str++;
@@ -338,10 +339,10 @@ size_t strnlen(const char *str, size_t count)
 
 void *memchr(const void *s, int c, size_t count)
 {
-   const unsigned char *temp = (const unsigned char *)s;
+   const u8 *temp = (const u8 *)s;
 
    while (count > 0) {
-      if ((unsigned char)c == *temp++) {
+      if ((u8)c == *temp++) {
          return (void *)(temp - 1);
       }
       count--;
@@ -359,8 +360,8 @@ char *strrchr(const char *s, int c)
 
    if (*last != (char)c)
       return NULL;
-   else
-      return (char *)last;
+
+   return (char *)last;
 }
 
 char *strchr(const char *s, int c)
@@ -368,6 +369,7 @@ char *strchr(const char *s, int c)
    for (; *s != (char)c; ++s)
       if (*s == '\0')
          return NULL;
+
    return (char *)s;
 }
 

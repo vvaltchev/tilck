@@ -36,9 +36,10 @@ void JumpToKernel(void *entry_point)
 EFI_INPUT_KEY
 WaitForKeyPress(void)
 {
-    UINTN index;
     EFI_INPUT_KEY k;
+    UINTN index;
     EFI_EVENT event = ST->ConIn->WaitForKey;
+
     BS->WaitForEvent(1,       // number of events in the array pointed by &event
                      &event,  // pointer to events array (1 elem in our case).
                      &index); // index of the last matching event in the array
@@ -54,10 +55,10 @@ LoadFileFromDisk(EFI_FILE_PROTOCOL *fProt,
                  UINTN *fileSz,
                  CHAR16 *filePath)
 {
-   EFI_FILE_PROTOCOL *fileHandle = NULL;
-   EFI_STATUS status = EFI_SUCCESS;
    UINTN pagesCount, fileInfoBufSz, readSz;
    char fileInfoBuf[sizeof(EFI_FILE_INFO) + 64];
+   EFI_FILE_PROTOCOL *fileHandle = NULL;
+   EFI_STATUS status = EFI_SUCCESS;
    EFI_FILE_INFO *nfo = (void *)fileInfoBuf;
 
    status = fProt->Open(fProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
@@ -92,8 +93,8 @@ end:
 EFI_STATUS
 GetMemoryMap(UINTN *mapkey)
 {
-   UINT32 desc_ver;
    EFI_STATUS status;
+   UINT32 desc_ver;
 
    gMmap_size = sizeof(gMmap);
    status = BS->GetMemoryMap(&gMmap_size,gMmap,mapkey,&gDesc_size,&desc_ver);
@@ -106,8 +107,7 @@ end:
 EFI_MEMORY_DESCRIPTOR *
 GetMemDescForAddress(EFI_PHYSICAL_ADDRESS paddr)
 {
-   EFI_MEMORY_DESCRIPTOR *desc = NULL;
-   desc = (void *)gMmap;
+   EFI_MEMORY_DESCRIPTOR *desc = (void *)gMmap;
 
    do {
 
@@ -249,8 +249,8 @@ GetHandlerForDevicePath(EFI_DEVICE_PATH *dp,
                         EFI_GUID *supportedProt,
                         EFI_HANDLE *refHandle)
 {
-   EFI_DEVICE_PATH *dpCopy = dp;
    EFI_STATUS status = EFI_SUCCESS;
+   EFI_DEVICE_PATH *dpCopy = dp;
 
    status = BS->LocateDevicePath(supportedProt, &dpCopy, refHandle);
    HANDLE_EFI_ERROR("LocateDevicePath");

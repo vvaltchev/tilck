@@ -12,32 +12,32 @@
 #include "video_term_int.h"
 #include "vterm_struct.h"
 
-#define DEFINE_TERM_ACTION_0(name)                                          \
-   static void                                                              \
-   __term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {     \
-      struct vterm *const t = _t;                                           \
-      term_action_##name(t);                                                \
+#define DEFINE_TERM_ACTION_0(name)                                      \
+   static void                                                          \
+   __term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) { \
+      struct vterm *const t = _t;                                       \
+      term_action_##name(t);                                            \
    }
 
-#define DEFINE_TERM_ACTION_1(name, t1)                                      \
-   static void                                                              \
-   __term_action_##name(term *_t, ulong __a1, ulong __u1, ulong __u2) {     \
-      struct vterm *const t = _t;                                           \
-      term_action_##name(t, (t1)__a1);                                      \
+#define DEFINE_TERM_ACTION_1(name, t1)                                  \
+   static void                                                          \
+   __term_action_##name(term *_t, ulong __a1, ulong __u1, ulong __u2) { \
+      struct vterm *const t = _t;                                       \
+      term_action_##name(t, (t1)__a1);                                  \
    }
 
-#define DEFINE_TERM_ACTION_2(name, t1, t2)                                  \
-   static void                                                              \
-   __term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __u1) {     \
-      struct vterm *const t = _t;                                           \
-      term_action_##name(t, (t1)__a1, (t2)__a2);                            \
+#define DEFINE_TERM_ACTION_2(name, t1, t2)                              \
+   static void                                                          \
+   __term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __u1) { \
+      struct vterm *const t = _t;                                       \
+      term_action_##name(t, (t1)__a1, (t2)__a2);                        \
    }
 
-#define DEFINE_TERM_ACTION_3(name, t1, t2, t3)                              \
-   static void                                                              \
-   __term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __a3) {     \
-      struct vterm *const t = _t;                                           \
-      term_action_##name(t, (t1)__a1, (t2)__a2, (t3)__a3);                  \
+#define DEFINE_TERM_ACTION_3(name, t1, t2, t3)                          \
+   static void                                                          \
+   __term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __a3) { \
+      struct vterm *const t = _t;                                       \
+      term_action_##name(t, (t1)__a1, (t2)__a2, (t3)__a3);              \
    }
 
 #define CALL_ACTION_FUNC_0(func, t)                                \

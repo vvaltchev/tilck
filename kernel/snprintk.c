@@ -45,7 +45,7 @@ enum printk_width {
    pw_long      = 1,
    pw_default   = 2,
    pw_short     = 3,
-   pw_char      = 4
+   pw_char      = 4,
 };
 
 static const ulong width_val[] =
@@ -88,10 +88,10 @@ snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
    ctx->hash_sign = false;
 }
 
-#define WRITE_CHAR(c)                                         \
-   do {                                                       \
-      if (!write_in_buf_char(&ctx->buf, ctx->buf_end, (c)))   \
-         goto out_of_dest_buffer;                             \
+#define WRITE_CHAR(c)                                                 \
+   do {                                                               \
+      if (!write_in_buf_char(&ctx->buf, ctx->buf_end, (c)))           \
+         goto out_of_dest_buffer;                                     \
    } while (0)
 
 static bool
@@ -215,6 +215,7 @@ write_number_param(struct snprintk_ctx *ctx, char fmtX)
    ulong width = width_val[ctx->width];
    u8 base = diuox_base[(u8)fmtX];
    char *intbuf = ctx->intbuf;
+
    ASSERT(base);
 
    if (fmtX == 'd' || fmtX == 'i') {
@@ -278,6 +279,7 @@ static const enum printk_width single_mods[2] =
 static bool
 process_seq(struct snprintk_ctx *ctx)
 {
+   /* style_check: disable switch_case_indent */
    /* Here're just after '%' */
    if (*ctx->fmt == '%' || (u8)*ctx->fmt >= 128) {
       /* %% or % followed by non-ascii char */
@@ -465,6 +467,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *__fmt, va_list __args)
 
    /* ctx has to be a pointer because of macros */
    struct snprintk_ctx *ctx = &__ctx;
+
    snprintk_ctx_reset_state(ctx);
    ctx->fmt = __fmt;
    ctx->buf = initial_buf;

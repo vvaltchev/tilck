@@ -5,7 +5,13 @@
 #include <ncurses/ncurses.h>
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
-#define printc(name) printw(#name ": "); addch(name); printw("\n");
+
+#define printc(name)                                                  \
+   do {                                                               \
+      printw(#name ": ");                                             \
+      addch(name);                                                    \
+      printw("\n");                                                   \
+   } while (0)
 
 static const char *msg_next =
    "Press ANY key to move to the next screen or 'q' to exit";
@@ -90,7 +96,7 @@ static void (*const funcs[])(void) = {
    &scr_colors
 };
 
-int main()
+int main(void)
 {
    initscr();
 
@@ -112,7 +118,8 @@ int main()
       funcs[i]();
 
       refresh();
-      mvprintw(LINES - 1, 0, i < ARRAY_SIZE(funcs) - 1 ? msg_next : msg_last);
+      const char *msg = i < ARRAY_SIZE(funcs) - 1 ? msg_next : msg_last;
+      mvprintw(LINES - 1, 0, msg);
 
       if (getch() == 'q')
          break;

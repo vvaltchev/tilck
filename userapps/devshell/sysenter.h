@@ -226,10 +226,10 @@ do_sysenter_call5(int sysno,
 #define sysenter_call4(n, a1, a2, a3, a4) \
    do_sysenter_call4((n), TO_PTR(a1), TO_PTR(a2), TO_PTR(a3), TO_PTR(a4))
 
-#define sysenter_call5(n, a1, a2, a3, a4, a5) \
-   do_sysenter_call5((n),                     \
-                     TO_PTR(a1),              \
-                     TO_PTR(a2),              \
-                     TO_PTR(a3),              \
-                     TO_PTR(a4),              \
+#define sysenter_call5(n, a1, a2, a3, a4, a5)                         \
+   do_sysenter_call5((n),                                             \
+                     TO_PTR(a1),                                      \
+                     TO_PTR(a2),                                      \
+                     TO_PTR(a3),                                      \
+                     TO_PTR(a4),                                      \
                      TO_PTR(a5))

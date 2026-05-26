@@ -96,9 +96,10 @@ static int tty_ioctl_tcgets(struct tty *t, void *argp)
 
 static int tty_ioctl_tcsets(struct tty *t, void *argp)
 {
+   int rc;
    struct termios saved = t->c_term;
-   int rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
 
+   rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
    if (rc < 0) {
       t->c_term = saved;
       return -EFAULT;
@@ -187,12 +188,13 @@ static int tty_ioctl_KDGKBMODE(struct tty *t, void *argp)
 
 static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
 {
+   ulong mode;
    struct process *pi = get_curr_proc();
 
    if (t != pi->proc_tty)
       return -EPERM; /* don't allow setting mode of other TTYs */
 
-   ulong mode = (ulong) argp;
+   mode = (ulong) argp;
 
    switch (mode) {
 
@@ -286,9 +288,9 @@ static int tty_ioctl_TIOCGPGRP(struct tty *t, int *user_pgrp)
 /* set foregroup process group */
 static int tty_ioctl_TIOCSPGRP(struct tty *t, const int *user_pgrp)
 {
-   struct process *pi = get_curr_proc();
    int pgid;
    int sid;
+   struct process *pi = get_curr_proc();
 
    if (pi->proc_tty != t)
       return -ENOTTY;

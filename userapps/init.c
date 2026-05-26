@@ -98,7 +98,7 @@ init_set_signal_mask(void)
    signal(SIGTERM, &init_handle_sig_term);
    signal(SIGUSR1, &init_handle_sig_usr1);
    signal(SIGUSR2, &init_handle_sig_usr2);
-   signal(SIGURG, &init_handle_sig_urg);
+   signal(SIGURG,  &init_handle_sig_urg);
 }
 
 static void
@@ -107,14 +107,14 @@ init_reset_signal_mask(void)
    signal(SIGTERM, SIG_DFL);
    signal(SIGUSR1, SIG_DFL);
    signal(SIGUSR2, SIG_DFL);
-   signal(SIGURG, SIG_DFL);
+   signal(SIGURG,  SIG_DFL);
 }
 
 static int get_video_tty_count(void)
 {
-   static int count = 0;
    struct stat statbuf;
    char buf[32];
+   static int count = 0;
 
    if (!getenv("TILCK")) {
       /* On Linux we're not going to use multiple TTYs for testing. */
@@ -140,6 +140,7 @@ static int get_video_tty_count(void)
 
 static void open_std_handles(int tty)
 {
+   int in, out, err;
    char ttyfile[32] = "/dev/console";
 
    if (tty >= 0) {
@@ -150,9 +151,9 @@ static void open_std_handles(int tty)
          sprintf(ttyfile, "/dev/ttyS%d", tty - TTYS0_MINOR);
    }
 
-   int in = open(ttyfile, O_RDONLY);
-   int out = open(ttyfile, O_WRONLY);
-   int err = open(ttyfile, O_WRONLY);
+   in = open(ttyfile, O_RDONLY);
+   out = open(ttyfile, O_WRONLY);
+   err = open(ttyfile, O_WRONLY);
 
    if (in != 0) {
       printf("[init] in: %i, expected: 0\n", in);
@@ -364,10 +365,10 @@ begin:
 
 static void wait_for_children(int timeout_ms)
 {
-   const bool was_in_shutdown = in_shutdown;
    int shell_tty, wstatus;
-   int elapsed_ms = timeout_ms ? 0 : -1;
    pid_t pid;
+   const bool was_in_shutdown = in_shutdown;
+   int elapsed_ms = timeout_ms ? 0 : -1;
 
    while (elapsed_ms < timeout_ms) {
 
@@ -441,8 +442,8 @@ static void setup_console_for_shell(int tty)
 static void tilck_console_msg_loop(int tty)
 {
    char buf[32];
-   int poll_timeout = -1;                    /* infinite */
    int rc;
+   int poll_timeout = -1;                    /* infinite */
 
    struct pollfd fd = {
       .fd = 0,
@@ -543,8 +544,8 @@ static int fork_and_run_shell_on_tty(int tty)
 
 int main(int argc, char **argv, char **env)
 {
-   int pid = getpid();
    struct stat statbuf;
+   int pid = getpid();
 
    if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
       show_help_and_exit();
@@ -575,7 +576,7 @@ int main(int argc, char **argv, char **env)
 
    if (stat(shell_args[0], &statbuf) < 0) {
       printf("[init] FATAL: the shell `%s` does not exist.\n", shell_args[0]);
-      while (1) {
+      while (true) {
          pause();
       }
    }

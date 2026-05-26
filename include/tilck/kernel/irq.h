@@ -13,11 +13,11 @@ struct irq_handler_node {
    void *context;          /* device-specific context, passed to the handler */
 };
 
-#define DEFINE_IRQ_HANDLER_NODE(node_name, func, ctx)        \
-   static struct irq_handler_node node_name = {              \
-      .node = STATIC_LIST_NODE_INIT(node_name.node),         \
-      .handler = (func),                                     \
-      .context = (ctx),                                      \
+#define DEFINE_IRQ_HANDLER_NODE(node_name, func, ctx)                 \
+   static struct irq_handler_node node_name = {                       \
+      .node = STATIC_LIST_NODE_INIT(node_name.node),                  \
+      .handler = (func),                                              \
+      .context = (ctx),                                               \
    };
 
 

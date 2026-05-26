@@ -43,8 +43,8 @@ static int get_free_handle_num(struct process *pi)
  */
 fs_handle get_fs_handle(int fd)
 {
-   struct task *curr = get_curr_task();
    fs_handle handle = NULL;
+   struct task *curr = get_curr_task();
 
    kmutex_lock(&curr->pi->fslock);
 
@@ -59,10 +59,10 @@ fs_handle get_fs_handle(int fd)
 int sys_open(const char *u_path, int flags, mode_t mode)
 {
    int ret, free_fd;
-   struct task *curr = get_curr_task();
-   char *path = curr->args_copybuf;
    size_t written = 0;
    fs_handle h = NULL;
+   struct task *curr = get_curr_task();
+   char *path = curr->args_copybuf;
 
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
@@ -111,8 +111,8 @@ long sys_openat(int dfd, const char *u_path, int flags, mode_t mode)
 
    if (dfd == AT_FDCWD)
       return sys_open(u_path, flags, mode);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_creat(const char *u_path, mode_t mode)
@@ -122,10 +122,10 @@ int sys_creat(const char *u_path, mode_t mode)
 
 int sys_unlink(const char *u_path)
 {
+   int ret;
+   size_t written = 0;
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
-   size_t written = 0;
-   int ret;
 
    if ((ret = duplicate_user_path(path, u_path, MAX_PATH, &written)))
       return ret;
@@ -139,18 +139,19 @@ long sys_unlinkat(int dfd, const char *pathname, int flag)
 
    if (dfd == AT_FDCWD && flag == 0)
       return sys_unlink(pathname);
-   else if (dfd == AT_FDCWD && flag == AT_REMOVEDIR)
+
+   if (dfd == AT_FDCWD && flag == AT_REMOVEDIR)
       return sys_rmdir(pathname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_rmdir(const char *u_path)
 {
+   int ret;
+   size_t written = 0;
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
-   size_t written = 0;
-   int ret;
 
    if ((ret = duplicate_user_path(path, u_path, MAX_PATH, &written)))
       return ret;
@@ -160,9 +161,9 @@ int sys_rmdir(const char *u_path)
 
 int sys_close(int fd)
 {
-   struct task *curr = get_curr_task();
    fs_handle handle;
    int ret = 0;
+   struct task *curr = get_curr_task();
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
@@ -178,10 +179,10 @@ int sys_close(int fd)
 
 int sys_mkdir(const char *u_path, mode_t mode)
 {
+   int ret;
+   size_t written = 0;
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
-   size_t written = 0;
-   int ret;
 
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
@@ -198,15 +199,15 @@ long sys_mkdirat(int dfd, const char *pathname, mode_t mode)
 
    if (dfd == AT_FDCWD)
       return sys_mkdir(pathname, mode);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_read(int fd, void *u_buf, size_t count)
 {
    int ret;
-   struct task *curr = get_curr_task();
    struct fs_handle_base *h;
+   struct task *curr = get_curr_task();
 
    if (!(h = get_fs_handle(fd)))
       return -EBADF;
@@ -248,9 +249,9 @@ int sys_read(int fd, void *u_buf, size_t count)
 
 int sys_write(int fd, const void *u_buf, size_t count)
 {
-   struct task *curr = get_curr_task();
    struct fs_handle_base *h;
    int ret;
+   struct task *curr = get_curr_task();
 
    if (!(h = get_fs_handle(fd)))
       return -EBADF;
@@ -277,8 +278,8 @@ int sys_write(int fd, const void *u_buf, size_t count)
 int sys_pread64(int fd, void *u_buf, size_t count, s64 off)
 {
    int ret;
-   struct task *curr = get_curr_task();
    struct fs_handle_base *h;
+   struct task *curr = get_curr_task();
 
    if (off < 0 || off > OFFT_MAX)
       return -EINVAL;
@@ -310,9 +311,9 @@ int sys_pread64(int fd, void *u_buf, size_t count, s64 off)
 
 int sys_pwrite64(int fd, const void *u_buf, size_t count, s64 off)
 {
-   struct task *curr = get_curr_task();
    struct fs_handle_base *h;
    int ret;
+   struct task *curr = get_curr_task();
 
    if (off < 0 || off > OFFT_MAX)
       return -EINVAL;
@@ -366,10 +367,10 @@ static bool iov_len_overflow(const struct iovec *iov, int iovcnt)
 
 int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
+   fs_handle handle;
+   const u32 iovcnt = (u32) u_iovcnt;
    struct task *curr = get_curr_task();
    struct iovec *iov = (void *)curr->args_copybuf;
-   const u32 iovcnt = (u32) u_iovcnt;
-   fs_handle handle;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -391,10 +392,10 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
 
 int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
+   fs_handle handle;
+   const u32 iovcnt = (u32) u_iovcnt;
    struct task *curr = get_curr_task();
    struct iovec *iov = (void *)curr->args_copybuf;
-   const u32 iovcnt = (u32) u_iovcnt;
-   fs_handle handle;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -419,10 +420,10 @@ call_vfs_stat64(const char *u_path,
                 struct k_stat64 *u_statbuf,
                 bool res_last_sl)
 {
-   struct task *curr = get_curr_task();
-   char *path = curr->args_copybuf;
    struct k_stat64 statbuf;
    int rc = 0;
+   struct task *curr = get_curr_task();
+   char *path = curr->args_copybuf;
 
    rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
 
@@ -476,20 +477,22 @@ long sys_fstatat64(int dfd, const char *filename,
 
    if (dfd == AT_FDCWD && flag == AT_SYMLINK_NOFOLLOW)
       return sys_lstat64(filename, statbuf);
-   else if (dfd == AT_FDCWD && flag == 0)
+
+   if (dfd == AT_FDCWD && flag == 0)
       return sys_stat64(filename, statbuf);
-   else if (flag == AT_EMPTY_PATH && filename[0] == 0)
+
+   if (flag == AT_EMPTY_PATH && filename[0] == 0)
       return sys_fstat64(dfd, statbuf);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_symlink(const char *u_target, const char *u_linkpath)
 {
+   int rc = 0;
    struct task *curr     = get_curr_task();
    char *target        = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
    char *linkpath      = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
-   int rc = 0;
 
    STATIC_ASSERT(ARGS_COPYBUF_SIZE / 4 >= MAX_PATH);
 
@@ -522,17 +525,17 @@ long sys_symlinkat(const char *u_oldname,
 
    if (newdfd == AT_FDCWD)
       return sys_symlink(u_oldname, u_newname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 {
+   size_t ret_bs;
+   int rc;
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
    char *buf       = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
-   size_t ret_bs;
-   int rc;
 
    STATIC_ASSERT(ARGS_COPYBUF_SIZE / 4 >= MAX_PATH);
 
@@ -565,15 +568,15 @@ long sys_readlinkat(int dfd, const char *u_pathname,
 
    if (dfd == AT_FDCWD)
       return sys_readlink(u_pathname, u_buf, u_bufsize);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_ia32_truncate64(const char *u_path, s64 len)
 {
+   int rc;
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
-   int rc;
 
    if (len < 0)
       return -EINVAL;
@@ -603,10 +606,10 @@ int sys_ia32_ftruncate64(int fd, s64 len)
 
 int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *u_result, u32 whence)
 {
-   const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
    fs_handle handle;
    offt new_off;
    u64 res;
+   const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
 
    STATIC_ASSERT(sizeof(new_off) >= sizeof(offt));
 
@@ -824,9 +827,9 @@ void close_cloexec_handles(struct process *pi)
 
 int sys_fcntl64(int fd, int cmd, int arg)
 {
+   struct fs_handle_base *hb;
    int rc = 0;
    struct task *curr = get_curr_task();
-   struct fs_handle_base *hb;
 
    if (!(hb = get_fs_handle(fd)))
       return -EBADF;
@@ -836,7 +839,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
       case F_DUPFD:
          {
             kmutex_lock(&curr->pi->fslock);
-            int new_fd = get_free_handle_num_ge(curr->pi, arg);
+            const int new_fd = get_free_handle_num_ge(curr->pi, arg);
             rc = sys_dup2(fd, new_fd);
             kmutex_unlock(&curr->pi->fslock);
             return rc;
@@ -845,7 +848,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
       case F_DUPFD_CLOEXEC:
          {
             kmutex_lock(&curr->pi->fslock);
-            int new_fd = get_free_handle_num_ge(curr->pi, arg);
+            const int new_fd = get_free_handle_num_ge(curr->pi, arg);
             if (!(rc = sys_dup2(fd, new_fd))) {
                /* dup2 succeeded */
                struct fs_handle_base *h2 = get_fs_handle(new_fd);
@@ -880,7 +883,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
          if (arg & (O_ASYNC | O_DIRECT))
             NOT_IMPLEMENTED();
 
-         int unchangeable = hb->fl_flags & ~FCNTL_CHANGEABLE_FL;
+         const int unchangeable = hb->fl_flags & ~FCNTL_CHANGEABLE_FL;
          hb->fl_flags = (arg & FCNTL_CHANGEABLE_FL) | unchangeable;
          break;
 
@@ -897,9 +900,9 @@ int sys_fcntl64(int fd, int cmd, int arg)
 static int
 do_chown(const char *u_path, int owner, int group, bool reslink)
 {
+   int rc;
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
-   int rc;
 
    rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
 
@@ -944,10 +947,11 @@ long sys_fchownat(int dfd, const char *u_path,
 
    if (flag == 0)
       return sys_chown(u_path, user, group);
-   else if (flag == AT_SYMLINK_NOFOLLOW)
+
+   if (flag == AT_SYMLINK_NOFOLLOW)
       return sys_lchown(u_path, user, group);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_fsync(int fd)
@@ -989,9 +993,9 @@ int sys_sync(void)
 
 int sys_chmod(const char *u_path, mode_t mode)
 {
+   int rc;
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
-   int rc;
 
    rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
 
@@ -1024,8 +1028,8 @@ long sys_fchmodat(int dfd, const char *u_path, mode_t mode)
 
    if (dfd == AT_FDCWD)
       return sys_chmod(u_path, mode);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 static int
@@ -1033,10 +1037,10 @@ call_rename_or_link(const char *u_oldpath,
                     const char *u_newpath,
                     int (*vfs_func)(const char *, const char *))
 {
+   int rc1, rc2;
    struct task *curr = get_curr_task();
    char *oldpath = curr->args_copybuf;
    char *newpath = curr->args_copybuf + MAX_PATH;
-   int rc1, rc2;
 
    STATIC_ASSERT(ARGS_COPYBUF_SIZE >= 2 * MAX_PATH);
 
@@ -1064,8 +1068,8 @@ long sys_renameat2(int olddfd, const char *oldname,
 
    if (olddfd == AT_FDCWD && newdfd == AT_FDCWD && !flags)
       return sys_rename(oldname, newname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_link(const char *u_oldpath, const char *u_newpath)
@@ -1080,8 +1084,8 @@ long sys_linkat(int olddfd, const char *oldname,
 
    if (olddfd == AT_FDCWD && newdfd == AT_FDCWD && !flags)
       return sys_link(oldname, newname);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 int sys_pipe(int u_pipefd[2])
@@ -1091,12 +1095,12 @@ int sys_pipe(int u_pipefd[2])
 
 int sys_pipe2(int u_pipefd[2], int flags)
 {
-   struct task *curr = get_curr_task();
+   int fds[2];
    struct fs_handle_base *read_h = NULL;
    struct fs_handle_base *write_h = NULL;
    struct pipe *p = NULL;
-   int fds[2];
    int ret = 0;
+   struct task *curr = get_curr_task();
 
    if (flags & O_DIRECT)
       return -EINVAL;

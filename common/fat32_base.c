@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/assert.h>
@@ -146,11 +147,12 @@ bool fat32_is_valid_filename_character(char c)
 /*
  * WARNING: this implementation supports only the ASCII subset of UTF16.
  */
-static void fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
-                                      struct fat_long_entry *le)
+static void
+fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
+                          struct fat_long_entry *le)
 {
-   char entrybuf[13] = {0};
    int ebuf_size=0;
+   char entrybuf[13] = {0};
 
    if (ctx->lname_chksum != le->LDIR_Chksum) {
       bzero(ctx->lname_buf, sizeof(ctx->lname_chksum));
@@ -298,7 +300,8 @@ fat_walk(struct fat_walk_static_params *p, u32 cluster)
          if (ctx && ctx->lname_sz > 0 && ctx->is_valid)
             long_name_ptr = finalize_long_name(ctx, &dentries[i]);
 
-         int ret = p->cb(p->h, p->ft, dentries + i, long_name_ptr, p->arg);
+         const int ret = p->cb(p->h, p->ft, dentries + i,
+                               long_name_ptr, p->arg);
 
          if (ctx) {
             ctx->lname_sz = 0;
@@ -324,7 +327,7 @@ fat_walk(struct fat_walk_static_params *p, u32 cluster)
        * If we're here, it means that there is more then one cluster for the
        * entries of this directory. We have to follow the chain.
        */
-      u32 val = fat_read_fat_entry(p->h, p->ft, 0, cluster);
+      const u32 val = fat_read_fat_entry(p->h, p->ft, 0, cluster);
 
       if (fat_is_end_of_clusterchain(p->ft, val))
          break; // that's it: we hit an exactly full cluster.
@@ -345,6 +348,7 @@ u32 fat_get_cluster_count(struct fat_hdr *hdr)
    const u32 RootDirSectors = fat_get_root_dir_sectors(hdr);
    const u32 FatAreaSize = hdr->BPB_NumFATs * FATSz;
    const u32 DataSec = TotSec-(hdr->BPB_RsvdSecCnt+FatAreaSize+RootDirSectors);
+
    return DataSec / hdr->BPB_SecPerClus;
 }
 
@@ -423,8 +427,9 @@ fat_write_fat_entry(struct fat_hdr *h,
 
    } else {
 
+      u32 oldval;
       ASSERT((value & 0xF0000000U) == 0); /* the top 4 bits cannot be used */
-      u32 oldval = *(u32 *)ptr & 0xF0000000U;
+      oldval = *(u32 *)ptr & 0xF0000000U;
       *(u32 *)ptr = oldval | value;
    }
 }
@@ -437,11 +442,11 @@ u32 fat_get_first_data_sector(struct fat_hdr *hdr)
    if (hdr->BPB_FATSz16 != 0) {
       FATSz = hdr->BPB_FATSz16;
    } else {
-      struct fat32_header2 *h32 = (struct fat32_header2*) (hdr+1);
+      struct fat32_header2 *h32 = (struct fat32_header2 *)(hdr + 1);
       FATSz = h32->BPB_FATSz32;
    }
 
-   u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
+   const u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
       (hdr->BPB_NumFATs * FATSz) + RootDirSectors;
 
    return FirstDataSector;
@@ -458,8 +463,9 @@ u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N)
 struct fat_entry *
 fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
 {
-   ASSERT(ft == fat16_type || ft == fat32_type);
    u32 sector;
+
+   ASSERT(ft == fat16_type || ft == fat32_type);
 
    if (ft == fat16_type) {
 
@@ -477,7 +483,7 @@ fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
       sector = fat_get_sector_for_cluster(hdr, *cluster);
    }
 
-   return (struct fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * sector));
+   return (struct fat_entry *)((u8 *)hdr + (hdr->BPB_BytsPerSec * sector));
 }
 
 void fat_get_short_name(struct fat_entry *entry, char *destbuf)
@@ -727,7 +733,7 @@ fat_read_whole_file(struct fat_hdr *hdr,
       ASSERT((fsize - tot_read) > 0);
 
       // find the next cluster
-      u32 fatval = fat_read_fat_entry(hdr, ft, 0, cluster);
+      const u32 fatval = fat_read_fat_entry(hdr, ft, 0, cluster);
 
       if (fat_is_end_of_clusterchain(ft, fatval)) {
          // rem is still > 0, this should NOT be the last cluster.
@@ -834,9 +840,9 @@ void fat_compact_clusters(struct fat_hdr *hdr)
 u32
 fat_get_first_free_cluster_off(struct fat_hdr *hdr)
 {
-   u32 clu, ff_sector;
    const u32 cluster_count = fat_get_cluster_count(hdr);
    const enum fat_type ft = fat_get_type(hdr);
+   u32 clu, ff_sector;
 
    for (clu = 0; clu < cluster_count; clu++) {
       if (!fat_read_fat_entry(hdr, ft, 0, clu))

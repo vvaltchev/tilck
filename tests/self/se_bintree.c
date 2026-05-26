@@ -60,12 +60,12 @@ do_bintree_perf_test(u32 elems,
                         struct bintree_node *, ulong
                      ))
 {
-   struct bintree_node *bst_root = NULL;
    struct list nodes_list;
    struct simple_obj *obj;
    struct simple_obj *nodes;
    u64 start, duration;
    u32 bst_cycles, list_cycles;
+   struct bintree_node *bst_root = NULL;
    const u32 iters = 100;
 
    VERIFY(elems <= RANDOM_VALUES_COUNT);
@@ -185,8 +185,8 @@ selftest_bintree_perf(void)
    printk("\n");
    printk("    elems    |     bst    |     list\n");
    printk("-------------+------------+--------------\n");
-   do_bintree_perf_test(250, false, NULL);
-   do_bintree_perf_test(500, false, NULL);
+   do_bintree_perf_test(250,  false, NULL);
+   do_bintree_perf_test(500,  false, NULL);
    do_bintree_perf_test(1000, false, NULL);
    printk("\n");
    printk("\n");

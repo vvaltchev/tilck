@@ -17,8 +17,10 @@ poll_count_conds(struct pollfd *fds, nfds_t nfds)
 
    for (nfds_t i = 0; i < nfds; i++) {
 
+      fs_handle h;
+
       fds[i].revents = 0;
-      fs_handle h = get_fs_handle(fds[i].fd);
+      h = get_fs_handle(fds[i].fd);
 
       if (!h) {
          fds[i].revents = POLLNVAL; /* invalid file descriptor */
@@ -110,8 +112,8 @@ poll_set_conds(struct multi_obj_waiter *w,
 static int
 poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
 {
-   int cnt = 0;
    int rc;
+   int cnt = 0;
 
    for (nfds_t i = 0; i < nfds; i++) {
 
@@ -155,9 +157,9 @@ poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
 static int
 poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
 {
-   struct task *curr = get_curr_task();
    struct multi_obj_waiter *waiter = NULL;
    int ready_fds_cnt = 0;
+   struct task *curr = get_curr_task();
 
    if (!(waiter = allocate_mobj_waiter(cond_cnt)))
       return -ENOMEM;
@@ -279,10 +281,10 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
 
 int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
 {
-   struct task *curr = get_curr_task();
-   struct pollfd *fds = curr->args_copybuf;
    int rc, ready_fds_cnt;
    int cond_cnt = 0;
+   struct task *curr = get_curr_task();
+   struct pollfd *fds = curr->args_copybuf;
 
    if (sizeof(struct pollfd) * nfds > ARGS_COPYBUF_SIZE)
       return -EINVAL;

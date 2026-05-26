@@ -54,6 +54,7 @@ static void __unknown_syscall(void)
    struct task *curr = get_curr_task();
    regs_t *r = curr->state_regs;
    const u32 sn = r->a7;
+
    unknown_syscall_int(r, sn);
 }
 
@@ -423,7 +424,6 @@ do_syscall_int(syscall_type fptr, regs_t *r, bool raw_regs)
 
 static void do_special_syscall(regs_t *r)
 {
-   struct task *curr = get_curr_task();
    const u32 sn = r->a7;
    const u32 fl = syscalls[sn].flags;
    const syscall_type fptr = syscalls[sn].fptr;
@@ -431,6 +431,7 @@ static void do_special_syscall(regs_t *r)
    const bool preemptable = ~fl & SYSFL_NO_PREEMPT;
    const bool traceable = ~fl & SYSFL_NO_TRACE;
    const bool raw_regs = fl & SYSFL_RAW_REGS;
+   struct task *curr = get_curr_task();
 
    if (preemptable)
       enable_preemption();
@@ -452,9 +453,9 @@ static void do_special_syscall(regs_t *r)
 
 static void do_syscall(regs_t *r)
 {
-   struct task *curr = get_curr_task();
    const u32 sn = r->a7;
    const syscall_type fptr = syscalls[sn].fptr;
+   struct task *curr = get_curr_task();
 
    enable_preemption();
    {

@@ -54,16 +54,16 @@ struct irq_data {
    struct irq_domain *domain;
 };
 
-#define REGISTER_FDT_IRQCHIP(__name, __id_table, __init)  \
-                                                          \
-   static struct fdt_irqchip fdt_irqchip_##__name = {     \
-      .id_table = __id_table,                             \
-      .init = __init                                      \
-   };                                                     \
-                                                          \
-   __attribute__((constructor))                           \
-   static void __register_fdt_irqchip_##__name(void) {    \
-      irqchip_drv_register(&fdt_irqchip_##__name);        \
+#define REGISTER_FDT_IRQCHIP(__name, __id_table, __init)              \
+                                                                      \
+   static struct fdt_irqchip fdt_irqchip_##__name = {                 \
+      .id_table = __id_table,                                         \
+      .init = __init                                                  \
+   };                                                                 \
+                                                                      \
+   __attribute__((constructor))                                       \
+   static void __register_fdt_irqchip_##__name(void) {                \
+      irqchip_drv_register(&fdt_irqchip_##__name);                    \
    }
 
 int fdt_parse_one_hwirq(void *fdt,

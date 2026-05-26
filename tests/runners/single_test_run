@@ -249,12 +249,14 @@ def run_the_vm():
       arch_opts_str = arch_opts_str.replace("-device ramfb", "")
 
    arch_opts = list(filter(None, arch_opts_str.split(' ')))
+   common_opts = list(filter(None, "@QEMU_COMMON_OPTS@".split(' ')))
    args = [
       'qemu-system-@ARCH@',
       '-m', str(VM_MEMORY_SIZE_IN_MB),
       '-vga', 'none',
       '-nographic',
       '-drive', 'id=img1,format=raw,if=none,file=@IMG_FILE@',
+      *common_opts,
       *arch_opts,
    ]
 

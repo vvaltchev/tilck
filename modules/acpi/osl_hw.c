@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable function_def_no_style2 */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>

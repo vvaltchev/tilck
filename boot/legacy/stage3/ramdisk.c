@@ -92,6 +92,7 @@ overlap_with_kernel_file(ulong pa, ulong sz)
 
    const ulong kbegin = kernel_file_pa;
    const ulong kend = kernel_file_pa + kernel_file_sz;
+
    return IN_RANGE(pa, kbegin, kend) || IN_RANGE(pa + sz, kbegin, kend);
 }
 

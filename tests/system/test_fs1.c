@@ -159,8 +159,10 @@ int cmd_fs3(int argc, char **argv)
 {
    struct linux_dirent64 *de;
    char dentsbuf[192];
-   int fd, rc, off = 0;
+   int fd, rc;
+   int last_n;
    DIR *d;
+   int off = 0;
 
    if (!running_on_tilck()) {
       not_on_tilck_message();
@@ -187,7 +189,7 @@ int cmd_fs3(int argc, char **argv)
       // printf("entry: '%s'\n", de->d_name);
    }
 
-   int last_n = atoi(de->d_name + 5); /* skip "test_" */
+   last_n = atoi(de->d_name + 5); /* skip "test_" */
    printf("last entry: '%s' (%d)\n", de->d_name, last_n);
 
    /*

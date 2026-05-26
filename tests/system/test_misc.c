@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <stdio.h>
 #include <string.h>
@@ -43,6 +44,7 @@ int cmd_bad_read(int argc, char **argv)
 {
    int ret, err;
    void *addr = (void *) 0xB0000000;
+
    printf("[cmd] req. kernel to read unaccessibile user addr: %p\n", addr);
 
    /* write to stdout a buffer unaccessibile for the user */
@@ -89,6 +91,7 @@ int cmd_sysenter(int argc, char **argv)
 {
    const char *str = "hello from a sysenter call!\n";
    size_t len = strlen(str);
+   struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
 
    int ret = sysenter_call3(SYS_write  /* write */,
                             1  /* stdout */,
@@ -101,8 +104,6 @@ int cmd_sysenter(int argc, char **argv)
    printf("after sleep, everything is fine.\n");
    printf("same sleep, but with sysenter:\n");
 
-   struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
-
 #ifdef __i386__
    ASSERT(SYS_nanosleep == 162);
 #endif
@@ -114,9 +115,9 @@ int cmd_sysenter(int argc, char **argv)
 
 int cmd_syscall_perf(int argc, char **argv)
 {
+   ull_t start, duration;
    const int major_iters = 100;
    const int iters = 1000;
-   ull_t start, duration;
    ull_t best = (ull_t) -1;
 
    for (int j = 0; j < major_iters; j++) {
@@ -407,9 +408,9 @@ comes_after(struct timeval t2,
             struct timeval t1)
 {
    // t1 must come before t2
-   return t2.tv_sec > t1.tv_sec
-       || (t2.tv_sec == t1.tv_sec
-         && t2.tv_usec > t1.tv_usec);
+   return t2.tv_sec > t1.tv_sec ||
+          (t2.tv_sec == t1.tv_sec &&
+           t2.tv_usec > t1.tv_usec);
 }
 
 static void busy_wait(void)
@@ -428,6 +429,8 @@ static void busy_wait_kernel(void)
 int cmd_getrusage(int argc, char **argv)
 {
    int rc, n, max;
+   int bad_who;
+   void *bad_ptr;
    struct rusage buf_0;
    struct rusage buf_1;
 
@@ -485,13 +488,13 @@ int cmd_getrusage(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == -1 && errno == EINVAL);
 
    // Check failure when the "who" argument is invalid.
-   int bad_who = 1000;
+   bad_who = 1000;
    rc = getrusage(bad_who, &buf_0);
    DEVSHELL_CMD_ASSERT(rc == -1 && errno == EINVAL);
 
    // Check failure when the provided buffer pointer
    // doesn't refer to an accessible page
-   void *bad_ptr = NULL;
+   bad_ptr = NULL;
    rc = getrusage(RUSAGE_SELF, bad_ptr);
    DEVSHELL_CMD_ASSERT(rc == -1 && errno == EFAULT);
 

@@ -1,24 +1,24 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #pragma once
 
-#define DECL_FUNCS_0(name, ret)                     \
-   ret __real_##name();                             \
+#define DECL_FUNCS_0(name, ret)                                       \
+   ret __real_##name();                                               \
    ret __wrap_##name();
 
-#define DECL_FUNCS_1(name, ret, t1)                 \
-   ret __real_##name(t1);                           \
+#define DECL_FUNCS_1(name, ret, t1)                                   \
+   ret __real_##name(t1);                                             \
    ret __wrap_##name(t1);
 
-#define DECL_FUNCS_2(name, ret, t1, t2)             \
-   ret __real_##name(t1, t2);                       \
+#define DECL_FUNCS_2(name, ret, t1, t2)                               \
+   ret __real_##name(t1, t2);                                         \
    ret __wrap_##name(t1, t2);
 
-#define DECL_FUNCS_3(name, ret, t1, t2, t3)         \
-   ret __real_##name(t1, t2, t3);                   \
+#define DECL_FUNCS_3(name, ret, t1, t2, t3)                           \
+   ret __real_##name(t1, t2, t3);                                     \
    ret __wrap_##name(t1, t2, t3);
 
-#define DECL_FUNCS_4(name, ret, t1, t2, t3, t4)     \
-   ret __real_##name(t1, t2, t3, t4);               \
+#define DECL_FUNCS_4(name, ret, t1, t2, t3, t4)                       \
+   ret __real_##name(t1, t2, t3, t4);                                 \
    ret __wrap_##name(t1, t2, t3, t4);
 
 
@@ -46,29 +46,29 @@ extern "C" {
 #undef DEF_4
 }
 
-#define DEF_0(what, name, ret)                        \
-   virtual ret name() {                               \
-      return __##what##_##name();                     \
+#define DEF_0(what, name, ret)                                        \
+   virtual ret name() {                                               \
+      return __##what##_##name();                                     \
    }
 
-#define DEF_1(what, name, ret, t1)                    \
-   virtual ret name(t1 a1) {                          \
-      return __##what##_##name(a1);                   \
+#define DEF_1(what, name, ret, t1)                                    \
+   virtual ret name(t1 a1) {                                          \
+      return __##what##_##name(a1);                                   \
    }
 
-#define DEF_2(what, name, ret, t1, t2)                \
-   virtual ret name(t1 a1, t2 a2) {                   \
-      return __##what##_##name(a1, a2);               \
+#define DEF_2(what, name, ret, t1, t2)                                \
+   virtual ret name(t1 a1, t2 a2) {                                   \
+      return __##what##_##name(a1, a2);                               \
    }
 
-#define DEF_3(what, name, ret, t1, t2, t3)            \
-   virtual ret name(t1 a1, t2 a2, t3 a3) {            \
-      return __##what##_##name(a1, a2, a3);           \
+#define DEF_3(what, name, ret, t1, t2, t3)                            \
+   virtual ret name(t1 a1, t2 a2, t3 a3) {                            \
+      return __##what##_##name(a1, a2, a3);                           \
    }
 
-#define DEF_4(what, name, ret, t1, t2, t3, t4)        \
-   virtual ret name(t1 a1, t2 a2, t3 a3, t4 a4) {     \
-      return __##what##_##name(a1, a2, a3, a4);       \
+#define DEF_4(what, name, ret, t1, t2, t3, t4)                        \
+   virtual ret name(t1 a1, t2 a2, t3 a3, t4 a4) {                     \
+      return __##what##_##name(a1, a2, a3, a4);                       \
    }
 
 

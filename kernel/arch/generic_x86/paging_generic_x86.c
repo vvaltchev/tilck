@@ -23,12 +23,12 @@ struct kmalloc_heap *hi_vmem_heap;
 
 void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 {
-   ASSERT(IS_PAGE_ALIGNED(vaddrp));
-   ASSERT(IS_PAGE_ALIGNED(len));
-
    ulong paddr;
    ulong vaddr = (ulong)vaddrp;
    const ulong vaddr_end = vaddr + len;
+
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
 
@@ -41,12 +41,12 @@ void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 
 void release_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 {
-   ASSERT(IS_PAGE_ALIGNED(vaddrp));
-   ASSERT(IS_PAGE_ALIGNED(len));
-
    ulong paddr;
    ulong vaddr = (ulong)vaddrp;
    const ulong vaddr_end = vaddr + len;
+
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
 
@@ -64,9 +64,9 @@ void invalidate_page(ulong vaddr)
 
 void init_paging(void)
 {
-   int rc;
    void *user_vdso_vaddr;
    size_t pagesframes_refcount_bufsize;
+   int rc;
 
    phys_mem_lim = (ulong)MIN(get_phys_mem_size(),
                              (u64)LINEAR_MAPPING_SIZE);
@@ -123,13 +123,16 @@ map_framebuffer(pdir_t *pdir,
                 ulong size,
                 bool user_mmap)
 {
+   int selected_mtrr;
+   ulong pow2size;
+   size_t count;
+
    if (!get_kernel_pdir())
       return failsafe_map_framebuffer(paddr, size);
 
    if (!pageframes_refcount)
       return failsafe_map_framebuffer(paddr, size);
 
-   size_t count;
    const size_t page_count = pow2_round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
    const u32 pg_flags = PAGING_FL_RW                     |
                         PAGING_FL_SHARED                 |
@@ -208,8 +211,8 @@ map_framebuffer(pdir_t *pdir,
     * PAT is not available: we have to use MTRRs in order to make the paddr
     * region be of type WC (write-combining).
     */
-   int selected_mtrr = get_free_mtrr();
-   ulong pow2size = roundup_next_power_of_2(size);
+   selected_mtrr = get_free_mtrr();
+   pow2size = roundup_next_power_of_2(size);
 
    if (selected_mtrr < 0) {
       /*

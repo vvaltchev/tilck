@@ -60,13 +60,13 @@ int get_syscall_num(void *func);
  */
 #if DEBUG_CHECKS && !IS_RELEASE_BUILD
 
-   #define DEBUG_SAVE_ESP()                     \
-      ulong curr_esp;                           \
+   #define DEBUG_SAVE_ESP()                                           \
+      ulong curr_esp;                                                 \
       ulong saved_esp = get_stack_ptr();
 
-   #define DEBUG_CHECK_ESP()                                                 \
-         curr_esp = get_stack_ptr();                                         \
-         if (curr_esp != saved_esp)                                          \
+   #define DEBUG_CHECK_ESP()                                          \
+         curr_esp = get_stack_ptr();                                  \
+         if (curr_esp != saved_esp)                                   \
             panic("ESP changed. Saved: %p, Curr: %p", saved_esp, curr_esp);
 
 #else

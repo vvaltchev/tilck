@@ -11,7 +11,8 @@
 
 int read_wrapper(int fd, char *buf, int len)
 {
-   int rc, tot = 0;
+   int rc;
+   int tot = 0;
 
    while (tot < len) {
 
@@ -31,8 +32,9 @@ int read_wrapper(int fd, char *buf, int len)
 
 int main(int argc, char **argv)
 {
-   int fd, bs, rc, off = 0;
+   int fd, bs, rc;
    char *buf;
+   int off = 0;
 
    if (argc < 3) {
       fprintf(stderr, "Usage: %s <file> <bufsize>\n", argv[0]);
@@ -62,12 +64,14 @@ int main(int argc, char **argv)
 
    do {
 
+      uint32_t checksum;
+
       if ((rc = read_wrapper(fd, buf, bs)) < 0) {
          perror("read");
          break;
       }
 
-      uint32_t checksum = crc32(0, buf, rc);
+      checksum = crc32(0, buf, rc);
       printf("[%08x] %08x\n", off, checksum);
 
       off += rc;

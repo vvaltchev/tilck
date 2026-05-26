@@ -180,4 +180,4 @@ static NO_INLINE void debug_kmalloc_register_free(void *vaddr, size_t s)
 #define debug_kmalloc_register_alloc(...)
 #define debug_kmalloc_register_free(...)
 
-#endif
+#endif /* KRN_KMALLOC_SUPPORT_LEAK_DETECTOR */

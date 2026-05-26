@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #pragma once
 #define __TILCK_HAL__
@@ -187,13 +188,13 @@
 
       #error Non-test aarch64 is not supported
 
-   #endif
+   #endif /* UNIT_TEST_ENVIRONMENT */
 
 #else
 
    #error Unsupported architecture.
 
-#endif
+#endif /* __i386__ || __x86_64__ */
 
 #ifdef UNIT_TEST_ENVIRONMENT
    /*
@@ -340,8 +341,8 @@ void hw_timer_setup(u32 hz, struct hw_timer_info *out);
 
 bool allocate_fpu_regs(arch_task_members_t *arch_fields);
 void copy_main_tss_on_regs(regs_t *ctx);
-void arch_add_initial_mem_regions();
-bool arch_add_final_mem_regions();
+void arch_add_initial_mem_regions(void);
+bool arch_add_final_mem_regions(void);
 
 #define get_task_arch_fields(ti) ((arch_task_members_t*)(void*)((ti)->ti_arch))
 #define get_proc_arch_fields(pi) ((arch_proc_members_t*)(void*)((pi)->pi_arch))

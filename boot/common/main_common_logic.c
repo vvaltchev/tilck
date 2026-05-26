@@ -23,12 +23,12 @@
 
 #include "common_int.h"
 
-#define CHECK(cond)                                  \
-   do {                                              \
-      if (!(cond)) {                                 \
-         printk("CHECK '%s' FAILED\n", #cond);       \
-         return false;                               \
-      }                                              \
+#define CHECK(cond)                                                   \
+   do {                                                               \
+      if (!(cond)) {                                                  \
+         printk("CHECK '%s' FAILED\n", #cond);                        \
+         return false;                                                \
+      }                                                               \
    } while(0)
 
 static video_mode_t selected_mode = INVALID_VIDEO_MODE;
@@ -259,8 +259,8 @@ menu_print_kernel_mods(void)
    static char prefix_padding[] = "              ";
 
    char *mods = kernel_build_info->modules_list;
-   int per_line_len = sizeof(prefix) - 1;
    char tmp[32];
+   int per_line_len = sizeof(prefix) - 1;
 
    printk("%s", prefix);
 
@@ -574,9 +574,9 @@ wait_for_any_key(void)
 bool
 common_bootloader_logic(void)
 {
+   int video_modes_cnt;
    bool interactive = BOOT_INTERACTIVE;
    bool in_retry = false;
-   int video_modes_cnt;
 
    video_modes_cnt = fetch_all_video_modes_once();
    selected_mode = g_defmode;

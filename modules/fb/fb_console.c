@@ -231,7 +231,7 @@ static struct video_interface framebuffer_vi =
 };
 
 
-static void fb_blink_thread()
+static void fb_blink_thread(void *unused)
 {
    while (true) {
 
@@ -286,8 +286,8 @@ static void fb_banner_update_battery_pm(void)
 
 static u32 fb_banner_left_side(char *buf, size_t buf_sz)
 {
-   int ttynum = 1;
    int rc;
+   int ttynum = 1;
 
    if (get_curr_tty())
       ttynum = get_curr_tty_num();
@@ -348,6 +348,7 @@ void fb_draw_banner(void)
    static bool oom;
    static char *lbuf;
    static char *rbuf;
+   u32 llen, rlen, padding = 0;
 
    if (oom || !fb_offset_y)
       return;
@@ -372,7 +373,6 @@ void fb_draw_banner(void)
       }
    }
 
-   u32 llen, rlen, padding = 0;
    ASSERT(fb_offset_y >= font_h);
 
    /*
@@ -414,13 +414,13 @@ void fb_draw_banner(void)
    fb_draw_string_at_raw(0, font_h/2, lbuf, COLOR_BRIGHT_YELLOW);
 
    /* Clear the remaining screen area below the banner and the text */
-   u32 top_lines_used = fb_offset_y + font_h * fb_term_rows;
+   const u32 top_lines_used = fb_offset_y + font_h * fb_term_rows;
    fb_raw_color_lines(top_lines_used,
                       fb_get_height() - top_lines_used,
                       vga_rgb_colors[COLOR_BLACK]);
 }
 
-static void fb_update_banner()
+static void fb_update_banner(void *unused)
 {
    while (true) {
 
@@ -462,7 +462,7 @@ static void fb_scroll_one_line_up(void)
       fb_enable_cursor();
 }
 
-static void async_pre_render_scanlines()
+static void async_pre_render_scanlines(void *unused)
 {
    if (!fb_pre_render_char_scanlines()) {
       printk("fb_console: WARNING: fb_pre_render_char_scanlines failed.\n");
@@ -570,9 +570,9 @@ void init_fb_console(void)
 
    cursor_color = vga_rgb_colors[COLOR_BRIGHT_WHITE];
 
-   void *font = fb_get_width() / 8 <= KRN_FBCON_BIGFONT_THR
-                  ? (void *)&_binary_font8x16_psf_start
-                  : (void *)&_binary_font16x32_psf_start;
+   void *const font = fb_get_width() / 8 <= KRN_FBCON_BIGFONT_THR
+                        ? (void *)&_binary_font8x16_psf_start
+                        : (void *)&_binary_font16x32_psf_start;
 
    fb_set_font(font);
    fb_map_in_kernel_space();

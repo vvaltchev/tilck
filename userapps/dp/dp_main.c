@@ -273,8 +273,8 @@ dp_main_handle_keypress(struct key_event ke)
 static int
 dp_main_body(struct key_event ke)
 {
-   bool dp_screen_key_handled = false;
    int rc;
+   bool dp_screen_key_handled = false;
 
    if (!skip_next_keypress) {
 
@@ -350,7 +350,7 @@ int dp_run_panel(void)
    need_buffer = true;
    need_paint  = true;
 
-   while (1) {
+   while (true) {
 
       rc = dp_main_body(ke);
 

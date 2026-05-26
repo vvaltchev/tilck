@@ -91,7 +91,7 @@ void selftest_rtc_uie(void)
       }
 
       printk("rtc_uie: edge %d at __time_ns=%llu\n",
-             i, (unsigned long long) edges[i]);
+             i, (ulonglong) edges[i]);
    }
 
    for (int i = 1; i < RTC_UIE_EDGES; i++) {
@@ -103,8 +103,8 @@ void selftest_rtc_uie(void)
 
       printk("rtc_uie: delta %d->%d = %llu ns (dev from 1s = %llu ns)\n",
              i - 1, i,
-             (unsigned long long) delta,
-             (unsigned long long) dev);
+             (ulonglong) delta,
+             (ulonglong) dev);
 
       VERIFY(dev <= RTC_UIE_DELTA_TOLERANCE_NS);
    }

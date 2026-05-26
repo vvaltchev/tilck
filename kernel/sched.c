@@ -431,16 +431,19 @@ create_id_common(struct create_pid_visit_ctx *ctx, int max_id)
 
 int create_new_pid(void)
 {
+   struct create_pid_visit_ctx ctx;
+   int r;
+
    ASSERT(!is_preemption_enabled());
 
-   struct create_pid_visit_ctx ctx = {
+   ctx = (struct create_pid_visit_ctx) {
       .kernel_tid = false,
       .id_off = 0,
       .lowest_available = 0,
       .lowest_after_current_max = current_max_pid + 1,
    };
 
-   int r = create_id_common(&ctx, MAX_PID);
+   r = create_id_common(&ctx, MAX_PID);
 
    if (r >= 0)
       current_max_pid = r;
@@ -450,16 +453,19 @@ int create_new_pid(void)
 
 int create_new_kernel_tid(void)
 {
+   struct create_pid_visit_ctx ctx;
+   int r;
+
    ASSERT(!is_preemption_enabled());
 
-   struct create_pid_visit_ctx ctx = {
+   ctx = (struct create_pid_visit_ctx) {
       .kernel_tid = true,
       .id_off = KERNEL_TID_START,
       .lowest_available = 0,
       .lowest_after_current_max = current_max_kernel_tid + 1,
    };
 
-   int r = create_id_common(&ctx, KERNEL_MAX_TID);
+   r = create_id_common(&ctx, KERNEL_MAX_TID);
 
    if (r >= 0) {
       current_max_kernel_tid = r;
@@ -580,6 +586,7 @@ void process_set_tty(struct process *pi, void *t)
 void init_sched(void)
 {
    int tid;
+   ulong var;
 
    ASSERT(kernel_process_pi->pid == 0);
    ASSERT(kernel_process_pi->parent_pid == 0);
@@ -601,7 +608,6 @@ void init_sched(void)
     * good. Disable interrupts around the bintree_remove for the
     * same IRQ-vs-tree-mutation reason that add_task() does.
     */
-   ulong var;
    disable_interrupts(&var);
    {
       DEBUG_ONLY_UNSAFE(struct task *removed =)
@@ -907,10 +913,11 @@ static u32 sched_compute_slice(void)
  */
 STATIC u64 sched_compute_avg_vruntime(void)
 {
+   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
    struct task *curr = get_curr_task();
    const u64 curr_v = atomic_load(&curr->ticks.vruntime);
    const u64 sum = atomic_load(&sum_vruntime_in_tree);
-   const u32 nr_running = (u32)get_runnable_tasks_count() + 1;
+
    return (sum + curr_v) / nr_running;
 }
 
@@ -1008,12 +1015,9 @@ void wake_vruntime_handoff(struct task *ti)
          goto out;
 
       const u64 current_min = atomic_load(&min_vruntime);
-      u64 floor;
-
-      if (current_min > WAKEUP_VRUNTIME_BONUS)
-         floor = current_min - WAKEUP_VRUNTIME_BONUS;
-      else
-         floor = 0;
+      const u64 floor = current_min > WAKEUP_VRUNTIME_BONUS
+                           ? current_min - WAKEUP_VRUNTIME_BONUS
+                           : 0;
 
       if (atomic_load(&ti->ticks.vruntime) < floor)
          atomic_store(&ti->ticks.vruntime, floor);
@@ -1159,9 +1163,9 @@ sched_should_return_immediately(struct task *curr, enum task_state curr_state)
 STATIC struct task *
 sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 {
-   struct task *curr = get_curr_task();
    struct task *selected;
    ulong var;
+   struct task *curr = get_curr_task();
 
    /*
     * EEVDF selection: pick the eligible task with the earliest
@@ -1248,10 +1252,10 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 
 void do_schedule(void)
 {
+   struct task *selected = NULL;
    enum task_state curr_state = get_curr_task_state();
    const bool resched = need_reschedule();
    struct task *curr = get_curr_task();
-   struct task *selected = NULL;
 
    ASSERT(!is_preemption_enabled());
 
@@ -1331,6 +1335,7 @@ struct task *get_task(int tid)
 {
    long ltid = tid;
    struct task *res = NULL;
+
    ASSERT(!is_preemption_enabled());
 
    res = bintree_find_ptr(tree_by_tid_root,
@@ -1362,11 +1367,11 @@ bool in_currently_dying_task(void)
 
 int send_signal_to_group(int pgid, int sig)
 {
-   struct process *curr_pi = get_curr_proc();
-   struct process *leader = NULL;
    struct bintree_walk_ctx ctx;
    struct task *ti;
+   struct process *leader = NULL;
    int count = 0;
+   struct process *curr_pi = get_curr_proc();
 
    disable_preemption();
 
@@ -1408,11 +1413,11 @@ int send_signal_to_group(int pgid, int sig)
 
 int send_signal_to_session(int sid, int sig)
 {
-   struct process *curr_pi = get_curr_proc();
-   struct process *leader = NULL;
    struct bintree_walk_ctx ctx;
    struct task *ti;
+   struct process *leader = NULL;
    int count = 0;
+   struct process *curr_pi = get_curr_proc();
 
    disable_preemption();
 

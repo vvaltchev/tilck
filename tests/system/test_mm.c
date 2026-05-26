@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck_gen_headers/config_mm.h>
 
@@ -54,9 +55,9 @@ int cmd_brk(int argc, char **argv)
 
 int cmd_mmap(int argc, char **argv)
 {
+   void *arr[1024];
    const int iters_count = 10;
    const size_t alloc_size = 1 * MB;
-   void *arr[1024];
    int max_mb = -1;
 
    ull_t tot_duration = 0;
@@ -68,16 +69,18 @@ int cmd_mmap(int argc, char **argv)
 
       for (i = 0; i < 64; i++) {
 
+         void *res;
+
          errno = 0;
 
-         void *res = mmap(NULL,
-                          alloc_size,
-                          PROT_READ | PROT_WRITE,
-                          MAP_ANONYMOUS | MAP_PRIVATE,
-                          -1,
-                          0);
+         res = mmap(NULL,
+                    alloc_size,
+                    PROT_READ | PROT_WRITE,
+                    MAP_ANONYMOUS | MAP_PRIVATE,
+                    -1,
+                    0);
 
-         if (res == (void*) -1) {
+         if (res == (void *)-1) {
             i--;
             break;
          }
@@ -136,7 +139,7 @@ static void no_munmap_bad_child(void)
                     -1,
                     0);
 
-   if (res == (void*) -1) {
+   if (res == (void *)-1) {
       printf(STR_CHILD "mmap %zu KB failed!\n", alloc_size / KB);
       exit(1);
    }
@@ -202,8 +205,9 @@ static size_t mm_estimate_usable_mem_int(size_t step_size)
 {
    int rc, pipefd[2];
    int rfd, wfd, wstatus;
-   size_t msg, mem = 0;
    pid_t childpid;
+   size_t msg;
+   size_t mem = 0;
 
    printf(STR_PARENT "Estimating usable memory..\n");
 

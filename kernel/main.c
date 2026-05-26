@@ -83,7 +83,7 @@ init_video_console(void)
           * module is _not_ built-in.
           */
 
-         if (MOD_acpi &&
+         if (MOD_acpi                                         &&
              get_acpi_init_status() >= ais_tables_initialized &&
              acpi_is_vga_text_mode_avail() == tri_no)
          {
@@ -180,7 +180,7 @@ init_console(void)
 we_are_doomed:
    disable_interrupts_forced();
 
-   while (1)
+   while (true)
       halt();
 }
 
@@ -325,11 +325,13 @@ run_init_or_selftest(void)
 
    } else {
 
+      long rc;
+
       if (system_mmap_get_ramdisk(0, NULL, NULL) < 0)
          panic("No ramdisk and no selftest requested: nothing to do.");
 
       /* Run init or whatever program was passed in the cmdline */
-      long rc = first_execve(cmd_args[0], cmd_args);
+      rc = first_execve(cmd_args[0], cmd_args);
 
       if (rc != 0)
          panic("execve('%s') failed with %i\n", cmd_args[0], rc);

@@ -16,10 +16,10 @@
 #define FB_DEVICE "/dev/fb0"
 #define TTY_DEVICE "/dev/tty"
 
-#define FB_ASSUMPTION(x)                                        \
-   if (!(x)) {                                                  \
-      fprintf(stderr, "fb mode assumption '%s' failed\n", #x);  \
-      return false;                                             \
+#define FB_ASSUMPTION(x)                                              \
+   if (!(x)) {                                                        \
+      fprintf(stderr, "fb mode assumption '%s' failed\n", #x);        \
+      return false;                                                   \
    }
 
 static struct fb_var_screeninfo fbi;
@@ -39,9 +39,9 @@ static inline void memset32(void *s, uint32_t val, size_t n)
 
 static inline uint32_t make_color(uint8_t red, uint8_t green, uint8_t blue)
 {
-   return red << fbi.red.offset |
-          green << fbi.green.offset |
-          blue << fbi.blue.offset;
+   return (red << fbi.red.offset)     |
+          (green << fbi.green.offset) |
+          (blue << fbi.blue.offset);
 }
 
 static inline void set_pixel(uint32_t x, uint32_t y, uint32_t color)

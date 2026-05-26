@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/kernel/debug_utils.h>
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
+
+#include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/modules.h>
-#include <tilck/common/printk.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/sched.h>
 

@@ -150,10 +150,10 @@ static bool plic_is_masked(int hwirq, void *priv)
 
 static enum irq_action plic_irq_handler(void *ctx)
 {
-   enum irq_action hret = IRQ_NOT_HANDLED;
    struct plic_base *plic;
    int hwirq, irq;
    void *claim;
+   enum irq_action hret = IRQ_NOT_HANDLED;
 
    ASSERT(!are_interrupts_enabled());
    ASSERT(!is_preemption_enabled());

@@ -20,7 +20,7 @@
 struct dp_task_info dp_tasks_buf[MAX_DP_TASKS];
 int dp_tasks_count;
 
-static long dp_cmd_get_tasks(struct dp_task_info *buf, unsigned long max)
+static long dp_cmd_get_tasks(struct dp_task_info *buf, ulong max)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_GET_TASKS,
@@ -38,7 +38,7 @@ int dp_tasks_refresh(void)
    return 0;
 }
 
-void state_to_str(char *out, unsigned char state, bool stopped, bool traced)
+void state_to_str(char *out, u8 state, bool stopped, bool traced)
 {
    char *p = out;
 
@@ -75,6 +75,8 @@ const char *task_dump_str(enum task_dump_str_t t)
    if (!initialized) {
 
       const int path_field_len = (DP_W - 80) + MAX_EXEC_PATH_LEN;
+      char *p;
+      char *end;
 
       snprintf(fmt, sizeof(fmt),
                " %%-5d "
@@ -99,8 +101,8 @@ const char *task_dump_str(enum task_dump_str_t t)
       snprintf(header, sizeof(header), hfmt,
                "pid", "pgid", "sid", "ppid", "S", "tty", "cmdline");
 
-      char *p = hline_sep + strlen(hline_sep);
-      char *end = hline_sep + sizeof(hline_sep);
+      p = hline_sep + strlen(hline_sep);
+      end = hline_sep + sizeof(hline_sep);
 
       for (int i = 0; i < path_field_len + 2 && p < end; i++, p++)
          *p = 'q';
@@ -123,10 +125,10 @@ const char *task_dump_str(enum task_dump_str_t t)
 static void
 render_task_row_plain(const struct dp_task_info *t, bool kernel_tasks)
 {
-   const char *fmt = task_dump_str(TDS_ROW_FMT);
+   char state_str[4];
    char path[80] = {0};
    char path2[64] = {0};
-   char state_str[4];
+   const char *fmt = task_dump_str(TDS_ROW_FMT);
 
    if (t->is_kthread && !kernel_tasks)
       return;
@@ -139,7 +141,9 @@ render_task_row_plain(const struct dp_task_info *t, bool kernel_tasks)
       if ((int)strlen(src) < MAX_EXEC_PATH_LEN - 2) {
          snprintf(path, sizeof(path), "%s", src);
       } else {
-         snprintf(path2, MAX_EXEC_PATH_LEN + 1 - 6, "%s", src);
+         const size_t trunc = MAX_EXEC_PATH_LEN + 1 - 6;
+         strncpy(path2, src, trunc);
+         path2[trunc - 1] = '\0';
          snprintf(path, sizeof(path), "%s...", path2);
       }
    }

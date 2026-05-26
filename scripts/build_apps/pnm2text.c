@@ -75,7 +75,8 @@ static int
 open_and_mmap_file(const char *f, void **buf_ref, int *fd_ref, size_t *sz_ref)
 {
    struct stat statbuf;
-   int rc, fd = open(f, O_RDONLY);
+   int rc;
+   int fd = open(f, O_RDONLY);
 
    if (fd < 0)
       return -errno;
@@ -352,10 +353,11 @@ static void
 recognize_and_print_char(int row, int col)
 {
    char imgbuf[font_w_bytes * font_h]; // VLA
+   uint8_t c;
 
    bzero(imgbuf, font_w_bytes * font_h);
    img_get_char(row, col, imgbuf);
-   uint8_t c = recognize_char(&imgbuf, row, col);
+   c = recognize_char(&imgbuf, row, col);
 
    putchar(
       32 <= c && c <= 127

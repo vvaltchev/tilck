@@ -210,5 +210,5 @@
    REG_L x2, 2 * RISCV_SZPTR(sp)
 .endm
 
-#endif
+#endif /* ASM_FILE */
 

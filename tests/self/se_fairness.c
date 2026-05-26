@@ -216,14 +216,14 @@ void selftest_fairness(void)
 
       printk("fairness: tid=%d ticks=%llu (dev=%llu%%)\n",
              tids[i],
-             (unsigned long long) c,
-             (unsigned long long) dev_pct);
+             (ulonglong) c,
+             (ulonglong) dev_pct);
    }
 
    printk("fairness: avg=%llu spread=%llu (%llu%%)\n",
-          (unsigned long long) avg,
-          (unsigned long long) spread,
-          (unsigned long long) spread_pct);
+          (ulonglong) avg,
+          (ulonglong) spread,
+          (ulonglong) spread_pct);
 
    VERIFY(spread_pct <= FAIRNESS_TOLERANCE_PCT);
    se_regular_end();

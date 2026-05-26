@@ -1,5 +1,7 @@
-/* SPDX-License-Identifier: BSD-2-Clause
- *
+/* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
+
+/*
  * Sources:
  *   https://wiki.osdev.org/Intel_8254x
  *   https://www.intel.com/content/dam/doc/manual/
@@ -262,10 +264,9 @@ static u32 read_reg(u32 off)
 {
    if (is_mmio)
       return mmio_read32(io_addr + (off >> 2));
-   else {
-      outl(io_addr + 0x00, off);
-      return inl(io_addr + 0x4);
-   }
+
+   outl(io_addr + 0x00, off);
+   return inl(io_addr + 0x4);
 }
 
 static void write_reg(u32 off, u32 val)
@@ -284,6 +285,7 @@ unused_tx_queue_slots(void)
    const u32 head = read_reg(REG_TDH);
    const u32 used = (tx_tail - head + TX_RING_CAP) % TX_RING_CAP;
    const u32 free = TX_RING_CAP - used - 1;
+
    return free;
 }
 

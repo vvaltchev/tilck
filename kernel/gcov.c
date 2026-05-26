@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable comment_block_multiline_format */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -60,7 +61,7 @@ typedef u32 gcov_unsigned_t;
  *  86ce5d2fc19 Time profiler introduced
  *     BASE-VER: 4.9.0
  *     GCOV_COUNTERS: 9
-
+ *
  * Before that, the value of GCOV_COUNTERS was 8, but it doesn't make sense to
  * go further back, because older GCC versions than 4.9.0 are not supported
  * anyway.
@@ -350,10 +351,11 @@ int tilck_sys_gcov_get_file_info(int fn,
                                  u32 fname_buf_size,
                                  u32 *user_fsize)
 {
+   int rc;
+
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
 
-   int rc;
    const struct gcov_info *gi = files_array[fn];
    const u32 fname_len = (u32)strlen(gi->filename);
 
@@ -456,10 +458,11 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
 
 int tilck_sys_gcov_get_file(int fn, char *user_buf)
 {
+   u32 rc;
+
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
 
-   u32 rc;
    const struct gcov_info *gi = files_array[fn];
 
    rc = fault_resumable_call(ALL_FAULTS_MASK,         // mask

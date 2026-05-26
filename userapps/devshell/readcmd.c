@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <stdio.h>
 #include <string.h>
@@ -46,13 +47,15 @@ static unsigned hist_count;
 static unsigned curr_hist_cmd_to_show;
 static int curr_line_pos;
 
-static inline void move_right(int n) {
+static inline void move_right(int n)
+{
    char buf[16];
    int rc = sprintf(buf, "\033[%dC", n);
    write(1, buf, rc);
 }
 
-static inline void move_left(int n) {
+static inline void move_left(int n)
+{
    char buf[16];
    int rc = sprintf(buf, "\033[%dD", n);
    write(1, buf, rc);
@@ -336,9 +339,9 @@ int read_command(char *buf, int buf_size)
 {
    int rc;
    char c;
-   int c_cmd_len = 0;
    struct termios orig_termios, t;
    char curr_cmd[buf_size]; // VLA
+   int c_cmd_len = 0;
 
    tcgetattr(0, &orig_termios);
 

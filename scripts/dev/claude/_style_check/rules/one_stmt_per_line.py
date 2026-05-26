@@ -1,0 +1,191 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# pylint: disable=bad-indentation, missing-module-docstring
+# pylint: disable=missing-class-docstring, missing-function-docstring
+
+import re
+
+from typing import List
+
+from .base import (
+   Rule,
+   Diagnostic,
+   CheckContext,
+   LAYER_TOKENS,
+   SEVERITY_WARNING,
+   SCORE_STRONG_PREF,
+   COST_MINOR,
+   COST_MILD,
+)
+from .. import tokens as _tokens_mod
+
+# Two top-level statements on one line: `<expr>; [whitespace] [a-zA-Z_]...`.
+# We run this on a masked source where comments / strings are blanked
+# out, and we track paren depth so that `for (i = 0; i < n; i++)` does
+# not trigger.
+
+_STMT_HEAD_CLASS = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_')
+
+# Lines starting with `case` or `default:` are switch dispatch tables;
+# packed `case N: stmt; stmt; break;` is idiomatic for column-aligned
+# tables.
+_CASE_PAT = re.compile(r'^\s*(case\b|default\s*:)')
+
+# `argc--; argv++;` and similar paired post-inc/dec idioms.
+_ARGC_ARGV_PAT = re.compile(
+   r'^\s*\w+\s*[-+]{2}\s*;\s*\w+\s*[-+]{2}\s*;'
+)
+
+# `p++; continue;` or `p--; continue;` — trivial advance + loop control.
+_INCDEC_CONTINUE_PAT = re.compile(
+   r'^\s*\w+\s*[-+]{2}\s*;\s*continue\s*;'
+)
+
+# `NOT_REACHED(); return ...;` — unreachable return after noreturn call.
+_NOT_REACHED_RET_PAT = re.compile(
+   r'NOT_REACHED\(\)\s*;\s*return\b'
+)
+
+# `ASSERT(x); (void)x;` — suppress unused-var in release builds.
+_ASSERT_VOID_PAT = re.compile(
+   r'ASSERT\s*\(.*\)\s*;\s*\(void\)\s*\w+\s*;'
+)
+
+
+class OneStmtPerLine(Rule):
+
+   id = 'one_stmt_per_line'
+   description = 'Do not pack multiple statements on one line'
+   layers = LAYER_TOKENS
+
+   severity = SEVERITY_WARNING
+
+   default_score = SCORE_STRONG_PREF
+
+
+   def check(self, ctx: CheckContext) -> List[Diagnostic]:
+
+      masked = _tokens_mod.mask_non_code(ctx.source_text)
+      out = []
+      seen = set()
+
+      paren_depth = 0
+      brace_depth = 0
+      n = len(masked)
+      i = 0
+
+      # State per line: position of the most recent top-level `;` (i.e.,
+      # paren_depth == 0) AND its brace_depth. We only flag the pair
+      # when both semicolons are at the SAME brace_depth -- that's what
+      # makes them statement-level peers (and rules out `typedef struct
+      # { x; } name;` which has two `;` at different depths).
+      last_semi_pos = -1
+      last_semi_brace_depth = -1
+
+      while i < n:
+
+         c = masked[i]
+
+         if c == '(':
+            paren_depth += 1
+         elif c == ')':
+            paren_depth = max(0, paren_depth - 1)
+         elif c == '{':
+            brace_depth += 1
+         elif c == '}':
+            brace_depth = max(0, brace_depth - 1)
+
+         if c == '\n':
+            last_semi_pos = -1
+            last_semi_brace_depth = -1
+            i += 1
+            continue
+
+         if c == ';' and paren_depth == 0:
+
+            if (last_semi_pos >= 0
+                and last_semi_brace_depth == brace_depth):
+
+               between = masked[last_semi_pos + 1:i]
+
+               if any(ch in _STMT_HEAD_CLASS for ch in between):
+
+                  line, col = _tokens_mod.offset_to_line_col(
+                     masked, last_semi_pos + 1
+                  )
+
+                  key = (line,)
+
+                  if key not in seen:
+
+                     line_text = ctx.lines[line - 1] \
+                        if line - 1 < len(ctx.lines) else ''
+
+                     # Allowed multi-statement idioms: emit
+                     # gradient diagnostics (affect prettiness
+                     # but not shown as violations).
+                     is_exception = False
+
+                     if _CASE_PAT.match(line_text):
+                        is_exception = True
+
+                     elif _ARGC_ARGV_PAT.match(line_text):
+                        is_exception = True
+
+                     elif _INCDEC_CONTINUE_PAT.match(line_text):
+                        is_exception = True
+
+                     elif _NOT_REACHED_RET_PAT.search(line_text):
+                        is_exception = True
+
+                     elif _ASSERT_VOID_PAT.search(line_text):
+                        is_exception = True
+
+                     if is_exception:
+
+                        seen.add(key)
+
+                        out.append(Diagnostic(
+                           file=str(ctx.file_path),
+                           line=line,
+                           col=col,
+                           end_line=line,
+                           end_col=col + len(between),
+                           rule=self.id,
+                           severity=self.severity,
+                           message=(
+                              'packed idiom (allowed but '
+                              'not ideal)'
+                           ),
+                           snippet=line_text.strip(),
+                           is_gradient=True,
+                           prettiness_cost=COST_MINOR,
+                        ))
+
+                        last_semi_pos = i
+                        last_semi_brace_depth = brace_depth
+                        i += 1
+                        continue
+
+                     seen.add(key)
+
+                     out.append(Diagnostic(
+                        file=str(ctx.file_path),
+                        line=line,
+                        col=col,
+                        end_line=line,
+                        end_col=col + len(between),
+                        rule=self.id,
+                        severity=self.severity,
+                        message='one statement per line; do not pack',
+                        snippet=line_text.strip(),
+                     ))
+
+            last_semi_pos = i
+            last_semi_brace_depth = brace_depth
+
+         i += 1
+
+      return out
+
+
+RULE = OneStmtPerLine()

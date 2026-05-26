@@ -55,6 +55,8 @@ static void faulting_code2(void)
 
 static void nested_faulting_code(int level)
 {
+   u32 r;
+
    if (level == NESTED_FAULTING_CODE_MAX_LEVELS) {
       printk("[level %i]: *** call faulting code ***\n", level);
       faulting_code2();
@@ -63,10 +65,10 @@ static void nested_faulting_code(int level)
 
    printk("[level %i]: do recursive nested call\n", level);
 
-   u32 r = fault_resumable_call(ALL_FAULTS_MASK,      // mask
-                                nested_faulting_code, // func
-                                1,                    // #args
-                                level + 1);           // arg1
+   r = fault_resumable_call(ALL_FAULTS_MASK,      // mask
+                            nested_faulting_code, // func
+                            1,                    // #args
+                            level + 1);           // arg1
 
    if (level == NESTED_FAULTING_CODE_MAX_LEVELS - 1)
       VERIFY(r == 1 << FAULT_PAGE_FAULT);
@@ -126,8 +128,9 @@ void selftest_fault_res(void)
 
 REGISTER_SELF_TEST(fault_res, se_short, &selftest_fault_res)
 
-static NO_INLINE void do_nothing(ulong a1, ulong a2, ulong a3,
-                                 ulong a4, ulong a5, ulong a6)
+static NO_INLINE void
+do_nothing(ulong a1, ulong a2, ulong a3,
+           ulong a4, ulong a5, ulong a6)
 {
    DO_NOT_OPTIMIZE_AWAY(a1);
    DO_NOT_OPTIMIZE_AWAY(a2);
@@ -163,4 +166,4 @@ void selftest_fault_res_perf(void)
 }
 
 REGISTER_SELF_TEST(fault_res_perf, se_short, &selftest_fault_res_perf)
-#endif
+#endif /* __i386__ */

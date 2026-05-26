@@ -258,9 +258,6 @@ struct dp_runtime_info {
    u32  fb_font_h;
    u32  tty_count;                        /* kopt_ttys */
    u32  clk_full_resync_count;
-   u32  clk_full_resync_fail_count;
-   u32  clk_full_resync_success_count;
-   u32  clk_full_resync_abs_drift_gt_1;
    u32  clk_multi_second_resync_count;
 };
 

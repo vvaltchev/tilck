@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable verbose_type_name */
 
 #pragma once
 #define _TILCK_BASIC_DEFS_H_
@@ -23,8 +24,8 @@
    #define UNIT_TEST_ENVIRONMENT
 #endif
 
-#if (defined(__TILCK_KERNEL__)                         ||  \
-    defined(UNIT_TEST_ENVIRONMENT)                     ||  \
+#if (defined(__TILCK_KERNEL__)                         ||             \
+    defined(UNIT_TEST_ENVIRONMENT)                     ||             \
     defined(__cplusplus)) && !defined(__MOD_ACPICA__)
 
    #include <tilck_gen_headers/config_kernel.h>
@@ -76,6 +77,8 @@
 
    typedef unsigned long ulong;
 #endif
+
+typedef unsigned long long ulonglong;
 
 #ifdef __i386__
 
@@ -275,7 +278,7 @@ STATIC_ASSERT(sizeof(ulong) == sizeof(void *));
       UNSAFE_MIN(CONCAT(_a, __LINE__), CONCAT(_b, __LINE__));         \
    })
 
-#define MAX(a, b) \
+#define MAX(a, b)                                                     \
    ({                                                                 \
       const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
       const typeof(b) CONCAT(_b, __LINE__) = (b);                     \

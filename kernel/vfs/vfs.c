@@ -26,14 +26,18 @@ static u32 next_device_id;
 
 void vfs_close(fs_handle h)
 {
+   struct mnt_fs *fs;
+   struct locked_file *lf;
+   const struct fs_ops *fsops;
+   struct process *pi = get_curr_proc();
+   struct fs_handle_base *hb = h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   struct process *pi = get_curr_proc();
-   struct fs_handle_base *hb = h;
-   struct mnt_fs *fs = hb->fs;
-   struct locked_file *lf = hb->lf;
-   const struct fs_ops *fsops = fs->fsops;
+   fs = hb->fs;
+   lf = hb->lf;
+   fsops = fs->fsops;
 
    if (!pi->vforked)
       remove_all_mappings_of_handle(pi, h);
@@ -69,12 +73,14 @@ void vfs_close(fs_handle h)
  */
 int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
+   struct fs_handle_base *new_handle;
+   const struct fs_ops *fsops;
+   int rc;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    ASSERT(h != NULL);
 
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   const struct fs_ops *fsops = hb->fs->fsops;
-   struct fs_handle_base *new_handle;
-   int rc;
+   fsops = hb->fs->fsops;
 
    if (!hb)
       return -EBADF;
@@ -111,10 +117,10 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->read)
       return -EBADF;
@@ -127,10 +133,10 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->write)
       return -EBADF;
@@ -142,10 +148,10 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 }
 ssize_t vfs_pread(fs_handle h, void *buf, size_t buf_size, offt off)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->read)
       return -EBADF;
@@ -158,10 +164,10 @@ ssize_t vfs_pread(fs_handle h, void *buf, size_t buf_size, offt off)
 
 ssize_t vfs_pwrite(fs_handle h, void *buf, size_t buf_size, offt off)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->write)
       return -EBADF;
@@ -174,13 +180,13 @@ ssize_t vfs_pwrite(fs_handle h, void *buf, size_t buf_size, offt off)
 
 offt vfs_seek(fs_handle h, offt off, int whence)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
       return -EINVAL; /* Tilck does NOT support SEEK_DATA and SEEK_HOLE */
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->seek)
       return -ESPIPE;
@@ -190,10 +196,10 @@ offt vfs_seek(fs_handle h, offt off, int whence)
 
 int vfs_ioctl(fs_handle h, ulong request, void *argp)
 {
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->ioctl)
       return -ENOTTY; // Yes, ENOTTY *IS* the right error. See the man page.
@@ -214,20 +220,24 @@ int vfs_ftruncate(fs_handle h, offt length)
 
 int vfs_fstat64(fs_handle h, struct k_stat64 *statbuf)
 {
+   struct mnt_fs *fs;
+   const struct fs_ops *fsops;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   struct mnt_fs *fs = hb->fs;
-   const struct fs_ops *fsops = fs->fsops;
+   fs = hb->fs;
+   fsops = fs->fsops;
 
    return fsops->stat(fs, fsops->get_inode(h), statbuf);
 }
 
 int vfs_fsync(fs_handle h)
 {
-   struct fs_handle_base *hb = h;
    int rc = 0;
+   struct fs_handle_base *hb = h;
+
    ASSERT(is_preemption_enabled());
 
    if (~hb->fs->flags & VFS_FS_RW)
@@ -241,8 +251,9 @@ int vfs_fsync(fs_handle h)
 
 int vfs_fdatasync(fs_handle h)
 {
-   struct fs_handle_base *hb = h;
    int rc = 0;
+   struct fs_handle_base *hb = h;
+
    ASSERT(is_preemption_enabled());
 
    if (~hb->fs->flags & VFS_FS_RW)
@@ -288,11 +299,11 @@ __vfs_path_funcs_wrapper(const char *path,
    return rc;
 }
 
-#define vfs_path_funcs_wrapper(path, exlock, rsl, func, a1, a2, a3)           \
-   __vfs_path_funcs_wrapper(path,                                             \
-                            exlock,                                           \
-                            rsl,                                              \
-                            (vfs_func_impl)(void *)func,                      \
+#define vfs_path_funcs_wrapper(path, exlock, rsl, func, a1, a2, a3)   \
+   __vfs_path_funcs_wrapper(path,                                     \
+                            exlock,                                   \
+                            rsl,                                      \
+                            (vfs_func_impl)(void *)func,              \
                             (ulong)a1, (ulong)a2, (ulong)a3)
 
 static ALWAYS_INLINE int
@@ -463,8 +474,8 @@ vfs_truncate_impl(struct mnt_fs *fs,
                   struct vfs_path *p,
                   offt len, ulong x, ulong y)
 {
-   struct locked_file *lf = NULL;
    int rc;
+   struct locked_file *lf = NULL;
 
    if (!fs->fsops->truncate)
       return -EROFS;
@@ -806,11 +817,11 @@ int vfs_futimens(fs_handle h, const struct k_timespec64 times[2])
 
 ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
 {
+   ssize_t rc;
+   size_t len;
    struct fs_handle_base *hb = h;
    struct task *curr = get_curr_task();
    ssize_t ret = 0;
-   ssize_t rc;
-   size_t len;
 
    if (hb->fops->readv)
       return hb->fops->readv(h, iov, iovcnt);
@@ -852,11 +863,11 @@ ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
 
 ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt)
 {
+   ssize_t rc;
+   size_t len;
    struct fs_handle_base *hb = h;
    struct task *curr = get_curr_task();
    ssize_t ret = 0;
-   ssize_t rc;
-   size_t len;
 
    if (hb->fops->writev)
       return hb->fops->writev(h, iov, iovcnt);

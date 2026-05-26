@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 #if defined(__GNUC__) && !defined(__clang__)
 
    #define COMPILER_NAME            "gcc"

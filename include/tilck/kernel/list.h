@@ -16,9 +16,9 @@ struct list {
 STATIC_ASSERT(sizeof(struct list) == sizeof(struct list_node));
 STATIC_ASSERT(alignof(struct list) == alignof(struct list_node));
 
-#define STATIC_LIST_INIT(name) {                                \
-   (struct list_node *)&(name),                                 \
-   (struct list_node *)&(name)                                  \
+#define STATIC_LIST_INIT(name) {                                      \
+   (struct list_node *)&(name),                                       \
+   (struct list_node *)&(name)                                        \
 }
 
 #define STATIC_LIST_NODE_INIT(name) { &(name), &(name) }
@@ -51,7 +51,7 @@ static inline bool list_is_empty(struct list *n) {
 
 static inline bool list_is_node_in_list(struct list_node *node) {
    return !list_node_is_empty(node) &&
-          node->prev->next == node &&
+          node->prev->next == node  &&
           node->next->prev == node;
 }
 
@@ -120,34 +120,34 @@ static inline void list_remove(struct list_node *elem)
 
 // Here 'pos' is an object (struct *), containing a struct list_node 'member'
 
-#define list_next_obj(pos, list_mem_name) \
+#define list_next_obj(pos, list_mem_name)                             \
    list_to_obj(list_next_node(pos, list_mem_name),                    \
                typeof(*(pos)), list_mem_name)
 
-#define list_prev_obj(pos, list_mem_name) \
+#define list_prev_obj(pos, list_mem_name)                             \
    list_to_obj(list_prev_node(pos, list_mem_name),                    \
                typeof(*(pos)), list_mem_name)
 
 // Here 'tp' is a temporary variable having the same type of 'pos'.
 
-#define list_for_each(pos, tp, list_ptr, member)                     \
-   for (pos = list_first_obj(list_ptr, typeof(*pos), member),        \
-        tp = list_next_obj(pos, member);                             \
+#define list_for_each(pos, tp, list_ptr, member)                         \
+   for (pos = list_first_obj(list_ptr, typeof(*pos), member),            \
+        tp = list_next_obj(pos, member);                                 \
         list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = tp, tp = list_next_obj(tp, member))
 
-#define list_for_each_ro(pos, list_ptr, member)                      \
-   for (pos = list_first_obj(list_ptr, typeof(*pos), member);        \
+#define list_for_each_ro(pos, list_ptr, member)                          \
+   for (pos = list_first_obj(list_ptr, typeof(*pos), member);            \
         list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = list_next_obj(pos, member))
 
 /* Same as list_for_each_ro(), but the orig. value of `pos` is kept */
-#define list_for_each_ro_kp(pos, list_ptr, member)                   \
+#define list_for_each_ro_kp(pos, list_ptr, member)                         \
    for (; list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = list_next_obj(pos, member))
 
-#define list_for_each_reverse(pos, tp, list_ptr, member)             \
-   for (pos = list_last_obj(list_ptr, typeof(*pos), member),         \
-        tp = list_prev_obj(pos, member);                             \
+#define list_for_each_reverse(pos, tp, list_ptr, member)                 \
+   for (pos = list_last_obj(list_ptr, typeof(*pos), member),             \
+        tp = list_prev_obj(pos, member);                                 \
         list_node_ptr_of(pos, member) != (struct list_node *)(list_ptr); \
         pos = tp, tp = list_prev_obj(tp, member))

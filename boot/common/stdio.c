@@ -11,8 +11,8 @@
 int
 read_line(char *buf, int buf_sz)
 {
-   int len = 0;
    int c;
+   int len = 0;
 
    for (char *s = buf; *s; s++) {
       printk("%c", *s);

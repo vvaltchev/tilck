@@ -12,12 +12,12 @@
 struct sysfs_inode;
 
 #define SYSFS_ENTRY_SIZE                       128
-#define SYSFS_ENTRY_MAX_LEN (                   \
-   SYSFS_ENTRY_SIZE                             \
-   - sizeof(struct bintree_node)                \
-   - sizeof(struct list_node)                   \
-   - sizeof(struct ramfs_inode *)               \
-   - sizeof(u8)                                 \
+#define SYSFS_ENTRY_MAX_LEN (                                         \
+   SYSFS_ENTRY_SIZE                                                   \
+   - sizeof(struct bintree_node)                                      \
+   - sizeof(struct list_node)                                         \
+   - sizeof(struct ramfs_inode *)                                     \
+   - sizeof(u8)                                                       \
 )
 
 struct sysfs_entry {

@@ -376,11 +376,41 @@ of "done", not polish.
    Older files have legacy drift; emulate the newer ones.
 3. After drafting, grep your patterns against `kernel/*.c`. Patterns
    absent from the kernel are probably wrong, even if they compile.
+4. **After editing ANY C/H file, run the full style_check sequence
+   before committing. NO EXCEPTIONS.**
+   ```
+   style_check check <files>           # fix all violations
+   style_check check --diff <files>    # apply mechanical fixes
+   style_check check --gradient --summary <files>  # review prettiness
+   ```
+   Iterate until zero violations. Apply the tool's `--diff` output
+   first; only attempt manual fixes when the tool has no auto-fix.
+   If a rule seems wrong, STOP and ask — show the snippet and the
+   error. Fixing one rule routinely breaks another (e.g. shortening
+   a type name breaks backslash alignment), so the full re-check
+   after every edit is non-negotiable.
+5. **For cols_80 violations (1-3 chars over):** before wrapping the
+   line, exhaust these cheaper fixes: remove optional spaces
+   around `+`/`-` in pointer arithmetic (`buf+OFFSET`), use
+   compact comma form (`,arg` instead of `, arg`), shorten a
+   trailing comment, move `{` to its own line. Only wrap the line
+   when none of these recover enough columns.
 
 ### Summary of explicit rules (from contributing.md)
 
 - **3 spaces** indentation (not tabs)
-- **80 columns** strict line limit (no exceptions)
+- **80 columns** strict line limit (no exceptions).
+  **Fixing an over-80-col line is NOT just breaking the line.**
+  When a line is part of a columnar pattern (macro tables, aligned
+  `#define` blocks, column-aligned call clusters), breaking that
+  one line destroys the visual pattern. Instead: reduce the padding
+  for the ENTIRE block so all entries stay aligned and fit in 80
+  cols. Only when padding reduction can't work (a single field is
+  inherently too long) should you consider renaming or refactoring.
+  Always look at the surrounding context before touching a long line.
+  When reducing padding, do the **minimal reduction necessary** —
+  just enough to fit in 80 cols. Don't collapse padding to the
+  minimum; the original generous padding was intentional.
 - **snake_case** everywhere
 - Opening brace on same line for control flow, **new line for
   functions and array initializers**
@@ -433,6 +463,33 @@ gets the diff rejected.
   `const` locals are softer: mid-function const computed from in-flight
   state is fine (and often preferred over a forward-declared mutable
   written once); trivially-static const should go at the top.
+- **Semantic grouping of statements.** After the declaration block,
+  group related statements together and separate groups with blank
+  lines. In particular: an assignment and its error check belong
+  in the same group (no blank line between them); an ASSERT
+  validating a parameter belongs with the code that uses that
+  parameter, not isolated between two blank lines. When moving
+  declarations to the top of a block, don't let the blank-line-
+  after-decls rule break existing semantic groups — tighten the
+  groups instead.
+  ```c
+  /* Good: assignment grouped with its error check,
+   * ASSERT grouped with the setup it guards */
+  int rc;
+  struct termios saved = t->c_term;
+
+  rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
+  if (rc < 0) {
+     t->c_term = saved;
+     return -EFAULT;
+  }
+  ```
+  ```c
+  /* Bad: copy_from_user isolated from its error check */
+  rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
+
+  if (rc < 0) {
+  ```
 - **No `(void)expr` casts.** Kernel never uses them. Reasons:
   `-Wno-unused-parameter` is on (unused params don't warn); musl on
   i386 doesn't `warn_unused_result` on `read`/`write`/`getpid`/...
@@ -605,6 +662,37 @@ flag before building.
 `ASSERT_CURR_TASK_STATE()` become `do {} while(0)` under
 `DEBUG_CHECKS=0`. Brace-less `if (x) ASSERT(...)` then trips
 `-Werror=empty-body` in release builds. Always brace-wrap.
+
+**Debug-only code: prefer `if (DEBUG_CHECKS) { ... }`.** `DEBUG_CHECKS`
+is a literal 0/1 macro, so the compiler dead-code-eliminates the dead
+branch — release builds are identical to ones that never had the
+block, and the source has no conditional-compilation noise. Use this
+whenever the debug-only code consists only of statements:
+
+```c
+if (DEBUG_CHECKS) {
+   verify_invariant(thing);
+   trace_log("foo");
+}
+```
+
+When the code requires a debug-only *declaration* (e.g. a local whose
+only uses are inside `ASSERT`s), `if (DEBUG_CHECKS)` stops working —
+the decl is visible in both branches and `-Werror=unused-variable`
+breaks the release build. Use `DEBUG_ONLY(decl)` there. It is a
+necessary evil, not a preferred form: don't reach for it when the
+plain `if (DEBUG_CHECKS)` form fits.
+
+```c
+DEBUG_ONLY(enum task_state state = atomic_load(&ti->state));
+ASSERT(state != TASK_STATE_ZOMBIE);
+ASSERT(state == TASK_STATE_RUNNING || state == TASK_STATE_RUNNABLE);
+```
+
+`#ifdef DEBUG_CHECKS ... #endif` only when neither form fits
+(debug-only struct fields, debug-only header includes). **Do not use
+`IS_RELEASE_BUILD` as a debug gate — `DEBUG_CHECKS` is the canonical
+macro for this.**
 
 **Strict-alignment types propagate.** A struct embedding `atomic_u64_t`
 / `atomic_s64_t` (anything `ALIGNED_AT(8)`) inherits 8-byte alignment

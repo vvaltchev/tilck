@@ -30,16 +30,16 @@ struct fdt_serial_dev {
    struct fdt_serial_ops *ops;
 };
 
-#define REGISTER_FDT_SERIAL(__name, __id_table, __init)      \
-                                                          \
-   static struct fdt_serial fdt_serial_##__name = {             \
-      .id_table = __id_table,                             \
-      .init = __init                                      \
-   };                                                     \
-                                                          \
-   __attribute__((constructor))                           \
-   static void __register_fdt_serial_##__name(void) {        \
-      fdt_serial_drv_register(&fdt_serial_##__name);            \
+#define REGISTER_FDT_SERIAL(__name, __id_table, __init)               \
+                                                                      \
+   static struct fdt_serial fdt_serial_##__name = {                   \
+      .id_table = __id_table,                                         \
+      .init = __init                                                  \
+   };                                                                 \
+                                                                      \
+   __attribute__((constructor))                                       \
+   static void __register_fdt_serial_##__name(void) {                 \
+      fdt_serial_drv_register(&fdt_serial_##__name);                  \
    }
 
 void fdt_serial_drv_register(struct fdt_serial *drv);

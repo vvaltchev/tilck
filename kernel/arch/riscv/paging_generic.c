@@ -31,6 +31,7 @@ void *ioremap(ulong paddr, size_t size)
    ulong offset;
    size_t count;
    size_t page_count;
+   void *vaddr;
    const u32 pg_flags = PAGING_FL_RW;
 
    offset = paddr & (PAGE_SIZE - 1);
@@ -38,7 +39,7 @@ void *ioremap(ulong paddr, size_t size)
    size = pow2_round_up_at(size + offset, PAGE_SIZE);
    page_count = size / PAGE_SIZE;
 
-   void *vaddr = hi_vmem_reserve(size);
+   vaddr = hi_vmem_reserve(size);
    if (!vaddr) {
       printk("Unable to reserve hi vmem for ioremap() at %p\n", (void *)paddr);
       return NULL;
@@ -77,12 +78,12 @@ void iounmap(void *vaddr)
 
 void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 {
-   ASSERT(IS_PAGE_ALIGNED(vaddrp));
-   ASSERT(IS_PAGE_ALIGNED(len));
-
    ulong paddr;
    ulong vaddr = (ulong)vaddrp;
    const ulong vaddr_end = vaddr + len;
+
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
 
@@ -95,12 +96,12 @@ void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 
 void release_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
 {
-   ASSERT(IS_PAGE_ALIGNED(vaddrp));
-   ASSERT(IS_PAGE_ALIGNED(len));
-
    ulong paddr;
    ulong vaddr = (ulong)vaddrp;
    const ulong vaddr_end = vaddr + len;
+
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
 
@@ -118,9 +119,9 @@ void invalidate_page(ulong vaddr)
 
 void init_paging(void)
 {
-   int rc;
    void *user_vdso_vaddr;
    size_t pagesframes_refcount_bufsize;
+   int rc;
 
    /* get_phys_mem_size() assumes that the physical address starts from zero */
    phys_mem_lim = (ulong)MIN((__mem_upper_kb << 10) - (__mem_lower_kb << 10),
@@ -186,7 +187,7 @@ map_framebuffer(pdir_t *pdir,
 
    size_t count;
    const size_t page_count = pow2_round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
-   const u32 pg_flags = PAGING_FL_RW |
+   const u32 pg_flags = PAGING_FL_RW     |
                         PAGING_FL_SHARED |
                         (user_mmap ? PAGING_FL_US : 0);
 

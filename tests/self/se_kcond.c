@@ -97,7 +97,7 @@ static void kcond_thread_signal_generator(void *unused)
    kthread_join(tid, true);
 }
 
-void selftest_kcond()
+void selftest_kcond(void)
 {
    int tids[THREAD_COUNT + 1];
    kmutex_init(&cond_mutex, 0);

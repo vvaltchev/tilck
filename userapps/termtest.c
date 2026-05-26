@@ -105,7 +105,7 @@ void echo_read(void)
    printf("echo_read()\n");
    term_set_raw_mode();
 
-   while (1) {
+   while (true) {
 
       ret = read(0, buf, sizeof(buf));
       write(1, buf, ret);
@@ -207,13 +207,13 @@ void console_perf_test(void)
    static const char letters[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-   int iters = 3;
    struct winsize w;
    char *buf, tot_time_s[32], c_time_s[32];
    ssize_t r, tot, written;
    struct timespec ts_before, ts_after;
    uint64_t start, end, c;
    double tot_time_real, tot_time, time_c, cycles_per_sec;
+   int iters = 3;
 
    if (ioctl(1, TIOCGWINSZ, &w) != 0) {
       perror("ioctl() failed");
@@ -383,8 +383,9 @@ static void sym_read(void)
 
 static void poll_and_read(void)
 {
+   int rc;
    char buf[32] = {0};
-   int rc, pos = 0;
+   int pos = 0;
    struct pollfd fds[] = {
       { .fd = 0, .events = POLLIN, .revents = 0 }
    };
@@ -392,7 +393,7 @@ static void poll_and_read(void)
    printf("Setting TTY in raw mode\n");
    term_set_raw_mode();
 
-   while (1) {
+   while (true) {
 
       rc = poll(fds, 1 /* nfds */, 1000 /* ms */);
       printf("poll() -> %d\r\n", rc);
@@ -465,9 +466,9 @@ static void medium_raw_read(void)
          break;
 
       if (c & 0x80)
-         printf("released %#x", (unsigned char)(c & ~0x80));
+         printf("released %#x", (u8)(c & ~0x80));
       else
-         printf("PRESSED %#x", (unsigned char)(c & ~0x80));
+         printf("PRESSED %#x", (u8)(c & ~0x80));
 
       printf("\r\n");
 
@@ -501,14 +502,14 @@ static struct {
    CMD_ENTRY("-s", dump_termios),
 #endif
 
-   CMD_ENTRY("-p", console_perf_test),
-   CMD_ENTRY("-n", read_nonblock),
-   CMD_ENTRY("-nr", read_nonblock_rawmode),
-   CMD_ENTRY("-fr", write_full_row),
-   CMD_ENTRY("-sr", sleep_then_read),
-   CMD_ENTRY("-mr", sym_read),
-   CMD_ENTRY("-cs", read_ttys0_canon_mode),
-   CMD_ENTRY("-pr", poll_and_read),
+   CMD_ENTRY("-p",   console_perf_test),
+   CMD_ENTRY("-n",   read_nonblock),
+   CMD_ENTRY("-nr",  read_nonblock_rawmode),
+   CMD_ENTRY("-fr",  write_full_row),
+   CMD_ENTRY("-sr",  sleep_then_read),
+   CMD_ENTRY("-mr",  sym_read),
+   CMD_ENTRY("-cs",  read_ttys0_canon_mode),
+   CMD_ENTRY("-pr",  poll_and_read),
    CMD_ENTRY("-xmr", medium_raw_read),
 };
 
@@ -521,7 +522,7 @@ static void show_help(void)
    }
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
    void (*cmdfunc)(void) = show_help;
 

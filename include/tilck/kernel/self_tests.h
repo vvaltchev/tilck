@@ -24,17 +24,17 @@ struct self_test {
    enum se_kind kind;
 };
 
-#define REGISTER_SELF_TEST(__name, __kind, __func)  \
-                                                                \
-   static struct self_test se_##__name##_inst = {               \
-      .name = #__name,                                          \
-      .kind = __kind,                                           \
-      .func = __func                                            \
-   };                                                           \
-                                                                \
-   __attribute__((constructor))                                 \
-   static void __register_se_##__name(void) {                   \
-      se_register(&se_##__name##_inst);                         \
+#define REGISTER_SELF_TEST(__name, __kind, __func)                    \
+                                                                      \
+   static struct self_test se_##__name##_inst = {                     \
+      .name = #__name,                                                \
+      .kind = __kind,                                                 \
+      .func = __func                                                  \
+   };                                                                 \
+                                                                      \
+   __attribute__((constructor))                                       \
+   static void __register_se_##__name(void) {                         \
+      se_register(&se_##__name##_inst);                               \
    }
 
 #if KERNEL_SELFTESTS

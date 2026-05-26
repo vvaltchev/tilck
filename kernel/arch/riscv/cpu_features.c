@@ -137,8 +137,8 @@ static int fdt_parse_isa_extensions(void *fdt)
 
       prop = fdt_getprop(fdt, cpu_node, "device_type", NULL);
 
-      if (prop &&
-          !strcmp((void *)prop, "cpu") &&
+      if (prop                              &&
+          !strcmp((void *)prop, "cpu")      &&
           hart_id == get_boothartid())
       {
          prop = fdt_getprop(fdt, cpu_node, "riscv,isa", &len);

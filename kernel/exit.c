@@ -55,20 +55,20 @@ static void init_terminated(struct task *ti, int exit_code, int term_sig)
 
 static struct process *get_child_reaper(struct process *pi)
 {
+   struct task *child_reaper = get_task(1); /* init */
+
    /* TODO: support prctl(PR_SET_CHILD_SUBREAPER) */
    ASSERT(!is_preemption_enabled());
 
-   struct task *child_reaper = get_task(1); /* init */
    VERIFY(child_reaper != NULL);
-
    return child_reaper->pi;
 }
 
 static void
 handle_children_of_dying_process(struct task *ti)
 {
-   struct process *pi = ti->pi;
    struct task *pos, *temp;
+   struct process *pi = ti->pi;
    struct process *child_reaper = get_child_reaper(pi);
 
    list_for_each(pos, temp, &pi->children, siblings_node) {
@@ -118,8 +118,8 @@ struct on_task_exit_cb {
 int
 register_on_task_exit_cb(void (*cb)(struct task *))
 {
-   struct task *ti = get_curr_task();
    int rc = 0;
+   struct task *ti = get_curr_task();
 
    disable_preemption();
    {
@@ -214,8 +214,9 @@ void terminate_process(int exit_code, int term_sig)
    struct process *const pi = ti->pi;
    struct task *parent;
    const bool vforked = pi->vforked;
+   DEBUG_ONLY(enum task_state state = (enum task_state)atomic_load(&ti->state));
 
-   ASSERT(atomic_load(&ti->state) != TASK_STATE_ZOMBIE);
+   ASSERT(state != TASK_STATE_ZOMBIE);
    ASSERT(!is_kernel_thread(ti));
    ASSERT(is_preemption_enabled());
 
@@ -241,7 +242,7 @@ void terminate_process(int exit_code, int term_sig)
    task_cancel_wakeup_timer(ti);
 
    /* Here we can either be RUNNABLE (if ti->wobj was set) or RUNNING */
-   ASSERT(atomic_load(&ti->state) == TASK_STATE_RUNNING || atomic_load(&ti->state) == TASK_STATE_RUNNABLE);
+   ASSERT(state == TASK_STATE_RUNNING || state == TASK_STATE_RUNNABLE);
 
    /* Drop the any pending signals and prevent new from being enqueued */
    drop_all_pending_signals(ti);

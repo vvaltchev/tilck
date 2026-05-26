@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable verbose_type_name */
 
 #pragma once
 
@@ -233,7 +234,7 @@ struct k_stat64 {
    u32 __unused5;
 };
 
-#endif
+#endif /* __i386__ */
 
 
 /*
@@ -286,12 +287,12 @@ struct k_stat64 {
    #define O_PATH __O_PATH
 #endif
 
-#define FCNTL_CHANGEABLE_FL (         \
-   O_APPEND      |                    \
-   O_ASYNC       |                    \
-   O_DIRECT      |                    \
-   O_NOATIME     |                    \
-   O_NONBLOCK                         \
+#define FCNTL_CHANGEABLE_FL (                                         \
+   O_APPEND      |                                                    \
+   O_ASYNC       |                                                    \
+   O_DIRECT      |                                                    \
+   O_NOATIME     |                                                    \
+   O_NONBLOCK                                                         \
 )
 
 #define EXITCODE(ret, sig)    ((ret) << 8 | (sig))

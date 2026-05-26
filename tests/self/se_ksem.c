@@ -101,7 +101,7 @@ out:
    enable_preemption();
 }
 
-void selftest_ksem()
+void selftest_ksem(void)
 {
    int tid, rc;
    ksem_init(&test_sem, 0, 1000);

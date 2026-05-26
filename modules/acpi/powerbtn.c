@@ -55,6 +55,7 @@ powerbtn_reg_notify_cb(void *obj_handle,
 {
    ACPI_STATUS rc = AE_OK;
    ACPI_NOTIFY_HANDLER handler = ctx;
+
    ASSERT(handler != NULL);
 
    rc = AcpiInstallNotifyHandler(obj_handle,

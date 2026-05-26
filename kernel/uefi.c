@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/boot.h>
@@ -53,7 +54,7 @@ void setup_uefi_runtime_services(void)
    EFI_RUNTIME_SERVICES *RT;
    EFI_MEMORY_DESCRIPTOR *virt_map;
    EFI_TIME t;
-   unsigned int num_entries = 0;
+   u32 num_entries = 0;
 
    if (!uefi_rt_addr)
       return;
@@ -198,4 +199,4 @@ void setup_uefi_runtime_services(void)
    /* do nothing */
 }
 
-#endif
+#endif /* !KERNEL_TEST && (__i386__ || __x86_64__) */

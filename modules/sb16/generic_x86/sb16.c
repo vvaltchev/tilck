@@ -173,6 +173,10 @@ do_start_play(u8 next_slot, u32 sz)
 static ssize_t
 sb16_write(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
+   bool must_sleep;
+   u8 next_slot;
+   u8 *dest_buf;
+
    if (get_curr_task() != owner) {
       /* The current task, does not own the resource */
       return -EPERM;
@@ -184,9 +188,6 @@ sb16_write(fs_handle h, char *user_buf, size_t size, offt *pos)
    }
 
    const size_t sz = MIN(size, 32 * KB);
-   bool must_sleep;
-   u8 next_slot;
-   u8 *dest_buf;
 
    do {
 
@@ -267,9 +268,9 @@ sb16_ioctl_sound_setup(struct tilck_sound_params *user_params)
    if (copy_from_user(&dsp_params, user_params, sizeof(dsp_params)))
       return -EFAULT;
 
-   if (dsp_params.sample_rate <= 44100 &&
-       (dsp_params.bits == 8 || dsp_params.bits == 16) &&
-       (dsp_params.channels == 1 || dsp_params.channels == 2) &&
+   if (dsp_params.sample_rate <= 44100                          &&
+       (dsp_params.bits == 8 || dsp_params.bits == 16)          &&
+       (dsp_params.channels == 1 || dsp_params.channels == 2)   &&
        (dsp_params.sign == 0 || dsp_params.sign == 1))
    {
       sb16_have_slot[0] = false;
@@ -444,7 +445,7 @@ init_sb16(void)
 
    outb(DSP_WRITE, DSP_ENABLE_SPKR);
 
-   struct driver_info *di = kalloc_obj(struct driver_info);
+   struct driver_info *const di = kalloc_obj(struct driver_info);
 
    if (!di) {
       printk("sb16: out of memory\n");

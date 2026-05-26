@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck/kernel/hal.h>
@@ -103,6 +104,7 @@ void pic_send_eoi(int __irq)
 {
    ulong var;
    u8 irq = (u8)__irq;
+
    ASSERT(IN_RANGE_INC(__irq, 0, 16));
 
    disable_interrupts(&var);
@@ -122,9 +124,10 @@ void pic_send_eoi(int __irq)
 
 void pic_mask_and_send_eoi(int __irq)
 {
+   u8 irq_mask;
    ulong var;
    u8 irq = (u8)__irq;
-   u8 irq_mask;
+
    ASSERT(IN_RANGE_INC(__irq, 0, 16));
 
    disable_interrupts(&var);
@@ -152,8 +155,9 @@ void pic_mask_and_send_eoi(int __irq)
 void irq_set_mask(int irq)
 {
    u16 port;
-   ulong var;
    u8 irq_mask;
+   ulong var;
+
    ASSERT(IN_RANGE_INC(irq, 0, 16));
 
    if (irq == PIC_CASCADE) {
@@ -185,8 +189,9 @@ void irq_set_mask(int irq)
 void irq_clear_mask(int irq)
 {
    u16 port;
-   ulong var;
    u8 irq_mask;
+   ulong var;
+
    ASSERT(IN_RANGE_INC(irq, 0, 16));
 
    if (irq < 8) {
@@ -207,8 +212,8 @@ void irq_clear_mask(int irq)
 
 bool irq_is_masked(int irq)
 {
-   ulong var;
    bool res;
+   ulong var;
    ASSERT(IN_RANGE_INC(irq, 0, 16));
 
    disable_interrupts(&var);
@@ -259,13 +264,13 @@ bool pic_is_spur_irq(int irq)
    if (irq == 7) {
 
       outb(PIC1_COMMAND, PIC_READ_ISR);
-      u8 isr = inb(PIC1_COMMAND);
+      const u8 isr = inb(PIC1_COMMAND);
       return !(isr & (1 << 7));
 
    } else if (irq == 15) {
 
       outb(PIC2_COMMAND, PIC_READ_ISR);
-      u8 isr = inb(PIC2_COMMAND);
+      const u8 isr = inb(PIC2_COMMAND);
 
       if (!(isr & (1 << 7))) {
          pic_send_eoi(PIC_CASCADE);

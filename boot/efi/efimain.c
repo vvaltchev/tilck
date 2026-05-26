@@ -42,7 +42,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    if (EFI_BOOTLOADER_DEBUG) {
       Print(L"\n");
       Print(L"------------ EFI BOOTLOADER DEBUG ------------\n");
-      Print(L"Pointer size:  %d\n", sizeof(void *));
+      Print(L"Pointer size:  %d\n",   sizeof(void *));
       Print(L"JumpToKernel:  0x%x\n", (void *)JumpToKernel);
       Print(L"BaseAddr:      0x%x\n", gLoadedImage->ImageBase + 0x1000);
       Print(L"Press ANY key to continue...");

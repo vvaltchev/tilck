@@ -55,9 +55,9 @@ STATIC_ASSERT(sizeof(struct dp_printk_event_data) ==
 #endif
 
 #ifdef arch_x86_family
-#include <tilck/kernel/hal.h>
-#include <tilck/common/arch/generic_x86/asm_consts.h>
-#include <tilck/common/arch/generic_x86/x86_utils.h>
+   #include <tilck/kernel/hal.h>
+   #include <tilck/common/arch/generic_x86/asm_consts.h>
+   #include <tilck/common/arch/generic_x86/x86_utils.h>
 #endif
 
 #define DP_GET_TASKS_HARDCAP   1024
@@ -190,14 +190,17 @@ tilck_sys_dp_get_heaps(ulong u_buf, ulong max_count, ulong u_stats, ulong _4)
    if (max_count > KMALLOC_HEAPS_COUNT)
       max_count = KMALLOC_HEAPS_COUNT;
 
-   if (max_count > 0 &&
-       user_out_of_range((void *)u_buf,
-                         max_count * sizeof(struct dp_heap_info)))
-      return -EFAULT;
+   if (max_count > 0) {
+      if (user_out_of_range((void *)u_buf,
+                            max_count * sizeof(struct dp_heap_info)))
+         return -EFAULT;
+   }
 
-   if (u_stats &&
-       user_out_of_range((void *)u_stats, sizeof(struct dp_small_heaps_stats)))
-      return -EFAULT;
+   if (u_stats) {
+      if (user_out_of_range((void *)u_stats,
+                            sizeof(struct dp_small_heaps_stats)))
+         return -EFAULT;
+   }
 
    for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
 
@@ -423,7 +426,7 @@ tilck_sys_dp_get_mem_global_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
 
          get_mem_region(i, &ma);
 
-         if (ma.type == MULTIBOOT_MEMORY_AVAILABLE ||
+         if (ma.type == MULTIBOOT_MEMORY_AVAILABLE                       ||
              (ma.extra & (MEM_REG_EXTRA_RAMDISK | MEM_REG_EXTRA_KERNEL)))
          {
             out.tot_usable += ma.len;
@@ -463,10 +466,11 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
    if (u_info && user_out_of_range((void *)u_info, sizeof(info)))
       return -EFAULT;
 
-   if (max_count > 0 &&
-       user_out_of_range((void *)u_buf,
-                         max_count * sizeof(struct dp_mtrr_entry)))
-      return -EFAULT;
+   if (max_count > 0) {
+      if (user_out_of_range((void *)u_buf,
+                            max_count * sizeof(struct dp_mtrr_entry)))
+         return -EFAULT;
+   }
 
    info.supported = (n > 0) ? 1 : 0;
 
@@ -491,12 +495,12 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
          if (!(mask & (1u << 11)))
             continue;
 
-         u8 mtype = (u8)(base & 0xff);
+         const u8 mtype = (u8)(base & 0xff);
          base &= ~0xffull;
          mask &= ~((u64)PAGE_SIZE - 1);
 
-         u32 first_set_bit = get_first_set_bit_index64(mask);
-         u64 size_kb = (1ull << first_set_bit) / KB;
+         const u32 first_set_bit = get_first_set_bit_index64(mask);
+         const u64 size_kb = (1ull << first_set_bit) / KB;
          bool one_block = true;
 
          for (u32 b = first_set_bit;
@@ -541,6 +545,7 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
    if (u_info) {
       if (user_out_of_range((void *)u_info, sizeof(info)))
          return -EFAULT;
+
       if (copy_to_user((void *)u_info, &info, sizeof(info)))
          return -EFAULT;
    }
@@ -548,7 +553,7 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
    return -EOPNOTSUPP;
 }
 
-#endif
+#endif /* arch_x86_family */
 
 /* ---------------------------- RUNTIME INFO -------------------------- */
 
@@ -583,9 +588,6 @@ tilck_sys_dp_get_runtime_info(ulong u_out, ulong _2, ulong _3, ulong _4)
 
    clock_get_resync_stats(&cstats);
    out.clk_full_resync_count          = cstats.full_resync_count;
-   out.clk_full_resync_fail_count     = cstats.full_resync_fail_count;
-   out.clk_full_resync_success_count  = cstats.full_resync_success_count;
-   out.clk_full_resync_abs_drift_gt_1 = cstats.full_resync_abs_drift_gt_1;
    out.clk_multi_second_resync_count  = cstats.multi_second_resync_count;
 
    if (copy_to_user((void *)u_out, &out, sizeof(out)))

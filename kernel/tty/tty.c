@@ -104,6 +104,7 @@ tty_on_dup_extra(int minor, void *extra)
 {
    struct tty_handle_extra *eh = extra;
    char *new_buf;
+
    ASSERT(eh->read_buf);
 
    if (!(new_buf = kmalloc(TTY_READ_BS)))
@@ -240,8 +241,8 @@ STATIC struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
    struct tty *t;
-   term *new_term = get_curr_term();
    const struct term_interface *new_term_intf;
+   term *new_term = get_curr_term();
 
    if (!(t = kzalloc_obj(struct tty)))
       return NULL;
@@ -391,8 +392,10 @@ void tty_write_on_all_ttys(const char *buf, size_t size)
 
 STATIC void init_tty(void)
 {
+   struct driver_info *di;
+
    process_term_read_info(&first_term_i);
-   struct driver_info *di = kzalloc_obj(struct driver_info);
+   di = kzalloc_obj(struct driver_info);
 
    if (!di)
       panic("TTY: no enough memory for struct driver_info");

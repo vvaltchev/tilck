@@ -395,7 +395,7 @@ static const struct video_interface no_output_vi =
  * After (with macros):
  *    text     data     bss      dec     hex   filename
  *  465421    34104  316082   815607   c71f7   ./build/tilck
-
+ *
  * full optimization, -O3, no debug checks:
  * -------------------------------------------
  *

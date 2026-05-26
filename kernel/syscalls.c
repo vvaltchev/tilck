@@ -118,8 +118,8 @@ long sys_nanosleep(const struct k_timespec64 *u_req,
 
 int sys_newuname(struct utsname *user_buf)
 {
-   struct commit_hash_and_date comm;
    struct utsname buf = {0};
+   struct commit_hash_and_date comm;
 
    extract_commit_hash_and_date(&tilck_build_info, &comm);
 
@@ -151,8 +151,8 @@ NORETURN int sys_exit_group(int status)
 
 ulong sys_times(struct tms *user_buf)
 {
-   struct task *curr = get_curr_task();
    struct tms buf;
+   struct task *curr = get_curr_task();
 
    // TODO (threads): when threads are supported, update sys_times()
    // TODO: consider supporting tms_cutime and tms_cstime in sys_times()
@@ -178,12 +178,12 @@ ulong sys_times(struct tms *user_buf)
 
 int sys_getrusage(int who, struct k_rusage *user_buf)
 {
-   struct task *curr = get_curr_task();
    struct k_rusage buf;
    u64 utime_ticks;
    u64 stime_ticks;
    struct k_timespec64 utime;
    struct k_timespec64 stime;
+   struct task *curr = get_curr_task();
 
    /*
     * Of course in the syscall entry point
@@ -260,10 +260,11 @@ long sys_clone(regs_t *u_regs, ulong clone_flags, ulong newsp,
 
    if (clone_flags == SIGCHLD)
       return sys_fork(u_regs);
-   else if (clone_flags == (CLONE_VFORK | CLONE_VM | SIGCHLD))
+
+   if (clone_flags == (CLONE_VFORK | CLONE_VM | SIGCHLD))
       return sys_vfork(u_regs);
-   else
-      return -ENOSYS;
+
+   return -ENOSYS;
 }
 
 static int
@@ -413,6 +414,7 @@ int sys_utime32(const char *u_path, const struct k_utimbuf *u_times)
    struct k_utimbuf ts;
    struct k_timespec64 new_ts[2];
    char *path = get_curr_task()->args_copybuf;
+
 
    if (copy_from_user(&ts, u_times, sizeof(ts)))
       return -EFAULT;

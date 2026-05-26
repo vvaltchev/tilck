@@ -178,8 +178,8 @@ static void fmmap2_read_unmapped_mem(void *unused_arg)
 {
    int fd, rc;
    char *vaddr;
-   char buf[64] = {0};
    char *page_size_buf;
+   char buf[64] = {0};
    const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);
@@ -235,11 +235,11 @@ int cmd_fmmap3(int argc, char **argv)
 {
    int fd, rc;
    char *vaddr;
+   char *page_size_buf;
    char buf[64] = {0};
    char exp_buf[64] = {0};
-   char *page_size_buf;
-   const size_t page_size = getpagesize();
    bool failed = false;
+   const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);
    fd = open(test_file, O_CREAT | O_RDWR, 0644);
@@ -287,8 +287,8 @@ static void fmmap4_read_write_after_eof(bool rw)
    int fd, rc;
    char *vaddr;
    size_t file_size;
-   char buf[64] = {0};
    struct stat statbuf;
+   char buf[64] = {0};
    const size_t page_size = getpagesize();
 
    printf("fmmap4_read_write_after_eof(%s)\n", rw ? "WRITE" : "READ");
@@ -360,10 +360,10 @@ int cmd_fmmap5(int argc, char **argv)
    int fd, rc;
    char *vaddr;
    size_t file_size;
-   char buf[64] = {0};
    struct stat statbuf;
-   const size_t page_size = getpagesize();
+   char buf[64] = {0};
    bool failed = false;
+   const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);
    fd = open(test_file, O_CREAT | O_RDWR, 0644);
@@ -435,8 +435,8 @@ int cmd_fmmap6(int argc, char **argv)
    char buf[64];
    size_t file_size;
    struct stat statbuf;
-   const size_t page_size = getpagesize();
    bool failed = false;
+   const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);
    fd = open(test_file, O_CREAT | O_RDWR, 0644);
@@ -496,9 +496,9 @@ static void fmmap7_child(void *unused_arg)
    int fd, rc;
    char *vaddr;
    size_t file_size;
-   char buf[64] = {0};
    struct stat statbuf;
    char *page_size_buf;
+   char buf[64] = {0};
    const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);

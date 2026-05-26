@@ -225,7 +225,7 @@ void debug_dump_all_tasks_state(void)
    {
       printk("==== Task state dump (curr_tid=%d, switches=%llu) ====\n",
              get_curr_tid(),
-             (unsigned long long)g_total_task_switches);
+             (ulonglong)g_total_task_switches);
 
       iterate_over_tasks(&dump_task_state_cb, NULL);
 
@@ -258,17 +258,17 @@ static void sched_alive_thread(void *unused)
          last_total_switches = cur;
 
          printk("---- Sched alive thread: %d (switches: %llu) ----\n",
-                counter, (unsigned long long)delta);
+                counter, (ulonglong)delta);
 
          if (KERNEL_SELFTESTS) {
 
-            if (counter > SAT_WARMUP_INTERVALS &&
+            if (counter > SAT_WARMUP_INTERVALS     &&
                 delta < SAT_STUCK_SWITCH_THRESHOLD)
             {
                printk(
                   "[hang-detector] only %llu switches in last interval; "
                   "dumping task states\n",
-                  (unsigned long long)delta
+                  (ulonglong)delta
                );
                debug_dump_all_tasks_state();
             }
@@ -342,8 +342,8 @@ int __retain_obj(atomic_int_t *ref_count)
 /* Return the new value */
 int __release_obj(atomic_int_t *ref_count)
 {
-   int old = atomic_fetch_sub(ref_count, 1);
    int ret;
+   int old = atomic_fetch_sub(ref_count, 1);
    ASSERT(old > 0);
    ret = old - 1;
 

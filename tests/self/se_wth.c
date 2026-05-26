@@ -39,6 +39,7 @@ static void end_test(void *arg)
    const u32 tot_iters = max_jobs * 10;
 
    u64 elapsed = RDTSC() - g_cycles_begin;
+
    VERIFY(atomic_load(&g_counter) == tot_iters);
 
    printk("[se_wth] Avg cycles per job "
@@ -57,16 +58,16 @@ static void end_test(void *arg)
 
 void selftest_wth(void)
 {
-   const u32 attempts_check = 500 * 1000;
    struct se_wth_ctx ctx;
-   u32 yields_count = 0;
-   u64 tot_attempts = 0;
    u32 last_counter_val;
    u32 counter_now;
    u32 attempts;
    u32 max_jobs;
    u32 tot_iters;
    bool added;
+   const u32 attempts_check = 500 * 1000;
+   u32 yields_count = 0;
+   u64 tot_attempts = 0;
 
    ctx.wth = wth_find_worker(WTH_PRIO_LOWEST);
    VERIFY(ctx.wth != NULL);
@@ -207,10 +208,10 @@ REGISTER_SELF_TEST(wth2, se_short, &selftest_wth2)
 
 void selftest_wth_perf(void)
 {
-   struct worker_thread *wth = wth_find_worker(WTH_PRIO_LOWEST);
    bool added;
-   u32 n = 0;
    u64 start, elapsed;
+   u32 n = 0;
+   struct worker_thread *wth = wth_find_worker(WTH_PRIO_LOWEST);
 
    /*
     * Suppress the producer/worker race for the duration of the

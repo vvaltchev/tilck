@@ -3,21 +3,21 @@
 #pragma once
 #include "defs.h"
 
-#define CHECK(cond)                                  \
-   do {                                              \
-      if (!(cond)) {                                 \
-         Print(L"CHECK '%a' FAILED\n", #cond);       \
-         status = EFI_LOAD_ERROR;                    \
-         goto end;                                   \
-      }                                              \
+#define CHECK(cond)                                                   \
+   do {                                                               \
+      if (!(cond)) {                                                  \
+         Print(L"CHECK '%a' FAILED\n", #cond);                        \
+         status = EFI_LOAD_ERROR;                                     \
+         goto end;                                                    \
+      }                                                               \
    } while(0)
 
-#define HANDLE_EFI_ERROR(op)                                 \
-    do {                                                     \
-       if (EFI_ERROR(status)) {                              \
-          Print(L"[%a] Error: %r\n", op, status);            \
-          goto end;                                          \
-       }                                                     \
+#define HANDLE_EFI_ERROR(op)                                          \
+    do {                                                              \
+       if (EFI_ERROR(status)) {                                       \
+          Print(L"[%a] Error: %r\n", op, status);                     \
+          goto end;                                                   \
+       }                                                              \
     } while (0)
 
 void

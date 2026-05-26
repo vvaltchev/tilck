@@ -115,6 +115,7 @@ pci_get_config_io_addr(struct pci_device_loc loc, u32 off)
    const u32 bus = loc.bus;
    const u32 dev = loc.dev;
    const u32 func = loc.func;
+
    return 0x80000000 | (bus << 16) | (dev << 11) | (func << 8) | (off & ~3u);
 }
 
@@ -421,11 +422,11 @@ init_pci_ecam(void)
 
    for (u32 i = 0; i < pcie_segments_cnt; i++, it++) {
 
-      printk("PCI: MCFG elem[%u]\n", i);
+      printk("PCI: MCFG elem[%u]\n",    i);
       printk("    Base paddr: %#llx\n", it->Address);
-      printk("    Segment:    %u\n", it->PciSegment);
-      printk("    Start bus:  %u\n", it->StartBusNumber);
-      printk("    End bus:    %u\n", it->EndBusNumber);
+      printk("    Segment:    %u\n",     it->PciSegment);
+      printk("    Start bus:  %u\n",     it->StartBusNumber);
+      printk("    End bus:    %u\n",     it->EndBusNumber);
 
       pcie_segments[i] = (struct pci_segment) {
          .base_paddr = it->Address,
@@ -588,7 +589,7 @@ pci_discover_device_func(struct pci_device_loc loc,
       return false; /* OOM (out of memory) */
    }
 
-   if (nfo->class_id == PCI_CLASS_BRIDGE &&
+   if (nfo->class_id == PCI_CLASS_BRIDGE           &&
        nfo->subclass_id == PCI_SUBCLASS_PCI_BRIDGE)
    {
       if (pci_config_read(loc, PCI_HDR1_SECOND_BUS, 8, &secondary_bus)) {

@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
+
+#pragma once
 
 /* Key definitions (partial) for PS/2 scancode set 1 */
 

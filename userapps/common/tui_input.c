@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: disable hex_literal_lowercase */
 
 /*
  * Userspace counterpart of modules/debugpanel/dp_input.c. The ESC
@@ -51,11 +52,11 @@ void tui_set_input_blocking(bool blocking)
 static int
 read_single_byte(char *buf, int len)
 {
-   bool esc_timeout = false;
    ssize_t rc;
    char c;
+   bool esc_timeout = false;
 
-   while (1) {
+   while (true) {
 
       rc = read(STDIN_FILENO, &c, 1);
 
@@ -376,7 +377,7 @@ int tui_read_line(char *buf, int buf_size)
 
    term_write("%s", line);
 
-   while (1) {
+   while (true) {
 
       rc = tui_read_ke(&ke);
 

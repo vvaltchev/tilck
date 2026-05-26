@@ -32,7 +32,10 @@ struct elfhack_cmd {
    const char *opt;
    const char *help;
    int nargs;
-   int (*func)(struct elf_file_info *, const void *, const void *, const void *);
+   int (*func)(struct elf_file_info *,
+               const void *,
+               const void *,
+               const void *);
 };
 
 int show_help(struct elf_file_info *nfo, ...);
@@ -180,7 +183,7 @@ rename_section(struct elf_file_info *nfo,
       return 1;
    }
 
-   My_Elf_Shdr *s = elf_get_section(nfo->vaddr, section_name);
+   My_Elf_Shdr *const s = elf_get_section(nfo->vaddr, section_name);
 
    if (!s) {
       fprintf(stderr, "No section '%s'\n", section_name);
@@ -206,8 +209,8 @@ link_sections(struct elf_file_info *nfo,
       return 1;
    }
 
-   My_Elf_Shdr *a = elf_get_section(nfo->vaddr, section_name);
-   My_Elf_Shdr *b = elf_get_section(nfo->vaddr, linked);
+   My_Elf_Shdr *const a = elf_get_section(nfo->vaddr, section_name);
+   My_Elf_Shdr *const b = elf_get_section(nfo->vaddr, linked);
 
    if (!a) {
       fprintf(stderr, "No section '%s'\n", section_name);
@@ -219,7 +222,7 @@ link_sections(struct elf_file_info *nfo,
       return 1;
    }
 
-   unsigned bidx = (b - sections);
+   const unsigned bidx = (b - sections);
    a->sh_link = bidx;
    return 0;
 }
@@ -243,13 +246,13 @@ move_metadata(struct elf_file_info *nfo,
    h->e_shoff = off;
    off += h->e_shentsize*h->e_shnum;
 
-   My_Elf_Shdr *sections = (My_Elf_Shdr *) (hc + h->e_shoff);
-   My_Elf_Shdr *shstrtab = sections + h->e_shstrndx;
+   My_Elf_Shdr *const sections = (My_Elf_Shdr *) (hc + h->e_shoff);
+   My_Elf_Shdr *const shstrtab = sections + h->e_shstrndx;
 
    memcpy(hc + off, hc + shstrtab->sh_offset, shstrtab->sh_size);
    shstrtab->sh_offset = off;
 
-   My_Elf_Phdr *phdrs = (My_Elf_Phdr *)(hc + h->e_phoff);
+   My_Elf_Phdr *const phdrs = (My_Elf_Phdr *)(hc + h->e_phoff);
    shstrtab->sh_addr = phdrs[0].p_vaddr + shstrtab->sh_offset;
    shstrtab->sh_flags |= SHF_ALLOC;
 
@@ -275,9 +278,9 @@ drop_last_section(struct elf_file_info *nfo,
    My_Elf_Shdr *sections = (My_Elf_Shdr *)(hc + h->e_shoff);
    My_Elf_Shdr *shstrtab = sections + h->e_shstrndx;
 
+   off_t last_offset = 0;
    My_Elf_Shdr *last_section = sections;
    int last_section_index = 0;
-   off_t last_offset = 0;
 
    if (!h->e_shnum) {
       fprintf(stderr, "ERROR: the ELF file has no sections!\n");
@@ -374,10 +377,12 @@ set_phdr_rwx_flags(struct elf_file_info *nfo,
                    void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
+   unsigned f = 0;
+   char *endptr = NULL;
+
    errno = 0;
 
-   char *endptr = NULL;
-   unsigned long phindex = strtoul(phdr_index, &endptr, 10);
+   const unsigned long phindex = strtoul(phdr_index, &endptr, 10);
 
    if (errno || *endptr != '\0') {
       fprintf(stderr, "Invalid phdr index '%s'\n", phdr_index);
@@ -395,11 +400,9 @@ set_phdr_rwx_flags(struct elf_file_info *nfo,
       return 1;
    }
 
-   char *hc = (char *)h;
-   My_Elf_Phdr *phdrs = (My_Elf_Phdr *)(hc + h->e_phoff);
-   My_Elf_Phdr *phdr = phdrs + phindex;
-
-   unsigned f = 0;
+   char *const hc = (char *)h;
+   My_Elf_Phdr *const phdrs = (My_Elf_Phdr *)(hc + h->e_phoff);
+   My_Elf_Phdr *const phdr = phdrs + phindex;
 
    while (*flags) {
       switch (*flags) {
@@ -436,9 +439,9 @@ verify_flat_elf_file(struct elf_file_info *nfo,
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *sections = (My_Elf_Shdr *)((char*)h + h->e_shoff);
    My_Elf_Shdr *shstrtab = sections + h->e_shstrndx;
+   bool failed = false;
    My_Elf_Addr lowest_addr = (My_Elf_Addr) -1;
    My_Elf_Addr base_addr = lowest_addr;
-   bool failed = false;
 
    if (!h->e_shnum) {
       fprintf(stderr, "ERROR: the ELF file has no sections!\n");
@@ -468,7 +471,7 @@ verify_flat_elf_file(struct elf_file_info *nfo,
       if (!phdr || phdr->p_type != PT_LOAD)
          continue;
 
-      My_Elf_Addr mem_offset = s->sh_addr - base_addr;
+      const My_Elf_Addr mem_offset = s->sh_addr - base_addr;
 
       if (mem_offset != s->sh_offset) {
 
@@ -537,10 +540,10 @@ check_mem_size(struct elf_file_info *nfo,
                const char *kb,
                void *unused1)
 {
-   size_t sz = elf_calc_mem_size(nfo->vaddr);
    size_t exp_val;
    char *endptr;
    int base = 10;
+   size_t sz = elf_calc_mem_size(nfo->vaddr);
 
    if (!exp || !strcmp(exp, "kb")) {
       printf("%zu\n", exp ? sz / KB : sz);
@@ -603,7 +606,7 @@ set_sym_strval(struct elf_file_info *nfo,
       return 1;
    }
 
-   if (sym->st_value < section->sh_addr ||
+   if (sym->st_value < section->sh_addr                                    ||
        sym->st_value + sym->st_size > section->sh_addr + section->sh_size)
    {
       fprintf(stderr,
@@ -641,7 +644,7 @@ dump_sym(struct elf_file_info *nfo,
       return 1;
    }
 
-   My_Elf_Shdr *section = sections + sym->st_shndx;
+   My_Elf_Shdr *const section = sections + sym->st_shndx;
    const long sym_sec_off = sym->st_value - section->sh_addr;
    const long sym_file_off = section->sh_offset + sym_sec_off;
 
@@ -680,6 +683,8 @@ get_text_sym(struct elf_file_info *nfo,
    My_Elf_Shdr *sections = (My_Elf_Shdr *) ((char *)h + h->e_shoff);
    My_Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
    My_Elf_Sym *sym = get_symbol(h, sym_name);
+   My_Elf_Shdr *s;
+   char *name;
 
    if (!sym) {
       fprintf(stderr, "Symbol '%s' not found\n", sym_name);
@@ -691,8 +696,8 @@ get_text_sym(struct elf_file_info *nfo,
       return 1;
    }
 
-   My_Elf_Shdr *s = sections + sym->st_shndx;
-   char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
+   s = sections + sym->st_shndx;
+   name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
 
    if (strcmp(name, ".text")) {
       fprintf(stderr, "ERROR: the symbol belongs to section: %s\n", name);
@@ -852,14 +857,16 @@ get_sym_info(struct elf_file_info *nfo,
    My_Elf_Sym *sym = get_symbol(h, sym_name);
    My_Elf_Shdr *sections = (My_Elf_Shdr *) ((char *)h + h->e_shoff);
    My_Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
+   My_Elf_Shdr *s;
+   char *sh_name;
 
    if (!sym) {
       fprintf(stderr, "Symbol '%s' not found\n", sym_name);
       return 1;
    }
 
-   My_Elf_Shdr *s = sections + sym->st_shndx;
-   char *sh_name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
+   s = sections + sym->st_shndx;
+   sh_name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
 
    printf("st_info:  0x%02x # bind: %d (%s), type: %d (%s)\n",
           sym->st_info,
@@ -891,10 +898,10 @@ set_sym_bind(struct elf_file_info *nfo,
              void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
-   My_Elf_Sym *sym = get_symbol(h, sym_name);
-   const char *exp_end = bind_str + strlen(bind_str);
    char *endptr = NULL;
    unsigned long bind_n;
+   My_Elf_Sym *sym = get_symbol(h, sym_name);
+   const char *exp_end = bind_str + strlen(bind_str);
 
    if (!sym) {
       fprintf(stderr, "Symbol '%s' not found\n", sym_name);
@@ -925,10 +932,10 @@ set_sym_type(struct elf_file_info *nfo,
              void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
-   My_Elf_Sym *sym = get_symbol(h, sym_name);
-   const char *exp_end = type_str + strlen(type_str);
    char *endptr = NULL;
    unsigned long type_n;
+   My_Elf_Sym *sym = get_symbol(h, sym_name);
+   const char *exp_end = type_str + strlen(type_str);
 
    if (!sym) {
       fprintf(stderr, "Symbol '%s' not found\n", sym_name);
@@ -1171,15 +1178,15 @@ elf_header_type_check(struct elf_file_info *nfo)
 int
 main(int argc, char **argv)
 {
-   struct elf_file_info nfo = {0};
    struct stat statbuf;
    size_t page_size;
+   int rc;
+   struct elf_file_info nfo = {0};
    const char *opt = NULL;
    const char *opt_arg1 = NULL;
    const char *opt_arg2 = NULL;
    const char *opt_arg3 = NULL;
    struct elfhack_cmd *cmd = NULL;
-   int rc;
 
    if (argc > 2) {
 

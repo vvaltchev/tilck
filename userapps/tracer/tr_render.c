@@ -103,11 +103,12 @@ static void sbuf_write_n(struct sbuf *sb, const char *s, int n)
  * no allocated slot — in that case the caller falls back to the
  * dump_from_val path.
  */
-static bool get_slot_data(const struct dp_trace_event *e,
-                          const struct tr_wire_syscall *si,
-                          int p_idx,
-                          char **data,
-                          size_t *size)
+static bool
+get_slot_data(const struct dp_trace_event *e,
+              const struct tr_wire_syscall *si,
+              int p_idx,
+              char **data,
+              size_t *size)
 {
    const s8 slot = si->slots[p_idx];
 
@@ -146,11 +147,12 @@ static char rend_bufs[6][REND_BUF_SZ];
 static int  used_rend_bufs;
 
 /* Mirrors master's dp_should_full_dump_param. */
-static inline bool should_full_dump_param(bool exp_b,
-                                          unsigned kind,
-                                          int event_type)
+static inline bool
+should_full_dump_param(bool exp_b,
+                       unsigned kind,
+                       int event_type)
 {
-   return kind == TR_KIND_IN_OUT ||
+   return kind == TR_KIND_IN_OUT                                ||
           (event_type == dp_te_sys_enter && kind == TR_KIND_IN) ||
           (event_type == dp_te_sys_exit  &&
               (!exp_b || kind == TR_KIND_OUT));
@@ -158,8 +160,9 @@ static inline bool should_full_dump_param(bool exp_b,
 
 /* Color rule (port of get_esc_color_for_param). Takes the type id +
  * the rendered string + the ptype's ui_type. */
-static const char *get_esc_color(unsigned type_id, unsigned ui_type,
-                                 const char *rb)
+static const char *
+get_esc_color(unsigned type_id, unsigned ui_type,
+              const char *rb)
 {
    if (rb[0] == '\"' && ui_type == TR_UI_STRING)
       return E_COLOR_RED;
@@ -179,9 +182,10 @@ static unsigned ptype_ui_type(unsigned type_id)
    return pi ? pi->ui_type : TR_UI_OTHER;
 }
 
-static void dump_rendered_params(struct sbuf *sb,
-                                 const char *sys_name,
-                                 const struct tr_wire_syscall *si)
+static void
+dump_rendered_params(struct sbuf *sb,
+                     const char *sys_name,
+                     const struct tr_wire_syscall *si)
 {
    int dumped = 0;
 
@@ -211,10 +215,11 @@ static void dump_rendered_params(struct sbuf *sb,
    sbuf_putc(sb, ')');
 }
 
-static void render_full_dump_single_param(int i,
-                                          const struct dp_trace_event *e,
-                                          const struct tr_wire_syscall *si,
-                                          const struct tr_wire_param *p)
+static void
+render_full_dump_single_param(int i,
+                              const struct dp_trace_event *e,
+                              const struct tr_wire_syscall *si,
+                              const struct tr_wire_param *p)
 {
    char *data = NULL;
    size_t data_size = 0;
@@ -254,8 +259,9 @@ static void render_full_dump_single_param(int i,
    }
 }
 
-static void render_minimal_dump_single_param(int i,
-                                             const struct dp_trace_event *e)
+static void
+render_minimal_dump_single_param(int i,
+                                 const struct dp_trace_event *e)
 {
    const struct dp_syscall_event_data *se = &e->sys_ev;
 
@@ -269,10 +275,11 @@ static void render_minimal_dump_single_param(int i,
    }
 }
 
-static void dump_syscall_with_info(struct sbuf *sb,
-                                   const struct dp_trace_event *e,
-                                   const char *sys_name,
-                                   const struct tr_wire_syscall *si)
+static void
+dump_syscall_with_info(struct sbuf *sb,
+                       const struct dp_trace_event *e,
+                       const char *sys_name,
+                       const struct tr_wire_syscall *si)
 {
    used_rend_bufs = 0;
 
@@ -300,9 +307,10 @@ static void dump_syscall_with_info(struct sbuf *sb,
    dump_rendered_params(sb, sys_name, si);
 }
 
-static void dump_ret_val(struct sbuf *sb,
-                         const struct tr_wire_syscall *si,
-                         long retval)
+static void
+dump_ret_val(struct sbuf *sb,
+             const struct tr_wire_syscall *si,
+             long retval)
 {
    if (!si) {
 
@@ -327,7 +335,7 @@ static void dump_ret_val(struct sbuf *sb,
       return;
    }
 
-   if (!tr_dump_from_val(si->ret_type_id, (unsigned long)retval, -1,
+   if (!tr_dump_from_val(si->ret_type_id, (ulong)retval, -1,
                          rend_bufs[0], REND_BUF_SZ))
    {
       sbuf_writef(sb, "(raw) %p", (void *)retval);
@@ -361,6 +369,9 @@ static char *sys_name_cache[MAX_SYS_NAMES];
 
 static const char *get_syscall_name_cached(unsigned sys_n)
 {
+   char buf[64];
+   long rc;
+
    if (sys_n >= MAX_SYS_NAMES) {
       static char fallback[32];
       snprintf(fallback, sizeof(fallback), "syscall_%u", sys_n);
@@ -370,10 +381,9 @@ static const char *get_syscall_name_cached(unsigned sys_n)
    if (sys_name_cache[sys_n])
       return sys_name_cache[sys_n];
 
-   char buf[64];
-   long rc = syscall(TILCK_CMD_SYSCALL,
-                     TILCK_CMD_DP_TRACE_GET_SYS_NAME,
-                     (long)sys_n, (long)buf, (long)sizeof(buf), 0L);
+   rc = syscall(TILCK_CMD_SYSCALL,
+                TILCK_CMD_DP_TRACE_GET_SYS_NAME,
+                (long)sys_n, (long)buf, (long)sizeof(buf), 0L);
 
    const char *src;
 
@@ -392,10 +402,11 @@ static const char *get_syscall_name_cached(unsigned sys_n)
    return sys_name_cache[sys_n] ? sys_name_cache[sys_n] : "?";
 }
 
-static void dump_syscall_event(struct sbuf *sb,
-                               const struct dp_trace_event *e,
-                               const char *sys_name,
-                               const struct tr_wire_syscall *si)
+static void
+dump_syscall_event(struct sbuf *sb,
+                   const struct dp_trace_event *e,
+                   const char *sys_name,
+                   const struct tr_wire_syscall *si)
 {
    const struct dp_syscall_event_data *se = &e->sys_ev;
 
@@ -425,8 +436,9 @@ static void dump_syscall_event(struct sbuf *sb,
    sbuf_writef(sb, "\r\n");
 }
 
-static void handle_syscall_event(struct sbuf *sb,
-                                 const struct dp_trace_event *e)
+static void
+handle_syscall_event(struct sbuf *sb,
+                     const struct dp_trace_event *e)
 {
    const struct dp_syscall_event_data *se = &e->sys_ev;
    const char *sys_name = get_syscall_name_cached(se->sys);
@@ -447,9 +459,10 @@ static void dump_event_prefix(struct sbuf *sb, const struct dp_trace_event *e)
                e->tid);
 }
 
-static void dump_trace_printk_event(struct sbuf *sb,
-                                    const struct dp_trace_event *e,
-                                    struct dp_render_ctx *ctx)
+static void
+dump_trace_printk_event(struct sbuf *sb,
+                        const struct dp_trace_event *e,
+                        struct dp_render_ctx *ctx)
 {
    const char trunc_str[] = TRACE_PRINTK_TRUNC;
    const size_t trunc_str_len = sizeof(trunc_str) - 1;
@@ -479,8 +492,8 @@ static void dump_trace_printk_event(struct sbuf *sb,
 
    if (ctx->last_tp_incomplete_line) {
 
-      if (ctx->last_tp_tid == e->tid &&
-          ctx->last_tp_sys_time == e->sys_time &&
+      if (ctx->last_tp_tid == e->tid                      &&
+          ctx->last_tp_sys_time == e->sys_time            &&
           ctx->last_tp_in_irq == (e->p_ev.in_irq ? 1 : 0))
       {
          continuation = true;
@@ -505,7 +518,7 @@ static void dump_trace_printk_event(struct sbuf *sb,
       ctx->last_tp_in_irq = e->p_ev.in_irq ? 1 : 0;
    }
 
-   if (len >= trunc_str_len &&
+   if (len >= trunc_str_len                                   &&
        !strcmp(buf + len - trunc_str_len, TRACE_PRINTK_TRUNC))
    {
       len -= trunc_str_len;
@@ -540,9 +553,10 @@ static void dump_trace_printk_event(struct sbuf *sb,
 
 /* ------------------------- top-level dispatch ------------------------- */
 
-static void dump_tracing_event(struct sbuf *sb,
-                               const struct dp_trace_event *e,
-                               struct dp_render_ctx *ctx)
+static void
+dump_tracing_event(struct sbuf *sb,
+                   const struct dp_trace_event *e,
+                   struct dp_render_ctx *ctx)
 {
    if (e->type != dp_te_printk) {
       /* trace_printk events emit the prefix themselves only when the

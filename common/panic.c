@@ -17,7 +17,7 @@
     * The bootloaders and the kernel MUST have their custom panic() function.
     */
    #include <tilck/common/printk.h>
-   #define abort() while (1)
+   #define abort() while (true)
    #define printf printk
    #define vprintf vprintk
 

@@ -6,7 +6,6 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
-#include <tilck/mods/fb_console.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/tty.h>
@@ -15,6 +14,8 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/fs/vfs.h>
+
+#include <tilck/mods/fb_console.h>
 
 #include <linux/fb.h>     // system header
 #include <linux/major.h>  // system header
@@ -45,6 +46,7 @@ static ssize_t fb_write(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
    ssize_t actual_size = MIN((ssize_t)fb_size - (ssize_t)*pos, (ssize_t)size);
    void *dest = (char *)fb_vaddr + *pos;
+
    *pos += actual_size;
 
    if (copy_from_user(dest, user_buf, (size_t)actual_size))
@@ -140,9 +142,9 @@ register_mapping:
 
 static int fbdev_munmap(struct user_mapping *um, void *vaddr, size_t len)
 {
-   struct fs_handle_base *hb = um->h;
    size_t unmapped_count;
    bool dying_task = false;
+   struct fs_handle_base *hb = um->h;
 
    ASSERT(IS_PAGE_ALIGNED(len));
    ASSERT(hb->pi == get_curr_proc());
@@ -201,10 +203,13 @@ create_fb_device(int minor,
 
 static void init_fbdev(void)
 {
+   struct driver_info *di;
+   int rc;
+
    if (!use_framebuffer())
       return;
 
-   struct driver_info *di = kalloc_obj(struct driver_info);
+   di = kalloc_obj(struct driver_info);
 
    if (!di)
       panic("TTY: no enough memory for init_tty()");
@@ -212,7 +217,7 @@ static void init_fbdev(void)
    di->name = "fb";
    di->create_dev_file = create_fb_device;
    register_driver(di, FB_MAJOR);
-   int rc = create_dev_file("fb0", FB_MAJOR, 0 /* minor */, NULL);
+   rc = create_dev_file("fb0", FB_MAJOR, 0 /* minor */, NULL);
 
    if (rc != 0)
       panic("TTY: unable to create /dev/fb0 (error: %d)", rc);

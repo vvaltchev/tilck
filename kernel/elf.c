@@ -172,6 +172,9 @@ load_segment_by_mmap(fs_handle *elf_h,
                      My_Elf_Phdr *phdr,
                      ulong *end_vaddr_ref)
 {
+   struct user_mapping um;
+   ulong vaddr;
+
    if (phdr->p_flags & PF_W)
       return load_segment_by_copy(elf_h, pdir, phdr, end_vaddr_ref);
 
@@ -206,13 +209,15 @@ load_segment_by_mmap(fs_handle *elf_h,
     *       => range [0x08001000, 0x08003000)      <---- CORRECT!!
     */
 
-   struct user_mapping um = {0};
-   um.pi = NULL;
-   um.h = elf_h;
-   um.off = phdr->p_offset & PAGE_MASK;
-   um.vaddr = phdr->p_vaddr & PAGE_MASK;
-   um.len = round_up_at(phdr->p_vaddr + phdr->p_memsz - um.vaddr, PAGE_SIZE);
-   um.prot = PROT_READ;
+   vaddr = phdr->p_vaddr & PAGE_MASK;
+   um = (struct user_mapping) {
+      .pi = NULL,
+      .h = elf_h,
+      .off = phdr->p_offset & PAGE_MASK,
+      .vaddr = vaddr,
+      .len = round_up_at(phdr->p_vaddr + phdr->p_memsz - vaddr, PAGE_SIZE),
+      .prot = PROT_READ,
+   };
 
    *end_vaddr_ref = um.vaddr + um.len;
    return vfs_mmap(&um, pdir, VFS_MM_DONT_REGISTER);
@@ -443,7 +448,9 @@ load_elf_program(const char *filepath,
       MMAP_NO_COW ? KRN_USER_STACK_PAGES : USER_ARGS_PAGE_COUNT;
 
    const size_t zero_mapped_pages = KRN_USER_STACK_PAGES - pre_allocated_pages;
-   const ulong stack_top = (USERMODE_VADDR_END - KRN_USER_STACK_PAGES * PAGE_SIZE);
+
+   const ulong stack_top =
+      (USERMODE_VADDR_END - KRN_USER_STACK_PAGES * PAGE_SIZE);
 
    count = map_zero_pages(pinfo->pdir,
                           (void *)stack_top,
@@ -496,7 +503,7 @@ void get_symtab_and_strtab(My_Elf_Shdr **symtab, My_Elf_Shdr **strtab)
       return;
 
    VERIFY(h->e_shentsize == sizeof(My_Elf_Shdr));
-   My_Elf_Shdr *sections = (My_Elf_Shdr *)((void *)h + h->e_shoff);
+   My_Elf_Shdr *const sections = (My_Elf_Shdr *)((void *)h + h->e_shoff);
 
    for (u32 i = 0; i < h->e_shnum; i++) {
       My_Elf_Shdr *s = sections + i;
@@ -524,7 +531,7 @@ const char *find_sym_at_addr(ulong vaddr, long *offset, u32 *sym_size)
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   My_Elf_Sym *syms = (My_Elf_Sym *) symtab->sh_addr;
+   My_Elf_Sym *const syms = (My_Elf_Sym *) symtab->sh_addr;
    const ulong sym_count = symtab->sh_size / sizeof(My_Elf_Sym);
 
    for (ulong i = 0; i < sym_count; i++) {
@@ -555,7 +562,7 @@ ulong find_addr_of_symbol(const char *searched_sym)
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   My_Elf_Sym *syms = (My_Elf_Sym *) symtab->sh_addr;
+   My_Elf_Sym *const syms = (My_Elf_Sym *) symtab->sh_addr;
    const ulong sym_count = symtab->sh_size / sizeof(My_Elf_Sym);
 
    for (ulong i = 0; i < sym_count; i++) {
@@ -577,7 +584,7 @@ int foreach_symbol(int (*cb)(struct elf_symbol_info *, void *), void *arg)
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   My_Elf_Sym *syms = (My_Elf_Sym *) symtab->sh_addr;
+   My_Elf_Sym *const syms = (My_Elf_Sym *) symtab->sh_addr;
    const ulong sym_count = symtab->sh_size / sizeof(My_Elf_Sym);
 
    for (ulong i = 0; i < sym_count; i++) {

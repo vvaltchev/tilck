@@ -66,7 +66,7 @@ u32 vga_rgb_colors[16];
 
 static inline u32 fb_make_color(u32 r, u32 g, u32 b)
 {
-   return ((r << fb_red_pos) & fb_red_mask) |
+   return ((r << fb_red_pos) & fb_red_mask)     |
           ((g << fb_green_pos) & fb_green_mask) |
           ((b << fb_blue_pos) & fb_blue_mask);
 }
@@ -352,13 +352,15 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 
 void debug_dump_glyph(u32 n)
 {
+   u8 *data;
+
    if (!font_glyph_data) {
       printk("debug_dump_glyph: font_glyph_data == 0: are we in text mode?\n");
       return;
    }
 
    const char fgbg[2] = {'#', '.'};
-   u8 *data = font_glyph_data + font_bytes_per_glyph * n;
+   data = font_glyph_data + font_bytes_per_glyph * n;
 
    printk(NO_PREFIX "\nGlyph #%u:\n\n", n);
 
@@ -377,18 +379,19 @@ void debug_dump_glyph(u32 n)
 
 #endif
 
-#define draw_char_partial(b)                                               \
-   do {                                                                    \
-      fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);    \
-      fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);    \
-      fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);    \
-      fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);    \
-      fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);    \
-      fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);    \
-      fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);    \
-      fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
+#define draw_char_partial(b)                                            \
+   do {                                                                 \
+      fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]); \
+      fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]); \
+      fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]); \
+      fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]); \
+      fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]); \
+      fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]); \
+      fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]); \
+      fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]); \
    } while (0)
 
+/* style_check: disable else_same_line_as_brace */
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
    u8 *data = font_glyph_data + font_bytes_per_glyph * vgaentry_get_char(e);
@@ -479,6 +482,8 @@ bool fb_pre_render_char_scanlines(void)
 void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
    /* Static variables, set once! */
+   void *vaddr;
+   u8 *d;
    static void *op;
 
    if (UNLIKELY(!op)) {
@@ -498,12 +503,12 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
    ASSUME_WITHOUT_CHECK(font_h == 16 || font_h == 32);
    ASSUME_WITHOUT_CHECK(font_bytes_per_glyph==16 || font_bytes_per_glyph==64);
 
-   void *vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
-   u8 *d = font_glyph_data + font_bytes_per_glyph * c;
+   vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
+   d = font_glyph_data + font_bytes_per_glyph * c;
    const u32 c_off = (u32)(
       (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11)
    );
-   u32 *scanlines = &fb_w8_char_scanlines[c_off];
+   u32 *const scanlines = &fb_w8_char_scanlines[c_off];
    goto *op;
 
    width1:

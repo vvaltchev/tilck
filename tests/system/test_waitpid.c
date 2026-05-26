@@ -22,6 +22,7 @@
 int cmd_wpid1(int argc, char **argv)
 {
    int wstatus;
+   int exit_code;
    pid_t pid;
 
    int child_pid = fork();
@@ -53,7 +54,7 @@ int cmd_wpid1(int argc, char **argv)
       return 1;
    }
 
-   int exit_code = WEXITSTATUS(wstatus);
+   exit_code = WEXITSTATUS(wstatus);
    printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
 
    if (pid != child_pid) {
@@ -100,6 +101,8 @@ int cmd_wpid2(int argc, char **argv)
 
    for (int i = child_count-1; i >= 0; i--) {
 
+      int exit_code;
+
       printf("[pid: %d] PARENT: waitpid(-1)\n", getpid());
       pid = waitpid(-1, &wstatus, 0);
 
@@ -111,7 +114,7 @@ int cmd_wpid2(int argc, char **argv)
          return 1;
       }
 
-      int exit_code = WEXITSTATUS(wstatus);
+      exit_code = WEXITSTATUS(wstatus);
 
       printf("[pid: %d] PARENT: waitpid() returned %d, exit code: %d\n",
              getpid(), pid, exit_code);
@@ -134,6 +137,7 @@ int cmd_wpid2(int argc, char **argv)
 int cmd_wpid3(int argc, char **argv)
 {
    int wstatus;
+   int exit_code;
    pid_t pid;
 
    int child_pid = fork();
@@ -165,7 +169,7 @@ int cmd_wpid3(int argc, char **argv)
       return 1;
    }
 
-   int exit_code = WEXITSTATUS(wstatus);
+   exit_code = WEXITSTATUS(wstatus);
    printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
 
    if (pid != child_pid) {
@@ -420,8 +424,8 @@ wpid6_test_active_child(int n, int pgid1, int pgid2)
  */
 int cmd_wpid6(int argc, char **argv)
 {
-   int cld[7] = {0};
    int pid, wstatus;
+   int cld[7] = {0};
    int g1_killed = 0;
    int g2_killed = 0;
 

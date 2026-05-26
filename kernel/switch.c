@@ -64,8 +64,8 @@ void save_current_task_state(regs_t *r,  bool irq)
 
 int save_regs_on_user_stack(regs_t *r)
 {
-   ulong user_sp = regs_get_usersp(r);
    int rc;
+   ulong user_sp = regs_get_usersp(r);
 
    /* Align the user ESP */
    user_sp &= ALIGNED_MASK(USERMODE_STACK_ALIGN);
@@ -88,8 +88,8 @@ int save_regs_on_user_stack(regs_t *r)
 
 void restore_regs_from_user_stack(regs_t *r)
 {
-   ulong old_regs = regs_get_usersp(r);
    int rc;
+   ulong old_regs = regs_get_usersp(r);
 
    /* Restore the registers we previously changed */
    rc = copy_from_user(r, TO_PTR(old_regs), sizeof(*r));
@@ -127,8 +127,8 @@ void setup_pause_trampoline(regs_t *r)
 void
 switch_to_task_safety_checks(struct task *curr, struct task *next)
 {
-   static bool first_task_switch_passed;
    bool cond;
+   static bool first_task_switch_passed;
 
    /*
     * Generally, we don't support task switches with interrupts disabled
@@ -223,8 +223,9 @@ switch_to_task_safety_checks(struct task *curr, struct task *next)
 void
 set_current_task_in_user_mode(void)
 {
-   ASSERT(!is_preemption_enabled());
    struct task *curr = get_curr_task();
+
+   ASSERT(!is_preemption_enabled());
 
    curr->running_in_kernel &= ~((u32)IN_SYSCALL_FLAG);
    task_info_reset_kernel_stack(curr);
@@ -340,9 +341,9 @@ NORETURN void
 switch_to_task(struct task *ti)
 {
    /* Save the value of ti->state_regs as it will be reset below */
+   bool should_drop_top_syscall = false;
    regs_t *state = ti->state_regs;
    struct task *curr = get_curr_task();
-   bool should_drop_top_syscall = false;
    const bool zombie = (atomic_load(&curr->state) == TASK_STATE_ZOMBIE);
 
    ASSERT(curr != NULL);
