@@ -201,7 +201,7 @@ dump_heap_node_head(struct block_node n, int w)
 }
 
 static void
-dump_heap_node_head_end(void)
+dump_heap_node_head_end()
 {
    printf(ATTR_FAINT "+\n" RESET_ATTRS);
 }
@@ -213,7 +213,7 @@ dump_heap_node_tail(struct block_node n, int w)
 }
 
 static void
-dump_heap_node_tail_end(void)
+dump_heap_node_tail_end()
 {
    dump_heap_node_head_end();
 }

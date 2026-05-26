@@ -25,7 +25,7 @@ extern "C" {
 using namespace std;
 using namespace testing;
 
-static void destroy_last_worker_thread(void)
+static void destroy_last_worker_thread()
 {
    assert(worker_threads_cnt > 0);
 

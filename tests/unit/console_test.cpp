@@ -197,12 +197,12 @@ static void test_vi_move_cursor(u16 row, u16 col, int color)
    cursor_col = col;
 }
 
-static void test_vi_enable_cursor(void)
+static void test_vi_enable_cursor()
 {
    cursor_enabled = true;
 }
 
-static void test_vi_disable_cursor(void)
+static void test_vi_disable_cursor()
 {
    cursor_enabled = false;
 }
@@ -523,7 +523,8 @@ TEST_F(console_test, ctrl_vkill_is_noop)
 
 TEST_F(console_test, csi_cuu_cud_cuf_cub)
 {
-   /* Start at (0,0), go down 2, right 5 -> (2,5) -> up 1 -> (1,5) -> left 3 -> (1,2) */
+   /* Start at (0,0), down 2, right 5 -> (2,5)
+    * -> up 1 -> (1,5) -> left 3 -> (1,2) */
    console_write("\033[2B");   /* CUD: down 2 */
    console_write("\033[5C");   /* CUF: right 5 */
    console_write("\033[A");    /* CUU: up 1 (default param) */
@@ -555,7 +556,8 @@ TEST_F(console_test, csi_cuu_clamp_at_top)
 
 TEST_F(console_test, csi_cuf_clamp_at_right)
 {
-   console_write("\033[99C");  /* move right by a huge amount; clamps at col 19 */
+   /* move right by a huge amount; clamps at col 19 */
+   console_write("\033[99C");
    check_screen_vs_expected(R"(
       +--------------------+
       |                   $|
@@ -599,7 +601,8 @@ TEST_F(console_test, csi_cup_f_equivalent_to_H)
 
 TEST_F(console_test, csi_cha_G_and_backtick_same)
 {
-   /* Write 'X' at row 0 col 5 via CHA (G), then 'Y' at row 0 col 15 via HPA (`). */
+   /* Write 'X' at row 0 col 5 via CHA (G),
+    * then 'Y' at row 0 col 15 via HPA (`). */
    console_write("\033[6GX");
    console_write("\033[16`Y");
    check_screen_vs_expected(R"(
@@ -711,7 +714,7 @@ TEST_F(console_test, csi_save_restore_cursor_su)
    console_write("\033[s");       /* save */
    console_write("\033[4;10H");   /* jump far */
    console_write("Z");
-   console_write("\033[u");       /* restore -> cursor back where 'c' should go */
+   console_write("\033[u");       /* restore -> back where 'c' goes */
    console_write("c");
    check_screen_vs_expected(R"(
       +--------------------+
@@ -750,7 +753,8 @@ TEST_F(console_test, csi_ed_1_J_clears_to_start_of_display)
    fill_screen_pattern();
    console_write("\033[2;5H");  /* cursor at (1, 4) */
    console_write("\033[1J");    /* erase from start of display to cursor */
-   /* row 0 cleared; row 1 cols 0..3 cleared (cursor col excluded); rest intact */
+   /* row 0 cleared; row 1 cols 0..3 cleared
+    * (cursor col excluded); rest intact */
    check_screen_vs_expected(R"(
       +--------------------+
       |                    |
@@ -830,7 +834,7 @@ TEST_F(console_test, csi_ech_X_erases_chars)
 {
    fill_screen_pattern();
    console_write("\033[2;5H");
-   console_write("\033[3X");   /* erase 3 chars from cursor (does not move cursor) */
+   console_write("\033[3X");   /* erase 3 chars from cursor */
    check_screen_vs_expected(R"(
       +--------------------+
       |ABCDEFGHIJKLMNOPQRST|
@@ -850,7 +854,7 @@ TEST_F(console_test, csi_ich_at_inserts_blanks)
 {
    fill_screen_pattern();
    console_write("\033[2;5H");
-   console_write("\033[3@");   /* insert 3 blanks at cursor; rest shifts right */
+   console_write("\033[3@");   /* insert 3 blanks; rest shifts */
    check_screen_vs_expected(R"(
       +--------------------+
       |ABCDEFGHIJKLMNOPQRST|
@@ -922,7 +926,8 @@ TEST_F(console_test, csi_dl_M_deletes_lines)
 TEST_F(console_test, csi_su_S_scrolls_up)
 {
    fill_screen_pattern();
-   console_write("\033[2S");   /* scroll up 2: top 2 rows disappear, new blanks at bottom */
+   /* scroll up 2: top 2 rows gone, blanks at bottom */
+   console_write("\033[2S");
    console_write("\033[1;1H");
    check_screen_vs_expected(R"(
       +--------------------+
@@ -938,7 +943,8 @@ TEST_F(console_test, csi_su_S_scrolls_up)
 TEST_F(console_test, csi_sd_T_scrolls_down)
 {
    fill_screen_pattern();
-   console_write("\033[2T");   /* scroll down 2: bottom 2 rows disappear, new blanks at top */
+   /* scroll down 2: bottom 2 rows gone, blanks at top */
+   console_write("\033[2T");
    console_write("\033[1;1H");
    check_screen_vs_expected(R"(
       +--------------------+
@@ -1138,7 +1144,7 @@ TEST_F(console_test, esc_c_RIS_full_reset)
    console_write("\033[31m");          /* fg red */
    console_write("\033[3;7Hhello");    /* move cursor + write */
    console_write("\033c");             /* RIS: full reset */
-   console_write("X");                  /* should land at (0,0) with default color */
+   console_write("X");                /* lands at (0,0) with default color */
 
    check_color_at(0, 0, DEFAULT_COLOR16);
    check_screen_vs_expected(R"(
@@ -1291,7 +1297,8 @@ TEST_F(console_test, charset_g1_graphics_with_so)
 
 TEST_F(console_test, charset_unknown_letter_noop)
 {
-   /* ESC ( U and ESC ( K are recognized but leave the current table unchanged. */
+   /* ESC ( U and ESC ( K are recognized but
+    * leave the current table unchanged. */
    console_write("q");               /* ASCII 'q' */
    console_write("\033(U");          /* no-op */
    console_write("q");               /* still ASCII 'q' */
@@ -1315,7 +1322,8 @@ TEST_F(console_test, csi_pvt_cursor_hide_show_25)
 
 TEST_F(console_test, csi_pvt_c_is_ignored)
 {
-   /* ESC [ ? 6 c is a Linux-specific cursor-appearance hint; handler returns early. */
+   /* ESC [ ? 6 c is a Linux-specific cursor hint;
+    * handler returns early. */
    console_write("\033[?6c");
    console_write("X");
    check_screen_vs_expected(R"(
@@ -1333,7 +1341,7 @@ TEST_F(console_test, csi_pvt_alt_buffer_1049)
 {
    console_write("MAIN");            /* main: "MAIN", cursor (0, 4) */
    console_write("\033[?1049h");     /* enter alt buffer: snapshot is saved */
-   console_write("\033[1;1HALT");    /* overwrite chars at (0,0..2) with "ALT" */
+   console_write("\033[1;1HALT");    /* overwrite (0,0..2) with "ALT" */
 
    ASSERT_EQ(vgaentry_get_char(test_video_framebuffer[0][0]), 'A');
    ASSERT_EQ(vgaentry_get_char(test_video_framebuffer[0][1]), 'L');
@@ -1547,8 +1555,8 @@ TEST_F(console_test, sm_esc_interrupts_unknown_esc)
     * ESC <non-terminator>: enter esc2_unknown with a byte outside
     * [0x40, 0x5F], then another ESC starts a fresh sequence via pre_filter.
     */
-   console_write("\033~");                 /* ESC ~ — ~ is 0x7E, not terminator */
-   console_write("\033[1;1HX");             /* new ESC aborts unknown, CUP + X */
+   console_write("\033~");           /* ESC ~: 0x7E, not terminator */
+   console_write("\033[1;1HX");     /* new ESC aborts unknown, CUP+X */
    check_screen_vs_expected(R"(
       +--------------------+
       |X$                  |

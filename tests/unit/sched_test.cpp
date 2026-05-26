@@ -64,6 +64,7 @@ protected:
    static void SetUpTestSuite() {
       if (idle_task != nullptr)
          return;
+
       init_kmalloc_for_tests();
       init_sched();
    }
@@ -437,7 +438,7 @@ TEST_F(scheduler_test, select_preempts_curr_when_resched_true)
    EXPECT_EQ(selected, t_low);
 }
 
-TEST_F(scheduler_test, select_picks_leftmost_even_if_ineligible_by_simple_predicate)
+TEST_F(scheduler_test, select_picks_leftmost_even_if_ineligible)
 {
    /*
     * Wake-handoff transient: curr has just-woken vruntime well
@@ -929,7 +930,7 @@ protected:
          }
 
          /* Events scheduled for this tick. */
-         while (event_idx < w.events.size() &&
+         while (event_idx < w.events.size()   &&
                 w.events[event_idx].tick == t)
          {
             apply_event(w.events[event_idx], task_ptrs);

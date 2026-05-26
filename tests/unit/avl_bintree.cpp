@@ -607,7 +607,7 @@ static void
 benchmark_avl_bintree_rand_data(const int elems, const int iters)
 {
    // prefer always the same seed for comparing results
-   const unsigned long seed = 1094638824;
+   const ulong seed = 1094638824;
    default_random_engine e(seed);
    lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
    unique_ptr<test_data> data{new test_data};
@@ -679,8 +679,8 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
       tot += end - start;
    }
 
-   unsigned long cycles_per_iter = (unsigned long)(tot / iters);
-   unsigned long cycles_per_elem = cycles_per_iter / elems;
+   ulong cycles_per_iter = (ulong)(tot / iters);
+   ulong cycles_per_elem = cycles_per_iter / elems;
    printf("[ INFO     ] Avg. cycles per elem: %lu\n", cycles_per_elem);
 }
 

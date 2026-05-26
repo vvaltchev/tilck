@@ -63,7 +63,7 @@ std::ostream& operator<<(std::ostream& os, const test_mem_reg& reg) {
             << ")";
 }
 
-static void reset_mem_regions(void)
+static void reset_mem_regions()
 {
    memset(mem_regions, 0, sizeof(mem_regions));
    mem_regions_count = 0;

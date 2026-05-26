@@ -23,7 +23,7 @@ void test_dump_buf(char *buf, const char *buf_name, int off, int count)
    printf("%s", buf_name);
 
    for (int k = 0; k < count; k++)
-      printf("%02x ", (unsigned char) buf[off + k]);
+      printf("%02x ", (u8) buf[off + k]);
 
    printf("\n");
 }

@@ -196,14 +196,14 @@ safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */)
    return __safe_ringbuf_read<>(rb, elem_ptr);
 }
 
-#define INST_WRITE_FUNC(s, n)                                                  \
-   bool safe_ringbuf_write_##s(struct safe_ringbuf *rb, void *e, bool *empty) {\
-      return __safe_ringbuf_write<n>(rb, e, empty);                            \
+#define INST_WRITE_FUNC(s, n)                                                 \
+   bool safe_ringbuf_write_##s(struct safe_ringbuf *rb,void *e,bool *empty) { \
+      return __safe_ringbuf_write<n>(rb, e, empty);                           \
    }
 
-#define INST_READ_FUNC(s, n)                                                   \
-   bool safe_ringbuf_read_##s(struct safe_ringbuf *rb, void *elem_ptr) {       \
-      return __safe_ringbuf_read<n>(rb, elem_ptr);                             \
+#define INST_READ_FUNC(s, n)                                             \
+   bool safe_ringbuf_read_##s(struct safe_ringbuf *rb, void *elem_ptr) { \
+      return __safe_ringbuf_read<n>(rb, elem_ptr);                       \
    }
 
 

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+#pragma once
 
 #ifndef __cplusplus
    #error This is a C++-only header. Use it from a C++ source file.
@@ -101,7 +102,7 @@ struct unsigned_type<s64> {
 #if NBITS == 32 || defined(__APPLE__)
 template <>
 struct unsigned_type<long> {
-   typedef unsigned long type;
+   typedef ulong type;
 };
 #endif
 
@@ -125,7 +126,7 @@ struct unsigned_type<u64> {
 #if NBITS == 32 || defined(__APPLE__)
 template <>
 struct unsigned_type<unsigned long> {
-   typedef unsigned long type;
+   typedef ulong type;
 };
 #endif
 
@@ -168,11 +169,11 @@ struct is_unsigned<ulong> {
 template <typename T>
 struct limits;
 
-#define INST_LIMIT_TEMPL(T, m, M)                         \
-   template <>                                            \
-   struct limits<T> {                                     \
-      static constexpr T min() { return m; };             \
-      static constexpr T max() { return M; };             \
+#define INST_LIMIT_TEMPL(T, m, M)                                     \
+   template <>                                                        \
+   struct limits<T> {                                                 \
+      static constexpr T min() { return m; };                         \
+      static constexpr T max() { return M; };                         \
    }
 
 INST_LIMIT_TEMPL(u8,  0, UCHAR_MAX);
