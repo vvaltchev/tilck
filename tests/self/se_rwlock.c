@@ -67,15 +67,15 @@ static void dump_diag(int sub_test, int retry, u64 sub_test_start_tick)
 {
    printk(NO_PREFIX "[diag s%d/%d] sub-test start tick: %llu\n",
           sub_test, retry,
-          (unsigned long long) sub_test_start_tick);
+          (ulonglong) sub_test_start_tick);
 
    printk(NO_PREFIX "[diag s%d/%d] reader starts:", sub_test, retry);
    for (int i = 0; i < RWLOCK_READERS; i++)
-      printk(NO_PREFIX " %llu", (unsigned long long) reader_start_ticks[i]);
+      printk(NO_PREFIX " %llu", (ulonglong) reader_start_ticks[i]);
 
    printk(NO_PREFIX "\n[diag s%d/%d] reader ends:  ", sub_test, retry);
    for (int i = 0; i < RWLOCK_READERS; i++)
-      printk(NO_PREFIX " %llu", (unsigned long long) reader_end_ticks[i]);
+      printk(NO_PREFIX " %llu", (ulonglong) reader_end_ticks[i]);
 
    printk(NO_PREFIX "\n[diag s%d/%d] reader iters: ", sub_test, retry);
    for (int i = 0; i < RWLOCK_READERS; i++)
@@ -83,11 +83,11 @@ static void dump_diag(int sub_test, int retry, u64 sub_test_start_tick)
 
    printk(NO_PREFIX "\n[diag s%d/%d] writer starts:", sub_test, retry);
    for (int i = 0; i < RWLOCK_WRITERS; i++)
-      printk(NO_PREFIX " %llu", (unsigned long long) writer_start_ticks[i]);
+      printk(NO_PREFIX " %llu", (ulonglong) writer_start_ticks[i]);
 
    printk(NO_PREFIX "\n[diag s%d/%d] writer ends:  ", sub_test, retry);
    for (int i = 0; i < RWLOCK_WRITERS; i++)
-      printk(NO_PREFIX " %llu", (unsigned long long) writer_end_ticks[i]);
+      printk(NO_PREFIX " %llu", (ulonglong) writer_end_ticks[i]);
 
    printk(NO_PREFIX "\n[diag s%d/%d] writer iters: ", sub_test, retry);
    for (int i = 0; i < RWLOCK_WRITERS; i++)

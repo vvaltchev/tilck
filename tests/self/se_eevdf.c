@@ -121,9 +121,9 @@ void selftest_eevdf(void)
 
       printk("eevdf: tid=%d total=%llu slice=%u vruntime=%llu\n",
              tids[i],
-             (unsigned long long) eevdf_total[i],
+             (ulonglong) eevdf_total[i],
              eevdf_slice[i],
-             (unsigned long long) eevdf_vruntime[i]);
+             (ulonglong) eevdf_vruntime[i]);
 
       /* No thread should be starved. */
       VERIFY(eevdf_total[i] > 0);
@@ -153,8 +153,8 @@ void selftest_eevdf(void)
    const u64 spread_pct = min_total ? (spread * 100) / min_total : 0;
 
    printk("eevdf: spread=%llu (%llu%% over min)\n",
-          (unsigned long long) spread,
-          (unsigned long long) spread_pct);
+          (ulonglong) spread,
+          (ulonglong) spread_pct);
 
    VERIFY(spread_pct <= 50);
    se_regular_end();
