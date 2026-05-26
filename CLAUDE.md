@@ -376,12 +376,19 @@ of "done", not polish.
    Older files have legacy drift; emulate the newer ones.
 3. After drafting, grep your patterns against `kernel/*.c`. Patterns
    absent from the kernel are probably wrong, even if they compile.
-4. **After editing ANY file, run `style_check check <file>` (all
-   rules) and CANNOT proceed if there are warnings.** Either fix
-   all warnings, or — if the tool is wrong — STOP and ask,
-   showing the snippet and the error. Apply the tool's `--diff`
-   output first; only attempt manual fixes when the tool has no
-   auto-fix for a rule. Iterate until zero warnings.
+4. **After editing ANY C/H file, run the full style_check sequence
+   before committing. NO EXCEPTIONS.**
+   ```
+   style_check check <files>           # fix all violations
+   style_check check --diff <files>    # apply mechanical fixes
+   style_check check --gradient --summary <files>  # review prettiness
+   ```
+   Iterate until zero violations. Apply the tool's `--diff` output
+   first; only attempt manual fixes when the tool has no auto-fix.
+   If a rule seems wrong, STOP and ask — show the snippet and the
+   error. Fixing one rule routinely breaks another (e.g. shortening
+   a type name breaks backslash alignment), so the full re-check
+   after every edit is non-negotiable.
 5. **For cols_80 violations (1-3 chars over):** before wrapping the
    line, exhaust these cheaper fixes: remove optional spaces
    around `+`/`-` in pointer arithmetic (`buf+OFFSET`), use
