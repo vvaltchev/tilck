@@ -8,6 +8,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_RAW_TEXT,
 )
@@ -31,6 +32,9 @@ class Indent3sp(Rule):
          if '\t' not in leading:
             continue
 
+         fixed_leading = leading.replace('\t', '   ')
+         fixed_line = fixed_leading + stripped
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=i,
@@ -41,6 +45,8 @@ class Indent3sp(Rule):
             severity=self.severity,
             message='leading whitespace contains tab(s); use 3 spaces',
             snippet=line.expandtabs(8),
+            fixes=[Fix(i, i, [fixed_line],
+                        'convert leading tabs to 3 spaces')],
          ))
 
       return out

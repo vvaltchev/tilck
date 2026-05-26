@@ -587,6 +587,20 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(len(diags), 1)
       self.assertEqual(diags[0].rule, 'endif_annotation_long_blocks')
 
+   def test_bad_multiline_call_vs_long_neighbor(self):
+
+      r = RULES_BY_ID['multiline_call_vs_long_neighbor']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_multiline_call_vs_long_neighbor.c',
+         self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertTrue(diags[0].is_gradient)
+      self.assertEqual(
+         diags[0].rule, 'multiline_call_vs_long_neighbor'
+      )
+
 
 class TestRulesNoFalsePositives(unittest.TestCase):
    """Synthetic `good_*` fixtures exercise the no-violation code paths
@@ -698,6 +712,92 @@ class TestRulesNoFalsePositives(unittest.TestCase):
       self._assert_no_diags(
          'blank_line_after_decl_block',
          'good_blank_line_after_decl_block.c'
+      )
+
+   def test_good_blank_line_before_return(self):
+      self._assert_no_diags(
+         'blank_line_before_return',
+         'good_blank_line_before_return.c'
+      )
+
+   def test_good_verbose_type_name(self):
+      self._assert_no_diags(
+         'verbose_type_name', 'good_verbose_type_name.c'
+      )
+
+   def test_good_designator_init_spacing(self):
+      self._assert_no_diags(
+         'designator_init_spacing',
+         'good_designator_init_spacing.c'
+      )
+
+   def test_good_else_same_line_as_brace(self):
+      self._assert_no_diags(
+         'else_same_line_as_brace',
+         'good_else_same_line_as_brace.c'
+      )
+
+   def test_good_fn_body_brace_own_line(self):
+      self._assert_no_diags(
+         'fn_body_brace_own_line',
+         'good_fn_body_brace_own_line.c'
+      )
+
+   def test_good_sizeof_parens(self):
+      self._assert_no_diags(
+         'sizeof_parens', 'good_sizeof_parens.c'
+      )
+
+   def test_good_free_no_null_guard(self):
+      self._assert_no_diags(
+         'free_no_null_guard', 'good_free_no_null_guard.c'
+      )
+
+   def test_good_trailing_ws(self):
+      self._assert_no_diags(
+         'trailing_ws', 'good_trailing_ws.c'
+      )
+
+   def test_good_void_arglist(self):
+      self._assert_no_diags(
+         'void_arglist', 'good_void_arglist.c'
+      )
+
+   def test_good_cols_80(self):
+      self._assert_no_diags(
+         'cols_80', 'good_cols_80.c'
+      )
+
+   def test_good_cast_density(self):
+      self._assert_no_diags(
+         'cast_density', 'good_cast_density.c'
+      )
+
+   def test_good_ifdef_density(self):
+      self._assert_no_diags(
+         'ifdef_density', 'good_ifdef_density.c'
+      )
+
+   def test_good_else_after_return(self):
+      self._assert_no_diags(
+         'else_after_return', 'good_else_after_return.c'
+      )
+
+   def test_good_call_cluster_column_align(self):
+      self._assert_no_diags(
+         'call_cluster_column_align',
+         'good_call_cluster_column_align.c'
+      )
+
+   def test_good_define_backslash_align(self):
+      self._assert_no_diags(
+         'define_backslash_align',
+         'good_define_backslash_align.c'
+      )
+
+   def test_good_indent_3sp(self):
+      self._assert_no_diags(
+         'indent_3sp', 'good_indent_3sp.c'
       )
 
 

@@ -10,6 +10,7 @@ from typing import List
 from .base import (
       Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_RAW_TEXT,
    SEVERITY_WARNING,
@@ -98,6 +99,9 @@ class BlankLineAfterNonFinalReturn(Rule):
                next_line[:40] + ('...' if len(next_line) > 40 else '')
             ),
             snippet=ret_line_text.strip(),
+            fixes=[Fix(line_no, line_no,
+                        [ret_line_text.rstrip(), ''],
+                        'insert blank line after return')],
          ))
 
       return out

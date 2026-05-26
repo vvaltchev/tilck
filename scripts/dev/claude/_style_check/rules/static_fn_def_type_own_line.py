@@ -8,6 +8,7 @@ from typing import List
 from .base import (
       Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
@@ -68,6 +69,18 @@ class StaticFnDefTypeOwnLine(Rule):
          line_text = ctx.lines[ext.start_line - 1] \
             if ext.start_line <= len(ctx.lines) else ''
 
+         # Build fix: split the line at the function name boundary.
+         # E.g. "static void foo(int a," -> "static void\nfoo(int a,"
+         fixes = []
+         name_idx = line_text.find(ext.spelling + '(')
+
+         if name_idx > 0:
+            type_part = line_text[:name_idx].rstrip()
+            name_part = line_text[name_idx:]
+            fixes.append(Fix(ext.start_line, ext.start_line,
+                              [type_part, name_part],
+                              'split return type to its own line'))
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=ext.start_line,
@@ -80,6 +93,7 @@ class StaticFnDefTypeOwnLine(Rule):
                      'wraps, the return type must be on its own line').
                      format(ext.spelling),
             snippet=line_text.strip(),
+            fixes=fixes,
          ))
 
       return out

@@ -8,6 +8,7 @@ from typing import List
 from .base import (
       Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
@@ -84,6 +85,22 @@ class VoidArglist(Rule):
             line_text = ctx.lines[ext.name_line - 1] \
                if ext.name_line - 1 < len(ctx.lines) else ''
 
+            # Build fix: replace () with (void) on the line
+            fixes = []
+
+            if line_text:
+               # Find the `name()` pattern on the line and replace
+               name_pos = line_text.find(ext.spelling + '()')
+
+               if name_pos >= 0:
+                  paren_pos = name_pos + len(ext.spelling)
+                  fixed = (line_text[:paren_pos]
+                           + '(void)'
+                           + line_text[paren_pos + 2:])
+                  fixes.append(Fix(ext.name_line, ext.name_line,
+                                    [fixed],
+                                    'replace () with (void)'))
+
             out.append(Diagnostic(
                file=str(ctx.file_path),
                line=ext.name_line,
@@ -95,6 +112,7 @@ class VoidArglist(Rule):
                message=('function "{}": empty arg list must be (void), '
                         'not ()').format(ext.spelling),
                snippet=line_text.strip(),
+               fixes=fixes,
             ))
 
       return out

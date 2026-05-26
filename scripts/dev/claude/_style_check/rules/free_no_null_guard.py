@@ -10,6 +10,7 @@ from typing import List
 from .base import (
    Rule,
    Diagnostic,
+   Fix,
    CheckContext,
    LAYER_TOKENS,
    SEVERITY_WARNING,
@@ -67,11 +68,32 @@ class FreeNoNullGuard(Rule):
          fn = m.group('fn')
          var = m.group('v')
 
+         # Build fix: replace the if+body range with just the free call.
+         # The match may span 1 or 2 lines. Detect the line range from
+         # the matched text.
+         end_line, _ = _tokens_mod.offset_to_line_col(
+            masked, m.end() - 1
+         )
+
+         # Determine indentation from the `if` line
+         if_indent = len(line_text) - len(line_text.lstrip())
+         indent_str = line_text[:if_indent]
+
+         # Reconstruct the free call with its full args from source
+         # (the regex captured only the variable, but the full call
+         # including optional second arg is in the match).
+         free_start = m.start('fn')
+         free_part = masked[free_start:m.end()].strip()
+         fixed_line = indent_str + free_part
+
+         fixes = [Fix(line, end_line, [fixed_line],
+                       'remove null guard around free call')]
+
          out.append(Diagnostic(
             file=str(ctx.file_path),
             line=line,
             col=col,
-            end_line=line,
+            end_line=end_line,
             end_col=col + len(m.group(0)),
             rule=self.id,
             severity=self.severity,
@@ -81,6 +103,7 @@ class FreeNoNullGuard(Rule):
             ).format(fn, var),
             snippet=line_text.strip(),
             suggestion='{}({});'.format(fn, var),
+            fixes=fixes,
          ))
 
       return out
