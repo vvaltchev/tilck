@@ -126,10 +126,10 @@ struct ns16550 {
 
 static void ns16550_reg_wr(struct ns16550 *uart, int offset, int value)
 {
-   unsigned char *addr;
+   u8 *addr;
 
    offset *= 1 << uart->reg_shift;
-   addr = (unsigned char *)uart->base + offset + uart->reg_offset;
+   addr = (u8 *)uart->base + offset + uart->reg_offset;
 
    if (uart->reg_width == 4)
       mmio_writel(value, addr);
@@ -139,10 +139,10 @@ static void ns16550_reg_wr(struct ns16550 *uart, int offset, int value)
 
 static int ns16550_reg_rd(struct ns16550 *uart, int offset)
 {
-   unsigned char *addr;
+   u8 *addr;
 
    offset *= 1 << uart->reg_shift;
-   addr = (unsigned char *)uart->base + offset + uart->reg_offset;
+   addr = (u8 *)uart->base + offset + uart->reg_offset;
 
    if (uart->reg_width == 4)
       return mmio_readl(addr);

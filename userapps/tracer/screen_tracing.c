@@ -61,7 +61,7 @@ dp_cmd_get_stats(struct dp_trace_stats *out)
 }
 
 static long
-dp_cmd_get_filter(char *buf, unsigned long buf_sz)
+dp_cmd_get_filter(char *buf, ulong buf_sz)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TRACE_GET_FILTER,
@@ -109,7 +109,7 @@ dp_cmd_set_printk_lvl(int lvl)
 }
 
 static long
-dp_cmd_get_traced_bitmap(unsigned char *buf, unsigned long buf_sz)
+dp_cmd_get_traced_bitmap(u8 *buf, ulong buf_sz)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TRACE_GET_TRACED_BITMAP,
@@ -125,7 +125,7 @@ dp_cmd_get_in_buf_count(void)
 }
 
 static long
-dp_cmd_get_traced_tids_and_clear(int *buf, unsigned long max)
+dp_cmd_get_traced_tids_and_clear(int *buf, ulong max)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR,
@@ -150,7 +150,7 @@ dp_cmd_set_task_traced(int tid, int enabled)
  */
 
 static long
-dp_cmd_get_sys_name(unsigned sys_n, char *buf, unsigned long buf_sz)
+dp_cmd_get_sys_name(unsigned sys_n, char *buf, ulong buf_sz)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TRACE_GET_SYS_NAME,
@@ -259,7 +259,7 @@ static void show_help(void)
 
 static void list_traced_syscalls(void)
 {
-   unsigned char bitmap[MAX_SYSCALLS];
+   u8 bitmap[MAX_SYSCALLS];
    long n;
 
    term_write("\r\n\r\n");

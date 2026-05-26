@@ -699,8 +699,8 @@ test_inj_ioctl_argp(void)
    ev.sys_ev.args[1] = 0x5413;       /* TIOCGWINSZ */
    ev.sys_ev.args[2] = 0xdeadbeef;   /* would-be argp user ptr */
 
-   /* struct winsize: 4 × unsigned short. */
-   const unsigned short ws[4] = { 25, 80, 0, 0 };
+   /* struct winsize: 4 × u16. */
+   const u16 ws[4] = { 25, 80, 0, 0 };
    memcpy(&ev.sys_ev.saved_params[off], ws, sizeof(ws));
 
    if (inject_and_read(name, &ev, &back) < 0)
@@ -978,7 +978,7 @@ tr_run_stress_test(void)
       struct dp_trace_event ev;
       mkev(&ev, dp_te_sys_enter, INJ_TID);
       ev.sys_ev.sys = SYS_getpid;
-      ev.sys_ev.args[0] = (unsigned long)i;   /* sequence counter */
+      ev.sys_ev.args[0] = (ulong)i;   /* sequence counter */
 
       if (cmd_inject_event(&ev) < 0) {
          fprintf(stderr, "inject failed at i=%d errno=%d\n", i, errno);

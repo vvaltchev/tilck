@@ -47,7 +47,7 @@
  * ioctl request value. 0 means "no struct, argp is unused or is
  * an immediate int already in the register" — leave slot empty. */
 static unsigned
-ioctl_argp_save_size(unsigned long request)
+ioctl_argp_save_size(ulong request)
 {
    switch (request) {
 
@@ -62,7 +62,7 @@ ioctl_argp_save_size(unsigned long request)
 
       case IOCTL_TIOCGWINSZ:
       case IOCTL_TIOCSWINSZ:
-         /* struct winsize: 4 × unsigned short = 8 bytes. */
+         /* struct winsize: 4 × u16 = 8 bytes. */
          return 8;
 
       case IOCTL_TIOCGPGRP:
@@ -81,7 +81,7 @@ ioctl_argp_save_size(unsigned long request)
 static bool
 save_param_ioctl_argp(void *data, long hlp, char *dest_buf, size_t dest_bs)
 {
-   const unsigned long request = (unsigned long)hlp;
+   const ulong request = (ulong)hlp;
    const unsigned n = ioctl_argp_save_size(request);
 
    if (!n || !data)

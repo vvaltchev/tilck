@@ -28,8 +28,8 @@ struct TypeMismatchDataV1 {
 
    struct SourceLocation Loc;
    const struct TypeDescriptor *Type;
-   unsigned char LogAlignment;
-   unsigned char TypeCheckKind;
+   u8 LogAlignment;
+   u8 TypeCheckKind;
 };
 
 static void

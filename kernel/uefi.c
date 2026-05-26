@@ -54,7 +54,7 @@ void setup_uefi_runtime_services(void)
    EFI_RUNTIME_SERVICES *RT;
    EFI_MEMORY_DESCRIPTOR *virt_map;
    EFI_TIME t;
-   unsigned int num_entries = 0;
+   u32 num_entries = 0;
 
    if (!uefi_rt_addr)
       return;

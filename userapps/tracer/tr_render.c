@@ -335,7 +335,7 @@ dump_ret_val(struct sbuf *sb,
       return;
    }
 
-   if (!tr_dump_from_val(si->ret_type_id, (unsigned long)retval, -1,
+   if (!tr_dump_from_val(si->ret_type_id, (ulong)retval, -1,
                          rend_bufs[0], REND_BUF_SZ))
    {
       sbuf_writef(sb, "(raw) %p", (void *)retval);

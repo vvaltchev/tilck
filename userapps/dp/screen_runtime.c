@@ -41,7 +41,7 @@ val_color(const char *val)
 }
 
 static void
-render_rt_int(int *row, int col, const char *name, unsigned long val)
+render_rt_int(int *row, int col, const char *name, ulong val)
 {
    char vbuf[16];
 
@@ -79,8 +79,8 @@ static void dp_show_runtime(void)
    row++;
 
    render_section_label(&row, col, "Console");
-   render_rt_int(&row, col, "term_rows",       (unsigned long)tui_rows);
-   render_rt_int(&row, col, "term_cols",       (unsigned long)tui_cols);
+   render_rt_int(&row, col, "term_rows",       (ulong)tui_rows);
+   render_rt_int(&row, col, "term_cols",       (ulong)tui_cols);
    render_rt_int(&row, col, "use_framebuffer", ri.use_framebuffer);
 
    /*

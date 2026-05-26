@@ -277,7 +277,7 @@ find_event_arg(const struct capture *cap,
                int type,
                unsigned sys_n,
                int arg_idx,
-               unsigned long arg_value)
+               ulong arg_value)
 {
    for (int i = 0; i < cap->count; i++) {
 

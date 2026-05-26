@@ -69,12 +69,12 @@ bool tr_get_dump_big_bufs(void);
  * the kernel ptype callback contract).
  */
 bool tr_dump_from_val(unsigned type_id,
-                      unsigned long val,
+                      ulong val,
                       long helper,
                       char *dst, size_t dst_size);
 
 bool tr_dump(unsigned type_id,
-             unsigned long orig,
+             ulong orig,
              char *data, long data_size,
              long helper,
              char *dst, size_t dst_size);
@@ -87,12 +87,12 @@ const char *tr_get_signal_name(int signum);
 /* Layer 2 — context-dependent struct argp/arg dump callbacks
  * (defined in tr_dump_ioctl.c). The helper carries the cmd /
  * request value selected by the metadata's COMPLEX_PARAM. */
-bool tr_dump_ioctl_argp(unsigned long orig,
+bool tr_dump_ioctl_argp(ulong orig,
                         char *data, long data_size,
                         long helper,
                         char *dst, size_t dst_size);
 
-bool tr_dump_fcntl_arg(unsigned long orig,
+bool tr_dump_fcntl_arg(ulong orig,
                        char *data, long data_size,
                        long helper,
                        char *dst, size_t dst_size);

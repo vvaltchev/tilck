@@ -18,7 +18,7 @@
 #include <tilck/common/syscalls.h>
 #include "sysenter.h"
 
-typedef unsigned long long ull_t;
+typedef u64 ull_t;
 
 /* configuration */
 #define MAX_ARGS                  16
@@ -88,8 +88,8 @@ size_t mm_estimate_usable_mem(void);
 struct linux_dirent64 {
    u64            d_ino;    /* 64-bit inode number */
    u64            d_off;    /* 64-bit offset to next structure */
-   unsigned short d_reclen; /* Size of this dirent */
-   unsigned char  d_type;   /* File type */
+   u16 d_reclen; /* Size of this dirent */
+   u8  d_type;   /* File type */
    char           d_name[]; /* Filename (null-terminated) */
 };
 

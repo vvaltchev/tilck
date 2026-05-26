@@ -56,18 +56,18 @@ struct termios_summary {
    unsigned c_oflag;
    unsigned c_cflag;
    unsigned c_lflag;
-   unsigned char c_line;
-   unsigned char c_cc[19];
+   u8 c_line;
+   u8 c_cc[19];
 };
 
 /* dump_ioctl_argp: data points into the saved-params slot; data_size
  * tells us how much was copied. The helper is the request value. */
-bool tr_dump_ioctl_argp(unsigned long orig,
+bool tr_dump_ioctl_argp(ulong orig,
                         char *data, long data_size,
                         long helper,
                         char *dst, size_t bs)
 {
-   const unsigned long req = (unsigned long)helper;
+   const ulong req = (ulong)helper;
 
    /* NULL argp is rendered as NULL regardless of cmd. */
    if (!orig) {
@@ -107,8 +107,8 @@ bool tr_dump_ioctl_argp(unsigned long orig,
       case IOCTL_TIOCGWINSZ:
       case IOCTL_TIOCSWINSZ: {
 
-         /* struct winsize: 4 × unsigned short. */
-         const unsigned short *w = (const unsigned short *)data;
+         /* struct winsize: 4 × u16. */
+         const u16 *w = (const u16 *)data;
          int rc = snprintf(
             dst, bs,
             "(struct winsize){ .ws_row = %u, .ws_col = %u, "
@@ -142,12 +142,12 @@ bool tr_dump_ioctl_argp(unsigned long orig,
  * a no-op for the cmds Tilck implements — F_DUPFD / F_SETFD /
  * F_SETFL etc. all take an int that's already in the arg register
  * (visible via `orig`); F_GETFD / F_GETFL ignore arg entirely. */
-bool tr_dump_fcntl_arg(unsigned long orig,
+bool tr_dump_fcntl_arg(ulong orig,
                        char *data, long data_size,
                        long helper,
                        char *dst, size_t bs)
 {
-   const unsigned long cmd = (unsigned long)helper;
+   const ulong cmd = (ulong)helper;
    int rc;
 
    switch (cmd) {

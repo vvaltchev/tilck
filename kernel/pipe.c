@@ -394,7 +394,7 @@ void debug_dump_pipe_state_for_obj(void *obj)
             continue;
          printk(NO_PREFIX
                 "      ts=%llu tid=%d op=%c %s -> r=%u w=%u\n",
-                (unsigned long long)ev->ts, ev->tid, ev->op,
+                (ulonglong)ev->ts, ev->tid, ev->op,
                 ev->is_write ? "WR" : "RD",
                 (unsigned)ev->read_handles_after,
                 (unsigned)ev->write_handles_after);

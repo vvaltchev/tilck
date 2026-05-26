@@ -31,7 +31,7 @@ static int row;
  * Read it once at first_setup time so the spurious-IRQ rate uses the
  * right divisor.
  */
-static unsigned long timer_hz;
+static ulong timer_hz;
 
 static long dp_cmd_get_irqs(struct dp_irq_stats *out)
 {
@@ -40,11 +40,11 @@ static long dp_cmd_get_irqs(struct dp_irq_stats *out)
                   (long)out, 0L, 0L, 0L);
 }
 
-static unsigned long read_ulong_from(const char *path, unsigned long fallback)
+static ulong read_ulong_from(const char *path, ulong fallback)
 {
    ssize_t n;
    char buf[32] = {0};
-   unsigned long v = 0;
+   ulong v = 0;
    int fd = open(path, 0 /* O_RDONLY */);
 
    if (fd < 0)
@@ -59,7 +59,7 @@ static unsigned long read_ulong_from(const char *path, unsigned long fallback)
    buf[n] = 0;
 
    for (int i = 0; buf[i] >= '0' && buf[i] <= '9'; i++)
-      v = v * 10 + (unsigned long)(buf[i] - '0');
+      v = v * 10 + (ulong)(buf[i] - '0');
 
    return v ? v : fallback;
 }
@@ -76,7 +76,7 @@ static void dp_irqs_on_enter(void)
 
 static void dp_show_irqs(void)
 {
-   unsigned int tot_unhandled = 0;
+   u32 tot_unhandled = 0;
 
    row = tui_screen_start_row;
 
@@ -98,8 +98,8 @@ static void dp_show_irqs(void)
               stats.slow_timer_count);
 
    if (stats.ticks_at_snapshot > timer_hz) {
-      const unsigned long secs =
-         (unsigned long)stats.ticks_at_snapshot / timer_hz;
+      const ulong secs =
+         (ulong)stats.ticks_at_snapshot / timer_hz;
       dp_writeln("   Spurious IRQ count: %u (%lu/sec)",
                  stats.spur_irq_count,
                  secs ? stats.spur_irq_count / secs : 0UL);

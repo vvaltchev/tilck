@@ -466,9 +466,9 @@ static void medium_raw_read(void)
          break;
 
       if (c & 0x80)
-         printf("released %#x", (unsigned char)(c & ~0x80));
+         printf("released %#x", (u8)(c & ~0x80));
       else
-         printf("PRESSED %#x", (unsigned char)(c & ~0x80));
+         printf("PRESSED %#x", (u8)(c & ~0x80));
 
       printf("\r\n");
 

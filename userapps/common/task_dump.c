@@ -20,7 +20,7 @@
 struct dp_task_info dp_tasks_buf[MAX_DP_TASKS];
 int dp_tasks_count;
 
-static long dp_cmd_get_tasks(struct dp_task_info *buf, unsigned long max)
+static long dp_cmd_get_tasks(struct dp_task_info *buf, ulong max)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_GET_TASKS,
@@ -38,7 +38,7 @@ int dp_tasks_refresh(void)
    return 0;
 }
 
-void state_to_str(char *out, unsigned char state, bool stopped, bool traced)
+void state_to_str(char *out, u8 state, bool stopped, bool traced)
 {
    char *p = out;
 

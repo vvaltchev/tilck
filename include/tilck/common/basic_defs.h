@@ -78,6 +78,8 @@
    typedef unsigned long ulong;
 #endif
 
+typedef unsigned long long ulonglong;
+
 #ifdef __i386__
 
    STATIC_ASSERT(sizeof(void *) == 4);

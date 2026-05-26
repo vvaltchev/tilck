@@ -328,7 +328,7 @@ void bzero(void *s, size_t n)
 
 size_t strnlen(const char *str, size_t count)
 {
-   unsigned long ret = 0;
+   ulong ret = 0;
    while (*str != '\0' && ret < count) {
       ret++;
       str++;
@@ -339,10 +339,10 @@ size_t strnlen(const char *str, size_t count)
 
 void *memchr(const void *s, int c, size_t count)
 {
-   const unsigned char *temp = (const unsigned char *)s;
+   const u8 *temp = (const u8 *)s;
 
    while (count > 0) {
-      if ((unsigned char)c == *temp++) {
+      if ((u8)c == *temp++) {
          return (void *)(temp - 1);
       }
       count--;

@@ -28,16 +28,16 @@
 static struct dp_heap_info heaps[MAX_DP_HEAPS];
 static struct dp_small_heaps_stats sh_stats;
 static int heap_count;
-static unsigned long prev_alloc[MAX_DP_HEAPS];
-static unsigned long tot_usable_kb;
-static unsigned long tot_used_kb;
+static ulong prev_alloc[MAX_DP_HEAPS];
+static ulong tot_usable_kb;
+static ulong tot_used_kb;
 static long tot_diff;
 
 /* File-scope `row` for the dp_writeln macro. */
 static int row;
 
 static long
-dp_cmd_get_heaps(struct dp_heap_info *buf, unsigned long max,
+dp_cmd_get_heaps(struct dp_heap_info *buf, ulong max,
                  struct dp_small_heaps_stats *stats)
 {
    return syscall(TILCK_CMD_SYSCALL,
@@ -62,8 +62,8 @@ static void dp_heaps_on_enter(void)
 
    for (int i = 0; i < heap_count; i++) {
 
-      const unsigned long size_kb = heaps[i].size / KB_;
-      const unsigned long alloc_kb = heaps[i].mem_allocated / KB_;
+      const ulong size_kb = heaps[i].size / KB_;
+      const ulong alloc_kb = heaps[i].mem_allocated / KB_;
       const long diff = (long)heaps[i].mem_allocated - (long)prev_alloc[i];
 
       tot_usable_kb += size_kb;
@@ -98,7 +98,7 @@ static void dp_show_heaps(void)
       return;
    }
 
-   const unsigned long pct =
+   const ulong pct =
       tot_usable_kb ? (tot_used_kb * 100) / tot_usable_kb : 0;
 
    dp_writeln("Usable:  %6lu KB", tot_usable_kb);
@@ -135,14 +135,14 @@ static void dp_show_heaps(void)
       if (!h->size)
          break;
 
-      const unsigned long size_kb = h->size / KB_;
-      const unsigned long alloc_kb = h->mem_allocated / KB_;
+      const ulong size_kb = h->size / KB_;
+      const ulong alloc_kb = h->mem_allocated / KB_;
       const long diff = (long)h->mem_allocated - (long)prev_alloc[i];
 
       if (h->region >= 0)
          snprintf(region_str, sizeof(region_str), "%02d", h->region);
 
-      const unsigned long pct1k = size_kb
+      const ulong pct1k = size_kb
                                   ? (alloc_kb * 1000UL / size_kb)
                                   : 0;
 
@@ -155,7 +155,7 @@ static void dp_show_heaps(void)
          TERM_VLINE "  %4u "
          TERM_VLINE " %s%4ld %s ",
          i, region_str,
-         (unsigned long)h->vaddr,
+         (ulong)h->vaddr,
          size_kb < 1024 ? size_kb : size_kb / 1024,
          size_kb < 1024 ? "KB" : "MB",
          pct1k / 10,
