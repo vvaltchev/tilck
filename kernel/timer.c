@@ -34,8 +34,17 @@ u32 slow_timer_irq_handler_count;
 /* Temporary global used by asm_do_bogomips_loop() */
 atomic_u32_t __bogo_loops;
 
-/* Static variables */
-static struct list timer_wakeup_list = STATIC_LIST_INIT(timer_wakeup_list);
+/*
+ * Timer tree: tasks are stored in an AVL tree ordered by absolute
+ * expiry tick (with tid as tiebreaker for uniqueness). The cached
+ * `earliest_timer` pointer makes the common per-tick check O(1).
+ * Insert, cancel, and update are O(log N); the tree remove +
+ * wakeup processing on expiry is O(log N) per expired timer, with
+ * interrupts disabled for bounded time per iteration.
+ */
+static struct task *timer_tree_root;
+static struct task *earliest_timer;
+
 static u32 loops_per_tick;         /* Tilck bogoMips as loops/tick    */
 static u32 loops_per_ms = 5000000; /* loops/millisecond (initial val)  */
 static u32 loops_per_us = 5000;    /* loops/microsecond (initial val) */
@@ -53,35 +62,74 @@ u64 get_ticks(void)
    return curr_ticks;
 }
 
-void task_set_wakeup_timer(struct task *ti, u32 ticks)
+static long
+timer_cmp(const void *a, const void *b)
+{
+   struct task *t1 = (struct task *)a;
+   struct task *t2 = (struct task *)b;
+
+   if (t1->wakeup_at_tick != t2->wakeup_at_tick)
+      return t1->wakeup_at_tick < t2->wakeup_at_tick ? -1 : 1;
+
+   return (long)t1->tid - (long)t2->tid;
+}
+
+void task_set_wakeup_timer(struct task *ti, u64 ticks)
 {
    ulong var;
    ASSERT(ticks > 0);
 
    disable_interrupts(&var);
    {
-      if (ti->ticks_before_wake_up == 0) {
-         ASSERT(!list_is_node_in_list(&ti->wakeup_timer_node));
-         list_add_tail(&timer_wakeup_list, &ti->wakeup_timer_node);
-      } else {
-         ASSERT(list_is_node_in_list(&ti->wakeup_timer_node));
+      if (ti->wakeup_at_tick > 0) {
+         bintree_remove(&timer_tree_root,
+                        ti,
+                        timer_cmp,
+                        struct task,
+                        timer_tree_node);
+         bintree_node_init(&ti->timer_tree_node);
       }
 
-      ti->ticks_before_wake_up = ticks;
+      ti->wakeup_at_tick = __ticks + ticks;
+      bintree_insert(&timer_tree_root,
+                     ti,
+                     timer_cmp,
+                     struct task,
+                     timer_tree_node);
+
+      earliest_timer = bintree_get_first_obj(timer_tree_root,
+                                             struct task,
+                                             timer_tree_node);
    }
    enable_interrupts(&var);
 }
 
-void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks)
+void task_update_wakeup_timer_if_any(struct task *ti, u64 new_ticks)
 {
    ulong var;
    ASSERT(new_ticks > 0);
 
    disable_interrupts(&var);
    {
-      if (ti->ticks_before_wake_up > 0) {
-         ASSERT(list_is_node_in_list(&ti->wakeup_timer_node));
-         ti->ticks_before_wake_up = new_ticks;
+      if (ti->wakeup_at_tick > 0) {
+
+         bintree_remove(&timer_tree_root,
+                        ti,
+                        timer_cmp,
+                        struct task,
+                        timer_tree_node);
+         bintree_node_init(&ti->timer_tree_node);
+
+         ti->wakeup_at_tick = __ticks + new_ticks;
+         bintree_insert(&timer_tree_root,
+                        ti,
+                        timer_cmp,
+                        struct task,
+                        timer_tree_node);
+
+         earliest_timer = bintree_get_first_obj(timer_tree_root,
+                                                struct task,
+                                                timer_tree_node);
       }
    }
    enable_interrupts(&var);
@@ -90,80 +138,71 @@ void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks)
 u32 task_cancel_wakeup_timer(struct task *ti)
 {
    ulong var;
-   u32 old;
+   u32 remaining = 0;
 
    disable_interrupts(&var);
    {
-      old = ti->ticks_before_wake_up;
       ti->timer_ready = false;
 
-      if (old > 0) {
-         ti->ticks_before_wake_up = 0;
-         list_remove(&ti->wakeup_timer_node);
+      if (ti->wakeup_at_tick > 0) {
+
+         if (ti->wakeup_at_tick > __ticks)
+            remaining = (u32)(ti->wakeup_at_tick - __ticks);
+
+         bintree_remove(&timer_tree_root,
+                        ti,
+                        timer_cmp,
+                        struct task,
+                        timer_tree_node);
+         bintree_node_init(&ti->timer_tree_node);
+
+         if (earliest_timer == ti) {
+            earliest_timer = bintree_get_first_obj(timer_tree_root,
+                                                   struct task,
+                                                   timer_tree_node);
+         }
+
+         ti->wakeup_at_tick = 0;
       }
    }
    enable_interrupts(&var);
-   return old;
+   return remaining;
 }
 
-static void tick_all_timers(void)
+static void
+tick_all_timers(void)
 {
-   struct task *pos, *temp;
+   struct task *pos;
    ulong var;
-   bool any_woken_up_task = false;
+   bool any_woken = false;
 
-   /*
-    * This is *NOT* the best we can do. In particular, it's terrible to keep
-    * the interrupts disabled while iterating the _whole_ timer_wakeup_list.
-    *
-    * Possible better solutions
-    * -----------------------------
-    * 1. Keep the tasks to wake-up in a sort of ordered list and then use
-    * relative timers. This way, at each tick we'll have to decrement just one
-    * single counter. We'll start decrement the next counter only when the first
-    * counter reaches 0 and its list node is removed. Of course, if we cannot
-    * use kmalloc() in case of sleep, it gets much harder to create such an
-    * ordered list and make it live inside a member of struct task. Maybe a BST
-    * will do the job, but that would require paying O(logN) per tick for
-    * finding the earliest timer. Not sure how better would be now for N < 50
-    * (typical), given the huge added constant for the BST functions. Also, the
-    * cancellation of a timer would require some extra effort in order to
-    * re-calculate the relative timer values, while we want the cancellation to
-    * be light-fast because it's run by IRQ handlers.
-    *
-    * 2. Use a fixed number of wakeup lists like: short-term, mid-term and
-    * long-term. Current task's wakeup list node will be placed in one those
-    * lists, depending on far in the future the task is supposted to be woke up.
-    * On every tick, here in tick_all_timers(), ONLY the short-term list will be
-    * iterated. That's a considerable improvement. In a system, there might be
-    * even 1,000 active timers, but how many of them will expire in the next
-    * second? Only a small percentage of them. To further improve the
-    * scalability, it's possible to have even more than 3 lists, or to further
-    * reduce the time-horizon of the short-term list. Periodically, but NOT on
-    * every tick, the `ticks_before_wake_up` field belonging to tasks in the
-    * other wakeup lists will adjusted with bigger decrements and tasks will be
-    * moved from one list to another. That will also happen in case the wakeup
-    * timer is changed for task with an already active timer. This solution
-    * looks much better than solution 1.
-    *
-    * Conclusion
-    * ---------------------
-    * For the moment, given the very limited scale of Tilck (tens of tasks at
-    * most running on the whole system), the current solution is safe and
-    * good-enough but, at some point, a smarter ad-hoc solution should be
-    * devised. Probably solution 2 is the right candidate.
-    */
-   disable_interrupts(&var);
+   /* Fast path: no timer has expired — O(1), no IRQ-disable */
+   if (!earliest_timer || earliest_timer->wakeup_at_tick > __ticks)
+      return;
 
-   list_for_each(pos, temp, &timer_wakeup_list, wakeup_timer_node) {
+   while (true) {
 
-      /* If task is part of this list, it's counter must be > 0 */
-      ASSERT(pos->ticks_before_wake_up > 0);
+      disable_interrupts(&var);
+      {
+         if (!earliest_timer || earliest_timer->wakeup_at_tick > __ticks) {
+            enable_interrupts(&var);
+            break;
+         }
 
-      if (UNLIKELY(--pos->ticks_before_wake_up == 0)) {
-
+         pos = earliest_timer;
          pos->timer_ready = true;
-         list_remove(&pos->wakeup_timer_node);
+
+         bintree_remove(&timer_tree_root,
+                        pos,
+                        timer_cmp,
+                        struct task,
+                        timer_tree_node);
+         bintree_node_init(&pos->timer_tree_node);
+         pos->wakeup_at_tick = 0;
+
+         earliest_timer = bintree_get_first_obj(timer_tree_root,
+                                                struct task,
+                                                timer_tree_node);
 
          if (atomic_load(&pos->state) == TASK_STATE_SLEEPING) {
 
@@ -184,30 +223,21 @@ static void tick_all_timers(void)
             if (next == TASK_STATE_RUNNABLE)
                wake_vruntime_handoff(pos);
 
-            task_change_state(pos, next);
-            any_woken_up_task = true;
+            task_change_state_unsafe(pos, next);
+            any_woken = true;
          }
       }
+      enable_interrupts(&var);
    }
 
-   enable_interrupts(&var);
-
-   if (any_woken_up_task)
+   if (any_woken)
       sched_set_need_resched();
-}
-
-static void do_sleep_internal(u32 ticks)
-{
-   ASSERT(are_interrupts_enabled());
-
-   disable_preemption();
-   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-   task_set_wakeup_timer(get_curr_task(), ticks);
-   kernel_yield_preempt_disabled();
 }
 
 void kernel_sleep(u64 ticks)
 {
+   struct task *curr = get_curr_task();
+
    if (in_panic()) {
 
       /*
@@ -222,73 +252,17 @@ void kernel_sleep(u64 ticks)
    }
 
    DEBUG_ONLY(check_not_in_irq_handler());
+   ASSERT(are_interrupts_enabled());
 
-   /*
-    * Implementation: why
-    * ---------------------
-    *
-    * In theory, the function could be implemented just as:
-    *
-    *    if (ticks) {
-    *       task_set_wakeup_timer(get_curr_task(), ticks);
-    *       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-    *    }
-    *    kernel_yield();
-    *
-    * But that would require task->ticks_before_wake_up to be actually 64-bit,
-    * wide and that's bad on 32-bit systems because:
-    *
-    *    - it would require using the soft 64-bit integers (slow)
-    *    - it would make impossible, in the case we wanted that, the counter
-    *      to be atomic.
-    *
-    * Therefore, in order to use a 32-bit value for 'ticks_before_wake_up' and,
-    * at the same time being able to sleep for more than 2^32-1 ticks, we need
-    * a more tricky implementation (below), and the little extra runtime price
-    * for it is totally fine, since we're going to sleep anyways!
-    *
-    * Implementation: how
-    * ----------------------
-    *
-    * The simpler way to explain the algorithm is to just assume everything
-    * is in base 10 and that ticks_before_wake_up has 2 digits, while we want
-    * to support 4 digits sleep time. For example, we want to sleep for 234
-    * ticks. The algorithm first computes 534 % 100 = 34 and then 534 / 100 = 5.
-    * After that, it sleeps q (= 5) times for 99 ticks (max allowed). Clearly,
-    * we missed 5 ticks (5 * 99 < 500) this way, but we'll going to fix that
-    * buy just sleeping 'q' ticks. Thus, by now, we've slept for 500 ticks.
-    * Now we have to sleep for 34 ticks more are we're done.
-    *
-    * The same logic applies to base-2 case with 32-bit and 64-bit integers,
-    * just the numbers are much bigger. The remainder can be computed using
-    * a bitmask, while the division by using just a right shift.
-    */
-
-   const u32 rem = ticks & 0xffffffff;
-   const u32 q = ticks >> 32;
-
-   if (q) {
-
-      for (u32 i = 0; i < q; i++) {
-
-         do_sleep_internal(0xffffffff);
-
-         if (pending_signals())
-            return;
-      }
-
-      do_sleep_internal(q);
-
-      if (pending_signals())
-         return;
-   }
-
-   if (rem) {
-      do_sleep_internal(rem);
-   }
-
-   if (!q && !rem)
+   if (!ticks) {
       kernel_yield();
+      return;
+   }
+
+   disable_preemption();
+   task_change_state(curr, TASK_STATE_SLEEPING);
+   task_set_wakeup_timer(curr, ticks);
+   kernel_yield_preempt_disabled();
 }
 
 void kernel_sleep_ms(u64 ms)

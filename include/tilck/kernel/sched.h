@@ -148,7 +148,7 @@ struct task {
 
    struct bintree_node tree_by_tid_node;
    struct bintree_node runnable_tree_node;
-   struct list_node wakeup_timer_node;
+   struct bintree_node timer_tree_node;
    struct list_node siblings_node;    /* nodes in parent's pi's children list */
 
    struct list tasks_waiting_list;    /* tasks waiting this task to end */
@@ -165,7 +165,7 @@ struct task {
    };
 
    struct wait_obj wobj;
-   u32 ticks_before_wake_up;
+   u64 wakeup_at_tick;
 
    /* List of callbacks to call on exit */
    struct list on_exit;
@@ -485,8 +485,8 @@ void kthread_exit(void);
 int kthread_join(int tid, bool ignore_signals);
 int kthread_join_all(const int *tids, size_t n, bool ignore_signals);
 
-void task_set_wakeup_timer(struct task *task, u32 ticks);
-void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks);
+void task_set_wakeup_timer(struct task *task, u64 ticks);
+void task_update_wakeup_timer_if_any(struct task *ti, u64 new_ticks);
 u32 task_cancel_wakeup_timer(struct task *ti);
 
 typedef void (*kthread_func_ptr)(void *arg);

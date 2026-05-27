@@ -298,9 +298,7 @@ select_wait_on_cond(struct select_ctx *c)
             break;
          }
 
-         task_set_wakeup_timer(
-            curr, (u32)(c->timeout_ticks - elapsed)
-         );
+         task_set_wakeup_timer(curr, c->timeout_ticks - elapsed);
       }
 
       prepare_to_wait_on_multi_obj(waiter);

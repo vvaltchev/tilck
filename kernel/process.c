@@ -187,7 +187,7 @@ void init_task_lists(struct task *ti)
 {
    bintree_node_init(&ti->tree_by_tid_node);
    bintree_node_init(&ti->runnable_tree_node);
-   list_node_init(&ti->wakeup_timer_node);
+   bintree_node_init(&ti->timer_tree_node);
    list_node_init(&ti->siblings_node);
 
    list_init(&ti->tasks_waiting_list);
