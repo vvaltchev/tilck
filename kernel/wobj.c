@@ -262,9 +262,10 @@ void mobj_waiter_reset2(struct multi_obj_waiter *w, int index)
  *
  * Caller must hold preemption disabled.
  */
-void mobj_waiter_rearm_signaled(struct multi_obj_waiter *w)
+bool mobj_waiter_rearm_signaled(struct multi_obj_waiter *w)
 {
    struct mwobj_elem *e, *temp;
+   bool rearmed = false;
    ASSERT(!is_preemption_enabled());
 
    list_for_each(e, temp, &w->signaled_list, signaled_node) {
@@ -274,7 +275,10 @@ void mobj_waiter_rearm_signaled(struct multi_obj_waiter *w)
 
       wait_obj_set(&e->wobj, WOBJ_MWO_ELEM,
                    e->saved_ptr, NO_EXTRA, e->saved_wait_list);
+      rearmed = true;
    }
+
+   return rearmed;
 }
 
 void prepare_to_wait_on_multi_obj(struct multi_obj_waiter *w)

@@ -237,6 +237,7 @@ select_wait_on_cond(struct select_ctx *c)
    int idx = 0;
    int rc = 0;
    struct task *curr = get_curr_task();
+   u64 start_ticks = 0;
 
    if (!(waiter = allocate_mobj_waiter(c->cond_cnt)))
       return -ENOMEM;
@@ -246,32 +247,60 @@ select_wait_on_cond(struct select_ctx *c)
          goto out;
    }
 
-   /*
-    * Disable preemption BEFORE arming the wakeup timer, so a timer that
-    * fires between task_set_wakeup_timer() and the upcoming sleep can't
-    * have its wakeup eaten by an irq_resched() -> do_schedule() call.
-    * See the matching comment in poll_wait_on_cond() for the full
-    * explanation; same race, same fix.
-    */
-   disable_preemption();
-
-   if (c->tv) {
-      ASSERT(c->timeout_ticks > 0);
-      task_set_wakeup_timer(curr, c->timeout_ticks);
-   }
+   if (c->tv)
+      start_ticks = get_ticks();
 
    while (true) {
 
       /*
-       * preempt is disabled at the top of every iteration:
-       *   - first iteration: from the disable_preemption() above.
-       *   - subsequent iterations: re-disabled in the !ready
-       *     `continue` branches below.
+       * Readiness check with preemption enabled — same reasoning
+       * as poll_wait_on_cond(): *_ready callbacks may block.
        */
       if (count_ready_streams(c->nfds, c->sets) > 0) {
+
+         if (c->tv) {
+
+            const u64 el = get_ticks() - start_ticks;
+            u32 rem = 0;
+
+            if (el < c->timeout_ticks)
+               rem = (u32)(c->timeout_ticks - el);
+
+            c->tv->tv_sec = rem / KRN_TIMER_HZ;
+            c->tv->tv_usec =
+               (rem % KRN_TIMER_HZ) * (1000000 / KRN_TIMER_HZ);
+         }
+
          rc = select_write_user_sets(c);
-         enable_preemption();
          break;
+      }
+
+      disable_preemption();
+
+      /* Re-arm signals that fired during the readiness check. */
+      if (mobj_waiter_rearm_signaled(waiter)) {
+         enable_preemption();
+         continue;
+      }
+
+      /*
+       * Arm the timer inside the preempt-disabled section — see
+       * poll_wait_on_cond() for the rationale.
+       */
+      if (c->tv) {
+
+         const u64 elapsed = get_ticks() - start_ticks;
+
+         if (elapsed >= c->timeout_ticks) {
+            c->tv->tv_sec = 0;
+            c->tv->tv_usec = 0;
+            enable_preemption();
+            break;
+         }
+
+         task_set_wakeup_timer(
+            curr, (u32)(c->timeout_ticks - elapsed)
+         );
       }
 
       prepare_to_wait_on_multi_obj(waiter);
@@ -281,58 +310,22 @@ select_wait_on_cond(struct select_ctx *c)
       if (pending_signals())
          break;
 
-      if (c->tv) {
-
-         if (curr->wobj.type) {
-
-            /* we woke-up because of the timeout */
-            wait_obj_reset(&curr->wobj);
-            c->tv->tv_sec = 0;
-            c->tv->tv_usec = 0;
-
-         } else {
-
-            /*
-             * We woke-up because of a kcond was signaled, but that does NOT
-             * mean that even the signaled conditions correspond to ready
-             * streams. We have to check that.
-             */
-
-            disable_preemption();
-            if (!count_ready_streams(c->nfds, c->sets)) {
-               /*
-                * Signal woke us but nothing is ready (a faster reader drained
-                * the data between wake and check). The fired elem was removed
-                * from its kcond wait_list and parked in waiter->signaled_list;
-                * re-arm it before sleeping again, otherwise the next signal
-                * on that same kcond would miss us entirely.
-                */
-               mobj_waiter_rearm_signaled(waiter);
-               continue; /* preempt still disabled */
-            }
-
-            const u32 rem = task_cancel_wakeup_timer(curr);
-            c->tv->tv_sec = rem / KRN_TIMER_HZ;
-            c->tv->tv_usec = (rem % KRN_TIMER_HZ) * (1000000 / KRN_TIMER_HZ);
-            enable_preemption();
-         }
-
-      } else {
-
-         /* No timeout: we woke-up because of a kcond was signaled */
-
-         disable_preemption();
-         if (!count_ready_streams(c->nfds, c->sets)) {
-            /* See the matching comment above. */
-            mobj_waiter_rearm_signaled(waiter);
-            continue; /* preempt still disabled */
-         }
-         enable_preemption();
+      if (c->tv && curr->wobj.type) {
+         wait_obj_reset(&curr->wobj);
+         c->tv->tv_sec = 0;
+         c->tv->tv_usec = 0;
+         break;
       }
 
-      /* count_ready_streams() returned > 0 */
-      break;
+      if (c->tv)
+         task_cancel_wakeup_timer(curr);
+
+      disable_preemption();
+      mobj_waiter_rearm_signaled(waiter);
+      enable_preemption();
    }
+
+   task_cancel_wakeup_timer(curr);
 
 out:
    free_mobj_waiter(waiter);

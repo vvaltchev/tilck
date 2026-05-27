@@ -160,6 +160,8 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
    struct multi_obj_waiter *waiter = NULL;
    int ready_fds_cnt = 0;
    struct task *curr = get_curr_task();
+   u64 start_ticks = 0;
+   u32 timeout_ticks = 0;
 
    if (!(waiter = allocate_mobj_waiter(cond_cnt)))
       return -ENOMEM;
@@ -172,44 +174,56 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
       return ready_fds_cnt;
    }
 
-   /*
-    * Disable preemption BEFORE arming the wakeup timer.
-    *
-    * If task_set_wakeup_timer() ran with preemption enabled, the timer
-    * could fire (counter -> 0, timer_ready = true) while we're still
-    * in the RUNNING state, between this and the upcoming
-    * prepare_to_wait_on_multi_obj() call. The IRQ exit path
-    * (irq_resched -> do_schedule -> sched_should_return_immediately)
-    * would then "consume" timer_ready before we ever entered the sleep,
-    * and we'd later go to sleep on the multi-obj waiter with the timer
-    * already removed from the wakeup list — a permanent hang. With
-    * preemption disabled here, irq_resched skips its do_schedule call
-    * (it requires preempt_disable_count == 1, and inside the IRQ it
-    * becomes >= 2), so timer_ready survives to be consumed by our own
-    * enter_sleep_wait_state() path. Same reasoning as kcond_wait().
-    */
-   disable_preemption();
-
    if (timeout > 0) {
-      u32 ticks = MAX((u32)timeout / (1000 / KRN_TIMER_HZ), 1u);
-      task_set_wakeup_timer(curr, ticks);
+      timeout_ticks = MAX((u32)timeout / (1000 / KRN_TIMER_HZ), 1u);
+      start_ticks = get_ticks();
    }
 
    while (true) {
 
       /*
-       * preempt is disabled at the top of every iteration:
-       *   - first iteration: from the disable_preemption() above.
-       *   - subsequent iterations: re-disabled in the !ready_fds_cnt
-       *     `continue` branches below.
-       *
-       * Re-check for ready streams under preempt disabled (a wake-up
-       * could have made one ready between an earlier check and now).
+       * Check readiness with preemption enabled: the *_ready
+       * callbacks (e.g. pipe_read_ready) may take mutexes that
+       * can block.
        */
       ready_fds_cnt = poll_count_ready_fds(fds, nfds);
-      if (ready_fds_cnt > 0) {
-         enable_preemption();
+      if (ready_fds_cnt > 0)
          break;
+
+      /*
+       * Preempt-disabled section: detect missed signals, arm the
+       * timer, and enter sleep. No blocking calls past this point.
+       *
+       * A kcond may have fired during the readiness check while we
+       * were in RUNNING state: the signal was recorded in
+       * waiter->signaled_list but could not wake us (we were
+       * already running). Re-arm fired elements and re-check.
+       */
+      disable_preemption();
+
+      if (mobj_waiter_rearm_signaled(waiter)) {
+         enable_preemption();
+         continue;
+      }
+
+      /*
+       * Arm the wakeup timer inside the preempt-disabled section
+       * so irq_resched cannot consume timer_ready between the
+       * arming and enter_sleep_wait_state(). The timer is armed
+       * fresh before every sleep and cancelled on kcond wake-up,
+       * so it is never alive during the preemption-enabled
+       * readiness check above.
+       */
+      if (timeout > 0) {
+
+         const u64 elapsed = get_ticks() - start_ticks;
+
+         if (elapsed >= timeout_ticks) {
+            enable_preemption();
+            break;
+         }
+
+         task_set_wakeup_timer(curr,(u32)(timeout_ticks - elapsed));
       }
 
       prepare_to_wait_on_multi_obj(waiter);
@@ -219,58 +233,25 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
       if (pending_signals())
          break;
 
-      if (timeout > 0) {
-
-         if (curr->wobj.type) {
-
-            /* we woke-up because of the timeout */
-            wait_obj_reset(&curr->wobj);
-
-         } else {
-
-            /*
-             * We woke-up because of a kcond was signaled, but that does NOT
-             * mean that even the signaled conditions correspond to ready
-             * streams. We have to check that.
-             */
-
-            disable_preemption();
-            ready_fds_cnt = poll_count_ready_fds(fds, nfds);
-
-            if (!ready_fds_cnt) {
-               /*
-                * Signal woke us but nothing is ready (a faster reader drained
-                * the data between wake and check). The fired elem was removed
-                * from its kcond wait_list and parked in waiter->signaled_list;
-                * re-arm it before sleeping again, otherwise the next signal
-                * on that same kcond would miss us entirely.
-                */
-               mobj_waiter_rearm_signaled(waiter);
-               continue; /* preempt still disabled */
-            }
-
-            task_cancel_wakeup_timer(curr);
-            enable_preemption();
-         }
-
-      } else {
-
-         /* No timeout: we woke-up because of a kcond was signaled */
-
-         disable_preemption();
-         ready_fds_cnt = poll_count_ready_fds(fds, nfds);
-
-         if (!ready_fds_cnt) {
-            /* See the matching comment above. */
-            mobj_waiter_rearm_signaled(waiter);
-            continue; /* preempt still disabled */
-         }
-         enable_preemption();
+      if (timeout > 0 && curr->wobj.type) {
+         wait_obj_reset(&curr->wobj);
+         break;
       }
 
-      break;
+      /*
+       * Kcond signal woke us. Cancel the timer and re-arm the
+       * fired element so the next readiness check finds us
+       * registered on all kcond wait_lists.
+       */
+      if (timeout > 0)
+         task_cancel_wakeup_timer(curr);
+
+      disable_preemption();
+      mobj_waiter_rearm_signaled(waiter);
+      enable_preemption();
    }
 
+   task_cancel_wakeup_timer(curr);
    free_mobj_waiter(waiter);
 
    if (pending_signals())

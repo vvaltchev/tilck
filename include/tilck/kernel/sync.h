@@ -137,7 +137,7 @@ void mobj_waiter_set(struct multi_obj_waiter *w,
                      void *ptr,
                      struct list *wait_list);
 
-void mobj_waiter_rearm_signaled(struct multi_obj_waiter *w);
+bool mobj_waiter_rearm_signaled(struct multi_obj_waiter *w);
 
 void prepare_to_wait_on_multi_obj(struct multi_obj_waiter *w);
 
