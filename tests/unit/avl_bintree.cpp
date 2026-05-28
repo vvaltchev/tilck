@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <unordered_set>
+#include <chrono>
 #include <inttypes.h>
 #include <gtest/gtest.h>
 
@@ -12,18 +13,10 @@
 
 extern "C" {
    #include <tilck/kernel/bintree.h>
-
-#if defined(__i386__) || defined(__x86_64)
-   #include <tilck/common/arch/generic_x86/x86_utils.h>
-#elif defined(__riscv)
-   #include <tilck/common/arch/riscv/riscv_utils.h>
-#else
-   /* TODO: actually implement an equivalent of RDTSC for AARCH64 */
-   static inline ulong RDTSC(void) { return 0; }
-#endif
 }
 
 using namespace std;
+using namespace std::chrono;
 
 struct int_struct {
 
@@ -633,7 +626,7 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
           ((MyTrivialAllocator<int_struct>( use_std_set ? 1024 * 1024 : 0 )))
       );
 
-      u64 start = RDTSC();
+      const auto start = steady_clock::now();
 
       for (int i = 0; i < elems; i++) {
 
@@ -675,13 +668,13 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
          }
       }
 
-      u64 end = RDTSC();
-      tot += end - start;
+      const auto end = steady_clock::now();
+      tot += (u64)duration_cast<nanoseconds>(end - start).count();
    }
 
-   ulong cycles_per_iter = (ulong)(tot / iters);
-   ulong cycles_per_elem = cycles_per_iter / elems;
-   printf("[ INFO     ] Avg. cycles per elem: %lu\n", cycles_per_elem);
+   ulong ns_per_iter = (ulong)(tot / iters);
+   ulong ns_per_elem = ns_per_iter / elems;
+   printf("[ INFO     ] Avg. ns per elem: %lu\n", ns_per_elem);
 }
 
 TEST(avl_bintree, DISABLED_benchmark)

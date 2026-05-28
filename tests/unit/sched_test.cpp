@@ -344,7 +344,9 @@ TEST_F(scheduler_test, select_leftmost_by_vruntime)
    make_task_at(20);
 
    struct task *selected = sched_do_select_runnable_task(
-      (enum task_state) atomic_load(&idle_task->state), true);
+      (enum task_state) atomic_load(&idle_task->state),
+      true
+   );
 
    EXPECT_EQ(selected, t10);
 }
@@ -358,7 +360,9 @@ TEST_F(scheduler_test, select_tiebreaks_by_tid)
    EXPECT_LT(a->tid, b->tid);
 
    struct task *selected = sched_do_select_runnable_task(
-      (enum task_state) atomic_load(&idle_task->state), true);
+      (enum task_state) atomic_load(&idle_task->state),
+      true
+   );
 
    EXPECT_EQ(selected, a);
 }
@@ -372,7 +376,9 @@ TEST_F(scheduler_test, select_keeps_curr_when_tree_empty_and_running)
    /* Now: runnable tree is empty (curr is in RUNNING state, not in
     * the tree). */
    struct task *selected = sched_do_select_runnable_task(
-      TASK_STATE_RUNNING, true);
+      TASK_STATE_RUNNING,
+      true
+   );
    EXPECT_EQ(selected, curr);
 }
 
@@ -382,7 +388,9 @@ TEST_F(scheduler_test, select_returns_null_when_tree_empty_and_not_running)
     * tasks are runnable. Selection returns NULL; do_schedule()
     * would then fall back to idle. */
    struct task *selected = sched_do_select_runnable_task(
-      TASK_STATE_SLEEPING, true);
+      TASK_STATE_SLEEPING,
+      true
+   );
    EXPECT_EQ(selected, nullptr);
 }
 
@@ -399,7 +407,9 @@ TEST_F(scheduler_test, select_keeps_curr_when_curr_is_leftmost_and_not_resched)
    switch_curr_to(curr);
 
    struct task *selected = sched_do_select_runnable_task(
-      TASK_STATE_RUNNING, false);
+      TASK_STATE_RUNNING,
+      false
+   );
 
    EXPECT_EQ(selected, curr);
 }
@@ -416,7 +426,9 @@ TEST_F(scheduler_test, select_preempts_curr_when_leftmost_lower_and_not_resched)
    switch_curr_to(curr);
 
    struct task *selected = sched_do_select_runnable_task(
-      TASK_STATE_RUNNING, false);
+      TASK_STATE_RUNNING,
+      false
+   );
 
    EXPECT_EQ(selected, t_low);
 }
@@ -433,7 +445,9 @@ TEST_F(scheduler_test, select_preempts_curr_when_resched_true)
    switch_curr_to(curr);
 
    struct task *selected = sched_do_select_runnable_task(
-      TASK_STATE_RUNNING, true);
+      TASK_STATE_RUNNING,
+      true
+   );
 
    EXPECT_EQ(selected, t_low);
 }
@@ -462,7 +476,9 @@ TEST_F(scheduler_test, select_picks_leftmost_even_if_ineligible)
    ASSERT_FALSE(sched_is_eligible(peer));
 
    struct task *selected = sched_do_select_runnable_task(
-      TASK_STATE_RUNNING, true);
+      TASK_STATE_RUNNING,
+      true
+   );
 
    EXPECT_EQ(selected, peer);
 }
