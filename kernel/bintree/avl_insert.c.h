@@ -47,8 +47,24 @@ bintree_insert_internal(void **root_obj_ref,
    /* Place our object in its right destination */
    *dest = obj_or_value;
 
+   /*
+    * Walk back up the path, rebalancing each ancestor. Discard the new
+    * node's own slot first: it's a freshly-initialized leaf (height 0,
+    * no children) that needs no balancing, and the height-didn't-change
+    * early-exit below would mis-fire on it -- short-circuiting the loop
+    * before the real ancestors get their heights updated.
+    *
+    * AVL invariant after a single insert: at most one rotation is needed,
+    * and once an ancestor's stored height doesn't change after rebalancing
+    * (which includes the case after a rotation, where the subtree's height
+    * is restored to its pre-insertion value), no further ancestor can be
+    * affected. Stop there instead of walking all the way to the root.
+    */
+   stack_size--;
+
    while (stack_size > 0)
-      BALANCE(STACK_POP());
+      if (!BALANCE(STACK_POP()))
+         break;
 
    return true;
 }

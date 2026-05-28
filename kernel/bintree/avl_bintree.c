@@ -63,13 +63,23 @@ void rotate_right_child(void **obj_ref, long bintree_offset)
 }
 
 
-static void balance(void **obj_ref, long bintree_offset)
+/*
+ * Returns true if the subtree's root height changed (relative to *obj_ref's
+ * stored height on entry). Used by the insert balance loop to early-exit:
+ * once an ancestor's height stops changing, no further ancestor can be
+ * affected. After a rotation, the new subtree root's stored height has
+ * already been set by the rotation itself; comparing it to the old root's
+ * stored height still answers the right question -- did the subtree's
+ * height change due to this rebalancing?
+ */
+static bool balance(void **obj_ref, long bintree_offset)
 {
    ASSERT(obj_ref != NULL);
 
    if (*obj_ref == NULL)
-      return;
+      return false;
 
+   const u16 old_height = OBJTN(*obj_ref)->height;
    void *const left_obj = LEFT_OF(*obj_ref);
    void *const right_obj = RIGHT_OF(*obj_ref);
    const int bf = HEIGHT(left_obj) - HEIGHT(right_obj);
@@ -94,6 +104,7 @@ static void balance(void **obj_ref, long bintree_offset)
    }
 
    UPDATE_HEIGHT(OBJTN(*obj_ref));
+   return OBJTN(*obj_ref)->height != old_height;
 }
 
 /*

@@ -81,7 +81,7 @@ update_height(struct bintree_node *node, long bintree_offset)
 
 void rotate_left_child(void **obj_ref, long bintree_offset);
 void rotate_right_child(void **obj_ref, long bintree_offset);
-static void balance(void **obj_ref, long bintree_offset);
+static bool balance(void **obj_ref, long bintree_offset);
 
 #define ROTATE_CW_LEFT_CHILD(obj) (rotate_left_child((obj), bintree_offset))
 #define ROTATE_CCW_RIGHT_CHILD(obj) (rotate_right_child((obj), bintree_offset))
