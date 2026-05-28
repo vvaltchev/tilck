@@ -10,11 +10,11 @@ import clang.cindex
 from clang.cindex import CursorKind
 
 from .base import (
-      Rule,
+   Rule,
    Diagnostic,
    CheckContext,
-   SEVERITY_WARNING,
-   SCORE_STRONG_PREF,
+   SEVERITY_ERROR,
+   SCORE_HARD_RULE,
 )
 from .. import tokens as _tokens_mod
 
@@ -26,13 +26,13 @@ class MultilineCallStyle(Rule):
       'Multi-line calls use Style 1 (args aligned to opening paren) '
       'or Style 2 (open paren ends first line, closing ); on its own '
       'line); Style 3 (top-heavy: args on indented lines, ) glued to '
-      'last arg) is rejected (Q1 hard rule + Task #13 broad form)'
+      'last arg) is a HARD violation. Applies to both C and C++.'
    )
    layers = 'S+T'
    needs_tu = True
-   applies_to = {'.c'}
-   severity = SEVERITY_WARNING
-   default_score = SCORE_STRONG_PREF
+   applies_to = None   # all C/C++ extensions
+   severity = SEVERITY_ERROR
+   default_score = SCORE_HARD_RULE
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 

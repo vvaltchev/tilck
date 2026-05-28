@@ -75,6 +75,7 @@ from . import prefer_cpp_cast
 from . import prefer_nullptr
 from . import using_namespace_in_header
 from . import void_arglist_cpp
+from . import qualified_name_density
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
 # CLAUDE.md claims this is a hard rule ("declare at top of enclosing
@@ -155,6 +156,7 @@ ALL_RULES = [
    prefer_nullptr.RULE,
    using_namespace_in_header.RULE,
    void_arglist_cpp.RULE,
+   qualified_name_density.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

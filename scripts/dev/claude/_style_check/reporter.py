@@ -153,8 +153,19 @@ def emit_text(diags: List[Diagnostic],
       if i > 0:
          out.write('\n')
 
-      severity_code = _RED if d.severity == 'error' else _YELLOW
-      severity_text = wrap(_BOLD + severity_code, d.severity)
+      # A gradient diagnostic crosses the hard-fail threshold when
+      # its accumulated cost is so large the rule itself escalated
+      # it to error-equivalent severity. Surface that with the same
+      # red treatment as a hard violation.
+      if d.is_hard_failure:
+         severity_code = _RED
+         severity_label = 'error' if d.severity == 'error' else \
+            'HARD-FAIL'
+      else:
+         severity_code = _YELLOW
+         severity_label = d.severity
+
+      severity_text = wrap(_BOLD + severity_code, severity_label)
 
       location = wrap(_CYAN, '{}:{}:{}:'.format(d.file, d.line, d.col))
       rule_text = wrap(_MAGENTA, d.rule)
@@ -384,6 +395,12 @@ def emit_function_summaries(file_summary,
          parts.append('hard {}'.format(f.hard_violations))
          parts.append('soft {}'.format(f.soft_violations))
 
+      if f.hard_failure_gradients > 0:
+         parts.append(wrap(
+            _BOLD + _RED,
+            'gradient-HARD-FAIL {}'.format(f.hard_failure_gradients)
+         ))
+
       rhs = '  '.join(parts)
 
       out.write('{}  [{}]  {}\n'.format(lhs, tag_colored, rhs))
@@ -396,6 +413,7 @@ def emit_function_summaries(file_summary,
       flv = file_summary.file_level_diagnostics
       vis = [d for d in flv if not d.is_gradient]
       grad = [d for d in flv if d.is_gradient]
+      hard_grad = [d for d in grad if d.is_hard_failure]
 
       if vis:
          total = sum(d.score for d in vis)
@@ -405,9 +423,15 @@ def emit_function_summaries(file_summary,
          )
 
       if grad:
-         out.write(
-            '    {} file-level gradient(s)\n'.format(len(grad))
-         )
+         line = '    {} file-level gradient(s)'.format(len(grad))
+
+         if hard_grad:
+            line += '  ' + wrap(
+               _BOLD + _RED,
+               '(of which {} HARD-FAIL)'.format(len(hard_grad))
+            )
+
+         out.write(line + '\n')
 
    fp = file_summary.file_prettiness
 
