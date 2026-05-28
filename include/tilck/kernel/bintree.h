@@ -3,6 +3,25 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
+/*
+ * Maximum depth of the explicit stacks used by insert/find/remove
+ * path traversal and by the in_order_visit iterator.
+ *
+ * AVL invariant: the smallest tree of height h has F(h+3) - 1 nodes,
+ * where F is the Fibonacci sequence -- the worst-case shape is a
+ * "Fibonacci tree". Hence:
+ *
+ *    h = 32:  N_min = F(35) - 1 =  9,227,464
+ *    h = 33:  N_min = F(36) - 1 = 14,930,351
+ *
+ * Any AVL tree with up to ~14.9 million nodes therefore has
+ * height <= 32 and fits. This is far less than the 2^32 = 4 billion
+ * one might naively expect from "height 32": AVL height grows as
+ * ~1.44 * log2(n), so a worst-case AVL tree is up to ~44% taller
+ * than a perfectly balanced one. None of Tilck's bintree consumers
+ * (timer queue, runnable set, kallocs, file locks, ...) approach
+ * this limit.
+ */
 #define MAX_TREE_HEIGHT       32
 
 struct bintree_node {
