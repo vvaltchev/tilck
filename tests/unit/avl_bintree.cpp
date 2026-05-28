@@ -604,7 +604,8 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
    default_random_engine e(seed);
    lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
    unique_ptr<test_data> data{new test_data};
-   u64 tot = 0;
+   double tot_ins = 0;
+   double tot_findrem = 0;
 
    for (int iter = 0; iter < iters; iter++) {
 
@@ -640,6 +641,8 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
          }
       }
 
+      const auto mid = steady_clock::now();
+
       for (int i = 0; i < elems; i++) {
 
          if (use_std_set) {
@@ -669,12 +672,16 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
       }
 
       const auto end = steady_clock::now();
-      tot += (u64)duration_cast<nanoseconds>(end - start).count();
+      tot_ins += duration<double, nano>(mid - start).count();
+      tot_findrem += duration<double, nano>(end - mid).count();
    }
 
-   ulong ns_per_iter = (ulong)(tot / iters);
-   ulong ns_per_elem = ns_per_iter / elems;
-   printf("[ INFO     ] Avg. ns per elem: %lu\n", ns_per_elem);
+   const double ns_ins = tot_ins / iters / elems;
+   const double ns_findrem = tot_findrem / iters / elems;
+   const double ns_per_elem = ns_ins + ns_findrem;
+   printf("[ INFO     ] Avg. ns per elem: %.1f "
+          "(insert: %.1f, find+remove: %.1f)\n",
+          ns_per_elem, ns_ins, ns_findrem);
 }
 
 TEST(avl_bintree, DISABLED_benchmark)
