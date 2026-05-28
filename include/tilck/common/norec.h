@@ -104,7 +104,7 @@
 
 #define SIMULATE_CALL1(a1)                                            \
    {                                                                  \
-      VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));            \
+      ASSERT(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));            \
       STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {          \
          &&CONCAT(after_, __LINE__),                                  \
          TO_PTR(a1)                                                   \
@@ -116,7 +116,7 @@
 
 #define SIMULATE_CALL2(a1, a2)                                        \
    {                                                                  \
-      VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));            \
+      ASSERT(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));            \
       STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {          \
          &&CONCAT(after_, __LINE__),                                  \
          TO_PTR(a1),                                                  \
