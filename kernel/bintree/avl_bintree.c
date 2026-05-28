@@ -12,7 +12,8 @@
  *    (nll) (nlr)               (nlr) (nr)
  */
 
-void rotate_left_child(void **obj_ref, long bintree_offset)
+static void
+rotate_left_child(void **obj_ref, long bintree_offset)
 {
    struct bintree_node *orig_node;
    struct bintree_node *orig_left_child;
@@ -42,7 +43,8 @@ void rotate_left_child(void **obj_ref, long bintree_offset)
  *       (nrl) (nrr)         (nl) (nrl)
  */
 
-void rotate_right_child(void **obj_ref, long bintree_offset)
+static void
+rotate_right_child(void **obj_ref, long bintree_offset)
 {
    struct bintree_node *orig_node;
    struct bintree_node *orig_right_child;
