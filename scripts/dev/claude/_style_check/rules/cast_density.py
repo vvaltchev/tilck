@@ -8,7 +8,6 @@ import re
 from typing import List
 
 from .base import (
-   COST_MILD,
    Rule,
    Diagnostic,
    CheckContext,
@@ -16,6 +15,12 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_NUDGE,
 )
+
+# Each C-style cast drops the line's prettiness by this much. Tuned
+# to be heavier than COST_MILD (0.20) but lighter than COST_MODERATE
+# (0.35) -- per the user, "a cast should drop a statement's prettiness
+# by -0.3". A statement with 4 casts crosses STATEMENT_HARD_FAIL_THRESHOLD.
+_CAST_COST = 0.30
 from .. import tokens as _tokens_mod
 
 # Gradient rule: each C-style cast in a function reduces the
@@ -137,7 +142,7 @@ class CastDensity(Rule):
             message='C-style cast `{}`'.format(cast_text.strip()),
             snippet=line_text.strip(),
             is_gradient=True,
-            prettiness_cost=COST_MILD,
+            prettiness_cost=_CAST_COST,
          ))
 
       return out
