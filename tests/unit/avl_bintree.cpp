@@ -18,9 +18,17 @@ extern "C" {
 using namespace std;
 using namespace std::chrono;
 
+/*
+ * `val` is `long`, not `int`, on purpose: the PTR benchmark uses
+ * `bintree_*_ptr()` which reads a `long`-sized field at the configured
+ * offset (see bintree_find_ptr_cmp / bintree_insrem_ptr_cmp). If `val`
+ * were `int`, the struct would have 4 bytes of padding after it on
+ * 64-bit hosts and the PTR comparator would read garbage from the
+ * padding into the high half of the long.
+ */
 struct int_struct {
 
-   int val;
+   long val;
    struct bintree_node node;
 
    int_struct() = default;
@@ -68,7 +76,7 @@ static void node_dump(int_struct *obj, int level)
    indent(level);
    struct bintree_node *n = &obj->node;
 
-   printf("%i [%i]\n", obj->val, n->height);
+   printf("%ld [%i]\n", obj->val, n->height);
 
 
    if (!n->left_obj && !n->right_obj)
@@ -78,14 +86,14 @@ static void node_dump(int_struct *obj, int level)
       node_dump((int_struct*)n->left_obj, level+1);
    } else {
       indent(level+1);
-      printf("L%i\n", obj->val);
+      printf("L%ld\n", obj->val);
    }
 
    if (n->right_obj) {
       node_dump((int_struct*)n->right_obj, level+1);
    } else {
       indent(level+1);
-      printf("R%i\n", obj->val);
+      printf("R%ld\n", obj->val);
    }
 }
 
@@ -101,7 +109,7 @@ static int visit_add_val_to_arr(void *obj, void *arg)
    visit_ctx *ctx = (visit_ctx *)arg;
 
    assert(ctx->curr_size < ctx->arr_size);
-   ctx->arr[ctx->curr_size++] = s->val;
+   ctx->arr[ctx->curr_size++] = (int)s->val;
    return 0;
 }
 
@@ -148,10 +156,10 @@ check_binary_search_tree(int_struct *obj)
 {
    if (obj->node.left_obj) {
 
-      int leftval = ((int_struct*)(obj->node.left_obj))->val;
+      long leftval = ((int_struct*)(obj->node.left_obj))->val;
 
       if (leftval >= obj->val) {
-         printf("left child of %i has value %i, which violates BST\n",
+         printf("left child of %ld has value %ld, which violates BST\n",
                 obj->val, leftval);
          return false;
       }
@@ -161,10 +169,10 @@ check_binary_search_tree(int_struct *obj)
    }
 
    if (obj->node.right_obj) {
-      int rightval = ((int_struct*)(obj->node.right_obj))->val;
+      long rightval = ((int_struct*)(obj->node.right_obj))->val;
 
       if (rightval <= obj->val) {
-         printf("right child of %i has value %i, which violates BST\n",
+         printf("right child of %ld has value %ld, which violates BST\n",
                 obj->val, rightval);
          return false;
       }
@@ -270,7 +278,7 @@ int check_height(int_struct *obj, bool *failed)
    if ( obj->node.height != ( max(lh, rh) + 1 ) ) {
 
       printf("[ERROR] obj->node.height != ( max(lh, rh) + 1 ); "
-             "Node val: %i. H: %i vs %i\n", obj->val,
+             "Node val: %ld. H: %i vs %i\n", obj->val,
              obj->node.height, max(lh, rh) + 1);
 
       printf("Tree:\n");
@@ -287,7 +295,7 @@ int check_height(int_struct *obj, bool *failed)
    // balance condition.
 
    if (!IN_RANGE_INC(lh-rh, -1, 1)) {
-      printf("[ERROR] lh-rh is %i for node %i; lh:%i, rh:%i\n",
+      printf("[ERROR] lh-rh is %i for node %ld; lh:%i, rh:%i\n",
              lh-rh, obj->val, lh, rh);
 
       printf("Tree:\n");
@@ -595,7 +603,7 @@ TEST(avl_bintree, DISABLED_test_insert_rand_data_tree_1m_elems)
    test_insert_rand_data(1, 1000*1000, false);
 }
 
-template <bool use_std_set = false>
+template <bool use_std_set = false, bool use_ptr_funcs = false>
 static void
 benchmark_avl_bintree_rand_data(const int elems, const int iters)
 {
@@ -635,6 +643,11 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
 
             S.insert(data->nodes[i]);
 
+         } else if (use_ptr_funcs) {
+
+            bintree_insert_ptr(&root, &data->nodes[i],
+                               int_struct, node, val);
+
          } else {
 
             bintree_insert(&root, &data->nodes[i], my_cmpfun, int_struct, node);
@@ -653,6 +666,26 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
 
             size_t count = S.erase(data->arr[i]);
             VERIFY(count > 0);
+
+         } else if (use_ptr_funcs) {
+
+            void *res = bintree_find_ptr(root, data->arr[i],
+                                         int_struct, node, val);
+
+            VERIFY(res != NULL);
+            VERIFY(((int_struct*)res)->val == data->arr[i]);
+
+            /*
+             * remove_ptr's macro doesn't TO_PTR-wrap its value arg, so the
+             * kernel idiom is to pass an existing node pointer -- the inline
+             * comparator reads `val` at the same offset on both sides.
+             */
+            void *removed_obj =
+               bintree_remove_ptr(&root, &data->nodes[i],
+                                  int_struct, node, val);
+
+            VERIFY(removed_obj != NULL);
+            VERIFY(((int_struct*)removed_obj)->val == data->arr[i]);
 
          } else {
 
@@ -687,6 +720,11 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
 TEST(avl_bintree, DISABLED_benchmark)
 {
    benchmark_avl_bintree_rand_data<false>(10000, 100);
+}
+
+TEST(avl_bintree, DISABLED_benchmark_ptr)
+{
+   benchmark_avl_bintree_rand_data<false, true>(10000, 100);
 }
 
 TEST(avl_bintree, DISABLED_benchmark_std_set)
