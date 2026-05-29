@@ -11,24 +11,58 @@
 #define STACK_POP()     (stack[--stack_size])
 
 
+/*
+ * Default form: plain pointer arithmetic with no NULL check. The
+ * NULL-checking variants below are the explicit-safety exception,
+ * not the rule, because at -O3 the compiler often emits the check
+ * as a dead `test` + zero-displacement `je` that wastes fetch/decode
+ * bandwidth and a BTB slot. Use the unchecked form in hot paths
+ * where the invariant is already established (ASSERT, prior check,
+ * or an enclosing loop guard).
+ */
 static ALWAYS_INLINE struct bintree_node *
 obj_to_bintree_node(void *obj, long offset)
 {
-   return obj ? (struct bintree_node *)((void *)obj + offset) : NULL;
+   return (struct bintree_node *)((void *)obj + offset);
 }
 
 static ALWAYS_INLINE void *
 bintree_node_to_obj(struct bintree_node *node, long offset)
 {
-   return node ? ((void *)node - offset) : NULL;
+   return (void *)node - offset;
 }
 
-#define OBJTN(o) (obj_to_bintree_node((o), bintree_offset))
-#define NTOBJ(n) (bintree_node_to_obj((n), bintree_offset))
+/*
+ * "_checked" variants: NULL-safe wrappers, for the rare callers
+ * that may legitimately pass NULL (currently just HEIGHT).
+ */
+static ALWAYS_INLINE struct bintree_node *
+obj_to_bintree_node_checked(void *obj, long offset)
+{
+   return obj ? obj_to_bintree_node(obj, offset) : NULL;
+}
 
-#define LEFT_OF(obj) ( OBJTN((obj))->left_obj )
-#define RIGHT_OF(obj) ( OBJTN((obj))->right_obj )
-#define HEIGHT(obj) ((obj) ? OBJTN((obj))->height : -1)
+static ALWAYS_INLINE void *
+bintree_node_to_obj_checked(struct bintree_node *node, long offset)
+{
+   return node ? bintree_node_to_obj(node, offset) : NULL;
+}
+
+#define OBJTN(o) (obj_to_bintree_node_checked((o), bintree_offset))
+#define NTOBJ(n) (bintree_node_to_obj_checked((n), bintree_offset))
+#define OBJTN_NN(o) (obj_to_bintree_node((o), bintree_offset))
+#define NTOBJ_NN(n) (bintree_node_to_obj((n), bintree_offset))
+
+/*
+ * LEFT_OF / RIGHT_OF immediately dereference their result, so the
+ * argument must be non-NULL by contract -- use the _nn form to skip
+ * the redundant NULL check. HEIGHT is the only macro that legitimately
+ * takes a possibly-NULL obj (children can be NULL); it does its own
+ * check first, then OBJTN_NN.
+ */
+#define LEFT_OF(obj) ( OBJTN_NN((obj))->left_obj )
+#define RIGHT_OF(obj) ( OBJTN_NN((obj))->right_obj )
+#define HEIGHT(obj) ((obj) ? OBJTN_NN((obj))->height : -1)
 
 static inline void
 update_height(struct bintree_node *node, long bintree_offset)
@@ -70,7 +104,7 @@ update_height(struct bintree_node *node, long bintree_offset)
                                                                       \
          long c;                                                      \
          void **obj_ref = STACK_TOP();                                \
-         struct bintree_node *node = OBJTN(*obj_ref);                 \
+         struct bintree_node *node = OBJTN_NN(*obj_ref);              \
                                                                       \
          if (!(c = CMP(*obj_ref, obj_or_value)))                      \
             break;                                                    \

@@ -21,13 +21,13 @@ rotate_left_child(void **obj_ref, long bintree_offset)
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN_NN(*obj_ref);
    ASSERT(orig_node->left_obj != NULL);
 
-   orig_left_child = OBJTN(orig_node->left_obj);
+   orig_left_child = OBJTN_NN(orig_node->left_obj);
    *obj_ref = orig_node->left_obj;
    orig_node->left_obj = orig_left_child->right_obj;
-   OBJTN(*obj_ref)->right_obj = NTOBJ(orig_node);
+   OBJTN_NN(*obj_ref)->right_obj = NTOBJ_NN(orig_node);
 
    UPDATE_HEIGHT(orig_node);
    UPDATE_HEIGHT(orig_left_child);
@@ -52,13 +52,13 @@ rotate_right_child(void **obj_ref, long bintree_offset)
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN_NN(*obj_ref);
    ASSERT(orig_node->right_obj != NULL);
 
-   orig_right_child = OBJTN(orig_node->right_obj);
+   orig_right_child = OBJTN_NN(orig_node->right_obj);
    *obj_ref = orig_node->right_obj;
    orig_node->right_obj = orig_right_child->left_obj;
-   OBJTN(*obj_ref)->left_obj = NTOBJ(orig_node);
+   OBJTN_NN(*obj_ref)->left_obj = NTOBJ_NN(orig_node);
 
    UPDATE_HEIGHT(orig_node);
    UPDATE_HEIGHT(orig_right_child);
@@ -81,7 +81,7 @@ static bool balance(void **obj_ref, long bintree_offset)
    if (*obj_ref == NULL)
       return false;
 
-   const u16 old_height = OBJTN(*obj_ref)->height;
+   const u16 old_height = OBJTN_NN(*obj_ref)->height;
    void *const left_obj = LEFT_OF(*obj_ref);
    void *const right_obj = RIGHT_OF(*obj_ref);
    const int bf = HEIGHT(left_obj) - HEIGHT(right_obj);
@@ -105,8 +105,8 @@ static bool balance(void **obj_ref, long bintree_offset)
       }
    }
 
-   UPDATE_HEIGHT(OBJTN(*obj_ref));
-   return OBJTN(*obj_ref)->height != old_height;
+   UPDATE_HEIGHT(OBJTN_NN(*obj_ref));
+   return OBJTN_NN(*obj_ref)->height != old_height;
 }
 
 /*
@@ -155,8 +155,8 @@ bintree_remove_internal_aux(void **root_obj_ref,
       }
 
       // restore root's original left and right links
-      OBJTN(*root_obj_ref)->left_obj = *left;
-      OBJTN(*root_obj_ref)->right_obj = *right;
+      OBJTN_NN(*root_obj_ref)->left_obj = *left;
+      OBJTN_NN(*root_obj_ref)->right_obj = *right;
 
    } else {
 
