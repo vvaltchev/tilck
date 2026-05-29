@@ -180,6 +180,17 @@ bool wth_process_single_job(struct worker_thread *t)
    bool success;
    struct wjob job_to_run;
 
+   /*
+    * wth 0 owns the drain of KTIMER_MODE_DEFERRED fires. Doing it
+    * here — instead of going through the ring buffer — sidesteps the
+    * slot-pressure problem an IRQ-driven enqueue would face: the
+    * canonical queue is the deferred-fire list inside timer.c, this
+    * pass just consumes it. Each callback runs with preemption
+    * disabled (see run_pending_ktimers in kernel/timer.c).
+    */
+   if (t == worker_threads[0])
+      run_pending_ktimers();
+
    success = safe_ringbuf_read_elem(&t->rb, &job_to_run);
 
    if (success) {
@@ -211,7 +222,21 @@ void wth_run(void *arg)
 
       disable_interrupts_forced();
       {
-         if (safe_ringbuf_is_empty(&t->rb)) {
+         /*
+          * For wth 0, also consult the ktimer deferred-fire list:
+          * the rb-empty check alone doesn't see a deferred ktimer
+          * that landed between the drain in wth_process_single_job()
+          * and this point. Without this, the matching wth_wakeup_top
+          * from tick_all_timers() finds the worker in RUNNING state
+          * and CAS-no-ops, then we set SLEEPING here under
+          * IRQ-disabled and the fire is stranded until the next
+          * unrelated wakeup.
+          */
+         const bool sleep_ok =
+            safe_ringbuf_is_empty(&t->rb) &&
+            (t != worker_threads[0] || !ktimer_has_pending_deferred());
+
+         if (sleep_ok) {
             task_change_state_unsafe(t->task, TASK_STATE_SLEEPING);
             t->waiting_for_jobs = true;
 

@@ -187,12 +187,16 @@ void init_task_lists(struct task *ti)
 {
    bintree_node_init(&ti->tree_by_tid_node);
    bintree_node_init(&ti->runnable_tree_node);
-   bintree_node_init(&ti->timer_tree_node);
    list_node_init(&ti->siblings_node);
 
    list_init(&ti->tasks_waiting_list);
    list_init(&ti->on_exit);
    bzero(&ti->wobj, sizeof(struct wait_obj));
+
+   ktimer_init(&ti->primary_timer,
+               task_primary_timer_fire,
+               NULL,
+               KTIMER_MODE_IRQ);
 }
 
 void init_process_lists(struct process *pi)

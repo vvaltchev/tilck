@@ -8,6 +8,7 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/timer.h>
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/signal.h>
 
@@ -148,7 +149,6 @@ struct task {
 
    struct bintree_node tree_by_tid_node;
    struct bintree_node runnable_tree_node;
-   struct bintree_node timer_tree_node;
    struct list_node siblings_node;    /* nodes in parent's pi's children list */
 
    struct list tasks_waiting_list;    /* tasks waiting this task to end */
@@ -165,7 +165,15 @@ struct task {
    };
 
    struct wait_obj wobj;
-   u64 wakeup_at_tick;
+
+   /*
+    * Primary ktimer embedded in the task. Used by task_set_wakeup_timer()
+    * & friends to wake the task from sleep — KTIMER_MODE_IRQ, callback is
+    * task_primary_timer_fire() in kernel/timer.c. Tasks may also own
+    * additional, heap-allocated ktimers for other purposes (POSIX timers,
+    * deferred work, ...).
+    */
+   struct ktimer primary_timer;
 
    /* List of callbacks to call on exit */
    struct list on_exit;
@@ -487,7 +495,7 @@ int kthread_join_all(const int *tids, size_t n, bool ignore_signals);
 
 void task_set_wakeup_timer(struct task *task, u64 ticks);
 void task_update_wakeup_timer_if_any(struct task *ti, u64 new_ticks);
-u32 task_cancel_wakeup_timer(struct task *ti);
+void task_cancel_wakeup_timer(struct task *ti);
 
 typedef void (*kthread_func_ptr)(void *arg);
 

@@ -40,3 +40,11 @@ wth_enqueue_anywhere(int lowest_prio, void (*func)(void *), void *arg);
 
 void
 wth_wait_for_completion(struct worker_thread *wth);
+
+/*
+ * Wake the top-priority singleton worker (worker_threads[0]).
+ * IRQ-safe; used by the timer subsystem to flush pending
+ * KTIMER_MODE_DEFERRED callbacks.
+ */
+void
+wth_wakeup_top(void);

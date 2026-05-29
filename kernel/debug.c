@@ -167,8 +167,9 @@ static int dump_task_state_cb(void *obj, void *arg)
       }
    }
 
-   if (ti->wakeup_at_tick > 0)
-      printk(NO_PREFIX " timer=%llu", (ulonglong)ti->wakeup_at_tick);
+   if (ti->primary_timer.wakeup_at_tick > 0)
+      printk(NO_PREFIX " timer=%llu",
+             (ulonglong)ti->primary_timer.wakeup_at_tick);
 
    if (ti->timer_ready)
       printk(NO_PREFIX " timer_ready");
