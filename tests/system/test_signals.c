@@ -462,7 +462,7 @@ static bool got_all_signals(int n)
    }
 }
 
-static void test_sig_child_body(int n, bool busy_loop)
+static void test_sig_child_body(int n, bool busy_loop, int ready_fd)
 {
    /*
     * Special variables FORCED to be on the stack by using "volatile" and the
@@ -471,16 +471,26 @@ static void test_sig_child_body(int n, bool busy_loop)
     */
    volatile unsigned long magic1 = 0xcafebabe;
    volatile unsigned long magic2 = 0x11223344;
+   const char ready_byte = 'r';
+   sigset_t mask, orig_mask;
 
    DO_NOT_OPTIMIZE_AWAY(magic1);
    DO_NOT_OPTIMIZE_AWAY(magic2);
 
    memset((void *)test_got_sig, 0, sizeof(test_got_sig));
 
-   signal(SIGHUP, &child_sig_handler);
-   signal(SIGINT, &child_sig_handler);
-
    if (busy_loop) {
+
+      /*
+       * Busy-loop variant: the loop polls test_got_sig, so any signal
+       * delivered after the parent reads our ready byte is handled by
+       * the spin -- no race between handshake and wait entry.
+       */
+      signal(SIGHUP, &child_sig_handler);
+      signal(SIGINT, &child_sig_handler);
+
+      write(ready_fd, &ready_byte, 1);
+      close(ready_fd);
 
       for (int i = 0; i < 100*1000*1000; i++) {
          if (got_all_signals(n))
@@ -489,7 +499,25 @@ static void test_sig_child_body(int n, bool busy_loop)
 
    } else {
 
-      pause();
+      /*
+       * pause()-variant: there's a race between writing the ready
+       * byte and entering pause() -- the parent can fire the signal
+       * in that gap, the handler runs, and pause() then blocks
+       * forever with no pending signal. Block SIGHUP/SIGINT first,
+       * then use sigsuspend() to atomically unblock + wait.
+       */
+      sigemptyset(&mask);
+      sigaddset(&mask, SIGHUP);
+      sigaddset(&mask, SIGINT);
+      sigprocmask(SIG_BLOCK, &mask, &orig_mask);
+
+      signal(SIGHUP, &child_sig_handler);
+      signal(SIGINT, &child_sig_handler);
+
+      write(ready_fd, &ready_byte, 1);
+      close(ready_fd);
+
+      sigsuspend(&orig_mask);
    }
 
    if (!got_all_signals(n)) {
@@ -527,24 +555,40 @@ static int test_sig_n(int n, bool busy_loop, int exp_term_sig)
    int child_pid;
    int wstatus;
    int rc;
+   int ready_pipe[2];
+   char ready_byte;
 
    DEVSHELL_CMD_ASSERT(n == 1 || n == 2);
+
+   if (pipe(ready_pipe) < 0) {
+      printf("FAIL: pipe() failed: %s\n", strerror(errno));
+      return 1;
+   }
+
    child_pid = fork();
 
    if (!child_pid) {
-      test_sig_child_body(n, busy_loop);
+      close(ready_pipe[0]);
+      test_sig_child_body(n, busy_loop, ready_pipe[1]);
    }
 
    /* --- parent --- */
 
+   close(ready_pipe[1]);
+
    /*
-    * Sleep a bit in order to give some time to the child to enter in the busy
-    * loop. NOTE: this is an extremely poor way of synchronizing two tasks,
-    * even if it's simple and "just works" for tests.
-    *
-    * TODO: impl. a proper synchronization mechanism for sig3 and sig4 tests.
+    * Block on the ready byte from the child. By the time read()
+    * returns, the child has installed its signal handlers (and, for
+    * the pause variant, blocked SIGHUP/SIGINT in preparation for
+    * sigsuspend). Signals fired now can't be lost or mis-routed.
     */
-   usleep(25 * 1000);
+   if (read(ready_pipe[0], &ready_byte, 1) != 1) {
+      printf("FAIL: parent: child sync read failed\n");
+      close(ready_pipe[0]);
+      return 1;
+   }
+
+   close(ready_pipe[0]);
 
    if (exp_term_sig) {
 
