@@ -41,6 +41,8 @@ static int get_cmds_count(void)
 
 int cmd_selftest(int argc, char **argv)
 {
+   const char *failed_names[32];
+   int failed_count = 0;
    int rc;
    bool any_failure = false;
 
@@ -80,7 +82,8 @@ int cmd_selftest(int argc, char **argv)
     */
    for (int i = 0; i < argc; i++) {
 
-      printf("\033[93m[selftest]\033[0m [RUN   ] %s\n", argv[i]);
+      printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+             STR_RUN "%s\n", argv[i]);
       fflush(stdout);
 
       rc = sysenter_call3(TILCK_CMD_SYSCALL,
@@ -89,13 +92,27 @@ int cmd_selftest(int argc, char **argv)
                           NULL);
 
       if (rc != 0) {
-         printf("\033[93m[selftest]\033[0m [FAILED] %s\n", argv[i]);
+         printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+                COLOR_RED STR_FAIL RESET_ATTRS "%s\n", argv[i]);
          any_failure = true;
+         if (failed_count < ARRAY_SIZE(failed_names))
+            failed_names[failed_count++] = argv[i];
       } else {
-         printf("\033[93m[selftest]\033[0m [PASSED] %s\n", argv[i]);
+         printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+                COLOR_GREEN STR_PASS RESET_ATTRS "%s\n", argv[i]);
       }
 
       fflush(stdout);
+   }
+
+   if (failed_count > 0) {
+
+      printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+             COLOR_RED "Failed:" RESET_ATTRS "\n");
+
+      for (int i = 0; i < failed_count; i++)
+         printf(COLOR_YELLOW "[selftest]" RESET_ATTRS
+                "   %s\n", failed_names[i]);
    }
 
    return any_failure ? 1 : 0;
@@ -254,6 +271,8 @@ int cmd_runall(int argc, char **argv)
    u64 start_ms, end_ms;
    bool any_failure = false;
    int to_run = 0, passed = 0;
+   const char *failed_names[128];
+   int failed_count = 0;
 
    start_ms = get_monotonic_time_ms();
 
@@ -279,6 +298,8 @@ int cmd_runall(int argc, char **argv)
             fprintf(stderr, COLOR_YELLOW PFX RESET_ATTRS
                     "Unknown test '%s'\n", argv[a]);
             any_failure = true;
+            if (failed_count < ARRAY_SIZE(failed_names))
+               failed_names[failed_count++] = argv[a];
             continue;
          }
 
@@ -290,6 +311,8 @@ int cmd_runall(int argc, char **argv)
                         cmds_table[i].tt))
          {
             any_failure = true;
+            if (failed_count < ARRAY_SIZE(failed_names))
+               failed_names[failed_count++] = cmds_table[i].name;
             continue;
          }
 
@@ -311,6 +334,8 @@ int cmd_runall(int argc, char **argv)
                         cmds_table[i].tt))
          {
             any_failure = true;
+            if (failed_count < ARRAY_SIZE(failed_names))
+               failed_names[failed_count++] = cmds_table[i].name;
             continue;
          }
 
@@ -326,7 +351,22 @@ int cmd_runall(int argc, char **argv)
 
    printf(passed == to_run ? COLOR_GREEN : COLOR_RED);
    printf("Tests passed %d/%d" RESET_ATTRS " ", passed, to_run);
-   printf("(%" PRIu64 " ms)\n\n", end_ms - start_ms);
+   printf("(%" PRIu64 " ms)\n", end_ms - start_ms);
+
+   if (failed_count > 0) {
+
+      printf(COLOR_YELLOW PFX RESET_ATTRS
+             COLOR_RED "Failed:" RESET_ATTRS "\n");
+
+      for (int i = 0; i < failed_count; i++)
+         printf(COLOR_YELLOW PFX RESET_ATTRS "  %s\n", failed_names[i]);
+
+      if (failed_count == ARRAY_SIZE(failed_names))
+         printf(COLOR_YELLOW PFX RESET_ATTRS
+                "  ... (failure list truncated)\n");
+   }
+
+   printf("\n");
 
    if (dump_coverage) {
       dump_coverage_files();
