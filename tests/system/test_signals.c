@@ -1173,3 +1173,84 @@ int cmd_sigsegv5(int argc, char **argv)
       0
    );
 }
+
+/*
+ * Manual test for devshell's per-test timeout + process-group SIGKILL
+ * in userapps/devshell/commands.c:run_child. Not auto-enabled
+ * (cmds_table.h sets enabled_in_st = false): invoking it via `-c
+ * test_hang` bypasses run_child entirely and just hangs the shell,
+ * which is the point -- the test verifies that run_child catches
+ * the hang when it owns the wrapper fork.
+ *
+ * To re-verify after touching the watchdog: temporarily flip the
+ * enabled_in_st field for test_hang to `true` so it lands in
+ * cmd_runall's loop. The expected output sequence is
+ *
+ *   test_hang: parent pid=N, forking 3 children
+ *   test_hang: parent pid=N entering pause()
+ *   test_hang: child 0 pid=... entered
+ *   test_hang: child 1 pid=... entered
+ *   test_hang: child 2 pid=... entered
+ *   ... children print "alive tick=K" every 500 ms ...
+ *   [devshell] TIMEOUT: 'test_hang' didn't finish in 12000 ms;
+ *             killing process group
+ *   [devshell] [FAILED] test_hang (12001 ms)
+ *
+ * with NO "alive tick=" lines from any child past the TIMEOUT
+ * marker and NO "SURVIVED kill!" lines at all. If you see ticks
+ * after the TIMEOUT, the pgrp kill didn't reach the grandchildren
+ * and run_child is broken.
+ */
+int cmd_test_hang(int argc, char **argv)
+{
+   const int kids = 3;
+   int i, j, cpid;
+
+   printf("test_hang: parent pid=%d, forking %d children\n",
+          getpid(), kids);
+   fflush(stdout);
+
+   for (i = 0; i < kids; i++) {
+
+      cpid = fork();
+
+      if (cpid < 0) {
+         perror("fork");
+         exit(1);
+      }
+
+      if (!cpid) {
+
+         /*
+          * Grandchild: tick every 500 ms for 30 s. Each tick is a
+          * usleep + print, so if SIGKILL reaches us mid-usleep we
+          * stop printing immediately; if it doesn't, the ticks
+          * keep landing in the output past the watchdog deadline.
+          * The SURVIVED line at the end only fires if we complete
+          * the full 30 s -- a stronger negative signal than just
+          * missing ticks.
+          */
+         printf("test_hang: child %d pid=%d entered\n", i, getpid());
+         fflush(stdout);
+
+         for (j = 0; j < 60; j++) {
+            usleep(500 * 1000);
+            printf("test_hang: child %d pid=%d alive tick=%d\n",
+                   i, getpid(), j);
+            fflush(stdout);
+         }
+
+         printf("test_hang: child %d pid=%d SURVIVED kill!\n",
+                i, getpid());
+         fflush(stdout);
+         exit(0);
+      }
+   }
+
+   printf("test_hang: parent pid=%d entering pause()\n", getpid());
+   fflush(stdout);
+   pause();
+   printf("test_hang: parent SURVIVED kill!\n");
+   fflush(stdout);
+   return 0;
+}

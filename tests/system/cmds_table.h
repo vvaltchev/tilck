@@ -16,6 +16,7 @@ CMD_ENTRY(selftest,     TT_LONG,  false)
 CMD_ENTRY(runall,       TT_LONG,  false)
 CMD_ENTRY(loop,         TT_MED,   false)
 CMD_ENTRY(fpu_loop,     TT_LONG,  false)
+CMD_ENTRY(test_hang,    TT_SHORT, false)
 
 CMD_ENTRY(fork0,        TT_MED,    true)
 CMD_ENTRY(fork1,        TT_SHORT,  true)
