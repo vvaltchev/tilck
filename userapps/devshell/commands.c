@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <time.h>
 #include <sys/wait.h>
 
@@ -75,8 +76,30 @@ static u64 get_monotonic_time_ms(void)
    return (u64)tp.tv_sec * 1000 + (u64)tp.tv_nsec / 1000000;
 }
 
+/*
+ * Per-test wall-clock budget. Matches the Python test runner's
+ * per-test timeouts in tests/runners/run_all_tests so devshell's
+ * own watchdog races the runner's; whichever fires first wins,
+ * and devshell's cleaner failure path -- "TIMEOUT: '<name>' ...,
+ * killing process group" + continue with the next test -- beats
+ * the runner-level "VM timed out" outcome.
+ */
+static int test_timeout_ms(enum timeout_type tt)
+{
+   switch (tt) {
+      case TT_SHORT: return  12 * 1000;
+      case TT_MED:   return  36 * 1000;
+      case TT_LONG:  return 108 * 1000;
+   }
+   return 36 * 1000;
+}
+
 static bool
-run_child(int argc, char **argv, cmd_func_type func, const char *name)
+run_child(int argc,
+          char **argv,
+          cmd_func_type func,
+          const char *name,
+          enum timeout_type tt)
 {
    static const char *pass_fail_strings[2] = {
       COLOR_RED STR_FAIL RESET_ATTRS,
@@ -85,7 +108,8 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
    int child_pid, wstatus, rc;
    u64 start_ms, end_ms;
-   bool pass;
+   int timeout_ms, waited_ms = 0;
+   bool pass, timed_out = false;
 
    start_ms = get_monotonic_time_ms();
 
@@ -100,14 +124,75 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
    }
 
    if (!child_pid) {
+
+      /*
+       * Become leader of a new process group so the run_child
+       * parent can SIGKILL the entire test process tree --
+       * including any grandchildren the test itself fork()ed --
+       * if the test hangs. Without this, devshell can only
+       * waitpid() on its direct child; a grandchild stuck in an
+       * indefinite wait (sigsuspend, pause, deadlocked pipe,
+       * ...) would otherwise leak as an orphan and block runall.
+       */
+      setpgid(0, 0);
       exit(func(argc, argv));
    }
 
-   rc = waitpid(child_pid, &wstatus, 0);
+   /*
+    * Race-close: also set the child's pgrp from the parent. If
+    * the child hasn't yet reached its own setpgid() and we time
+    * out and kill(-child_pid, ...) the group, this guarantees
+    * the child is in the right group at that moment. Idempotent
+    * if the child already did it; -ESRCH (child exited) is fine.
+    */
+   setpgid(child_pid, child_pid);
 
-   if (rc < 0) {
-      perror("waitpid() failed");
-      return false;
+   timeout_ms = test_timeout_ms(tt);
+
+   while (true) {
+
+      rc = waitpid(child_pid, &wstatus, WNOHANG);
+
+      if (rc < 0) {
+         perror("waitpid() failed");
+         return false;
+      }
+
+      if (rc == child_pid)
+         break;   /* child exited and was reaped */
+
+      /* rc == 0: child still alive */
+
+      if (waited_ms >= timeout_ms) {
+         timed_out = true;
+         break;
+      }
+
+      usleep(100 * 1000);   /* poll every 100 ms */
+      waited_ms += 100;
+   }
+
+   if (timed_out) {
+
+      printf(COLOR_YELLOW PFX COLOR_RED "TIMEOUT: " RESET_ATTRS
+             "'%s' didn't finish in %d ms; killing process group\n",
+             name, timeout_ms);
+
+      /*
+       * kill(-pgid, SIGKILL): hit every process in the test's
+       * process group. The child + any grandchildren it forked
+       * die at once and the final waitpid below reaps the direct
+       * child; grandchildren get reparented to init and reaped
+       * there.
+       */
+      kill(-child_pid, SIGKILL);
+
+      rc = waitpid(child_pid, &wstatus, 0);
+
+      if (rc < 0) {
+         perror("waitpid() after SIGKILL failed");
+         return false;
+      }
    }
 
    if (rc != child_pid) {
@@ -118,7 +203,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
    end_ms = get_monotonic_time_ms();
 
-   pass = WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
+   pass = !timed_out && WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
    printf(COLOR_YELLOW PFX "%s", pass_fail_strings[pass]);
    printf("%s (%" PRIu64 " ms)\n\n", name, end_ms - start_ms);
    return pass;
@@ -139,7 +224,11 @@ int cmd_runall(int argc, char **argv)
 
       to_run++;
 
-      if (!run_child(argc, argv, cmds_table[i].func, cmds_table[i].name)) {
+      if (!run_child(argc, argv,
+                     cmds_table[i].func,
+                     cmds_table[i].name,
+                     cmds_table[i].tt))
+      {
          any_failure = true;
          continue;
       }
