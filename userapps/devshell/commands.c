@@ -42,23 +42,63 @@ static int get_cmds_count(void)
 int cmd_selftest(int argc, char **argv)
 {
    int rc;
+   bool any_failure = false;
 
    if (argc < 1) {
       fprintf(stderr, PFX "Expected a <selftest> argument.\n");
       return 1;
    }
 
-   rc = sysenter_call3(TILCK_CMD_SYSCALL,
-                       TILCK_CMD_RUN_SELFTEST,
-                       argv[0], /* self test name */
-                       NULL);
+   if (argc == 1) {
 
-   if (rc != 0) {
-      fprintf(stderr, PFX "Invalid selftest '%s'\n", argv[0]);
-      return 1;
+      /*
+       * Single-name case (incl. "runall"): defer to the kernel.
+       * For "runall", se_runall emits [RUN]/[PASSED]/[FAILED] per
+       * test itself; for any other name, se_run runs the test
+       * without those markers -- same behavior as before this
+       * command grew multi-name support.
+       */
+      rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                          TILCK_CMD_RUN_SELFTEST,
+                          argv[0],
+                          NULL);
+
+      if (rc != 0) {
+         fprintf(stderr, PFX "Invalid selftest '%s'\n", argv[0]);
+         return 1;
+      }
+
+      return 0;
    }
 
-   return 0;
+   /*
+    * Multi-name case (the run_all_tests Python runner uses this
+    * for `-c -f <regex>`): the kernel-side se_run doesn't emit
+    * the [RUN]/[PASSED]/[FAILED] markers se_runall does, so emit
+    * them here so the runner's output stays regular regardless of
+    * which path produced the test list.
+    */
+   for (int i = 0; i < argc; i++) {
+
+      printf("\033[93m[selftest]\033[0m [RUN   ] %s\n", argv[i]);
+      fflush(stdout);
+
+      rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                          TILCK_CMD_RUN_SELFTEST,
+                          argv[i],
+                          NULL);
+
+      if (rc != 0) {
+         printf("\033[93m[selftest]\033[0m [FAILED] %s\n", argv[i]);
+         any_failure = true;
+      } else {
+         printf("\033[93m[selftest]\033[0m [PASSED] %s\n", argv[i]);
+      }
+
+      fflush(stdout);
+   }
+
+   return any_failure ? 1 : 0;
 }
 
 static u64 get_monotonic_time_ms(void)
@@ -217,23 +257,65 @@ int cmd_runall(int argc, char **argv)
 
    start_ms = get_monotonic_time_ms();
 
-   for (int i = 1; i < get_cmds_count(); i++) {
+   if (argc > 0) {
 
-      if (!cmds_table[i].enabled_in_st || cmds_table[i].tt == TT_LONG)
-         continue;
+      /*
+       * Explicit list of test names (the run_all_tests Python runner
+       * uses this for `-c -f <regex>`, packing the matching names
+       * into argv). Run only what the caller asked for; skip the
+       * enabled_in_st / TT_LONG gates since the caller named these
+       * deliberately. Tests don't expect to see this list as their
+       * own argv, so the run_child fork gets (0, NULL).
+       */
+      for (int a = 0; a < argc; a++) {
 
-      to_run++;
+         int i;
 
-      if (!run_child(argc, argv,
-                     cmds_table[i].func,
-                     cmds_table[i].name,
-                     cmds_table[i].tt))
-      {
-         any_failure = true;
-         continue;
+         for (i = 1; i < get_cmds_count(); i++)
+            if (!strcmp(cmds_table[i].name, argv[a]))
+               break;
+
+         if (i == get_cmds_count()) {
+            fprintf(stderr, COLOR_YELLOW PFX RESET_ATTRS
+                    "Unknown test '%s'\n", argv[a]);
+            any_failure = true;
+            continue;
+         }
+
+         to_run++;
+
+         if (!run_child(0, NULL,
+                        cmds_table[i].func,
+                        cmds_table[i].name,
+                        cmds_table[i].tt))
+         {
+            any_failure = true;
+            continue;
+         }
+
+         passed++;
       }
 
-      passed++;
+   } else {
+
+      for (int i = 1; i < get_cmds_count(); i++) {
+
+         if (!cmds_table[i].enabled_in_st || cmds_table[i].tt == TT_LONG)
+            continue;
+
+         to_run++;
+
+         if (!run_child(argc, argv,
+                        cmds_table[i].func,
+                        cmds_table[i].name,
+                        cmds_table[i].tt))
+         {
+            any_failure = true;
+            continue;
+         }
+
+         passed++;
+      }
    }
 
    end_ms = get_monotonic_time_ms();

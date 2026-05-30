@@ -523,8 +523,10 @@ def parse_args():
    parser.add_argument(
       "-c", "--compact-run",
       action = "store_true",
-      help = "Run all the tests of a each type "
-             "in a single VM boot (filters ignored)",
+      help = "Run all the tests of each type in a single VM boot. "
+             "Combine with -f to limit the single boot to the "
+             "filter-matched tests (capped at "
+             "{} matches per type).".format(COMPACT_FILTER_MAX),
    )
 
    parser.add_argument(
@@ -578,6 +580,94 @@ def list_timeouts():
    for s in INF_STR_TIMEOUTS:
       raw_print("{:8}: <no timeout>".format(s))
 
+COMPACT_FILTER_MAX = 10
+
+def compact_pack_tests(args):
+
+   """
+   In -c (compact-run) mode, override tests_by_type so that each test
+   type runs as a *single* VM boot. Without -f, that single boot just
+   invokes the kernel-side runall path -- the historical behavior.
+
+   With -f, the inner runners would otherwise ignore the filter (they
+   have no per-test loop of their own), so we resolve the regex here
+   and hand the inner runner a packed list of test names instead. The
+   shellcmd inner runner becomes `runall N1 N2 ...` (cmd_runall picks
+   only the listed names) and the selftest inner runner becomes
+   `N1 N2 ...` (cmd_selftest loops through them, one sysenter each).
+
+   Capped at COMPACT_FILTER_MAX matches per type to keep argv inside
+   the inner runners' modest buffer sizes; if you actually need to
+   blast through more than that, drop -f and run the full compact
+   pass instead.
+   """
+
+   has_filter = args.filter != '.*'
+
+   if not has_filter:
+
+      tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+      if is_cmake_opt_enabled(KERNEL_SELFTESTS):
+         tests_by_type['selftest'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+
+      return
+
+   reg = args.filter
+
+   for tt in TEST_TYPES:
+
+      if tt == 'interactive':
+         # Interactive tests have their own runner; compact-run packs
+         # only the in-VM types.
+         continue
+
+      if tt == 'selftest' and not is_cmake_opt_enabled(KERNEL_SELFTESTS):
+         tests_by_type[tt] = []
+         continue
+
+      matches = []
+
+      for x in tests_by_type[tt]:
+
+         name, timeout = x[0], x[1]
+         is_manual = timeout == MANUAL_TEST_TIMEOUT
+
+         if not re.match(reg, name):
+            continue
+
+         if is_manual and not args.allow_manual:
+            continue
+
+         matches.append(x)
+
+      if not matches:
+         tests_by_type[tt] = []
+         continue
+
+      if len(matches) > COMPACT_FILTER_MAX:
+         raw_print(
+            "ERROR: -f '{}' matched {} {} tests; max in compact mode is {}. "
+            "Refusing to run -- narrow the filter or drop -c."
+               .format(reg, len(matches), tt, COMPACT_FILTER_MAX)
+         )
+         sys.exit(Fail.no_tests_matching.value)
+
+      names_str = ' '.join(m[0] for m in matches)
+      # Sum of per-test timeouts + a generous boot/teardown margin.
+      packed_timeout = sum(m[1] for m in matches) + 30
+
+      if tt == 'shellcmd':
+         packed_name = 'runall ' + names_str
+      else:
+         packed_name = names_str
+
+      tests_by_type[tt] = [ [packed_name, packed_timeout] ]
+
+   # After packing, the entries in tests_by_type[*] are synthetic and
+   # won't match the original regex; bypass the per-test filter check
+   # downstream.
+   args.filter = '.*'
+
 def main():
 
    set_runner_name("test runner")
@@ -585,9 +675,7 @@ def main():
    args = parse_args()
 
    if args.compact_run:
-      tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
-      if is_cmake_opt_enabled(KERNEL_SELFTESTS):
-         tests_by_type['selftest'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+      compact_pack_tests(args)
 
    if args.list_timeouts:
       list_timeouts()
