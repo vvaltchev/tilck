@@ -472,25 +472,46 @@ static void test_sig_child_body(int n, bool busy_loop, int ready_fd)
    volatile unsigned long magic1 = 0xcafebabe;
    volatile unsigned long magic2 = 0x11223344;
    const char ready_byte = 'r';
-   sigset_t mask, orig_mask;
 
    DO_NOT_OPTIMIZE_AWAY(magic1);
    DO_NOT_OPTIMIZE_AWAY(magic2);
 
    memset((void *)test_got_sig, 0, sizeof(test_got_sig));
 
+   signal(SIGHUP, &child_sig_handler);
+   signal(SIGINT, &child_sig_handler);
+
+   write(ready_fd, &ready_byte, 1);
+   close(ready_fd);
+
+   /*
+    * Wait for all expected signals to arrive. Both variants poll
+    * test_got_sig (set by child_sig_handler) and BOUND the wait:
+    * if the kernel ever fails to deliver an expected signal, the
+    * loop terminates after a finite time and the child exits 1
+    * with the "didn't run handlers" message below -- devshell's
+    * run_child then reaps a clean exit and moves on. We avoid
+    * pause()/sigsuspend() here precisely because they would let
+    * a missed signal hang the child forever: devshell's
+    * waitpid(child_pid, ..., 0) has no timeout, so any orphan
+    * grandchild stuck in an indefinite wait would freeze the
+    * whole runall loop until the outer Python test runner timed
+    * out the VM, turning a precise "didn't run handlers" failure
+    * into a vague "test timed out" one.
+    *
+    *   busy_loop variant -- tight userspace spin, ~hundreds of ms
+    *                        of headroom. Tests signal delivery on
+    *                        the IRQ/return-to-usermode path.
+    *
+    *   sleep variant     -- usleep loop. usleep is a syscall that
+    *                        returns -EINTR when a signal handler
+    *                        runs, so each delivered signal wakes
+    *                        the child immediately and we re-check.
+    *                        ~2 s wall-clock budget total. Tests
+    *                        signal delivery on the syscall-exit
+    *                        path.
+    */
    if (busy_loop) {
-
-      /*
-       * Busy-loop variant: the loop polls test_got_sig, so any signal
-       * delivered after the parent reads our ready byte is handled by
-       * the spin -- no race between handshake and wait entry.
-       */
-      signal(SIGHUP, &child_sig_handler);
-      signal(SIGINT, &child_sig_handler);
-
-      write(ready_fd, &ready_byte, 1);
-      close(ready_fd);
 
       for (int i = 0; i < 100*1000*1000; i++) {
          if (got_all_signals(n))
@@ -499,35 +520,11 @@ static void test_sig_child_body(int n, bool busy_loop, int ready_fd)
 
    } else {
 
-      /*
-       * pause()-variant: there's a race between writing the ready
-       * byte and entering pause() -- the parent can fire the signal
-       * in that gap, the handler runs, and pause() then blocks
-       * forever with no pending signal. Block SIGHUP/SIGINT first,
-       * then use sigsuspend() to atomically unblock + wait.
-       *
-       * For n=2, sigsuspend returns after the FIRST handler runs --
-       * the second kill() in the parent isn't atomic with the first,
-       * and the wake-up reschedule (see kernel/wobj.c) gives the
-       * child the CPU back so promptly that it can exit sigsuspend
-       * before SIGINT lands. Loop until got_all_signals(n) is true:
-       * between sigsuspend returns the mask is back to `mask` so
-       * any signal that arrived in the gap is held pending and is
-       * delivered as soon as the next sigsuspend unblocks.
-       */
-      sigemptyset(&mask);
-      sigaddset(&mask, SIGHUP);
-      sigaddset(&mask, SIGINT);
-      sigprocmask(SIG_BLOCK, &mask, &orig_mask);
-
-      signal(SIGHUP, &child_sig_handler);
-      signal(SIGINT, &child_sig_handler);
-
-      write(ready_fd, &ready_byte, 1);
-      close(ready_fd);
-
-      while (!got_all_signals(n))
-         sigsuspend(&orig_mask);
+      for (int i = 0; i < 2000; i++) {
+         if (got_all_signals(n))
+            break;
+         usleep(1000);
+      }
    }
 
    if (!got_all_signals(n)) {
