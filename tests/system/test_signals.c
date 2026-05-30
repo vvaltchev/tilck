@@ -505,6 +505,15 @@ static void test_sig_child_body(int n, bool busy_loop, int ready_fd)
        * in that gap, the handler runs, and pause() then blocks
        * forever with no pending signal. Block SIGHUP/SIGINT first,
        * then use sigsuspend() to atomically unblock + wait.
+       *
+       * For n=2, sigsuspend returns after the FIRST handler runs --
+       * the second kill() in the parent isn't atomic with the first,
+       * and the wake-up reschedule (see kernel/wobj.c) gives the
+       * child the CPU back so promptly that it can exit sigsuspend
+       * before SIGINT lands. Loop until got_all_signals(n) is true:
+       * between sigsuspend returns the mask is back to `mask` so
+       * any signal that arrived in the gap is held pending and is
+       * delivered as soon as the next sigsuspend unblocks.
        */
       sigemptyset(&mask);
       sigaddset(&mask, SIGHUP);
@@ -517,7 +526,8 @@ static void test_sig_child_body(int n, bool busy_loop, int ready_fd)
       write(ready_fd, &ready_byte, 1);
       close(ready_fd);
 
-      sigsuspend(&orig_mask);
+      while (!got_all_signals(n))
+         sigsuspend(&orig_mask);
    }
 
    if (!got_all_signals(n)) {
