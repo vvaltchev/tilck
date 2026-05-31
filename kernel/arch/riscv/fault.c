@@ -121,7 +121,7 @@ static void fault_in_panic(regs_t *r)
 
 void handle_fault(regs_t *r)
 {
-   bool cow = false;
+   enum cow_result cow = COW_NOT_A_COW;
    const int int_num = r->int_num;
 
    ASSERT(is_fault(int_num));
@@ -136,22 +136,28 @@ void handle_fault(regs_t *r)
       cow = handle_potential_cow(r);
    }
 
-   if (!cow) {
+   if (cow == COW_RESOLVED)
+      return;                            /* serviced transparently: retry */
 
-      if (is_fault_resumable(int_num))
-         return handle_resumable_fault(r);
+   if (cow == COW_NO_MEM)
+      return handle_cow_out_of_mem(r);   /* recover (-ENOMEM) / kill / panic */
 
-      if (LIKELY(fault_handlers[int_num] != NULL)) {
+   /* cow == COW_NOT_A_COW: an ordinary fault */
+   if (is_fault_resumable(int_num)) {
+      get_curr_task()->fault_resume_reason = 0;
+      return handle_resumable_fault(r);
+   }
 
-         fault_handlers[int_num](r);
+   if (LIKELY(fault_handlers[int_num] != NULL)) {
 
-      } else {
+      fault_handlers[int_num](r);
 
-         panic("Unhandled fault #%i: %s EIP: %p",
-               int_num,
-               riscv_exception_names[int_num],
-               regs_get_ip(r));
-      }
+   } else {
+
+      panic("Unhandled fault #%i: %s EIP: %p",
+            int_num,
+            riscv_exception_names[int_num],
+            regs_get_ip(r));
    }
 }
 

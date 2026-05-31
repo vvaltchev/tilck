@@ -3,12 +3,14 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/unaligned.h>
 #include <tilck/common/utils.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/signal.h>
 
 #include <linux/auxvec.h> // system header
 
@@ -25,13 +27,51 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
 
 int copy_to_user(void *user_ptr, const void *src, size_t n)
 {
+   struct task *curr = get_curr_task();
    u32 r;
 
    if (user_out_of_range(user_ptr, n))
       return -1;
 
    r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, user_ptr, src, n);
-   return !r ? 0 : -1;
+
+   if (!r)
+      return 0;
+
+   /*
+    * A page fault was caught mid-copy. handle_cow_out_of_mem() sets
+    * fault_resume_reason = -ENOMEM for an out-of-memory CoW page; for an
+    * ordinary bad-pointer fault the reason is left 0, so we report -1 as usual.
+    */
+   return curr->fault_resume_reason ? curr->fault_resume_reason : -1;
+}
+
+void handle_cow_out_of_mem(regs_t *r)
+{
+   struct task *curr = get_curr_task();
+
+   if (is_fault_resumable(regs_intnum(r))) {
+
+      /*
+       * The kernel hit OOM while servicing a CoW page during a fault-resumable
+       * primitive (copy_to_user() & friends). Unwind to the caller with -ENOMEM
+       * instead of crashing; the faulting page is left untouched (still CoW).
+       */
+      curr->fault_resume_reason = -ENOMEM;
+      handle_resumable_fault(r);    /* NORETURN: unwinds into the primitive */
+      NOT_REACHED();
+   }
+
+   if (!in_syscall(curr)) {
+
+      /* User-mode CoW fault under memory pressure: kill the process. */
+      printk("Out-of-memory: killing pid %d\n", get_curr_pid());
+      send_signal(get_curr_pid(), SIGKILL, SIG_FL_PROCESS | SIG_FL_FAULT);
+      return;
+   }
+
+   /* In-kernel CoW fault outside a resumable primitive == a real bug. */
+   panic("Out-of-memory: can't service a CoW page [pid %d]", get_curr_pid());
 }
 
 static void

@@ -99,6 +99,9 @@ kmalloc_accelerator_get_elem(struct kmalloc_acc *a);
 void
 kmalloc_destroy_accelerator(struct kmalloc_acc *a);
 
+/* Test hook (selftests): arm the next page-sized kmalloc to fail once. */
+void debug_kmalloc_inject_fail_next(void);
+
 static inline void *
 kmalloc(size_t size)
 {

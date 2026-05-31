@@ -32,6 +32,22 @@ STATIC_ASSERT(sizeof(struct block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
 static const struct block_node s_new_node; // Just zeros.
 
+/*
+ * Test hook (selftests only): when armed via debug_kmalloc_inject_fail_next(),
+ * the next page-sized general_kmalloc() fails once, to exercise the
+ * out-of-memory recovery paths (e.g. a CoW fault that cannot allocate). The
+ * storage, the setter's body and the check in general_kmalloc() are all gated
+ * on the DEBUG_CHECKS 0/1 macro, so they dead-code-eliminate in release builds.
+ * See selftest_cow_oom().
+ */
+static bool kmalloc_inject_fail_next;
+
+void debug_kmalloc_inject_fail_next(void)
+{
+   if (DEBUG_CHECKS)
+      kmalloc_inject_fail_next = true;
+}
+
 #define HALF(x) ((x) >> 1)
 #define TWICE(x) ((x) << 1)
 

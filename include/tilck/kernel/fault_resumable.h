@@ -29,3 +29,11 @@ static inline int get_fault_num(u32 r)
 void handle_resumable_fault(regs_t *r);
 u32 fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...);
 
+/*
+ * Policy for a CoW page fault that ran out of memory (COW_NO_MEM): recover via
+ * the fault-resumable machinery when the kernel was accessing user memory
+ * (copy_to_user() & friends), kill the process on a user-mode fault, or panic
+ * for a genuinely-unguarded in-kernel access.
+ */
+void handle_cow_out_of_mem(regs_t *r);
+

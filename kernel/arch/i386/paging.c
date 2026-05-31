@@ -41,14 +41,14 @@ pdir_get_page_table(pdir_t *pdir, u32 i)
    return PA_TO_LIN_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
-bool handle_potential_cow(void *context)
+enum cow_result handle_potential_cow(void *context)
 {
    regs_t *r = context;
    page_table_t *pt;
    u32 vaddr;
 
    if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW)
-      return false;
+      return COW_NOT_A_COW;
 
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
@@ -58,7 +58,7 @@ bool handle_potential_cow(void *context)
    pt = pdir_get_page_table(get_curr_pdir(), pd_index);
 
    if (!(pt->pages[pt_index].avail & PAGE_COW_ORIG_RW))
-      return false; /* Not a COW page */
+      return COW_NOT_A_COW; /* Not a COW page */
 
    const u32 orig_page_paddr = (u32)
       pt->pages[pt_index].pageAddr << PAGE_SHIFT;
@@ -77,7 +77,7 @@ bool handle_potential_cow(void *context)
       pt->pages[pt_index].rw = true;
       pt->pages[pt_index].avail = 0;
       invalidate_page_hw(vaddr);
-      return true;
+      return COW_RESOLVED;
    }
 
    // Allocate a new page.
@@ -85,23 +85,12 @@ bool handle_potential_cow(void *context)
 
    if (!new_page_vaddr) {
 
-      // Out-of-memory case
-      struct task *curr = get_curr_task();
-
-      if (!in_syscall(curr)) {
-
-         // The task was not running in kernel: we can safely kill it.
-         printk("Out-of-memory: killing pid %d\n", get_curr_pid());
-         send_signal(get_curr_pid(), SIGKILL, SIG_FL_PROCESS | SIG_FL_FAULT);
-         return true;
-
-      } else {
-
-         // We cannot kill a task running in kernel during a CoW page fault
-         // In this case (but in the one above too), Linux puts the process to
-         // sleep, while the OOM killer runs and frees some memory.
-         panic("Out-of-memory: can't copy a CoW page [pid %d]", get_curr_pid());
-      }
+      /*
+       * We could not allocate a page for the CoW copy. Report it distinctly
+       * (COW_NO_MEM) and let the fault dispatcher recover it gracefully via
+       * handle_cow_out_of_mem(), instead of disguising it as a plain fault.
+       */
+      return COW_NO_MEM;
    }
 
    ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
@@ -127,7 +116,7 @@ bool handle_potential_cow(void *context)
    pt->pages[pt_index].avail = 0;
 
    invalidate_page_hw(vaddr);
-   return true;
+   return COW_RESOLVED;
 }
 
 static void kernel_page_fault_panic(regs_t *r, u32 vaddr, bool rw, bool p)

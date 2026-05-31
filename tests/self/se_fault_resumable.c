@@ -7,6 +7,11 @@
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/self_tests.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/paging_hw.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/errno.h>
 
 #define NESTED_FAULTING_CODE_MAX_LEVELS 4
 
@@ -166,4 +171,65 @@ void selftest_fault_res_perf(void)
 }
 
 REGISTER_SELF_TEST(fault_res_perf, se_short, &selftest_fault_res_perf)
+
+/*
+ * Verify that an out-of-memory CoW page fault, taken while the kernel is inside
+ * a fault-resumable region, is recovered gracefully -- the fault_resumable_call
+ * returns and fault_resume_reason is set to -ENOMEM -- instead of panicking.
+ *
+ * Manual test: it arms a one-shot kmalloc failure, and an unrelated allocation
+ * (e.g. one from an interrupt handler such as ACPICA) must not consume it. So
+ * the armed window runs with interrupts disabled, and the test stays out of the
+ * automated 'runall'. It also needs DEBUG_CHECKS for the injection hook.
+ */
+void selftest_cow_oom(void)
+{
+   pdir_t *const pdir = get_curr_pdir();
+   const ulong val = 0xcafef00d;
+   ulong int_var;
+   void *p;
+   u32 r;
+
+   if (!DEBUG_CHECKS) {
+      printk("cow_oom: needs DEBUG_CHECKS=1 for kmalloc fail injection\n");
+      se_regular_end();
+      return;
+   }
+
+   p = hi_vmem_reserve(PAGE_SIZE);
+   VERIFY(p != NULL);
+
+   /* A writable zero page is mapped read-only + CoW: writing to it faults. */
+   VERIFY(map_zero_page(pdir, p, PAGING_FL_RW) == 0);
+
+   /*
+    * Arm the one-shot failure and trigger the CoW write with interrupts off, so
+    * the failure hits our page-copy allocation and not an unrelated kmalloc
+    * from an interrupt handler (e.g. ACPICA).
+    */
+   disable_interrupts(&int_var);
+   {
+      debug_kmalloc_inject_fail_next();
+      r = fault_resumable_call(1 << FAULT_PAGE_FAULT, memcpy, 3,
+                               p, &val, sizeof(val));
+   }
+   enable_interrupts(&int_var);
+
+   /* The write faulted (CoW) and we recovered with -ENOMEM (no panic). */
+   VERIFY(r == 1u << FAULT_PAGE_FAULT);
+   VERIFY(get_curr_task()->fault_resume_reason == -ENOMEM);
+
+   /* The page was left untouched (still CoW): the same write now succeeds. */
+   r = fault_resumable_call(1 << FAULT_PAGE_FAULT, memcpy, 3,
+                            p, &val, sizeof(val));
+   VERIFY(r == 0);
+   VERIFY(*(volatile ulong *)p == val);
+
+   unmap_page(pdir, p, true);
+   hi_vmem_release(p, PAGE_SIZE);
+   se_regular_end();
+}
+
+REGISTER_SELF_TEST(cow_oom, se_manual, &selftest_cow_oom)
+
 #endif /* __i386__ */
