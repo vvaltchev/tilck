@@ -94,6 +94,11 @@ mkdir build-dir && cd build-dir && /abs/path/scripts/cmake_run && make -j
 ./scripts/adv/gen_other_builds  # builds every scripts/build_generators/* config
 ```
 
+**Build directories are disposable.** `build/`, any out-of-tree `build-*`,
+and per-arch build trees are regenerable artifacts — delete, recreate, or
+reconfigure them freely (e.g. for a throwaway cross-config build). Nothing
+of value is lost: only build output that `cmake_run` + `make` reproduce. No
+need to ask before clobbering or removing one.
 
 ## Testing
 
