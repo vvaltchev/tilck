@@ -139,9 +139,12 @@ void process_free_mappings_info(struct process *pi)
    struct mappings_info *mi = pi->mi;
 
    if (mi) {
-      ASSERT(mi->mmap_heap);
-      kmalloc_destroy_heap(mi->mmap_heap);
-      kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
+
+      if (mi->mmap_heap) {
+         kmalloc_destroy_heap(mi->mmap_heap);
+         kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
+      }
+
       kfree_obj(mi, struct mappings_info);
       pi->mi = NULL;
    }

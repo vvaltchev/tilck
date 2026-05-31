@@ -160,11 +160,16 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
       goto oom_case;
 
    list_init(&new_mi->mappings);
+   new_mi->mmap_heap = NULL;
+   new_mi->mmap_heap_size = 0;
 
-   if (!(new_mi->mmap_heap = kmalloc_heap_dup(mi->mmap_heap)))
-      goto oom_case;
+   if (mi->mmap_heap) {
 
-   new_mi->mmap_heap_size = mi->mmap_heap_size;
+      if (!(new_mi->mmap_heap = kmalloc_heap_dup(mi->mmap_heap)))
+         goto oom_case;
+
+      new_mi->mmap_heap_size = mi->mmap_heap_size;
+   }
 
    list_for_each_ro(um, &mi->mappings, pi_node) {
 
