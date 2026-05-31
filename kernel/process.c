@@ -826,8 +826,8 @@ int setup_process(struct elf_program_info *pinfo,
 
       } else {
 
-         remove_all_user_zero_mem_mappings(pi);
          remove_all_file_mappings(pi);
+         remove_all_user_mappings(pi);
          process_free_mappings_info(pi);
 
          ASSERT(old_pdir == pi->pdir);
