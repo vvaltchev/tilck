@@ -109,23 +109,19 @@ void *sys_brk(void *new_brk)
 static int
 create_process_mmap_heap(struct process *pi)
 {
+   struct mappings_info *mi = pi->mi;
    struct kmalloc_heap *mmap_heap;
    void *valloc_func = &user_map_zero_page;
    void *vfree_func = &user_unmap_zero_page;
 
-   ASSERT(!pi->mi);
+   ASSERT(mi);
+   ASSERT(!mi->mmap_heap);
 
-   if (!(pi->mi = kalloc_obj(struct mappings_info)))
+   if (!(mmap_heap = kzmalloc(kmalloc_get_heap_struct_size())))
       return -ENOMEM;
 
-   if (!(mmap_heap = kzmalloc(kmalloc_get_heap_struct_size()))) {
-      kfree_obj(pi->mi, struct mappings_info);
-      return -ENOMEM;
-   }
-
-   list_init(&pi->mi->mappings);
-   pi->mi->mmap_heap = mmap_heap;
-   pi->mi->mmap_heap_size = USER_MMAP_MIN_SZ;
+   mi->mmap_heap = mmap_heap;
+   mi->mmap_heap_size = USER_MMAP_MIN_SZ;
 
    if (MMAP_NO_COW) {
       valloc_func = &user_valloc_and_map;
@@ -135,7 +131,7 @@ create_process_mmap_heap(struct process *pi)
    bool success =
       kmalloc_create_heap(mmap_heap,
                           USER_MMAP_BEGIN,
-                          pi->mi->mmap_heap_size,
+                          mi->mmap_heap_size,
                           PAGE_SIZE,
                           PAGE_SIZE,            /* alloc block size */
                           false,                /* linear mapping */
@@ -144,8 +140,9 @@ create_process_mmap_heap(struct process *pi)
                           vfree_func);
 
    if (!success) {
-      kfree2(pi->mi->mmap_heap, kmalloc_get_heap_struct_size());
-      kfree_obj(pi->mi, struct mappings_info);
+      kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
+      mi->mmap_heap = NULL;
+      mi->mmap_heap_size = 0;
       return -ENOMEM;
    }
 
@@ -280,10 +277,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
-   if (!pi->mi) {
-      if ((rc = create_process_mmap_heap(pi))) {
+   if (!pi->mi->mmap_heap) {
+      if ((rc = create_process_mmap_heap(pi)))
          return rc;
-      }
    }
 
    disable_preemption();

@@ -136,16 +136,8 @@ static bool do_common_task_allocs(struct task *ti, bool alloc_bufs)
 
 void process_free_mappings_info(struct process *pi)
 {
-   struct mappings_info *mi = pi->mi;
-
-   if (mi) {
-
-      if (mi->mmap_heap) {
-         kmalloc_destroy_heap(mi->mmap_heap);
-         kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
-      }
-
-      kfree_obj(mi, struct mappings_info);
+   if (pi->mi) {
+      free_mappings_info(pi->mi);
       pi->mi = NULL;
    }
 }
@@ -249,7 +241,6 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    pi->automatic_reaping = false;
    pi->cwd.fs = NULL;
    pi->vforked = false;
-   pi->inherited_mmap_heap = false;
 
    if (new_pdir != parent_pi->pdir) {
 
@@ -263,7 +254,6 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    } else {
       pi->vforked = true;
-      pi->inherited_mmap_heap = !!pi->mi;
    }
 
    ti->pi = pi;
@@ -570,50 +560,21 @@ unblock_parent_of_vforked_child(struct process *pi)
 void
 vforked_child_transfer_dispose_mi(struct process *pi)
 {
-   struct task *parent;
    ASSERT(pi->vforked);
 
-   parent = get_task(pi->parent_pid);
+   /*
+    * A vforked child shares its parent's address space (the same pdir) and the
+    * very same mappings_info object: pi->mi was copied by-pointer from the
+    * parent in allocate_new_process(). Now that `mi` is allocated
+    * unconditionally, the parent always owns one, so there is nothing to hand
+    * back: we just detach our (shared) reference and leave the object owned by
+    * the parent. This makes process_free_mappings_info() a no-op for us.
+    */
 
-   if (!pi->inherited_mmap_heap) {
+   DEBUG_ONLY(struct task *parent = get_task(pi->parent_pid));
+   ASSERT(parent != NULL);
+   ASSERT(parent->pi->mi == pi->mi);
 
-      /* We're in a vfork-ed child: the parent cannot die */
-      ASSERT(parent != NULL);
-
-      /*
-      * If we didn't inherit mappings info from the parent and the parent
-      * didn't run the whole time: its `mi` must continue to be NULL.
-      */
-      ASSERT(!parent->pi->mi);
-
-      /*
-      * Transfer the ownership of our mappings info, created after vfork(),
-      * back to our parent. We do this trick because in Tilck processes
-      * are so lightweight that they don't have even a mappings object.
-      * Since a vforked-child is allowed to use mmap() and that must affect
-      * parent's address space, because that's the *same* address space,
-      * in the corner case the child called mmap(), we must transfer that
-      * object back to the parent.
-      */
-      parent->pi->mi = pi->mi;
-
-   } else {
-
-      /*
-       * The pi->mi object was inherited and, therefore, the one in the parent
-       * MUST BE the same.
-       */
-      ASSERT(parent->pi->mi != NULL);
-      ASSERT(parent->pi->mi == pi->mi);
-   }
-
-  /*
-   * Reset the mappings info object, no matter if we inherited it from the
-   * parent or not. In case we did inherited, that was never ours. In the
-   * other case, we didn't inherit it, but we just transferred its ownership
-   * to the parent process. So, we want process_free_mappings_info() to
-   * never found it non-null the case of vforked-processes.
-   */
    pi->mi = NULL;
 }
 
@@ -808,6 +769,7 @@ int setup_process(struct elf_program_info *pinfo,
    u32 argv_elems = 0;
    u32 env_elems = 0;
    struct process *pi = NULL;
+   struct mappings_info *new_mi = NULL;
 
    ASSERT(!is_preemption_enabled());
 
@@ -823,6 +785,17 @@ int setup_process(struct elf_program_info *pinfo,
 
    if ((rc = push_args_on_user_stack(r, argv, argv_elems, env, env_elems)))
       goto err;
+
+   /*
+    * Build the new process' mappings_info up-front, before any destructive
+    * teardown below, so that an OOM here fails cleanly: the old address space
+    * is still intact and reachable via the `err` path. It is committed to
+    * pi->mi only after the teardown, where nothing can fail anymore.
+    */
+   if (!(new_mi = alloc_mappings_info())) {
+      rc = -ENOMEM;
+      goto err;
+   }
 
    if (UNLIKELY(!ti)) {
 
@@ -874,12 +847,16 @@ int setup_process(struct elf_program_info *pinfo,
       arch_specific_new_proc_setup(pi, NULL);
    }
 
+   pi->mi = new_mi;
    pi->elf = pinfo->lf;
    *ti_ref = ti;
    return 0;
 
 err:
    ASSERT(rc != 0);
+
+   if (new_mi)
+      free_mappings_info(new_mi);
 
    if (old_pdir) {
       set_curr_pdir(old_pdir);

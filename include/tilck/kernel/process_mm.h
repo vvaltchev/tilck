@@ -35,6 +35,8 @@ struct user_mapping *process_get_user_mapping(void *vaddr);
 void remove_all_file_mappings(struct process *pi);
 struct mappings_info *
 duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi);
+struct mappings_info *alloc_mappings_info(void);
+void free_mappings_info(struct mappings_info *mi);
 
 
 /* Internal functions */

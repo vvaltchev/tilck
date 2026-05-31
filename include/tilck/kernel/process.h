@@ -53,7 +53,6 @@ struct process {
    bool did_call_execve;
    bool automatic_reaping;       /* the parent explicitly ignored SIGCHLD */
    bool vforked;                 /* after vfork(), before execve() */
-   bool inherited_mmap_heap;
    bool did_set_tty_medium_raw;
 
    int *set_child_tid;                    /* NOTE: this is an user pointer */

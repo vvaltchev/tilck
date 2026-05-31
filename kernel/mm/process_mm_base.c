@@ -52,26 +52,18 @@ struct user_mapping *process_get_user_mapping(void *vaddrp)
    struct process *pi = get_curr_proc();
 
    ASSERT(!is_preemption_enabled());
+   ASSERT(pi->mi);
 
-   if (pi->mi) {
+   /*
+    * The list contains the process' base regions (program segments, stack,
+    * heap) plus any mmap()ed region. It is supposed to be *short*, so a linear
+    * scan is acceptable. If it ever grows large, switch to a BST here.
+    */
 
-      /*
-       * Given that pi->mi->mappings contains at the moment only the memory
-       * mappings done with mmap(), some small processes that don't use dynamic
-       * memory allocation will not even have this field (pi->mi == NULL).
-       *
-       * For the rest, the list is supposed to be *short*, so a linear scan
-       * is acceptable for the moment. If in the future we start to put
-       * there also the mappings for program's text and data and expect to have
-       * more than a few elements, it will be necessary to use a BST to perform
-       * the lookup here below.
-       */
+   list_for_each_ro(pos, &pi->mi->mappings, pi_node) {
 
-      list_for_each_ro(pos, &pi->mi->mappings, pi_node) {
-
-         if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
-            return pos;
-      }
+      if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
+         return pos;
    }
 
    return NULL;
@@ -148,6 +140,37 @@ void remove_all_file_mappings(struct process *pi)
 
       remove_all_mappings_of_handle(pi, h);
    }
+}
+
+struct mappings_info *alloc_mappings_info(void)
+{
+   struct mappings_info *mi;
+
+   if (!(mi = kalloc_obj(struct mappings_info)))
+      return NULL;
+
+   list_init(&mi->mappings);
+   mi->mmap_heap = NULL;
+   mi->mmap_heap_size = 0;
+   return mi;
+}
+
+void free_mappings_info(struct mappings_info *mi)
+{
+   struct user_mapping *um, *tmp;
+
+   if (mi->mmap_heap) {
+      kmalloc_destroy_heap(mi->mmap_heap);
+      kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
+   }
+
+   list_for_each(um, tmp, &mi->mappings, pi_node) {
+      list_remove(&um->pi_node);
+      list_remove(&um->inode_node);
+      kfree_obj(um, struct user_mapping);
+   }
+
+   kfree_obj(mi, struct mappings_info);
 }
 
 struct mappings_info *
