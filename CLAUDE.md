@@ -689,6 +689,48 @@ ASSERT(state != TASK_STATE_ZOMBIE);
 ASSERT(state == TASK_STATE_RUNNING || state == TASK_STATE_RUNNABLE);
 ```
 
+**A whole debug-only function: guard the body with `if (!DEBUG_CHECKS)`,
+don't wrap the function in `#if`.** A selftest or helper that only makes
+sense under debug checks should bail at the top, not vanish behind a
+preprocessor block — the function stays compiled and type-checked in
+release while its body dead-code-eliminates:
+
+```c
+void selftest_cow_oom(void)
+{
+   if (!DEBUG_CHECKS) {
+      printk("cow_oom: needs DEBUG_CHECKS=1\n");
+      se_regular_end();
+      return;
+   }
+   ... real test, freely using debug-only hooks ...
+}
+```
+
+**Debug-only state shared across translation units: a `static` + a
+setter, never an `extern` under `#if`.** Keep the storage `static` (with
+the hot-path check written `if (DEBUG_CHECKS && the_static && ...)`) and
+expose an always-declared setter whose body is itself `if (DEBUG_CHECKS)`-
+gated. No `#if`, no exported variable; all of it dead-code-eliminates in
+release. The `if (DEBUG_CHECKS && the_static)` reference counts as a *use*,
+so the `static` does not trip `-Werror=unused-variable` (same reason the
+`if (DEBUG_CHECKS) { use(x); }` form is warning-free — unlike `ASSERT`,
+which removes its argument). Pattern in `kernel/kmalloc/kmalloc.c`
+(`kmalloc_inject_fail_next` + `debug_kmalloc_inject_fail_next()`):
+
+```c
+/* kmalloc.c */
+static bool kmalloc_inject_fail_next;
+void debug_kmalloc_inject_fail_next(void)
+{
+   if (DEBUG_CHECKS)
+      kmalloc_inject_fail_next = true;
+}
+/* general_kmalloc(), hot path: */
+if (DEBUG_CHECKS && kmalloc_inject_fail_next && *size >= PAGE_SIZE) { ... }
+/* kmalloc.h: just `void debug_kmalloc_inject_fail_next(void);` */
+```
+
 `#ifdef DEBUG_CHECKS ... #endif` only when neither form fits
 (debug-only struct fields, debug-only header includes). **Do not use
 `IS_RELEASE_BUILD` as a debug gate — `DEBUG_CHECKS` is the canonical
