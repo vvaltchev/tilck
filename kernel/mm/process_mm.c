@@ -100,7 +100,13 @@ void *sys_brk(void *new_brk)
 
    disable_preemption();
    {
+      struct user_mapping *br = pi->mi->brk_region;
+
+      ASSERT(br != NULL);
       brk_syscall_int(pi, new_brk);
+
+      /* Keep the brk region mapping's length in sync with the new break */
+      br->len = (ulong)pi->brk - br->vaddr;
    }
    enable_preemption();
    return pi->brk;

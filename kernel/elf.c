@@ -368,6 +368,48 @@ is_dyn_exec(struct elf_headers *eh)
    return false;
 }
 
+static int elf_flags_to_prot(u32 p_flags)
+{
+   int prot = 0;
+
+   if (p_flags & PF_R)
+      prot |= PROT_READ;
+
+   if (p_flags & PF_W)
+      prot |= PROT_WRITE;
+
+   if (p_flags & PF_X)
+      prot |= PROT_EXEC;
+
+   return prot;
+}
+
+static int
+add_base_mapping(struct elf_program_info *pinfo,
+                 enum user_mapping_type type,
+                 ulong vaddr,
+                 size_t len,
+                 int prot)
+{
+   struct user_mapping *um;
+
+   um = new_user_mapping(&pinfo->mi->mappings,
+                         type,
+                         NULL,        /* pi: assigned later, in setup_process */
+                         NULL,        /* h: base regions are unbacked */
+                         TO_PTR(vaddr),
+                         len,
+                         0,           /* off */
+                         prot);
+   if (!um)
+      return -ENOMEM;
+
+   if (type == USER_MAPPING_HEAP)
+      pinfo->mi->brk_region = um;
+
+   return 0;
+}
+
 int
 load_elf_program(const char *filepath,
                  char *header_buf,
@@ -382,6 +424,7 @@ load_elf_program(const char *filepath,
 
    pinfo->wrong_arch = false;
    pinfo->dyn_exec = false;
+   pinfo->mi = NULL;
 
    if ((rc = open_elf_file(filepath, &elf_h)))
       return rc;
@@ -413,10 +456,16 @@ load_elf_program(const char *filepath,
       goto out;
    }
 
+   if (!(pinfo->mi = alloc_mappings_info())) {
+      rc = -ENOMEM;
+      goto out;
+   }
+
    for (int i = 0; i < eh.header->e_phnum; i++) {
 
       ulong end_vaddr = 0;
       My_Elf_Phdr *phdr = eh.phdrs + i;
+      const ulong seg_va = phdr->p_vaddr & PAGE_MASK;
 
       if (phdr->p_type != PT_LOAD)
          continue;
@@ -433,6 +482,17 @@ load_elf_program(const char *filepath,
 
       if (end_vaddr > brk)
          brk = end_vaddr;
+
+      /* Record the segment as a base mapping (skip empty PT_LOADs) */
+      if (end_vaddr > seg_va) {
+         rc = add_base_mapping(pinfo,
+                               USER_MAPPING_PROG,
+                               seg_va,
+                               end_vaddr - seg_va,
+                               elf_flags_to_prot(phdr->p_flags));
+         if (rc < 0)
+            goto out;
+      }
    }
 
    /*
@@ -468,6 +528,36 @@ load_elf_program(const char *filepath,
          goto out;
    }
 
+   /* Record the stack and the (initially empty) brk heap as base mappings */
+   rc = add_base_mapping(pinfo,
+                         USER_MAPPING_STACK,
+                         stack_top,
+                         KRN_USER_STACK_PAGES * PAGE_SIZE,
+                         PROT_READ | PROT_WRITE);
+   if (rc < 0)
+      goto out;
+
+   rc = add_base_mapping(pinfo,
+                         USER_MAPPING_HEAP,
+                         brk,
+                         0,
+                         PROT_READ | PROT_WRITE);
+   if (rc < 0)
+      goto out;
+
+   /*
+    * The kernel's vdso-like page (sysenter return path + signal trampolines)
+    * is mapped read-only into every process through the shared kernel page
+    * tables; record it too, so the mappings list covers 100% of the
+    * user-accessible address space.
+    */
+   rc = add_base_mapping(pinfo,
+                         USER_MAPPING_VDSO,
+                         USER_VDSO_VADDR,
+                         PAGE_SIZE,
+                         PROT_READ | PROT_EXEC);
+   if (rc < 0)
+      goto out;
 
    // Finally setting the output-params.
 
@@ -484,6 +574,11 @@ out:
       if (pinfo->pdir) {
          pdir_destroy(pinfo->pdir);
          pinfo->pdir = NULL;
+      }
+
+      if (pinfo->mi) {
+         free_mappings_info(pinfo->mi);
+         pinfo->mi = NULL;
       }
 
       if (pinfo->lf)

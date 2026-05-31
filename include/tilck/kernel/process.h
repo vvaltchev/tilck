@@ -26,12 +26,7 @@ struct kernel_alloc {
    size_t size;
 };
 
-struct mappings_info {
-
-   struct kmalloc_heap *mmap_heap;
-   size_t mmap_heap_size;
-   struct list mappings;
-};
+struct mappings_info;   /* defined in process_mm.h */
 
 struct process {
 

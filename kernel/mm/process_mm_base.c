@@ -179,6 +179,7 @@ struct mappings_info *alloc_mappings_info(void)
    list_init(&mi->mappings);
    mi->mmap_heap = NULL;
    mi->mmap_heap_size = 0;
+   mi->brk_region = NULL;
    return mi;
 }
 
@@ -212,6 +213,7 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
    list_init(&new_mi->mappings);
    new_mi->mmap_heap = NULL;
    new_mi->mmap_heap_size = 0;
+   new_mi->brk_region = NULL;
 
    if (mi->mmap_heap) {
 
@@ -231,6 +233,10 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
 
       /* Re-assign the process pointer */
       um2->pi = new_pi;
+
+      /* Keep the per-process heap-mapping shortcut pointing at our copy */
+      if (um2->type == USER_MAPPING_HEAP)
+         new_mi->brk_region = um2;
 
       /* Re-init the new nodes */
       list_node_init(&um2->pi_node);

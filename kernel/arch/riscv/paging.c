@@ -189,7 +189,13 @@ void handle_page_fault_int(regs_t *r)
    p = pt ? pt->entries[PTE_INDEX(0, vaddr)].present : 0;
    um = process_get_user_mapping((void *)vaddr);
 
-   if (um) {
+   /*
+    * Only file-backed mappings can resolve a fault, via their fops. Base
+    * regions (program/stack/heap) have um->h == NULL: there's nothing to call,
+    * so we fall through to the signal path below -- exactly as when no mapping
+    * matched at all.
+    */
+   if (um && um->h) {
       /*
        * Call vfs_handle_fault() only if in first place the mapping allowed
        * writing or if it didn't but the memory access type was a READ.

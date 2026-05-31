@@ -13,6 +13,7 @@ enum user_mapping_type {
    USER_MAPPING_PROG,      /* ELF PT_LOAD segment (text/rodata/data+bss)     */
    USER_MAPPING_STACK,     /* main-thread user stack                         */
    USER_MAPPING_HEAP,      /* brk() heap; its `len` tracks pi->brk           */
+   USER_MAPPING_VDSO,      /* kernel's vdso-like page (read-only, exec)      */
 };
 
 struct user_mapping {
@@ -33,6 +34,14 @@ struct user_mapping {
    int prot;
    enum user_mapping_type type;
 
+};
+
+struct mappings_info {
+
+   struct kmalloc_heap *mmap_heap;
+   size_t mmap_heap_size;
+   struct list mappings;
+   struct user_mapping *brk_region;   /* the USER_MAPPING_HEAP entry (brk) */
 };
 
 struct user_mapping *

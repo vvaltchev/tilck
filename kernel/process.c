@@ -769,7 +769,6 @@ int setup_process(struct elf_program_info *pinfo,
    u32 argv_elems = 0;
    u32 env_elems = 0;
    struct process *pi = NULL;
-   struct mappings_info *new_mi = NULL;
 
    ASSERT(!is_preemption_enabled());
 
@@ -785,17 +784,6 @@ int setup_process(struct elf_program_info *pinfo,
 
    if ((rc = push_args_on_user_stack(r, argv, argv_elems, env, env_elems)))
       goto err;
-
-   /*
-    * Build the new process' mappings_info up-front, before any destructive
-    * teardown below, so that an OOM here fails cleanly: the old address space
-    * is still intact and reachable via the `err` path. It is committed to
-    * pi->mi only after the teardown, where nothing can fail anymore.
-    */
-   if (!(new_mi = alloc_mappings_info())) {
-      rc = -ENOMEM;
-      goto err;
-   }
 
    if (UNLIKELY(!ti)) {
 
@@ -847,7 +835,17 @@ int setup_process(struct elf_program_info *pinfo,
       arch_specific_new_proc_setup(pi, NULL);
    }
 
-   pi->mi = new_mi;
+   /* Commit the base mappings built during the ELF load to the process */
+   pi->mi = pinfo->mi;
+
+   /* Now that pi is known, point the base mappings back at it */
+   {
+      struct user_mapping *um;
+
+      list_for_each_ro(um, &pi->mi->mappings, pi_node)
+         um->pi = pi;
+   }
+
    pi->elf = pinfo->lf;
    *ti_ref = ti;
    return 0;
@@ -855,12 +853,10 @@ int setup_process(struct elf_program_info *pinfo,
 err:
    ASSERT(rc != 0);
 
-   if (new_mi)
-      free_mappings_info(new_mi);
-
    if (old_pdir) {
       set_curr_pdir(old_pdir);
       pdir_destroy(pinfo->pdir);
+      free_mappings_info(pinfo->mi);
    }
 
    return rc;
