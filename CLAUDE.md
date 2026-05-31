@@ -754,7 +754,25 @@ out a visual divergence = failure of step 5.
 
 ## Commit Style
 Each commit must be self-contained, compile in all configs, and pass all tests
-(critical for `git bisect`)
+(critical for `git bisect`).
+
+Keeping the series bisect-safe sometimes means folding a fix into the earlier
+commit that introduced a bug, rather than appending a "fixup". `git rebase -i`
+IS usable here: the harness's "interactive flags (`-i`) not supported" note only
+refers to the default editor-driven flow (which hangs waiting for an editor).
+Drive it non-interactively instead, with `GIT_SEQUENCE_EDITOR` (rewrites the
+rebase to-do: `pick`→`edit`/`reword`/`squash`) and `GIT_EDITOR` (supplies
+messages). To edit the commit that introduced a bug:
+
+```bash
+GIT_SEQUENCE_EDITOR='sed -i 1s/^pick/edit/' git rebase -i <bug-commit>~1
+#  ...fix the files, then:  git add -A && git commit --amend --no-edit
+GIT_EDITOR=true git rebase --continue
+```
+
+`GIT_EDITOR=true` accepts existing messages unchanged (use `--amend -F file` /
+`--no-edit` to set them). The same pattern unblocks any editor-driven git
+command (e.g. `git commit` without `-m`). Verified working in this environment.
 
 ## No changes without testing
 
