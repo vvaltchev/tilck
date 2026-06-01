@@ -21,6 +21,14 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
    list(APPEND GENERAL_DEFS_LIST "-DTILCK_DEBUG_BUILD")
    set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
 
+   # ASSERT() and DEBUG_ONLY() are gated on NDEBUG, but their bodies reference
+   # symbols declared under #if DEBUG_CHECKS. A DEBUG_CHECKS=0 build removes
+   # those symbols, so define NDEBUG too and drop the macros in lockstep -- the
+   # release build types above already define it; this covers a Debug build.
+   if (NOT DEBUG_CHECKS)
+      list(APPEND GENERAL_DEFS_LIST "-DNDEBUG")
+   endif()
+
 else()
 
    message(FATAL_ERROR "Unknown build type: '${CMAKE_BUILD_TYPE}'")
