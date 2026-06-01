@@ -97,38 +97,82 @@ void handle_cow_out_of_mem(regs_t *r)
    panic("Out-of-memory: can't service a CoW page [pid %d]", get_curr_pid());
 }
 
-static void
-internal_copy_user_str(void *dest,
-                       const void *user_ptr,
-                       void *dest_end,
-                       size_t *written_ptr,
-                       int *rc)
-{
-   const char *ptr = user_ptr;
-   char *d = dest;
+/*
+ * Per-chunk cap for internal_copy_user_str(): arch_user_copy() reads a whole
+ * chunk before we scan it for the NUL, so we bound the chunk to keep the
+ * over-read past the NUL cheap (it never crosses a page, so it can only touch
+ * already-mapped user bytes). 64 reads a typical short path/arg in one shot
+ * while keeping the read well under a page.
+ */
+#define USER_STR_COPY_CHUNK 64u
 
-   ASSERT(in_fault_resumable_code());
+/*
+ * Copy a NUL-terminated user string into 'dest' (capacity dest_end - dest)
+ * using arch_user_copy(); the caller must have armed user_access_fixup. The
+ * read walks the user buffer in page-bounded chunks, so a fault means the
+ * current page is genuinely unmapped -- exactly when a byte-at-a-time loop
+ * would fault -- and never an over-read past the NUL into a later, unmapped
+ * page. That also reduces the user-range check to one bound per chunk rather
+ * than one per byte. Sets *written_ptr (length including the NUL) on success.
+ * Returns 0 on success, 1 if 'dest' is too small, -1 on a faulting read.
+ */
+static int
+internal_copy_user_str(char *dest,
+                       const char *user_ptr,
+                       char *dest_end,
+                       size_t *written_ptr)
+{
+   char *d = dest;
+   const char *p = user_ptr;
+
+   ASSERT(get_curr_task()->user_access_fixup);
 
    *written_ptr = 0;
-   *rc = 0;
 
-   do {
+   while (d < dest_end) {
 
-      if (d >= (char *)dest_end) {
-         *rc = 1;
-         return;
+      const ulong pv = (ulong)p;
+      size_t i;
+
+      if (pv >= BASE_VA)
+         return -1;                        /* walked off the user space */
+
+      /* Bytes still free in the destination buffer. */
+      const size_t dest_room = (size_t)(dest_end - d);
+
+      /*
+       * Bytes from `p` to the end of its page. A read must not cross into the
+       * next page, which can be unmapped even when this one is fine -- that is
+       * what keeps the over-read past the NUL safe.
+       */
+      const size_t page_room = PAGE_SIZE - (pv & (PAGE_SIZE - 1));
+
+      /* Bytes from `p` to the top of user space, so we never read past
+       * BASE_VA into kernel memory. */
+      const size_t user_room = (size_t)(BASE_VA - pv);
+
+      /* The most we may read in one go: the smallest of the three bounds. */
+      const size_t avail = MIN3(dest_room, page_room, user_room);
+
+      /* Cap the read so the over-read past the NUL stays cheap. */
+      const size_t chunk = MIN(avail, USER_STR_COPY_CHUNK);
+
+      if (arch_user_copy(d, p, chunk))
+         return -1;                        /* unmapped user page */
+
+      /* Scan the freshly-copied chunk for the string's NUL terminator. */
+      for (i = 0; i < chunk && d[i]; i++) { }
+
+      if (i < chunk) {                              /* found the NUL */
+         *written_ptr = (size_t)(d - dest) + i + 1; /* count the final \0 */
+         return 0;
       }
 
-      if (user_out_of_range(ptr, 1)) {
-         *rc = -1;
-         return;
-      }
+      d += chunk;
+      p += chunk;
+   }
 
-      *d++ = *ptr; /* NOTE: `ptr` is NOT increased here */
-
-   } while (*ptr++);
-
-   *written_ptr = (size_t)(d - (char *)dest); /* NOTE: counting the final \0 */
+   return 1;                               /* 'dest' too small, no NUL found */
 }
 
 /*
@@ -143,87 +187,91 @@ int copy_str_from_user(void *dest,
                        size_t max_size,
                        size_t *written_ptr)
 {
+   struct task *curr = get_curr_task();
+   char *const dest_end = (char *)dest + max_size;
+   size_t written = 0;
    int rc;
-   u32 faults;
-   size_t written;
 
-   faults = fault_resumable_call(PAGE_FAULT_MASK,
-                                 internal_copy_user_str,
-                                 5,
-                                 dest,
-                                 user_ptr,
-                                 (char *)dest + max_size,
-                                 &written,
-                                 &rc);
+   ASSERT(!curr->user_access_fixup);    /* user copies never nest */
+   curr->user_access_fixup = asm_user_copy_fault;
+   rc = internal_copy_user_str(dest, user_ptr, dest_end, &written);
+   curr->user_access_fixup = NULL;
 
    if (written_ptr)
       *written_ptr = written;
 
-   if (faults)
-      return -1;
-
    return rc;
 }
 
-static void
+static int
 internal_copy_str_array_from_user(void *dest,
                                   const char *const *user_arr,
                                   size_t max_size,
-                                  size_t *written_ptr,
-                                  int *rc)
+                                  size_t *written_ptr)
 {
-   int argc;
-   char *after_ptrs_arr;
    char **dest_arr = (char **)dest;
    char *dest_end = (char *)dest + max_size;
+   char *after_ptrs_arr;
    size_t written = 0;
-   *rc = 0;
+   int rc = 0;
+   int argc;
 
-   ASSERT(in_fault_resumable_code());
+   ASSERT(get_curr_task()->user_access_fixup);
 
    for (argc = 0; ; argc++) {
 
-      const char *const *ptr_ptr = user_arr + argc;
+      const void *uptr;
 
-      if (user_out_of_range(ptr_ptr, sizeof(void *))) {
-         *rc = -1;
+      if (user_out_of_range(user_arr + argc, sizeof(uptr))) {
+         rc = -1;
          goto out;
       }
 
       /*
-       * OK, the double-pointer is in range, so we can de-reference it to
-       * read the single (char *) pointer. We don't care at the moment if the
-       * single pointer is valid, but we have to check whether it is NULL in
-       * order to calculate 'argc'.
+       * The double-pointer is in range; read the single (char *) it points
+       * to. We don't validate that pointer yet -- we just need to know whether
+       * it is NULL, in order to compute 'argc'.
        */
 
-      if (!*ptr_ptr)
+      if (arch_user_copy(&uptr, user_arr + argc, sizeof(uptr))) {
+         rc = -1;
+         goto out;
+      }
+
+      if (!uptr)
          break;
    }
 
    if ((char *)&dest_arr[argc] > dest_end - sizeof(void *)) {
-      *rc = 1;
+      rc = 1;
       goto out;
    }
 
    /* this is safe, we've just checked that */
    WRITE_PTR(&dest_arr[argc], NULL);
 
-   after_ptrs_arr = (char *) &dest_arr[argc + 1];
-   written += (u32)(after_ptrs_arr - (char *)dest_arr);
+   after_ptrs_arr = (char *)&dest_arr[argc + 1];
+   written += (size_t)(after_ptrs_arr - (char *)dest_arr);
 
    for (int i = 0; i < argc; i++) {
 
+      const void *uptr;
       size_t local_written = 0;
+
       WRITE_PTR(&dest_arr[i], after_ptrs_arr);
 
-      internal_copy_user_str(after_ptrs_arr,
-                             user_arr[i],
-                             dest_end,
-                             &local_written,
-                             rc);
+      /* user_arr + i was already range-checked by the loop above */
+      if (arch_user_copy(&uptr, user_arr + i, sizeof(uptr))) {
+         rc = -1;
+         break;
+      }
 
-      if (*rc != 0)
+      rc = internal_copy_user_str(after_ptrs_arr,
+                                  uptr,
+                                  dest_end,
+                                  &local_written);
+
+      if (rc != 0)
          break;
 
       written += local_written;
@@ -232,6 +280,7 @@ internal_copy_str_array_from_user(void *dest,
 
 out:
    *written_ptr = written;
+   return rc;
 }
 
 
@@ -240,20 +289,16 @@ int copy_str_array_from_user(void *dest,
                              size_t max_size,
                              size_t *written_ptr)
 {
+   struct task *curr = get_curr_task();
    int rc;
-   u32 faults;
 
-   faults = fault_resumable_call(PAGE_FAULT_MASK,
-                                 internal_copy_str_array_from_user,
-                                 5,
-                                 dest,
-                                 user_arr,
-                                 max_size,
-                                 written_ptr,
-                                 &rc);
-
-   if (faults)
-      return -1;
+   ASSERT(!curr->user_access_fixup);    /* user copies never nest */
+   curr->user_access_fixup = asm_user_copy_fault;
+   rc = internal_copy_str_array_from_user(dest,
+                                          user_arr,
+                                          max_size,
+                                          written_ptr);
+   curr->user_access_fixup = NULL;
 
    return rc;
 }
