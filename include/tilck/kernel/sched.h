@@ -145,7 +145,8 @@ struct task {
    regs_t *state_regs;
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
-   int fault_resume_reason;           /* uaccess fault errno (set on unwind) */
+   int fault_resume_reason;           /* user-access fault errno */
+   void *user_access_fixup;           /* armed user-copy fixup PC */
    void *worker_thread;               /* only for worker threads */
 
    struct bintree_node tree_by_tid_node;

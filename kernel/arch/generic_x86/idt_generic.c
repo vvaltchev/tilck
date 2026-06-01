@@ -84,24 +84,33 @@ static void fault_in_panic(regs_t *r)
 
 void handle_fault(regs_t *r)
 {
-   enum cow_result cow = COW_NOT_A_COW;
    const int int_num = r->int_num;
+   const bool is_page_fault = (int_num == FAULT_PAGE_FAULT);
 
    ASSERT(is_fault(int_num));
 
    if (UNLIKELY(in_panic()))
       return fault_in_panic(r);
 
-   if (LIKELY(int_num == FAULT_PAGE_FAULT))
-      cow = handle_potential_cow(r);
+   if (LIKELY(is_page_fault)) {
+      const enum cow_result cow = handle_potential_cow(r);
 
-   if (cow == COW_RESOLVED)
-      return;                            /* serviced transparently: retry */
+      if (cow == COW_RESOLVED)
+         return;                         /* serviced transparently: retry */
 
-   if (cow == COW_NO_MEM)
-      return handle_cow_out_of_mem(r);   /* recover (-ENOMEM) / kill / panic */
+      /*
+       * User-access fast path: a page fault inside copy_{to,from}_user().
+       * Resume in place at the primitive's fixup, reporting -ENOMEM for an
+       * out-of-memory CoW page or -EFAULT (reason left 0) for a bad pointer.
+       */
+      if (user_access_resume_on_fault(r, cow == COW_NO_MEM))
+         return;
 
-   /* cow == COW_NOT_A_COW: an ordinary fault */
+      if (cow == COW_NO_MEM)
+         return handle_cow_out_of_mem(r); /* recover / kill / panic */
+   }
+
+   /* An ordinary fault: bad-address page fault, or a non-page-fault */
    if (is_fault_resumable(int_num)) {
       get_curr_task()->fault_resume_reason = 0;
       return handle_resumable_fault(r);

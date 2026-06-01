@@ -12,6 +12,15 @@ static inline bool user_out_of_range(const void *user_ptr, size_t n)
 int copy_from_user(void *dest, const void *user_ptr, size_t n);
 int copy_to_user(void *user_ptr, const void *src, size_t n);
 
+/*
+ * Low-level byte copy used by copy_{to,from}_user(). Defined per-arch in asm
+ * (kernel/arch/<arch>/user_copy.S). The caller arms the current task's
+ * user_access_fixup landing pad around the call; if any access faults on a
+ * user page, the fault handler resumes execution at asm_user_copy_fault, which
+ * makes this return 1. Returns 0 when the whole copy succeeds.
+ */
+int arch_user_copy(void *dest, const void *src, size_t n);
+
 int copy_str_from_user(void *dest,
                        const void *user_ptr,
                        size_t max_size,

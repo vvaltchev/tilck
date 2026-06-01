@@ -14,36 +14,59 @@
 
 #include <linux/auxvec.h> // system header
 
+/* User-copy fixup landing pad, defined in kernel/arch/<arch>/user_copy.S */
+void asm_user_copy_fault(void);
+
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
-   u32 r;
+   struct task *curr = get_curr_task();
+   int rc;
 
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, dest, user_ptr, n);
-   return !r ? 0 : -1;
+   ASSERT(!curr->user_access_fixup);    /* user copies never nest */
+   curr->user_access_fixup = asm_user_copy_fault;
+   rc = arch_user_copy(dest, user_ptr, n);
+   curr->user_access_fixup = NULL;
+
+   return rc ? -1 : 0;
 }
 
 int copy_to_user(void *user_ptr, const void *src, size_t n)
 {
    struct task *curr = get_curr_task();
-   u32 r;
+   int rc;
 
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, user_ptr, src, n);
+   ASSERT(!curr->user_access_fixup);    /* user copies never nest */
+   curr->user_access_fixup = asm_user_copy_fault;
+   rc = arch_user_copy(user_ptr, src, n);
+   curr->user_access_fixup = NULL;
 
-   if (!r)
+   if (!rc)
       return 0;
 
    /*
-    * A page fault was caught mid-copy. handle_cow_out_of_mem() sets
+    * A page fault was caught mid-copy. user_access_resume_on_fault() set
     * fault_resume_reason = -ENOMEM for an out-of-memory CoW page; for an
     * ordinary bad-pointer fault the reason is left 0, so we report -1 as usual.
     */
    return curr->fault_resume_reason ? curr->fault_resume_reason : -1;
+}
+
+bool user_access_resume_on_fault(regs_t *r, bool out_of_mem)
+{
+   struct task *curr = get_curr_task();
+
+   if (!curr->user_access_fixup)
+      return false;
+
+   curr->fault_resume_reason = out_of_mem ? -ENOMEM : 0;
+   regs_set_ip(r, (ulong)curr->user_access_fixup);
+   return true;
 }
 
 void handle_cow_out_of_mem(regs_t *r)

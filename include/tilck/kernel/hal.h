@@ -179,6 +179,11 @@
          return NULL;
       }
 
+      static ALWAYS_INLINE void regs_set_ip(regs_t *r, ulong value)
+      {
+         /* STUB function: do nothing */
+      }
+
       NORETURN static ALWAYS_INLINE void context_switch(regs_t *r)
       {
          NOT_REACHED();
