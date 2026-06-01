@@ -348,6 +348,7 @@ int sys_gettimeofday(struct k_timeval *user_tv, struct timezone *user_tz)
 {
    struct k_timeval tv;
    struct k_timespec64 tp;
+   int rc;
 
    struct timezone tz = {
       .tz_minuteswest = 0,
@@ -362,12 +363,12 @@ int sys_gettimeofday(struct k_timeval *user_tv, struct timezone *user_tz)
    };
 
    if (user_tv)
-      if (copy_to_user(user_tv, &tv, sizeof(tv)) < 0)
-         return -EFAULT;
+      if ((rc = copy_to_user(user_tv, &tv, sizeof(tv))) < 0)
+         return rc;
 
    if (user_tz)
-      if (copy_to_user(user_tz, &tz, sizeof(tz)) < 0)
-         return -EFAULT;
+      if ((rc = copy_to_user(user_tz, &tz, sizeof(tz))) < 0)
+         return rc;
 
    return 0;
 }
@@ -458,8 +459,8 @@ int sys_clock_gettime32(clockid_t clk_id, struct k_timespec32 *user_tp)
       .tv_nsec = tp64.tv_nsec,
    };
 
-   if (copy_to_user(user_tp, &tp32, sizeof(tp32)) < 0)
-      return -EFAULT;
+   if ((rc = copy_to_user(user_tp, &tp32, sizeof(tp32))) < 0)
+      return rc;
 
    return 0;
 }
@@ -475,8 +476,8 @@ int sys_clock_gettime(clockid_t clk_id, struct k_timespec64 *user_tp)
    if ((rc = do_clock_gettime(clk_id, &tp)))
       return rc;
 
-   if (copy_to_user(user_tp, &tp, sizeof(tp)) < 0)
-      return -EFAULT;
+   if ((rc = copy_to_user(user_tp, &tp, sizeof(tp))) < 0)
+      return rc;
 
    return 0;
 }
@@ -498,8 +499,8 @@ int sys_clock_getres_time32(clockid_t clk_id, struct k_timespec32 *user_res)
       .tv_nsec = tp64.tv_nsec,
    };
 
-   if (copy_to_user(user_res, &tp32, sizeof(tp32)) < 0)
-      return -EFAULT;
+   if ((rc = copy_to_user(user_res, &tp32, sizeof(tp32))) < 0)
+      return rc;
 
    return 0;
 }
@@ -515,8 +516,8 @@ int sys_clock_getres(clockid_t clk_id, struct k_timespec64 *user_res)
    if ((rc = do_clock_gettime(clk_id, &tp)))
       return rc;
 
-   if (copy_to_user(user_res, &tp, sizeof(tp)) < 0)
-      return -EFAULT;
+   if ((rc = copy_to_user(user_res, &tp, sizeof(tp))) < 0)
+      return rc;
 
    return 0;
 }

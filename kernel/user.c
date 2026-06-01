@@ -23,14 +23,15 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    int rc;
 
    if (user_out_of_range(user_ptr, n))
-      return -1;
+      return -EFAULT;
 
    ASSERT(!curr->user_access_fixup);    /* user copies never nest */
    curr->user_access_fixup = asm_user_copy_fault;
    rc = arch_user_copy(dest, user_ptr, n);
    curr->user_access_fixup = NULL;
 
-   return rc ? -1 : 0;
+   /* A read can't hit a CoW page, so the only failure is a bad pointer. */
+   return rc ? -EFAULT : 0;
 }
 
 int copy_to_user(void *user_ptr, const void *src, size_t n)
@@ -39,7 +40,7 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
    int rc;
 
    if (user_out_of_range(user_ptr, n))
-      return -1;
+      return -EFAULT;
 
    ASSERT(!curr->user_access_fixup);    /* user copies never nest */
    curr->user_access_fixup = asm_user_copy_fault;
@@ -52,9 +53,11 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
    /*
     * A page fault was caught mid-copy. user_access_resume_on_fault() set
     * fault_resume_reason = -ENOMEM for an out-of-memory CoW page; for an
-    * ordinary bad-pointer fault the reason is left 0, so we report -1 as usual.
+    * ordinary bad-pointer fault the reason is left 0, so we report -EFAULT.
+    * Callers should propagate this return value (it is already a valid errno),
+    * not coarsen it back to -EFAULT.
     */
-   return curr->fault_resume_reason ? curr->fault_resume_reason : -1;
+   return curr->fault_resume_reason ? curr->fault_resume_reason : -EFAULT;
 }
 
 bool user_access_resume_on_fault(regs_t *r, bool out_of_mem)

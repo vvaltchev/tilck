@@ -491,9 +491,6 @@ out:
        * the struct user_desc (we might have changed its entry_number).
        */
       rc = copy_to_user(ud, &dc, sizeof(struct user_desc));
-
-      if (rc < 0)
-         rc = -EFAULT;
    }
 
    return rc;

@@ -731,23 +731,13 @@ sys_rt_sigaction(int signum,
 
       rc = copy_to_user(user_oldact, &oldact, sizeof(oldact));
 
-      if (!rc) {
+      if (!rc && sigsetsize > sizeof(oldact.sa_mask)) {
 
-         if (sigsetsize > sizeof(oldact.sa_mask)) {
+         ulong diff = sigsetsize - sizeof(oldact.sa_mask);
 
-            ulong diff = sigsetsize - sizeof(oldact.sa_mask);
-
-            rc = copy_to_user(
-               (char *)user_oldact + sizeof(oldact), zero_page, diff
-            );
-
-            if (rc)
-               rc = -EFAULT;
-         }
-
-      } else {
-
-         rc = -EFAULT;
+         rc = copy_to_user(
+            (char *)user_oldact + sizeof(oldact), zero_page, diff
+         );
       }
    }
 
@@ -770,7 +760,7 @@ sys_rt_sigprocmask(int how,
       rc = copy_to_user(user_oldset, ti->sa_mask, sigsetsize);
 
       if (rc)
-         return -EFAULT;
+         return rc;
 
       if (sigsetsize > sizeof(ti->sa_mask)) {
 
@@ -783,7 +773,7 @@ sys_rt_sigprocmask(int how,
          );
 
          if (rc)
-            return -EFAULT;
+            return rc;
       }
    }
 
@@ -843,7 +833,7 @@ sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
    rc = copy_to_user(u_set, ti->sa_pending, sigsetsize);
 
    if (rc)
-      return -EFAULT;
+      return rc;
 
    if (sigsetsize > sizeof(ti->sa_pending)) {
 
@@ -856,7 +846,7 @@ sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
       );
 
       if (rc)
-         return -EFAULT;
+         return rc;
    }
 
    return 0;

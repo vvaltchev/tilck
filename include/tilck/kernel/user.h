@@ -9,6 +9,13 @@ static inline bool user_out_of_range(const void *user_ptr, size_t n)
    return !user_ptr || ((ulong)user_ptr + n) > BASE_VA;
 }
 
+/*
+ * Copy between user and kernel memory. Return 0 on success, otherwise a
+ * negative errno ready to be returned to user space: -EFAULT for a bad user
+ * pointer, and -ENOMEM from copy_to_user() when servicing a copy-on-write page
+ * mid-copy runs out of memory. Callers should propagate the result rather than
+ * coarsen it back to -EFAULT.
+ */
 int copy_from_user(void *dest, const void *user_ptr, size_t n);
 int copy_to_user(void *user_ptr, const void *src, size_t n);
 

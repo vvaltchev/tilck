@@ -215,17 +215,24 @@ select_write_user_sets(struct select_ctx *c)
    fd_set **sets = c->sets;
    fd_set **u_sets = c->u_sets;
    int total_ready_count = 0;
+   int rc;
 
    for (int i = 0; i < 3; i++) {
 
       total_ready_count += select_set_ready(c->nfds, sets[i], grf[i]);
 
-      if (u_sets[i] && copy_to_user(u_sets[i], sets[i], sizeof(fd_set)))
-         return -EFAULT;
+      if (u_sets[i]) {
+         rc = copy_to_user(u_sets[i], sets[i], sizeof(fd_set));
+         if (rc)
+            return rc;
+      }
    }
 
-   if (c->tv && copy_to_user(c->user_tv, c->tv, sizeof(struct k_timeval)))
-      return -EFAULT;
+   if (c->tv) {
+      rc = copy_to_user(c->user_tv, c->tv, sizeof(struct k_timeval));
+      if (rc)
+         return rc;
+   }
 
    return total_ready_count;
 }
@@ -417,6 +424,7 @@ long sys_pselect6(int user_nfds,
    ulong sigmask[K_SIGACTION_MASK_WORDS];
    struct k_timespec64 k_timeout;
    long rc;
+   int copy_rc;
 
    if (copy_from_user(sigmask, u_sig, sizeof(sigmask)))
       return -EFAULT;
@@ -435,8 +443,10 @@ long sys_pselect6(int user_nfds,
 
       k_timeout.tv_nsec = k_timeout.tv_nsec / 1000;
 
-      if (copy_to_user(u_timeout, &k_timeout, sizeof(* u_timeout)))
-         return -EFAULT;
+      /* separate var: `rc` below must keep sys_select()'s result */
+      copy_rc = copy_to_user(u_timeout, &k_timeout, sizeof(* u_timeout));
+      if (copy_rc)
+         return copy_rc;
    }
 
    rc = sys_select(user_nfds,
@@ -451,8 +461,9 @@ long sys_pselect6(int user_nfds,
 
       k_timeout.tv_nsec = k_timeout.tv_nsec * 1000;
 
-      if (copy_to_user(u_timeout, &k_timeout, sizeof(* u_timeout)))
-         return -EFAULT;
+      copy_rc = copy_to_user(u_timeout, &k_timeout, sizeof(* u_timeout));
+      if (copy_rc)
+         return copy_rc;
    }
 
    return rc;

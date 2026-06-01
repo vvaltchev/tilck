@@ -192,6 +192,7 @@ int sys_wait4(int tid, int *user_wstatus, int options, void *user_rusage)
    struct task *curr = get_curr_task();
    struct task *chtask = NULL;
    int chtask_tid = -1;
+   int rc;
    u16 wobj_extra = NO_EXTRA;
 
    if (options & WUNTRACED)
@@ -266,8 +267,9 @@ int sys_wait4(int tid, int *user_wstatus, int options, void *user_rusage)
    ASSERT(!is_preemption_enabled());
 
    if (user_wstatus) {
-      if (copy_to_user(user_wstatus, &chtask->wstatus, sizeof(s32)) < 0)
-         chtask_tid = -EFAULT;
+      rc = copy_to_user(user_wstatus, &chtask->wstatus, sizeof(s32));
+      if (rc < 0)
+         chtask_tid = rc;
    }
 
    if (user_rusage) {
@@ -285,8 +287,9 @@ int sys_wait4(int tid, int *user_wstatus, int options, void *user_rusage)
       ru.ru_stime.tv_sec = (long) tp.tv_sec;
       ru.ru_stime.tv_usec = tp.tv_nsec / 1000;
 
-      if (copy_to_user(user_rusage, &ru, sizeof(ru)) < 0)
-         chtask_tid = -EFAULT;
+      rc = copy_to_user(user_rusage, &ru, sizeof(ru));
+      if (rc < 0)
+         chtask_tid = rc;
    }
 
    if (atomic_load(&chtask->state) == TASK_STATE_ZOMBIE)

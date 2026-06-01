@@ -349,9 +349,11 @@ sb16_ioctl_get_info(struct tilck_sound_card_info *user_info)
       .max_bits = 16,
       .max_channels = 2,
    };
+   int rc;
 
-   if (copy_to_user(user_info, &info, sizeof(info)))
-      return -EFAULT;
+   rc = copy_to_user(user_info, &info, sizeof(info));
+   if (rc)
+      return rc;
 
    return 0;
 }

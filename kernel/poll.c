@@ -304,8 +304,9 @@ int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
    }
 
 end:
-   if (copy_to_user(user_fds, fds, sizeof(struct pollfd) * nfds))
-      return -EFAULT;
+   rc = copy_to_user(user_fds, fds, sizeof(struct pollfd) * nfds);
+   if (rc)
+      return rc;
 
    return ready_fds_cnt;
 }

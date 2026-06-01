@@ -33,11 +33,13 @@ static ssize_t fb_read(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
    ssize_t actual_size = MIN((ssize_t)fb_size - (ssize_t)*pos, (ssize_t)size);
    void *src = (char *)fb_vaddr + *pos;
+   int rc;
 
    *pos += actual_size;
 
-   if (copy_to_user(user_buf, src, (size_t)actual_size))
-      return -EFAULT;
+   rc = copy_to_user(user_buf, src, (size_t)actual_size);
+   if (rc)
+      return rc;
 
    return actual_size;
 }
@@ -93,7 +95,7 @@ static int fb_ioctl(fs_handle h, ulong request, void *argp)
       rc = copy_to_user(argp, &fix_info, sizeof(fix_info));
 
       if (rc != 0)
-         return -EFAULT;
+         return rc;
 
       return 0;
    }
@@ -107,7 +109,7 @@ static int fb_ioctl(fs_handle h, ulong request, void *argp)
       rc = copy_to_user(argp, &var_info, sizeof(var_info));
 
       if (rc != 0)
-         return -EFAULT;
+         return rc;
 
       return 0;
    }

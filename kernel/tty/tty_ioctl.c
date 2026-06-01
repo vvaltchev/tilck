@@ -89,7 +89,7 @@ static int tty_ioctl_tcgets(struct tty *t, void *argp)
    int rc = copy_to_user(argp, &t->c_term, sizeof(struct termios));
 
    if (rc < 0)
-      return -EFAULT;
+      return rc;
 
    return 0;
 }
@@ -125,7 +125,7 @@ static int tty_ioctl_tiocgwinsz(struct tty *t, void *argp)
    int rc = copy_to_user(argp, &sz, sizeof(struct winsize));
 
    if (rc < 0)
-      return -EFAULT;
+      return rc;
 
    return 0;
 }
@@ -178,12 +178,14 @@ static int tty_ioctl_kdsetmode(struct tty *t, void *argp)
 
 static int tty_ioctl_KDGKBMODE(struct tty *t, void *argp)
 {
+   int rc;
    int mode = t->mediumraw_mode ? K_MEDIUMRAW : K_XLATE;
 
-   if (!copy_to_user(argp, &mode, sizeof(int)))
+   rc = copy_to_user(argp, &mode, sizeof(int));
+   if (!rc)
       return 0;
 
-   return -EFAULT;
+   return rc;
 }
 
 static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
@@ -217,10 +219,12 @@ static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
 
 static int tty_ioctl_KDGKBTYPE(struct tty *t, void *argp)
 {
+   int rc;
    const int kb_type = KB_101;
 
-   if (copy_to_user(argp, &kb_type, sizeof(kb_type)))
-      return -EFAULT;
+   rc = copy_to_user(argp, &kb_type, sizeof(kb_type));
+   if (rc)
+      return rc;
 
    return 0;
 }

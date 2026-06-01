@@ -205,7 +205,7 @@ long sys_mkdirat(int dfd, const char *pathname, mode_t mode)
 
 int sys_read(int fd, void *u_buf, size_t count)
 {
-   int ret;
+   int ret, rc;
    struct fs_handle_base *h;
    struct task *curr = get_curr_task();
 
@@ -237,9 +237,9 @@ int sys_read(int fd, void *u_buf, size_t count)
       ret = (int) vfs_read(h, curr->io_copybuf, count);
 
       if (ret > 0) {
-         if (copy_to_user(u_buf, curr->io_copybuf, (size_t)ret) < 0) {
+         if ((rc = copy_to_user(u_buf, curr->io_copybuf, (size_t)ret)) < 0) {
             // Do we have to rewind the stream in this case? I don't think so.
-            ret = -EFAULT;
+            ret = rc;
          }
       }
    }
@@ -277,7 +277,7 @@ int sys_write(int fd, const void *u_buf, size_t count)
 
 int sys_pread64(int fd, void *u_buf, size_t count, s64 off)
 {
-   int ret;
+   int ret, rc;
    struct fs_handle_base *h;
    struct task *curr = get_curr_task();
 
@@ -299,9 +299,9 @@ int sys_pread64(int fd, void *u_buf, size_t count, s64 off)
       ret = (int) vfs_pread(h, curr->io_copybuf, count, (offt)off);
 
       if (ret > 0) {
-         if (copy_to_user(u_buf, curr->io_copybuf, (size_t)ret)) {
+         if ((rc = copy_to_user(u_buf, curr->io_copybuf, (size_t)ret))) {
             // Do we have to rewind the stream in this case? I don't think so.
-            ret = -EFAULT;
+            ret = rc;
          }
       }
    }
@@ -436,8 +436,8 @@ call_vfs_stat64(const char *u_path,
    if ((rc = vfs_stat64(path, &statbuf, res_last_sl)))
       return rc;
 
-   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct k_stat64)))
-      rc = -EFAULT;
+   if ((rc = copy_to_user(u_statbuf, &statbuf, sizeof(struct k_stat64))))
+      return rc;
 
    return rc;
 }
@@ -464,8 +464,8 @@ int sys_fstat64(int fd, struct k_stat64 *u_statbuf)
    if ((rc = vfs_fstat64(h, &statbuf)))
       return rc;
 
-   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct k_stat64)))
-      rc = -EFAULT;
+   if ((rc = copy_to_user(u_statbuf, &statbuf, sizeof(struct k_stat64))))
+      return rc;
 
    return rc;
 }
@@ -556,7 +556,7 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
    rc = copy_to_user(u_buf, buf, MIN(ret_bs, u_bufsize));
 
    if (rc < 0)
-      return -EFAULT;
+      return rc;
 
    return (int) ret_bs;
 }
@@ -609,6 +609,7 @@ int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *u_result, u32 whence)
    fs_handle handle;
    offt new_off;
    u64 res;
+   int rc;
    const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
 
    STATIC_ASSERT(sizeof(new_off) >= sizeof(offt));
@@ -633,8 +634,8 @@ int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *u_result, u32 whence)
 
    res = (u64)new_off;
 
-   if (copy_to_user(u_result, &res, sizeof(res)))
-      return -EBADF;
+   if ((rc = copy_to_user(u_result, &res, sizeof(res))))
+      return rc;
 
    return 0;
 }
@@ -1151,8 +1152,8 @@ int sys_pipe2(int u_pipefd[2], int flags)
 
    curr->pi->handles[fds[1]] = write_h;
 
-   if (copy_to_user(u_pipefd, fds, sizeof(fds)))
-      goto fault;
+   if ((ret = copy_to_user(u_pipefd, fds, sizeof(fds))))
+      goto err_end;
 
    if (flags & O_CLOEXEC) {
       read_h->fd_flags |= FD_CLOEXEC;

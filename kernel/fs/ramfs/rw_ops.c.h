@@ -388,6 +388,7 @@ ramfs_readv_nolock(struct ramfs_handle *rh, const struct iovec *iov, int iovcnt)
    struct task *curr = get_curr_task();
    ssize_t ret = 0;
    ssize_t rc;
+   int copy_rc;
    size_t len;
 
    for (int i = 0; i < iovcnt; i++) {
@@ -400,8 +401,8 @@ ramfs_readv_nolock(struct ramfs_handle *rh, const struct iovec *iov, int iovcnt)
          break;
       }
 
-      if (copy_to_user(iov[i].iov_base, curr->io_copybuf, len))
-         return -EFAULT;
+      if ((copy_rc = copy_to_user(iov[i].iov_base, curr->io_copybuf, len)))
+         return copy_rc;
 
       ret += rc;
 
