@@ -11,6 +11,18 @@ binary level. It runs on i386 (primary), riscv64, and x86_64. It implements
 Micropython, Lua) without custom rewrites. ~13,300 lines of kernel code.
 Licensed BSD 2-Clause.
 
+## Originality and licensing (BSD-2-Clause)
+
+Tilck must remain 100% original work. **Never copy implementation code,
+identifiers, struct layouts, or macro idioms from Linux, glibc, or any
+GPL/copyleft/incompatibly-licensed source.** High-level *ideas* and
+well-known techniques (exception tables, scheduler designs, etc.) are fine to
+learn from and reimplement — the concrete code must be written from scratch in
+Tilck's style. When borrowing a technique from Linux/FreeBSD, give it a
+Tilck-native name and a from-scratch implementation; don't mirror their
+identifiers (`__ex_table`, `fixup_exception`, `pcb_onfault`, ...). If unsure
+whether something crosses from idea into copying, stop and ask.
+
 ## Boot time and runtime latency are non-negotiable
 
 Target: embedded systems with hard-realtime ambitions. Evaluate
