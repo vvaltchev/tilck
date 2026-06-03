@@ -1,0 +1,55 @@
+Title this mconf "Tilck Configuration" instead of "BusyBox ...".
+
+host_menuconfig is Tilck's own configurator: run_config drives it
+over a generated Kconfig (gen_kconfig.py) whose first line is
+`mainmenu "Tilck Configuration"`. Busybox 1.36.1's kconfig, though,
+ignores the `mainmenu` directive: conf_parse() unconditionally sets
+the root-menu prompt to "Busybox Configuration", and mconf builds
+its lxdialog backtitle separately from a hardcoded "BusyBox
+<KERNELVERSION> Configuration". Both end up reading "Busybox" no
+matter what the Kconfig says.
+
+Fix it in mconf (the hand-written UI driver) rather than the
+generated parser: force the root-menu prompt to "Tilck
+Configuration" after parsing, then derive the backtitle from that
+same prompt. The menu title and the top-of-screen backtitle then
+both read "Tilck Configuration". The dead KERNELVERSION lookup that
+fed the old backtitle is dropped, with main()'s now-unused `sym`.
+
+Scope: busybox configures itself from a separate, unpatched
+extraction of these same kconfig sources, so its own "Busybox
+Configuration" UI is unaffected.
+
+--- a/scripts/kconfig/mconf.c
++++ b/scripts/kconfig/mconf.c
+@@ -1058,7 +1058,6 @@
+ 
+ int main(int ac, char **av)
+ {
+-	struct symbol *sym;
+ 	char *mode;
+ 	int stat;
+ 
+@@ -1079,10 +1078,18 @@
+ 	 */
+ 	sym_change_count = 0;
+ 
+-	sym = sym_lookup("KERNELVERSION", 0);
+-	sym_calc_value(sym);
+-	sprintf(menu_backtitle, _("BusyBox %s Configuration"),
+-		sym_get_string_value(sym));
++	/*
++	 * Tilck patch: busybox's kconfig ignores the `mainmenu`
++	 * directive and hardcodes the root-menu prompt to "Busybox
++	 * Configuration" in conf_parse(). This mconf runs only as
++	 * Tilck's configurator (over run_config's generated Kconfig),
++	 * so force that prompt to Tilck's, then mirror it into the
++	 * lxdialog backtitle (which upstream sets separately to
++	 * "BusyBox <KERNELVERSION> Configuration") so the two agree.
++	 */
++	rootmenu.prompt->text = "Tilck Configuration";
++	snprintf(menu_backtitle, sizeof(menu_backtitle), "%s",
++		menu_get_prompt(&rootmenu));
+ 
+ 	mode = getenv("MENUCONFIG_MODE");
+ 	if (mode) {
