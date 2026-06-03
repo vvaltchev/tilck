@@ -393,6 +393,25 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 # tilck_option() so they show up in the generated run_config's menuconfig.
 # =====================================================================
 
+# --- Build type ---
+#
+# CATEGORY "." pins this to the very top of the menu (above every
+# submenu). The backing variable is CMake's own CMAKE_BUILD_TYPE,
+# already set by scripts/cmake_run; declaring it here just exposes it
+# in the configurator. STRINGS must stay in sync with the build types
+# handled in other/cmake/compiler_flags.cmake.
+
+tilck_option(CMAKE_BUILD_TYPE
+   TYPE     ENUM
+   CATEGORY "."
+   DEFAULT  Debug
+   STRINGS  Debug Release MinSizeRel
+   HELP     "Build type"
+            "CMake build type controlling optimization and assertions."
+            "Debug = -O0 + assertions, Release = -O3 + NDEBUG,"
+            "MinSizeRel = -Os + NDEBUG."
+)
+
 # --- Graphics ---
 
 tilck_option(PREFERRED_GFX_MODE_W

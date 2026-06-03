@@ -37,6 +37,11 @@ REQUIRED_FIELDS = {
 # cache variable and no name.
 COMMENT_FIELDS = {"type", "category", "text"}
 
+# Category sentinel for options pinned to the very top of the root
+# menu, above every category submenu (used for the build-type
+# selector). tilck_option(CATEGORY ".") in CMake emits this.
+ROOT_CATEGORY = "."
+
 INT_RE = re.compile(r"^-?[0-9]+$")
 UINT_RE = re.compile(r"^[0-9]+$")
 ADDR_RE = re.compile(r"^0x[0-9a-fA-F]+$")
@@ -169,6 +174,53 @@ def _truthy(val: str) -> bool:
     return str(val).upper() in ("Y", "YES", "ON", "TRUE", "1")
 
 
+def _enum_sym(name: str, value: str) -> str:
+    """Synthetic Kconfig symbol for one ENUM value.
+
+    ENUMs render as a `choice` of per-value bool symbols, so each
+    value needs its own symbol. The name is sanitised (non-identifier
+    chars -> '_') and is NOT meant to round-trip back to the value;
+    apply_config.py reverses the mapping via the enum_map.json that
+    generate() writes alongside the .config.
+    """
+    safe = re.sub(r"[^A-Za-z0-9]", "_", value)
+    return f"{name}__{safe}"
+
+
+def _emit_enum_choice(lines: list[str], r: dict) -> None:
+    """Append a Kconfig `choice` block for an ENUM record.
+
+    mconf renders this as a single "Prompt (current)  --->" line that
+    opens a radiolist of mutually-exclusive options — the native
+    "pick one of N" widget. Exactly one member symbol is ever 'y'.
+    """
+    name = r["name"]
+    help_all = _help_lines(r["help"])
+    summary = help_all[0] if help_all else name
+
+    lines.append("choice")
+    lines.append(f'\tprompt "{summary}"')
+    lines.append(f"\tdefault {_enum_sym(name, r['default'])}")
+    for dep in r.get("depends", []):
+        lines.append(f"\tdepends on {dep}")
+
+    lines.append("\thelp")
+    lines.append(f"\t  {help_all[0]}")
+    if len(help_all) > 1:
+        lines.append("\t  ")  # visual separator between summary and body
+        for hl in help_all[1:]:
+            lines.append(f"\t  {hl}")
+    lines.append("")
+
+    for val in r["strings"]:
+        lines.append(f"config {_enum_sym(name, val)}")
+        lines.append(f'\tbool "{val}"')
+        lines.append("")
+
+    lines.append("endchoice")
+    lines.append("")
+
+
 def _emit_record(lines: list[str], r: dict) -> None:
     """Append Kconfig lines for a single option or comment record."""
     # Comment records render as "comment \"TEXT\"" — a non-
@@ -177,6 +229,12 @@ def _emit_record(lines: list[str], r: dict) -> None:
     if r.get("type") == "comment":
         lines.append(f'comment "{r["text"]}"')
         lines.append("")
+        return
+
+    # ENUMs render as a `choice` block (mconf radiolist), not a plain
+    # `config` symbol — see _emit_enum_choice().
+    if r["type"] == "enum":
+        _emit_enum_choice(lines, r)
         return
 
     name = r["name"]
@@ -190,12 +248,6 @@ def _emit_record(lines: list[str], r: dict) -> None:
         lines.append(f'\tbool "{summary}"')
         lines.append(f'\tdefault {"y" if _truthy(r["default"]) else "n"}')
     elif t == "string":
-        lines.append(f'\tstring "{summary}"')
-        lines.append(f'\tdefault "{r["default"]}"')
-    elif t == "enum":
-        # Flat ENUM: emit as string with the valid value list in help.
-        # A proper `choice` block would need synthetic per-value symbols
-        # and a value-mapping layer; deferred per the plan.
         lines.append(f'\tstring "{summary}"')
         lines.append(f'\tdefault "{r["default"]}"')
     elif t == "int":
@@ -225,9 +277,6 @@ def _emit_record(lines: list[str], r: dict) -> None:
         lines.append("\t  ")  # visual separator between summary and body
         for hl in help_all[1:]:
             lines.append(f"\t  {hl}")
-    if t == "enum":
-        lines.append("\t  ")
-        lines.append(f"\t  Valid values: {', '.join(r['strings'])}")
 
     lines.append("")
 
@@ -272,20 +321,44 @@ def _seed_config_line(r: dict) -> str:
         )
     if t in ("int", "uint", "addr"):
         return f"CONFIG_{name}={val}"
-    # string / enum
+    # string (enum is seeded separately, see _seed_enum_lines)
     return f'CONFIG_{name}="{val}"'
 
 
+def _seed_enum_lines(r: dict) -> list[str]:
+    """Seed .config lines for an ENUM `choice`: the current value's
+    synthetic symbol set to 'y', every sibling explicitly unset."""
+    name = r["name"]
+    cur = r["current"]
+    out: list[str] = []
+    for val in r["strings"]:
+        sym = _enum_sym(name, val)
+        if val == cur:
+            out.append(f"CONFIG_{sym}=y")
+        else:
+            out.append(f"# CONFIG_{sym} is not set")
+    return out
+
+
 def generate(records: list[dict], outdir: Path) -> None:
-    """Emit Kconfig files + seed .config into outdir."""
+    """Emit Kconfig files + seed .config + enum_map.json into outdir."""
     outdir.mkdir(parents=True, exist_ok=True)
 
+    # Root-level records (CATEGORY ".") go at the very top of the root
+    # menu, above every category submenu; the rest are grouped into
+    # per-top-category Kconfig.<stem> files.
+    root_records = [r for r in records if r.get("category") == ROOT_CATEGORY]
+    sub_records = [r for r in records if r.get("category") != ROOT_CATEGORY]
+
+    root_lines = ['mainmenu "Tilck Configuration"', ""]
+    for r in root_records:
+        _emit_record(root_lines, r)
+
     by_top: dict[str, list[dict]] = {}
-    for r in records:
+    for r in sub_records:
         top = r["category"].split("/")[0] if r["category"] else "Misc"
         by_top.setdefault(top, []).append(r)
 
-    root_lines = ['mainmenu "Tilck Configuration"', ""]
     for top in sorted(by_top.keys()):
         # Sanitise filename: spaces → underscores, lowercase. The
         # in-menu title keeps the original casing + spacing; only
@@ -303,12 +376,30 @@ def generate(records: list[dict], outdir: Path) -> None:
     (outdir / "Kconfig").write_text("\n".join(root_lines))
 
     # Seed .config from the option records' current values. Skip
-    # comment records — they have no CONFIG_ symbol.
-    dotconfig = [
-        _seed_config_line(r) for r in records
-        if r.get("type") != "comment"
-    ]
+    # comment records — they have no CONFIG_ symbol. ENUMs expand to
+    # one synthetic symbol per value (see _seed_enum_lines).
+    dotconfig: list[str] = []
+    for r in records:
+        if r.get("type") == "comment":
+            continue
+        if r["type"] == "enum":
+            dotconfig.extend(_seed_enum_lines(r))
+        else:
+            dotconfig.append(_seed_config_line(r))
     (outdir / ".config").write_text("\n".join(dotconfig) + "\n")
+
+    # enum_map.json: each synthetic ENUM symbol -> [option, value], so
+    # apply_config.py can translate the user's radiolist pick back into
+    # a -D<OPTION>=<value> arg. Always written (possibly empty) so the
+    # consumer needn't special-case its absence.
+    enum_map: dict[str, list[str]] = {}
+    for r in records:
+        if r.get("type") == "enum":
+            for val in r["strings"]:
+                enum_map[_enum_sym(r["name"], val)] = [r["name"], val]
+    (outdir / "enum_map.json").write_text(
+        json.dumps(enum_map, indent=2) + "\n"
+    )
 
 
 # ---------------------------------------------------------------------
