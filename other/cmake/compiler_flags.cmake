@@ -1,6 +1,19 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
+# Tilck builds every compile flag explicitly below, so wipe CMake's
+# built-in per-config defaults (e.g. CMAKE_C_FLAGS_RELWITHDEBINFO is
+# "-O2 -g -DNDEBUG"). The root CMakeLists already does this for the
+# main project, but sub-projects (the kernel, gtests) include this
+# file directly and would otherwise inherit those defaults -- notably
+# RelWithDebInfo's -DNDEBUG, which would drop ASSERTs whatever
+# DEBUG_CHECKS says. Only the per-config vars are reset; the base
+# CMAKE_C_FLAGS carries the toolchain's arch flags and must survive.
+foreach(_cfg DEBUG MINSIZEREL RELWITHDEBINFO RELEASE)
+   set(CMAKE_C_FLAGS_${_cfg} "")
+   set(CMAKE_CXX_FLAGS_${_cfg} "")
+endforeach()
+
 set(GENERAL_DEFS_LIST "")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -15,6 +28,19 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
    list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DTILCK_RELEASE_BUILD")
    set(OPT_FLAGS_LIST -Os)
 
+elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+
+   message(STATUS "Preparing a RelWithDebInfo build...")
+   list(APPEND GENERAL_DEFS_LIST "-DTILCK_RELEASE_BUILD")
+   set(OPT_FLAGS_LIST -O2)
+
+   # Optimized like a release build but still meant for debugging, so keep
+   # ASSERTs unless DEBUG_CHECKS is off (same NDEBUG lockstep as the Debug
+   # branch below; -ggdb is on for every build type, see DBG_FLAGS_LIST).
+   if (NOT DEBUG_CHECKS)
+      list(APPEND GENERAL_DEFS_LIST "-DNDEBUG")
+   endif()
+
 elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
    message(STATUS "Preparing a DEBUG build...")
@@ -23,8 +49,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
    # ASSERT() and DEBUG_ONLY() are gated on NDEBUG, but their bodies reference
    # symbols declared under #if DEBUG_CHECKS. A DEBUG_CHECKS=0 build removes
-   # those symbols, so define NDEBUG too and drop the macros in lockstep -- the
-   # release build types above already define it; this covers a Debug build.
+   # those symbols, so define NDEBUG too and drop the macros in lockstep.
    if (NOT DEBUG_CHECKS)
       list(APPEND GENERAL_DEFS_LIST "-DNDEBUG")
    endif()
