@@ -1907,3 +1907,135 @@ TEST_F(console_test, canon_erase_full_arrow_key_sequence)
       +--------------------+
    )");
 }
+
+TEST_F(console_test, canon_tab_erase_is_exact)
+{
+   /*
+    * A tab from column 0 advances to the next tab stop (8). Backspacing it
+    * must put the cursor back exactly at column 0 in one step -- the term
+    * stored the tab's width, so there is no walk-back heuristic to overshoot.
+    */
+   feed_key('\t');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |        $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_erase_stops_at_input_start)
+{
+   /*
+    * With col_offset gone, the line discipline alone must stop erasing once
+    * its input buffer is empty -- an already-printed prompt is never touched,
+    * even when more VERASEs arrive than characters were typed.
+    */
+   console_write("# ");        /* a fake shell prompt (output path) */
+   feed_key('a');
+   feed_key('b');
+   feed_key('c');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |# abc$              |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 6; i++)   /* three more erases than typed */
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |# $                 |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_tab_erase_after_text)
+{
+   /* "ab" then a tab: the tab spans columns 2..7. Backspacing it must return
+    * the cursor to column 2 (right after 'b'), not to column 0. */
+   feed_key('a');
+   feed_key('b');
+   feed_key('\t');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |ab      $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |ab$                 |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_consecutive_tabs_erase)
+{
+   /* Two tabs land at columns 8 and 16; each is erased back exactly one stop. */
+   feed_key('\t');
+   feed_key('\t');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |                $   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |        $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}

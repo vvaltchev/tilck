@@ -18,7 +18,6 @@ enum term_action_type {
    a_direct_write,               // [1]
    a_del_generic,
    a_scroll,                     // [2]
-   a_set_col_offset,
    a_move_cur,
    a_move_cur_rel,
    a_reset,
@@ -175,15 +174,6 @@ term_make_action_scroll(struct term_action *a,
       .type2 = a_scroll,
       .arg1 = rows,
       .arg2 = st,
-   };
-}
-
-static ALWAYS_INLINE void
-term_make_action_set_col_off(struct term_action *a, u32 off)
-{
-   *a = (struct term_action) {
-      .type1 = a_set_col_offset,
-      .arg = off,
    };
 }
 

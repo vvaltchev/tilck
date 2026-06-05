@@ -242,8 +242,6 @@ static void term_internal_incr_row(struct vterm *t)
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
-   t->col_offset = 0;
-
    if (t->r < eR - 1) {
       ++t->r;
       return;
@@ -302,40 +300,41 @@ static void term_internal_write_tab(struct vterm *t, u8 color)
    }
 
    tab_col = (u32) MIN(round_up_at(t->c+1, t->tabsize), (u32)t->cols-1) - 1;
-   t->tabs_buf[t->r * t->cols + tab_col] = 1;
+
+   /*
+    * Store the tab's *width* (the number of cells it spans) at its last cell,
+    * rather than a bare "this is a tab" flag. A later backspace then jumps the
+    * cursor straight back to where the tab began, so the line discipline does
+    * not need to tell the term where input started (no col_offset floor).
+    */
+   t->tabs_buf[t->r * t->cols + tab_col] = (u8)(tab_col + 1 - t->c);
    t->c = (u16)(tab_col + 1);
 }
 
 static void term_internal_write_backspace(struct vterm *t, u8 color)
 {
-   if (!t->c || t->c <= t->col_offset)
+   if (!t->c)
       return;
 
    const u16 space_entry = make_vgaentry(' ', color);
    t->c--;
 
-   if (!t->tabs_buf || !t->tabs_buf[t->r * t->cols + t->c]) {
+   const u8 tab_width =
+      t->tabs_buf ? t->tabs_buf[t->r * t->cols + t->c] : 0;
+
+   if (!tab_width) {
       buf_set_entry(t, t->r, t->c, space_entry);
       t->vi->set_char_at(t->r, t->c, space_entry);
       return;
    }
 
-   /* we hit the end of a tab */
+   /*
+    * We stepped onto the last cell of a tab: jump straight back over the rest
+    * of it using the width stored when the tab was echoed (its first cell is
+    * t->c - (tab_width - 1)). The cells in between are already blank.
+    */
    t->tabs_buf[t->r * t->cols + t->c] = 0;
-
-   for (int i = t->tabsize - 1; i >= 0; i--) {
-
-      if (!t->c || t->c == t->col_offset)
-         break;
-
-      if (t->tabs_buf[t->r * t->cols + t->c - 1])
-         break; /* we hit the previous tab */
-
-      if (buf_get_char_at(t, t->r, t->c - 1) != ' ')
-         break;
-
-      t->c--;
-   }
+   t->c = (u16)(t->c - (tab_width - 1));
 }
 
 static void term_internal_delete_last_word(struct vterm *t, u8 color)
@@ -559,7 +558,7 @@ init_vterm(term *_t,
 
    /*
     * Start from a fully-zeroed term so init_vterm() is self-contained: every
-    * field left untouched below (scroll, max_scroll, col_offset,
+    * field left untouched below (scroll, max_scroll,
     * using_alt_buffer, screen_buf_copy, ...) is reset rather than inherited.
     * The term struct is therefore allocated with a non-zeroing kalloc_obj().
     */
@@ -673,7 +672,6 @@ static const struct term_interface intf = {
    .write = vterm_write,
    .scroll_up = vterm_scroll_up,
    .scroll_down = vterm_scroll_down,
-   .set_col_offset = vterm_set_col_offset,
    .pause_output = vterm_pause_output,
    .restart_output = vterm_restart_output,
    .set_filter = vterm_set_filter,

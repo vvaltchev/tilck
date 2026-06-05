@@ -30,7 +30,6 @@ static const struct actions_table_item actions_table[] = {
    [a_direct_write]         = ENTRY(direct_write, 3),
    [a_del_generic]          = ENTRY(del, 2),
    [a_scroll]               = ENTRY(scroll, 2),
-   [a_set_col_offset]       = ENTRY(set_col_offset, 1),
    [a_move_cur]             = ENTRY(move_cur, 4),
    [a_move_cur_rel]         = ENTRY(move_cur_rel, 4),
    [a_reset]                = ENTRY(reset, 0),
@@ -113,15 +112,6 @@ vterm_scroll_down(term *t, u32 rows)
 {
    struct term_action a;
    term_make_action_scroll(&a, term_scroll_down, rows);
-   term_execute_or_enqueue_action(t, &a);
-}
-
-static void
-vterm_set_col_offset(term *_t, int off)
-{
-   struct vterm *const t = _t;
-   struct term_action a;
-   term_make_action_set_col_off(&a, off >= 0 ? (u32)off : t->c);
    term_execute_or_enqueue_action(t, &a);
 }
 

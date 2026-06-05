@@ -150,7 +150,6 @@ static const struct term_interface intf = {
    .write = sterm_write,
    .scroll_up = (void*)sterm_ignored,
    .scroll_down = (void*)sterm_ignored,
-   .set_col_offset = (void*)sterm_ignored,
    .pause_output = (void*)sterm_ignored,
    .restart_output = (void*)sterm_ignored,
    .set_filter = (void*)sterm_ignored,

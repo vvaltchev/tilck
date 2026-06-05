@@ -155,14 +155,6 @@ term_action_direct_write(struct vterm *const t, char *buf, u32 len, u8 color)
 DEFINE_TERM_ACTION_3(direct_write, char *, u32, u8)
 
 static void
-term_action_set_col_offset(struct vterm *const t, u16 off)
-{
-   t->col_offset = off;
-}
-
-DEFINE_TERM_ACTION_1(set_col_offset, u16)
-
-static void
 term_action_move_cur_rel(struct vterm *const t, s16 dr, s16 dc)
 {
    if (!t->buffer)

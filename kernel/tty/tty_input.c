@@ -574,9 +574,6 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
       }
    }
 
-   if (t->c_term.c_lflag & ICANON)
-      t->tintf->set_col_offset(t->tstate, -1 /* current col */);
-
    eh->read_allowed_to_return = false;
 
    do {
