@@ -334,8 +334,20 @@ static void term_internal_write_tab(struct vterm *t, u8 color)
 
 static void term_internal_write_backspace(struct vterm *t, u8 color)
 {
-   if (!t->c)
-      return;
+   if (!t->c) {
+
+      /*
+       * At the left margin, step back onto the previous row's last column: a
+       * line that wrapped is erased seamlessly across the wrap. The line
+       * discipline drives backspace across only as many cells as it echoed, so
+       * it never wraps past where input began into an earlier, unrelated line.
+       */
+      if (!t->r)
+         return;
+
+      t->r--;
+      t->c = t->cols;
+   }
 
    const u16 space_entry = make_vgaentry(' ', color);
    t->c--;

@@ -200,9 +200,15 @@ static void test_vi_clear_row(u16 row, u8 color)
 static void test_vi_move_cursor(u16 row, u16 col, int color)
 {
    ASSERT_LT(row, TEST_TERM_ROWS);
-   ASSERT_LT(col, TEST_TERM_COLS);
+
+   /*
+    * col == cols is the legitimate "deferred wrap" position: after a character
+    * fills the last column the term parks the cursor one past it until the next
+    * character wraps. Model it as the last column rather than rejecting it.
+    */
+   ASSERT_LE(col, TEST_TERM_COLS);
    cursor_row = row;
-   cursor_col = col;
+   cursor_col = (u16)MIN((int)col, TEST_TERM_COLS - 1);
 }
 
 static void test_vi_enable_cursor()
@@ -2088,6 +2094,66 @@ TEST_F(console_test, tab_marks_follow_content_when_scrolling)
       |                    |
       |                    |
       |$                   |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, backspace_wraps_to_previous_row)
+{
+   /*
+    * A line longer than the screen width wraps onto the next row; backspacing
+    * across the wrap must step back onto the previous row's last column and
+    * keep erasing there, rather than stalling at the left margin.
+    */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   console_write("abcdefghijklmnopqrstuvwxy");   /* 20 on row 0, 5 on row 1 */
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |abcdefghijklmnopqrst|
+      |uvwxy$              |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 6; i++)   /* erase uvwxy, then wrap and erase t */
+      console_write(&bs, 1);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |abcdefghijklmnopqrs$|
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_erase_unwraps_without_touching_prompt)
+{
+   /*
+    * Wrapping meets the discipline's bound: an input line that wrapped onto a
+    * second row must erase back across the wrap and stop exactly at the prompt,
+    * never wrapping up into the prompt's own text.
+    */
+   console_write("PROMPT> ");          /* prompt on row 0, cols 0..7 */
+
+   for (int i = 0; i < 15; i++)        /* 12 fill row 0, 3 wrap to row 1 */
+      feed_key((u8)('a' + i % 26));
+
+   for (int i = 0; i < 18; i++)        /* erase all 15, plus 3 extra no-ops */
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |PROMPT> $           |
+      |                    |
+      |                    |
+      |                    |
       |                    |
       +--------------------+
    )");
