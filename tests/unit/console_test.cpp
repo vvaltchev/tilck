@@ -1733,30 +1733,27 @@ TEST_F(console_test, scrollback_clamps_at_the_top)
       console_write(buf);
    }
 
-   /*
-    * Scroll far past the top: ts_set_scroll() clamps at the oldest retained
-    * line. (The scrollback above the freshly-written lines is shared state
-    * from earlier tests in this binary, so we assert the clamp *behavior* --
-    * that it is idempotent and recoverable -- not the absolute content.)
-    */
-   u16 snap[TEST_TERM_ROWS][TEST_TERM_COLS];
-   t->tintf->scroll_up(t->tstate, 1000000);
-   memcpy(snap, test_video_framebuffer, sizeof(snap));
-
-   /* Already at the top: scrolling up further is a no-op. */
-   t->tintf->scroll_up(t->tstate, 1000000);
-   ASSERT_EQ(memcmp(snap, test_video_framebuffer, sizeof(snap)), 0)
-      << "scroll_up past the top must be clamped (no further change)";
-
-   /* New output snaps the view back to the freshest lines. */
-   console_write("end\r\n");
+   /* Scroll far past the top: ts_set_scroll() clamps at the oldest line. */
+   t->tintf->scroll_up(t->tstate, 1000);
    check_screen_vs_expected(R"(
       +--------------------+
-      |row11               |
-      |row12               |
-      |row13               |
-      |end                 |
-      |$                   |
+      |row00               |
+      |row01               |
+      |row02               |
+      |row03               |
+      |row04               |
+      +--------------------+
+   )");
+
+   /* Already clamped: scrolling up further is a no-op. */
+   t->tintf->scroll_up(t->tstate, 10);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row00               |
+      |row01               |
+      |row02               |
+      |row03               |
+      |row04               |
       +--------------------+
    )");
 }

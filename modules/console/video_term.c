@@ -467,7 +467,7 @@ debug_term_dump_font_table(term *_t)
 static term *
 alloc_term_struct(void)
 {
-   return kzalloc_obj(struct vterm);
+   return kalloc_obj(struct vterm);
 }
 
 static void
@@ -557,6 +557,14 @@ init_vterm(term *_t,
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 #endif
 
+   /*
+    * Start from a fully-zeroed term so init_vterm() is self-contained: every
+    * field left untouched below (scroll, max_scroll, col_offset,
+    * using_alt_buffer, screen_buf_copy, ...) is reset rather than inherited.
+    * The term struct is therefore allocated with a non-zeroing kalloc_obj().
+    */
+   bzero(t, sizeof(struct vterm));
+
    t->tabsize = 8;
 
    if (intf) {
@@ -574,7 +582,7 @@ init_vterm(term *_t,
       t->vi = &no_output_vi;
    }
 
-   t->main_scroll_region_start = t->alt_scroll_region_start = 0;
+   /* Scroll region spans the whole screen (the *_start fields are 0 above). */
    t->main_scroll_region_end = t->alt_scroll_region_end = t->rows - 1;
 
    t->start_scroll_region = &t->main_scroll_region_start;
