@@ -32,6 +32,12 @@ buf_copy_row(struct vterm *t, u32 dest, u32 src)
       return;
 
    memcpy(get_buf_row(t, dest), get_buf_row(t, src), t->cols * 2);
+
+   /* Move the tab map with the content, so tab-erase stays correct. */
+   if (t->tabs_buf)
+      memcpy(t->tabs_buf + dest * t->cols,
+             t->tabs_buf + src * t->cols,
+             t->cols);
 }
 
 static ALWAYS_INLINE bool ts_is_at_bottom(struct vterm *t)
@@ -149,6 +155,11 @@ static void ts_buf_clear_row(struct vterm *t, u16 row, u8 color)
       return;
 
    memset16(get_buf_row(t, row), make_vgaentry(' ', color), t->cols);
+
+   /* A cleared row holds no tabs: drop any tab marks so they cannot be
+    * mistaken for tabs when the row is later reused. */
+   if (t->tabs_buf)
+      memset(t->tabs_buf + row * t->cols, 0, t->cols);
 }
 
 static void ts_clear_row(struct vterm *t, u16 row, u8 color)
@@ -258,6 +269,16 @@ static void term_internal_incr_row(struct vterm *t)
    }
 
    t->max_scroll++;
+
+   /*
+    * The visible content just scrolled up by one row. tabs_buf is indexed by
+    * screen row (not through the ring), so shift it up to match; the new bottom
+    * row is cleared just below by ts_*_clear_row().
+    */
+   if (t->tabs_buf)
+      memmove(t->tabs_buf,
+              t->tabs_buf + t->cols,
+              (size_t)(t->rows - 1) * t->cols);
 
    if (t->vi->scroll_one_line_up) {
       t->scroll++;

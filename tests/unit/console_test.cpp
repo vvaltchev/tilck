@@ -2039,3 +2039,56 @@ TEST_F(console_test, canon_consecutive_tabs_erase)
       +--------------------+
    )");
 }
+
+TEST_F(console_test, tab_marks_cleared_when_row_scrolls_away)
+{
+   /*
+    * A row that scrolls off and is reused must not keep its old tab marks: the
+    * stale mark would make a later backspace over a *real* character jump like
+    * a tab. Put a tab on the bottom row, scroll it away, type fresh text on the
+    * reused row, then erase one char -- it must be a plain one-cell backspace.
+    */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   set_cursor_to(4, 0);
+   console_write("\t");              /* tab on the bottom row, ends at col 7 */
+   console_write("\r\n");            /* scroll: bottom row reused and cleared */
+   console_write("abcdefgh");        /* 8 fresh chars on the reused row       */
+   console_write(&bs, 1);            /* erase the last one                    */
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      |abcdefg$            |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, tab_marks_follow_content_when_scrolling)
+{
+   /*
+    * The tab map is indexed by screen row, so it must shift with the content on
+    * scroll. A tab typed on the bottom row moves up one row when the screen
+    * scrolls; backspacing it there must still jump back its full width.
+    */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   set_cursor_to(4, 0);
+   console_write("\t");              /* tab on the bottom row (cols 0..7) */
+   console_write("\r\n");            /* scroll: the tab moves up to row 3 */
+
+   set_cursor_to(3, 8);
+   console_write(&bs, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |                    |
+      |                    |
+      |                    |
+      |$                   |
+      |                    |
+      +--------------------+
+   )");
+}
