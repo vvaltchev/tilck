@@ -2010,7 +2010,7 @@ TEST_F(console_test, canon_tab_erase_after_text)
 
 TEST_F(console_test, canon_consecutive_tabs_erase)
 {
-   /* Two tabs land at columns 8 and 16; each is erased back exactly one stop. */
+   /* Two tabs land at cols 8 and 16; each erases back one full stop. */
    feed_key('\t');
    feed_key('\t');
    check_screen_vs_expected(R"(
@@ -2151,6 +2151,83 @@ TEST_F(console_test, canon_erase_unwraps_without_touching_prompt)
    check_screen_vs_expected(R"(
       +--------------------+
       |PROMPT> $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, backspace_at_top_left_is_noop)
+{
+   /* Nothing to erase and nowhere to wrap: a backspace at the home position
+    * must do nothing rather than step off-screen. */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   console_write(&bs, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_edit_mixed_line_erases_exactly)
+{
+   /*
+    * One line mixing a normal char, a tab, more normals and a control char:
+    * erasing it must undo each echo exactly -- two cells for the caret-echoed
+    * control char, the tab's full width, one cell per normal char.
+    */
+   feed_key('a');
+   feed_key('b');
+   feed_key('\t');            /* tab spans cols 2..7  */
+   feed_key('c');
+   feed_key('d');
+   feed_key(0x1b);            /* ESC echoes "^[" at cols 10,11 */
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |ab      cd^[$       |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 6; i++)   /* ESC, d, c, tab, b, a */
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, term_word_erase_uses_backspace)
+{
+   /*
+    * VWERASE (word erase) walks term_internal_write_backspace back over any
+    * trailing spaces and then the last word; exercise both loops on the term
+    * side.
+    */
+   const char ww = (char)t->c_term.c_cc[VWERASE];
+
+   console_write("hello world  ");
+   console_write(&ww, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |hello $             |
       |                    |
       |                    |
       |                    |
