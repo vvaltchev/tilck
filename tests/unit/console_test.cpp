@@ -271,6 +271,14 @@ public:
       return count;
    }
 
+   /* Inject one input byte as if typed (drives the tty line discipline). */
+   void feed_key(u8 c) {
+      struct key_event ke = {};
+      ke.pressed = true;
+      ke.print_char = (char)c;
+      tty_send_keyevent(t, ke, false);
+   }
+
    /*
     * Pre-fill the screen with a known pattern so erase/insert/delete tests
     * can see the effect clearly. Uses uppercase letters, one per cell,
@@ -1838,4 +1846,64 @@ TEST_F(console_test, secondary_term_alloc_init_dispose)
 
    t->tintf->dispose(t2);
    t->tintf->free(t2);
+}
+
+TEST_F(console_test, canon_erase_handles_caret_control_char)
+{
+   /* ESC echoes as "^[" (two cells); a single backspace must clear both. */
+   feed_key(0x1B);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |^[$                 |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_erase_full_arrow_key_sequence)
+{
+   /*
+    * An UP-arrow arrives as the bytes ESC '[' 'A' and echoes "^[[A" (4 cells
+    * over 3 bytes). Three backspaces (one per byte) must clear all four cells:
+    * ESC is worth two, '[' and 'A' one each.
+    */
+   feed_key(0x1B);
+   feed_key('[');
+   feed_key('A');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |^[[A$               |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 3; i++)
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
 }

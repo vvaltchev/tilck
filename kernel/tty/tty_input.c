@@ -26,6 +26,32 @@ static void tty_keypress_echo(struct tty *t, char c);
 
 #include "tty_ctrl_handlers.c.h"
 
+/*
+ * True when tty_keypress_echo() would render byte `c` in caret notation
+ * ("^X", two cells) instead of one cell: a control char with ECHOCTL on,
+ * excluding the ones echoed literally (TAB, NL, START, STOP).
+ */
+static bool tty_char_echoed_as_caret(struct tty *t, char c)
+{
+   const struct termios *const ct = &t->c_term;
+
+   return (c < ' ' || c == 0x7F)   &&
+          (ct->c_lflag & ECHOCTL)  &&
+          c != '\t' && c != '\n'   &&
+          c != ct->c_cc[VSTART]    &&
+          c != ct->c_cc[VSTOP];
+}
+
+/*
+ * Number of screen cells tty_keypress_echo() draws for byte `c`. Caret-echoed
+ * control chars take two; everything else takes one. (TAB is special-cased to
+ * one here: the video term still tracks tab widths itself for erase.)
+ */
+static int tty_echo_width(struct tty *t, char c)
+{
+   return tty_char_echoed_as_caret(t, c) ? 2 : 1;
+}
+
 static void tty_keypress_echo(struct tty *t, char c)
 {
    struct termios *const c_term = &t->c_term;
@@ -95,14 +121,10 @@ static void tty_keypress_echo(struct tty *t, char c)
     *          as ^H.
     *
     */
-   if ((c < ' ' || c == 0x7F) && (c_term->c_lflag & ECHOCTL)) {
-      if (c != '\t' && c != '\n') {
-         if (c != c_term->c_cc[VSTART] && c != c_term->c_cc[VSTOP]) {
-            char mini_buf[2] = { '^', c + 0x40 };
-            t->tintf->write(t->tstate, mini_buf, 2, t->curr_color);
-            return;
-         }
-      }
+   if (tty_char_echoed_as_caret(t, c)) {
+      char mini_buf[2] = { '^', c + 0x40 };
+      t->tintf->write(t->tstate, mini_buf, 2, t->curr_color);
+      return;
    }
 
    /* Just ECHO a regular character */
@@ -145,14 +167,29 @@ static inline u8 tty_inbuf_read_elem(struct tty *t)
 
 static inline bool tty_inbuf_drop_last_written_elem(struct tty *t)
 {
+   u8 c;
    bool ret;
-   tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
 
    disable_preemption();
    {
-      ret = ringbuf_unwrite_elem(&t->input_ringbuf, NULL);
+      ret = ringbuf_unwrite_elem(&t->input_ringbuf, &c);
    }
    enable_preemption();
+
+   /*
+    * Erase exactly as many cells as we echoed for this byte. A caret-echoed
+    * control char like ESC drew "^[" (two cells); a single VERASE would leave
+    * a stray '^'. Only erase when a byte was actually dropped, so backspacing
+    * at the start of the line never touches what was printed before it.
+    */
+   if (ret) {
+
+      const int width = tty_echo_width(t, (char)c);
+
+      for (int i = 0; i < width; i++)
+         tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
+   }
+
    return ret;
 }
 
