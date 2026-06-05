@@ -118,7 +118,7 @@ static void check_screen_vs_expected(const char *exp_screen)
 
          if (expected != '$') {
 
-            if (cursor_row == i && cursor_col == j) {
+            if (cursor_enabled && cursor_row == i && cursor_col == j) {
                /* We didn't expect the cursor, but it's there */
                FAIL() << "Unexpected cursor at row " << i+1 << ", col " << j+1;
             }
@@ -1638,7 +1638,8 @@ TEST_F(console_test, scroll_blanks_bottom_row_before_redraw)
     * non-blank rows so the recycled slot is deterministically non-blank, then
     * capture what the next scroll draws for the bottom row: it must be blank.
     */
-   for (int i = 0; i < 1000; i++)         /* > total_buffer_rows: wraps the ring */
+   /* > total_buffer_rows lines, so the ring buffer wraps around. */
+   for (int i = 0; i < 1000; i++)
       console_write("XXXXXXXXXXXXXXXXXXX\r\n");
 
    capture_bottom_set_row = true;
@@ -1648,4 +1649,196 @@ TEST_F(console_test, scroll_blanks_bottom_row_before_redraw)
    for (int j = 0; j < TEST_TERM_COLS; j++)
       ASSERT_EQ((char)vgaentry_get_char(captured_bottom_row[j]), ' ')
          << "bottom row col " << j << " redrawn with stale content";
+}
+
+/*
+ * Direct tests of the video terminal's scrollback, exercised through the term
+ * interface's scroll_up()/scroll_down() (keyboard-driven in production) rather
+ * than escape sequences -- this whole path was previously uncovered. Each test
+ * writes 14 numbered lines: the first five fill rows 0..4, the rest scroll, so
+ * "row10".."row13" end up on screen with the cursor on the fresh bottom line.
+ */
+TEST_F(console_test, scrollback_scroll_up_and_down)
+{
+   for (int i = 0; i < 14; i++) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "row%02d\r\n", i);
+      console_write(buf);
+   }
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row10               |
+      |row11               |
+      |row12               |
+      |row13               |
+      |$                   |
+      +--------------------+
+   )");
+
+   /* One line back into history: the cursor hides, an older line appears. */
+   t->tintf->scroll_up(t->tstate, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row09               |
+      |row10               |
+      |row11               |
+      |row12               |
+      |row13               |
+      +--------------------+
+   )");
+
+   /* Three more lines back. */
+   t->tintf->scroll_up(t->tstate, 3);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row06               |
+      |row07               |
+      |row08               |
+      |row09               |
+      |row10               |
+      +--------------------+
+   )");
+
+   /* Forward two lines. */
+   t->tintf->scroll_down(t->tstate, 2);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row08               |
+      |row09               |
+      |row10               |
+      |row11               |
+      |row12               |
+      +--------------------+
+   )");
+
+   /* Forward past the end clamps to the bottom; the cursor returns. */
+   t->tintf->scroll_down(t->tstate, 100);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row10               |
+      |row11               |
+      |row12               |
+      |row13               |
+      |$                   |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, scrollback_clamps_at_the_top)
+{
+   for (int i = 0; i < 14; i++) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "row%02d\r\n", i);
+      console_write(buf);
+   }
+
+   /*
+    * Scroll far past the top: ts_set_scroll() clamps at the oldest retained
+    * line. (The scrollback above the freshly-written lines is shared state
+    * from earlier tests in this binary, so we assert the clamp *behavior* --
+    * that it is idempotent and recoverable -- not the absolute content.)
+    */
+   u16 snap[TEST_TERM_ROWS][TEST_TERM_COLS];
+   t->tintf->scroll_up(t->tstate, 1000000);
+   memcpy(snap, test_video_framebuffer, sizeof(snap));
+
+   /* Already at the top: scrolling up further is a no-op. */
+   t->tintf->scroll_up(t->tstate, 1000000);
+   ASSERT_EQ(memcmp(snap, test_video_framebuffer, sizeof(snap)), 0)
+      << "scroll_up past the top must be clamped (no further change)";
+
+   /* New output snaps the view back to the freshest lines. */
+   console_write("end\r\n");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row11               |
+      |row12               |
+      |row13               |
+      |end                 |
+      |$                   |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, scroll_up_then_new_output_snaps_to_bottom)
+{
+   for (int i = 0; i < 14; i++) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "row%02d\r\n", i);
+      console_write(buf);
+   }
+
+   t->tintf->scroll_up(t->tstate, 5);   /* scroll into history */
+
+   /* New output snaps the view back to the newest line. */
+   console_write("new\r\n");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row11               |
+      |row12               |
+      |row13               |
+      |new                 |
+      |$                   |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, pause_output_buffers_then_restart_redraws)
+{
+   console_write("\033[2J\033[1;1Hbefore");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |before$             |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   /* While paused, output is processed into the buffer but not drawn. */
+   t->tintf->pause_output(t->tstate);
+   console_write("\r\nPAUSED");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |before              |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   /* Restart redraws the whole buffer, revealing the buffered output. */
+   t->tintf->restart_output(t->tstate);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |before              |
+      |PAUSED$             |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, secondary_term_alloc_init_dispose)
+{
+   term *t2 = t->tintf->alloc();
+   ASSERT_NE(t2, nullptr);
+
+   /* A non-first term gets the no-output video interface internally. */
+   ASSERT_EQ(t->tintf->video_term_init(t2, &test_console_vi, 8, 30, -1), 0);
+
+   struct term_params p;
+   t->tintf->get_params(t2, &p);
+   ASSERT_EQ(p.rows, 8);
+   ASSERT_EQ(p.cols, 30);
+
+   /* Writing to it exercises the buffer path (drawing is a no-op). */
+   t->tintf->write(t2, "hi\r\nthere\r\n", 11, DEFAULT_COLOR16);
+
+   t->tintf->dispose(t2);
+   t->tintf->free(t2);
 }
