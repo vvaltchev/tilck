@@ -41,6 +41,11 @@ using namespace testing;
 static u16 test_video_framebuffer[TEST_TERM_ROWS][TEST_TERM_COLS];
 static u16 cursor_row;
 static u16 cursor_col;
+
+/* Records the data passed to set_row() for the bottom row (see the
+ * scroll_blanks_bottom_row_before_redraw test). */
+static u16 captured_bottom_row[TEST_TERM_COLS];
+static bool capture_bottom_set_row;
 static bool cursor_enabled = true;
 
 static void console_test_dump_char(int row, int col, bool safe)
@@ -178,6 +183,9 @@ static void test_vi_set_row(u16 row, u16 *data, bool fpu_allowed)
    memcpy(&test_video_framebuffer[row],
           data,
           TEST_TERM_COLS * sizeof(u16));
+
+   if (capture_bottom_set_row && row == TEST_TERM_ROWS - 1)
+      memcpy(captured_bottom_row, data, TEST_TERM_COLS * sizeof(u16));
 }
 
 static void test_vi_clear_row(u16 row, u8 color)
@@ -1618,4 +1626,26 @@ TEST_F(console_test, sm_interm_bytes_overflow_recovers)
       |                    |
       +--------------------+
    )");
+}
+
+TEST_F(console_test, scroll_blanks_bottom_row_before_redraw)
+{
+   /*
+    * A newline at the bottom scrolls the screen up by one line. The ring slot
+    * that becomes the new bottom row still holds the line that scrolled off the
+    * top of the scrollback; the scroll must blank it before (re)drawing it, or
+    * the redraw briefly shows that stale line. Fill the whole ring with
+    * non-blank rows so the recycled slot is deterministically non-blank, then
+    * capture what the next scroll draws for the bottom row: it must be blank.
+    */
+   for (int i = 0; i < 1000; i++)         /* > total_buffer_rows: wraps the ring */
+      console_write("XXXXXXXXXXXXXXXXXXX\r\n");
+
+   capture_bottom_set_row = true;
+   console_write("\n");
+   capture_bottom_set_row = false;
+
+   for (int j = 0; j < TEST_TERM_COLS; j++)
+      ASSERT_EQ((char)vgaentry_get_char(captured_bottom_row[j]), ' ')
+         << "bottom row col " << j << " redrawn with stale content";
 }

@@ -264,11 +264,20 @@ static void term_internal_incr_row(struct vterm *t)
    if (t->vi->scroll_one_line_up) {
       t->scroll++;
       t->vi->scroll_one_line_up();
+      ts_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
    } else {
-      ts_set_scroll(t, t->max_scroll);
-   }
 
-   ts_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
+      /*
+       * Software scroll: advance the ring view and blank the new bottom row in
+       * the buffer BEFORE redrawing it. The ring slot now mapped to the last
+       * visible row still holds the line that scrolled off the top (or
+       * uninitialized data early on); redrawing before the clear would briefly
+       * flash that stale content on the bottom row.
+       */
+      t->scroll = t->max_scroll;
+      ts_buf_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
+      term_redraw(t);
+   }
 }
 
 static void term_internal_write_printable_char(struct vterm *t, u8 c, u8 color)
