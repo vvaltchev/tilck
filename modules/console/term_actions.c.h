@@ -405,8 +405,6 @@ DEFINE_TERM_ACTION_0(restart_output)
 static void
 term_action_use_alt_buffer(struct vterm *const t, bool use_alt_buffer)
 {
-   u16 *b = get_buf_row(t, 0);
-
    if (t->using_alt_buffer == use_alt_buffer)
       return;
 
@@ -423,13 +421,32 @@ term_action_use_alt_buffer(struct vterm *const t, bool use_alt_buffer)
       t->tabs_buf = t->alt_tabs_buf;
       t->saved_cur_row = t->r;
       t->saved_cur_col = t->c;
-      memcpy(t->screen_buf_copy, b, sizeof(u16) * t->rows * t->cols);
+
+      /*
+       * Save the visible screen one row at a time. The main buffer is a ring:
+       * get_buf_row() maps each row through calc_buf_row()'s modulo, so the
+       * rows are contiguous in memory only while the screen does not straddle
+       * the end of the ring. A single linear memcpy() of rows * cols cells from
+       * get_buf_row(t, 0) would read past the end of the buffer whenever the
+       * current scroll places the screen across the wrap point.
+       */
+      for (u16 row = 0; row < t->rows; row++) {
+         memcpy(&t->screen_buf_copy[row * t->cols],
+                get_buf_row(t, row),
+                t->cols * 2);
+      }
 
    } else {
 
       ASSERT(t->screen_buf_copy != NULL);
 
-      memcpy(b, t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+      /* Restore the saved screen row by row (see the save path above). */
+      for (u16 row = 0; row < t->rows; row++) {
+         memcpy(get_buf_row(t, row),
+                &t->screen_buf_copy[row * t->cols],
+                t->cols * 2);
+      }
+
       t->r = t->saved_cur_row;
       t->c = t->saved_cur_col;
       t->tabs_buf = t->main_tabs_buf;
