@@ -13,10 +13,9 @@ scroll_view::init(WINDOW *win, draw_row_fn draw_cb)
 
    /*
     * idlok lets ncurses use the terminal's insert/delete-line + scroll
-    * region to satisfy our explicit wscrl() calls. We deliberately do
-    * NOT scrollok(): automatic scrolling would fire when a row paints
-    * its rightmost cell (the cursor wrapping past the last line), which
-    * scrolls the whole list by one. wscrl() works without it.
+    * region to satisfy our explicit wscrl() calls. scrollok stays OFF
+    * here (so painting a row's rightmost cell can't auto-scroll the
+    * list); apply() turns it on only momentarily around its wscrl().
     */
    idlok(w, TRUE);
    keypad(w, TRUE);
@@ -112,10 +111,16 @@ scroll_view::apply(int new_top, int new_sel)
       return;
    }
 
-   /* Native scroll by dt, then repaint only the newly exposed rows. */
+   /* Native scroll by dt, then repaint only the newly exposed rows.
+    *
+    * scrollok must be on for wscrl() to do anything, but it must be off
+    * the rest of the time, otherwise drawing a row's rightmost cell
+    * auto-scrolls the whole list. So enable it only around wscrl(). */
    tp = new_top;
    sel = new_sel;
+   scrollok(w, TRUE);
    wscrl(w, dt);
+   scrollok(w, FALSE);
 
    if (dt > 0) {
       for (int y = h - dt; y < h; y++)
