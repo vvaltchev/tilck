@@ -153,7 +153,6 @@ draw_bar(WINDOW *w, int y, int x, int width, double p, bucket b, bool sel)
       filled = width;
 
    const chtype fa = sel ? cv_attr(CVP_SEL) : bucket_attr(b);
-   const chtype ta = sel ? cv_attr(CVP_SEL) : cv_attr(CVP_TRACK);
 
    if (filled > 0) {
       wattron(w, fa);
@@ -161,7 +160,13 @@ draw_bar(WINDOW *w, int y, int x, int width, double p, bucket b, bool sel)
       wattroff(w, fa);
    }
 
-   if (filled < width) {
+   /*
+    * On the selected row the track is left blank -- only the highlight
+    * background shows there -- so the white filled blocks stand out
+    * cleanly. Off the selection it gets the faint grey track.
+    */
+   if (filled < width && !sel) {
+      const chtype ta = cv_attr(CVP_TRACK);
       wattron(w, ta);
       mvwaddstr(w, y, x + filled, repeat(GL_BAR, width - filled).c_str());
       wattroff(w, ta);
