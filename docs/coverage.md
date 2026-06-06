@@ -34,37 +34,26 @@ require a special build configuration as well (see below).
 
         make && make gtests
 
-3. Clean coverage data from previous runs:
+3. Run every test type and collect the merged coverage:
 
-        <BUILD_DIR>/tests/unit/scripts/generate_test_coverage_report --clean
+        <BUILD_DIR>/st/run_all_tests --coverage --html
 
-4. Run the unit tests:
+   That single command runs the unit tests, the kernel self-tests and the
+   system tests (and the interactive tests too, see below), collecting their
+   coverage into a single `<BUILD_DIR>/coverage.info`. The `--html` option
+   additionally renders the HTML report; drop it if you only need the
+   `coverage.info` file (e.g. to upload it). Add `-c` to run each in-VM test
+   type in a single VM boot (much faster).
 
-        <BUILD_DIR>/gtests
+4. Open `<BUILD_DIR>/coverage_html/index.html` in your browser.
 
-   At this point, there should be plenty of `.gcda` files in the build
-   directory. Check that with: `find <BUILD_DIR> -name '*.gcda'`
+`run_all_tests --coverage` takes care of the whole flow: it cleans any stale
+coverage data, wires the in-VM runners to dump and merge the kernel's coverage,
+captures the host-side unit-test coverage, and merges everything into one
+`coverage.info`. For the CI use case, leave out `--html` and upload the
+resulting file instead, e.g.:
 
-5. Generate the first coverage report with:
-
-        <BUILD_DIR>/tests/unit/scripts/generate_test_coverage_report --acc
-
-   At this point, there should be a `coverage.info` file in the build directory,
-   but we're not done yet. We have only coverage for the **unit tests**.
-
-6. In order to get coverage info for the **kernel self-tests** and the
-   **system tests**, we need to run also:
-
-        DUMP_COV=1 REPORT_COV=1 <BUILD_DIR>/st/run_all_tests -c
-
-7. At this point, our `coverage.info` file will contain the merged coverage data
-   from both the unit tests run and all the other tests (where kernel coverage
-   was involved as well). Therefore, we can finally generate our HTML report
-   this way:
-
-        <BUILD_DIR>/tests/unit/scripts/generate_test_coverage_report --gen
-
-   Open `<BUILD_DIR>/coverage_html/index.html` in your browser.
+        <BUILD_DIR>/scripts/generate_kernel_coverage_report --codecov
 
 ## Advanced case
 
@@ -82,12 +71,9 @@ it's necessary to:
 
         <TILCK>/scripts/cmake_run --intr --gcov
 
- * Run the following command **between step 6 and step 7**:
-
-        DUMP_COV=1 REPORT_COV=1 <BUILD_DIR>/st/run_interactive_test -a
-
-The rest of the steps are the same. We just changed build's configuration and
-run another test before generating the html report.
+That's it: with the interactive build configuration in place, the same
+`run_all_tests --coverage` command from step 3 will also run the interactive
+tests and fold their coverage into `coverage.info`.
 
 [pySerial]: https://pyserial.readthedocs.io/en/latest/pyserial.html
 [ImageMagick]: https://imagemagick.org/
