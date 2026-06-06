@@ -697,11 +697,6 @@ def compact_pack_tests(args):
 
    for tt in TEST_TYPES:
 
-      if tt == 'interactive':
-         # Interactive tests have their own runner; compact-run packs
-         # only the in-VM types.
-         continue
-
       if tt == 'selftest' and not is_cmake_opt_enabled(KERNEL_SELFTESTS):
          tests_by_type[tt] = []
          continue
@@ -723,6 +718,15 @@ def compact_pack_tests(args):
 
       if not matches:
          tests_by_type[tt] = []
+         continue
+
+      # Interactive tests have their own runner and inherently boot one
+      # VM per test; compact-run can't fold them into a single boot. Keep
+      # the matched ones as individual entries -- this still respects -f,
+      # whereas the global filter reset below ('.*') would otherwise let
+      # every interactive test run.
+      if tt == 'interactive':
+         tests_by_type[tt] = matches
          continue
 
       # The unit runner consumes all packed names in a single gtests
