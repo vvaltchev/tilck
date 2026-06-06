@@ -653,7 +653,7 @@ def list_timeouts():
    for s in INF_STR_TIMEOUTS:
       raw_print("{:8}: <no timeout>".format(s))
 
-COMPACT_FILTER_MAX = 10
+COMPACT_FILTER_MAX = 50
 
 def compact_pack_tests(args):
 
