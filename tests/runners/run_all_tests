@@ -24,6 +24,7 @@ KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 ELFHACK = '@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack@ARCH_BITS@'
 ARCH_BITS = int('@ARCH_BITS@')
 KERNEL_SELFTESTS = '@KERNEL_SELFTESTS@'
+GTESTS_FILE = '@CMAKE_BINARY_DIR@/gtests'
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -57,6 +58,7 @@ ordered_timeouts = sorted(list(INV_TIMEOUTS.keys()))
 ALL_TESTS_TIMEOUT   = 4 * TIMEOUTS['med']
 
 load_tests_func_by_type_list = [
+   'load_list_of_unit_tests',
    'load_list_of_kernel_self_tests',
    'load_list_of_shell_cmd_tests',
    'load_list_of_interactive_tests',
@@ -133,6 +135,63 @@ def load_all_tests():
 
    for tt in TEST_TYPES:
       tests_by_type[tt] = globals()[load_tests_func_by_type[tt]]()
+
+def load_list_of_unit_tests():
+
+   result = []
+
+   try:
+
+      output = subprocess.check_output(
+         [GTESTS_FILE, '--gtest_list_tests']
+      ).decode("utf-8")
+
+   except (FileNotFoundError, subprocess.CalledProcessError):
+
+      # The gtests binary hasn't been built (it is EXCLUDE_FROM_ALL and
+      # needs the host gtest deps) or it failed to list its tests. Either
+      # way just return an empty list, like the interactive loader does
+      # when its own feature is absent.
+      return []
+
+   suite = None
+   seen = set()
+
+   for line in output.split("\n"):
+
+      if not line.strip():
+         continue
+
+      if not line.startswith(" "):
+         # Suite line: a test-suite name terminated by a '.'. For value-
+         # parametric tests the instantiation prefix is part of it
+         # (e.g. "do_nothing/mem_regions_test.").
+         suite = line.strip().rstrip(".")
+         continue
+
+      # Test-case line: drop the trailing " # GetParam() = ..." comment
+      # and the "/N" parametric index, folding every instance of a
+      # parametric test into a single entry.
+      case = re.sub(r'\s+#.*$', '', line.strip())
+      base = case.split("/")[0]
+      key = (suite, base)
+
+      if key in seen:
+         continue
+
+      seen.add(key)
+      name = suite + "." + base
+
+      # `DISABLED_` tests (on the case or the suite) are the unit-test
+      # equivalent of manual self-tests: always listed, only run with -a.
+      is_disabled = base.startswith("DISABLED_") or \
+                    suite.rsplit("/", 1)[-1].startswith("DISABLED_")
+
+      timeout = MANUAL_TEST_TIMEOUT if is_disabled else TIMEOUTS['short']
+      result.append([name, timeout])
+
+   test_runners["unit"] = "@CMAKE_BINARY_DIR@/st/run_unit_test"
+   return sorted(result, key = lambda x: (x[1], x[0]))
 
 def load_list_of_interactive_tests():
 
@@ -347,8 +406,22 @@ def does_test_match_criteria(x : Tuple[str,int],
 
 def list_tests(reg : str, max_timeout : int, test_type : str):
 
+   # Size the name column to the longest name that will be shown (min 30)
+   # so the table stays aligned even with the long fully-qualified
+   # unit-test names.
+   name_w = 30
+
+   for tt in TEST_TYPES:
+
+      if test_type and tt != test_type:
+         continue
+
+      for x in tests_by_type[tt]:
+         if does_test_match_criteria(x, reg, max_timeout, True):
+            name_w = max(name_w, len(x[0]) + 1)
+
    col_names : List[Tuple[str, int]] = [
-      ('test name', 30),
+      ('test name', name_w),
       ('test type', 12),
       ('timeout', 10),
    ]
@@ -595,11 +668,14 @@ def compact_pack_tests(args):
    shellcmd inner runner becomes `runall N1 N2 ...` (cmd_runall picks
    only the listed names) and the selftest inner runner becomes
    `N1 N2 ...` (cmd_selftest loops through them, one sysenter each).
+   The unit inner runner likewise becomes `N1 N2 ...` and runs them
+   all in a single gtests process (one combined --gtest_filter).
 
    Capped at COMPACT_FILTER_MAX matches per type to keep argv inside
-   the inner runners' modest buffer sizes; if you actually need to
+   the in-VM runners' modest buffer sizes; if you actually need to
    blast through more than that, drop -f and run the full compact
-   pass instead.
+   pass instead. The unit runner is exempt from the cap (a single
+   host process handles any number of names).
    """
 
    has_filter = args.filter != '.*'
@@ -609,6 +685,11 @@ def compact_pack_tests(args):
       tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
       if is_cmake_opt_enabled(KERNEL_SELFTESTS):
          tests_by_type['selftest'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+
+      # The unit runner runs the whole gtests binary in one process on
+      # `runall`; only pack it when the binary is actually present.
+      if tests_by_type['unit']:
+         tests_by_type['unit'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
 
       return
 
@@ -644,7 +725,10 @@ def compact_pack_tests(args):
          tests_by_type[tt] = []
          continue
 
-      if len(matches) > COMPACT_FILTER_MAX:
+      # The unit runner consumes all packed names in a single gtests
+      # process, so the argv-buffer cap that protects the in-VM runners
+      # does not apply to it.
+      if tt != 'unit' and len(matches) > COMPACT_FILTER_MAX:
          raw_print(
             "ERROR: -f '{}' matched {} {} tests; max in compact mode is {}. "
             "Refusing to run -- narrow the filter or drop -c."
@@ -692,7 +776,10 @@ def main():
       list_tests(args.filter, args.max_timeout, args.test_type)
       sys.exit(0)
 
-   detect_kvm()
+   # Unit tests run on the host with no VM, so a unit-only run needs no
+   # KVM probe (and shouldn't print the spurious "qemu-kvm not found").
+   if args.test_type != 'unit':
+      detect_kvm()
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()

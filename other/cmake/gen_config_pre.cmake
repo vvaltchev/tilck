@@ -53,6 +53,11 @@ smart_config_file(
 )
 
 smart_config_file(
+   ${CMAKE_SOURCE_DIR}/tests/runners/run_unit_test
+   ${CMAKE_BINARY_DIR}/st/run_unit_test
+)
+
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/other/cmake/config_fatpart
    ${CMAKE_BINARY_DIR}/config_fatpart
 )

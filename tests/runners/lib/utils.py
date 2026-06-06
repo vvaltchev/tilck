@@ -12,8 +12,9 @@ from enum import Enum
 from .stdio import msg_print, raw_print, direct_print
 
 # Constants
-TEST_TYPES = ['selftest', 'shellcmd', 'interactive']
-TEST_TYPES_PRETTY = ['Self tests', 'Shell cmd tests', 'Interactive tests']
+TEST_TYPES = ['unit', 'selftest', 'shellcmd', 'interactive']
+TEST_TYPES_PRETTY = ['Unit tests', 'Self tests',
+                     'Shell cmd tests', 'Interactive tests']
 
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 KERNEL_DUMP_GCDA_END_STR = '** GCOV gcda files END **'

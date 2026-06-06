@@ -79,6 +79,15 @@ options such as `--gtest_filter`. To list them all, just run the executable
 with the `--help` option. For out-of-tree builds and other build-related topics,
 check the dedicated [building] document.
 
+The unit tests can also be driven through the main `run_all_tests` runner as the
+`unit` test type, so that a single command exercises every kind of test:
+
+    <BUILD_DIR>/st/run_all_tests -T unit        # list with -l, filter with -f
+
+Each parametric test suite is folded into a single entry, and `DISABLED_` tests
+are treated as *manual* (listed, but run only when `-a` is passed). Unlike the
+other test types, unit tests run directly on the host: no VM and no KVM.
+
 
 System tests
 ---------------
@@ -119,10 +128,10 @@ infrastructure instead, runs `devshell -l`.
 #### Running the tests with the runner
 
 Another way of running Tilck's system tests is using `run_all_tests`: a python
-script designed to run multiple types of tests. Due to its versatility, it is
-possible that *in the future* it will be able to run *all* the types of tests
-supported in the Tilck project. Back to the topic, running just the classic
-system tests is simple as:
+script designed to run multiple types of tests. It runs all the types of tests
+supported in the Tilck project: the host-side `unit` tests, the in-kernel
+`selftest`s, the syscall-based `shellcmd`s, and the `interactive` tests. Back to
+the topic, running just the classic system tests is simple as:
 
     <BUILD_DIR>/st/run_all_tests -T shellcmd
 

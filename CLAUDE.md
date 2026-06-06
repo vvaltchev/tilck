@@ -130,17 +130,25 @@ Four test types: unit (gtest, host), selftest (in-kernel), shellcmd
 ./build/gtests --gtest_filter=kmalloc_test.*
 ./build/gtests --gtest_list_tests
 
-# Test runner (boots QEMU, needs KVM)
+# Test runner (boots QEMU for VM types; needs KVM)
 ./build/st/run_all_tests             # one VM per test
 ./build/st/run_all_tests -c          # single VM -- ~46s, 60s timeout
 
-# By type (-T prefix-matched: 'se'=selftest, 'sh'=shellcmd)
+# By type (-T prefix-matched: 'u'=unit, 'se'=selftest, 'sh'=shellcmd)
+./build/st/run_all_tests -T unit                # host, no VM/KVM -- ~24s
+./build/st/run_all_tests -T unit -c             # all in one gtests run
 ./build/st/run_all_tests -T selftest
 ./build/st/run_all_tests -T shellcmd [-c]
 ./build/st/run_all_tests -T interactive
 ./build/st/run_all_tests -T shellcmd -l         # list
 ./build/st/run_all_tests -T shellcmd -f <regex> # filter
 ```
+
+Unit tests (the `gtests` binary) are folded into the runner as a 4th
+type: it parses `gtests --gtest_list_tests`, collapses each parametric
+suite to one entry, and treats `DISABLED_` tests as `<manual>` (listed,
+run only with `-a`). A unit test runs on the host, so `-T unit` skips
+the KVM probe entirely.
 
 **Calibrate timeouts to these numbers.** If a run goes 2-3x over,
 something is hung (infinite loop, deadlock, lost wakeup); kill and
