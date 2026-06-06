@@ -77,6 +77,13 @@ commands — the user grants permission once for
 Canonical pattern: `scripts/dev/claude/annotate_commits`
 (argument-parsed sub-commands, single permission pattern, dev-only).
 
+## AI-generated plans and specs: `docs/plans/`
+
+Plans, designs, and feature specs I generate go in `docs/plans/` (kept for
+history). The root-level `docs/*.md` (contributing, building, scheduler, etc.)
+are the human-facing docs — keep them very readable and uncluttered; never drop
+an AI working document at `docs/` root.
+
 ## Build Commands
 
 ```bash
