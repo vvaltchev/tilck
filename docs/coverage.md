@@ -25,7 +25,10 @@ require a special build configuration as well (see below).
 
 1. Setup the build configuration by running:
 
-        TEST_GCOV=1 KERNEL_GCOV=1 <TILCK>/scripts/cmake_run
+        <TILCK>/scripts/cmake_run --gcov
+
+   (`--gcov` just exports `TEST_GCOV=1 KERNEL_GCOV=1` for you; the explicit
+   `TEST_GCOV=1 KERNEL_GCOV=1 <TILCK>/scripts/cmake_run` form still works.)
 
 2. Build Tilck and its unit tests:
 
@@ -77,7 +80,7 @@ it's necessary to:
 
  * Replace the **step 1** above with:
 
-        TEST_GCOV=1 KERNEL_GCOV=1 <TILCK>/scripts/cmake_run --intr
+        <TILCK>/scripts/cmake_run --intr --gcov
 
  * Run the following command **between step 6 and step 7**:
 

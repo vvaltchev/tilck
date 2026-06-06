@@ -99,6 +99,9 @@ export ARCH=i386
 ./scripts/cmake_run -DDEBUG_CHECKS=0
 ./scripts/cmake_run -DARCH={riscv64,x86_64}
 ./scripts/cmake_run --contrib            # clang + -Wconversion + stress opts
+./scripts/cmake_run --gcov               # kernel + unit-test coverage
+./scripts/cmake_run --intr --gcov        # flags are independent + combinable
+./scripts/cmake_run -h                   # list cmake_run's own flags
 
 # Build (cmake_run auto-runs if needed)
 make             # one file at a time, good for debugging

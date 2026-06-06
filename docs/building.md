@@ -109,11 +109,17 @@ CMake info messages. Therefore, changing one of them is easy as running:
 
     ./scripts/cmake_run -DDEBUG_CHECKS=0
 
-(Note: `cmake_run` forwards its arguments to CMake.) But, that's certainly not
-the best way to (re)configure Tilck. A more convenient way is to use CMake's
-console tool called `ccmake`, part of `cmake-curses-gui` package (at least on
-Debian systems). Its main advantage is that all the options are visible and
-editable in an interactive way and that for each option there is a description.
+(Note: `cmake_run` forwards its arguments to CMake.) Beyond raw `-D` options,
+`cmake_run` also understands a few convenience mode flags that expand to known
+sets of options: `--contrib` (contributor stress build), `--intr` (interactive
+tests build) and `--gcov` (kernel + unit-test coverage). They are independent
+and can be freely combined. Run `./scripts/cmake_run -h` for the full list.
+
+But, that's certainly not the best way to (re)configure Tilck. A more convenient
+way is to use CMake's console tool called `ccmake`, part of `cmake-curses-gui`
+package (at least on Debian systems). Its main advantage is that all the options
+are visible and editable in an interactive way and that for each option there is
+a description.
 It's not visually cool and fancy like Linux's Kconfig, but it's fully integrated
 with CMake and does a good job, overall. (Maybe in the future Tilck will switch
 to Kconfig or some custom tool for a better user experience even in this case.)

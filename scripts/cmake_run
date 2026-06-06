@@ -24,49 +24,129 @@ set_host_arch_variable   # set $HOST_ARCH
 # the new host-tool install root.
 HOST_ARCH_DIR_SYS=$TCROOT/syscc/host_$HOST_ARCH
 
-if [[ "$1" == "--contrib" ]]; then
+show_help() {
 
+   echo
+   echo "cmake_run -- configure Tilck's build directory and run CMake."
+   echo
+   echo "Usage:"
+   echo "   cmake_run [--contrib] [--intr] [--gcov] [extra cmake args...]"
+   echo "   cmake_run -h | --help"
+   echo
+   echo "Mode flags (independent; all 8 combinations are valid):"
+   echo
+   echo "   --contrib   Contributor stress build: clang, -Wconversion,"
+   echo "               UBSAN, kmalloc heavy stats + free-mem poisoning,"
+   echo "               forced preemption, TIMER_HZ=250, bootloader poison."
+   echo
+   echo "   --intr      Interactive-tests build: 2 TTYs, EXTRA_VIM, plain fb"
+   echo "               console, 640x480 gfx, auto-boot, acpi module off."
+   echo
+   echo "   --gcov      Enable code coverage for the kernel and the unit"
+   echo "               tests (exports TEST_GCOV=1 and KERNEL_GCOV=1)."
+   echo
+   echo "   -h, --help  Show this help and exit."
+   echo
+   echo "Any other argument is forwarded verbatim to cmake, e.g.:"
+   echo "   -DRELEASE=1       -O3 release build (also: env RELEASE=1 or REL=1)"
+   echo "   -DARCH=riscv64    cross-build for another target arch"
+   echo "   -DDEBUG_CHECKS=0  disable debug checks"
+   echo
+   echo "Examples:"
+   echo "   cmake_run --gcov"
+   echo "   cmake_run --intr --gcov           # full coverage incl. interactive"
+   echo "   cmake_run --contrib -DARCH=riscv64"
+   echo
+}
+
+# Parse cmake_run's own flags. They are independent and combinable; any
+# other argument is forwarded verbatim to cmake.
+
+opt_contrib=0
+opt_intr=0
+opt_gcov=0
+declare -a EXTRA_ARGS=()
+
+while [ $# -gt 0 ]; do
+   case "$1" in
+      --contrib) opt_contrib=1 ;;
+      --intr)    opt_intr=1 ;;
+      --gcov)    opt_gcov=1 ;;
+      -h|--help) show_help; exit 0 ;;
+      *)         EXTRA_ARGS+=("$1") ;;
+   esac
    shift
+done
+set -- "${EXTRA_ARGS[@]}"
+
+# Seed from any CMAKE_ARGS inherited from the environment: the CI jobs and
+# build_generators/* pass their build flags this way and call cmake_run with
+# no mode flag. The mode flags below append to it, never clobber it.
+CMAKE_ARGS="${CMAKE_ARGS:-}"
+
+if [ $opt_contrib -eq 1 ]; then
+
    export CC='clang'
    export CXX='clang++'
-   CMAKE_ARGS="-DKERNEL_SYSCC=1 -DWCONV=1 -DKRN_KMALLOC_HEAVY_STATS=1"
-   CMAKE_ARGS="$CMAKE_ARGS -DKRN_TIMER_HZ=250 -DTERM_BIG_SCROLL_BUF=1"
+   CMAKE_ARGS="$CMAKE_ARGS -DKERNEL_SYSCC=1 -DWCONV=1"
+   CMAKE_ARGS="$CMAKE_ARGS -DKRN_KMALLOC_HEAVY_STATS=1 -DKRN_TIMER_HZ=250"
+   CMAKE_ARGS="$CMAKE_ARGS -DTERM_BIG_SCROLL_BUF=1"
    CMAKE_ARGS="$CMAKE_ARGS -DKRN_RESCHED_ENABLE_PREEMPT=1"
    CMAKE_ARGS="$CMAKE_ARGS -DKERNEL_UBSAN=1"
    CMAKE_ARGS="$CMAKE_ARGS -DBOOTLOADER_POISON_MEMORY=1"
    CMAKE_ARGS="$CMAKE_ARGS -DKRN_KMALLOC_FREE_MEM_POISONING=1"
-   export CMAKE_ARGS
+fi
 
-   echo
-   echo -e "${YELLOW}Contributor mode${RATTRS}: "
-   echo
-   echo -e "   - CC=${LMAGENTA}'${CC}'${RATTRS}"
-   echo -e "   - CXX=${LMAGENTA}'${CXX}'${RATTRS}"
-   echo -e "   - CMAKE_ARGS=${LMAGENTA}'${CMAKE_ARGS}'${RATTRS}"
-   echo
+if [ $opt_intr -eq 1 ]; then
 
-elif [[ "$1" == "--intr" ]]; then
+   # --contrib already pins clang; otherwise default the interactive
+   # build to gcc, as this mode has always done.
+   if [ $opt_contrib -eq 0 ]; then
+      export CC="gcc"
+      export CXX="g++"
+   fi
 
-   shift
-   export CC="gcc"
-   export CXX="g++"
-   CMAKE_ARGS="-DKRN_FB_CONSOLE_BANNER=0 -DKRN_FB_CONSOLE_CURSOR_BLINK=0"
+   CMAKE_ARGS="$CMAKE_ARGS -DKRN_FB_CONSOLE_BANNER=0"
+   CMAKE_ARGS="$CMAKE_ARGS -DKRN_FB_CONSOLE_CURSOR_BLINK=0"
    CMAKE_ARGS="$CMAKE_ARGS -DKRN_FB_CONSOLE_USE_ALT_FONTS=0 -DTTY_COUNT=2"
    CMAKE_ARGS="$CMAKE_ARGS -DEXTRA_VIM=1 -DKRN_NO_SYS_WARN=0"
    CMAKE_ARGS="$CMAKE_ARGS -DBOOT_INTERACTIVE=0 -DPREFERRED_GFX_MODE_W=640"
    CMAKE_ARGS="$CMAKE_ARGS -DPREFERRED_GFX_MODE_H=480 -DMOD_acpi=0"
-   export CMAKE_ARGS
+fi
+
+if [ $opt_gcov -eq 1 ]; then
+   # Read straight from the environment by CMake (define_env_cache_bool_var),
+   # so they must be exported, not passed as -D.
+   export TEST_GCOV=1
+   export KERNEL_GCOV=1
+fi
+
+CMAKE_ARGS="${CMAKE_ARGS# }"
+export CMAKE_ARGS
+
+if [ $opt_contrib -eq 1 ] || [ $opt_intr -eq 1 ] || [ $opt_gcov -eq 1 ]; then
+
+   modes=""
+   [ $opt_contrib -eq 1 ] && modes="$modes contrib"
+   [ $opt_intr -eq 1 ]    && modes="$modes intr"
+   [ $opt_gcov -eq 1 ]    && modes="$modes gcov"
 
    echo
-   echo -e "${YELLOW}Interactive tests mode${RATTRS}"
+   echo -e "${YELLOW}cmake_run${RATTRS} mode:${LGREEN}${modes}${RATTRS}"
    echo
-   echo -e "   - CC=${LMAGENTA}'${CC}'${RATTRS}"
-   echo -e "   - CXX=${LMAGENTA}'${CXX}'${RATTRS}"
-   echo -e "   - TEST_GCOV=${LMAGENTA}'${TEST_GCOV}'${RATTRS}"
-   echo -e "   - KERNEL_GCOV=${LMAGENTA}'${KERNEL_GCOV}'${RATTRS}"
+
+   if [ $opt_contrib -eq 1 ] || [ $opt_intr -eq 1 ]; then
+      echo -e "   - CC=${LMAGENTA}'${CC}'${RATTRS}"
+      echo -e "   - CXX=${LMAGENTA}'${CXX}'${RATTRS}"
+   fi
+
+   if [ $opt_gcov -eq 1 ]; then
+      echo -e "   - TEST_GCOV=${LMAGENTA}'1'${RATTRS}," \
+              "KERNEL_GCOV=${LMAGENTA}'1'${RATTRS}"
+   fi
+
    echo -e "   - CMAKE_ARGS=${LMAGENTA}'${CMAKE_ARGS}'${RATTRS}"
    echo
-
 fi
 
 curr_dir="`pwd`"
