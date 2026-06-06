@@ -47,6 +47,14 @@ require a special build configuration as well (see below).
 
 4. Open `<BUILD_DIR>/coverage_html/index.html` in your browser.
 
+Alternatively, to browse the coverage without leaving the terminal, use
+the bundled TUI (a functional equivalent of the HTML report) -- in that
+case `--html` in step 3 is not even needed:
+
+        <BUILD_DIR>/coverage-viewer <BUILD_DIR>/coverage.info
+
+See `tools/coverage-viewer/README.md` for the keys and details.
+
 `run_all_tests --coverage` takes care of the whole flow: it cleans any stale
 coverage data, wires the in-VM runners to dump and merge the kernel's coverage,
 captures the host-side unit-test coverage, and merges everything into one

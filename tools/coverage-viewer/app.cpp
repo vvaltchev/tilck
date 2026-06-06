@@ -288,6 +288,13 @@ app::draw_header()
    mvwhline(stdscr, 0, 0, ' ', width);
    std::string title = "LCOV coverage  -  " + crumb;
    mvwaddnstr(stdscr, 0, 1, title.c_str(), width - 2);
+
+   /* Right-aligned generation date (the report's "Date:" field). */
+   const int dl = static_cast<int>(m.date.size());
+
+   if (dl > 0 && width - dl - 2 > static_cast<int>(title.size()) + 2)
+      mvwaddstr(stdscr, 0, width - dl - 1, m.date.c_str());
+
    wattroff(stdscr, t);
 
    wmove(stdscr, 1, 0);
@@ -310,11 +317,16 @@ void
 app::draw_colhdr()
 {
    const int width = getmaxx(stdscr);
-   const chtype a = cv_attr(CVP_DIM) | A_UNDERLINE;
+   const chtype base = cv_attr(CVP_DIM) | A_UNDERLINE;
+   const int sm = cur().sort_mode;
+
+   /* The header column matching the active sort is shown in bold. */
+   const auto col = [&](int mode) -> chtype {
+      return mode == sm ? (base | A_BOLD) : base;
+   };
 
    wmove(stdscr, 2, 0);
    wclrtoeol(stdscr);
-   wattron(stdscr, a);
 
    switch (cur().kind) {
 
@@ -322,24 +334,24 @@ app::draw_colhdr()
       case view_kind::file_list: {
          const char *n =
             cur().kind == view_kind::dir_list ? "Directory" : "Filename";
-         mvwaddstr(stdscr, 2, 1, n);
-         put_field(stdscr, 2, width - 47, 12, "Coverage", a, false);
-         put_field(stdscr, 2, width - 30, 11, "Lines", a, true);
-         put_field(stdscr, 2, width - 12, 11, "Functions", a, true);
+         put_field(stdscr, 2, 1, 20, n, col(0), false);
+         put_field(stdscr, 2, width - 47, 12, "Coverage", base, false);
+         put_field(stdscr, 2, width - 30, 11, "Lines", col(1), true);
+         put_field(stdscr, 2, width - 12, 11, "Functions", col(2), true);
          break;
       }
 
       case view_kind::source:
+         wattron(stdscr, base);
          mvwaddstr(stdscr, 2, 1, "  Line     Hits   Source");
+         wattroff(stdscr, base);
          break;
 
       case view_kind::func_list:
-         mvwaddstr(stdscr, 2, 1, "Function");
-         put_field(stdscr, 2, width - 13, 12, "Hit count", a, true);
+         put_field(stdscr, 2, 1, 20, "Function", col(0), false);
+         put_field(stdscr, 2, width - 13, 12, "Hit count", col(1), true);
          break;
    }
-
-   wattroff(stdscr, a);
 }
 
 void
@@ -352,11 +364,68 @@ app::draw_footer()
 
    const char *keys =
       cur().kind == view_kind::source
-         ? "j/k scroll  h/l pan  Tab funcs  Bksp back  q quit"
-         : "j/k move  Enter open  Tab src/funcs  Bksp back  q quit";
+         ? "j/k scroll  h/l pan  Tab funcs  Bksp back  ? help  q quit"
+         : "j/k move  Enter open  Tab src/funcs  s sort  Bksp back  ? help";
 
    mvwaddnstr(stdscr, LINES - 1, 1, keys, width - 2);
+
+   if (sort_modes() > 1) {
+      char tag[24];
+      snprintf(tag, sizeof(tag), "[sort: %s]", sort_label());
+      const int tl = static_cast<int>(strlen(tag));
+      if (width - tl - 1 > 0)
+         mvwaddstr(stdscr, LINES - 1, width - tl - 1, tag);
+   }
+
    wnoutrefresh(stdscr);
+}
+
+void
+app::show_help()
+{
+   static const char *lines[] = {
+      " coverage-viewer keys ",
+      "",
+      " Up / k, Down / j   move selection",
+      " PgUp / PgDn        page",
+      " g / G              first / last",
+      " Enter / Right      open (dir -> files -> source)",
+      " Backspace / u      back",
+      " Left / h           back (lists), pan left (source)",
+      " Right / l          open (lists), pan right (source)",
+      " Tab / f            toggle source <-> functions",
+      " s                  cycle sort order",
+      " ? / q              this help / quit",
+      "",
+      " press any key to close ",
+   };
+
+   const int n = static_cast<int>(sizeof(lines) / sizeof(lines[0]));
+   int w = 0;
+
+   for (const char *s : lines)
+      w = std::max(w, static_cast<int>(strlen(s)));
+
+   w += 2;
+   const int h = n + 2;
+   WINDOW *win = newwin(h, w, std::max(0, (LINES - h) / 2),
+                        std::max(0, (COLS - w) / 2));
+
+   box(win, 0, 0);
+
+   for (int i = 0; i < n; i++)
+      mvwaddnstr(win, i + 1, 1, lines[i], w - 2);
+
+   wnoutrefresh(win);
+   doupdate();
+   wgetch(win);
+   delwin(win);
+
+   /* Repaint the current view without disturbing the scroll position. */
+   touchwin(stdscr);
+   wnoutrefresh(stdscr);
+   sv.redraw();
+   doupdate();
 }
 
 /* ---- model helpers --------------------------------------------------- */
@@ -392,17 +461,38 @@ app::build_rows()
 {
    rows.clear();
    const frame &c = cur();
+   const int sm = c.sort_mode;
 
    switch (c.kind) {
 
-      case view_kind::dir_list:
+      case view_kind::dir_list: {
          for (int i = 0; i < static_cast<int>(m.dirs.size()); i++)
             rows.push_back(i);
-         break;
 
-      case view_kind::file_list:
-         rows = m.dirs[c.dir_idx].files;
+         std::sort(rows.begin(), rows.end(), [&](int a, int b) {
+            const dir_cov &x = m.dirs[a], &y = m.dirs[b];
+            if (sm == 1 && x.lf && y.lf)
+               return cov_rate(x.lh, x.lf) < cov_rate(y.lh, y.lf);
+            if (sm == 2 && x.fnf && y.fnf)
+               return cov_rate(x.fnh, x.fnf) < cov_rate(y.fnh, y.fnf);
+            return x.path < y.path;
+         });
          break;
+      }
+
+      case view_kind::file_list: {
+         rows = m.dirs[c.dir_idx].files;
+
+         std::sort(rows.begin(), rows.end(), [&](int a, int b) {
+            const file_cov &x = m.files[a], &y = m.files[b];
+            if (sm == 1)
+               return cov_rate(x.lh, x.lf) < cov_rate(y.lh, y.lf);
+            if (sm == 2)
+               return cov_rate(x.fnh, x.fnf) < cov_rate(y.fnh, y.fnf);
+            return x.name < y.name;
+         });
+         break;
+      }
 
       case view_kind::source: {
          const int n = source_lines(c.file_idx);
@@ -415,12 +505,62 @@ app::build_rows()
          const file_cov &f = m.files[c.file_idx];
          for (int i = 0; i < static_cast<int>(f.funcs.size()); i++)
             rows.push_back(i);
-         std::sort(rows.begin(), rows.end(), [&f](int a, int b) {
+
+         std::sort(rows.begin(), rows.end(), [&](int a, int b) {
+            if (sm == 1)
+               return f.funcs[a].hits < f.funcs[b].hits;
             return f.funcs[a].name < f.funcs[b].name;
          });
          break;
       }
    }
+}
+
+int
+app::sort_modes() const
+{
+   switch (stack.back().kind) {
+      case view_kind::dir_list:
+      case view_kind::file_list: return 3;   /* name, line%, func% */
+      case view_kind::func_list: return 2;   /* name, hit count */
+      case view_kind::source:    return 1;   /* no sorting */
+   }
+
+   return 1;
+}
+
+const char *
+app::sort_label() const
+{
+   const frame &c = stack.back();
+
+   if (c.kind == view_kind::func_list)
+      return c.sort_mode == 1 ? "hits" : "name";
+
+   switch (c.sort_mode) {
+      case 1: return "line%";
+      case 2: return "func%";
+      default: return "name";
+   }
+}
+
+void
+app::cycle_sort()
+{
+   const int n = sort_modes();
+
+   if (n <= 1)
+      return;
+
+   cur().sort_mode = (cur().sort_mode + 1) % n;
+   cur().sel = 0;
+   cur().top = 0;
+   build_rows();
+   sv.set_rows(static_cast<int>(rows.size()));
+   sv.restore(0, 0, sv.h_off());
+   draw_header();
+   draw_footer();
+   doupdate();
 }
 
 /* ---- navigation ------------------------------------------------------ */
@@ -538,6 +678,14 @@ app::handle_key(int ch)
 
       case '\t': case 'f':
          toggle_source_funcs();
+         break;
+
+      case 's':
+         cycle_sort();
+         break;
+
+      case '?':
+         show_help();
          break;
 
       case KEY_BACKSPACE: case 127: case 'u':

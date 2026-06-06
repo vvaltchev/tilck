@@ -34,6 +34,7 @@ private:
       view_kind kind;
       int dir_idx = -1;        /* for file_list */
       int file_idx = -1;       /* for source / func_list */
+      int sort_mode = 0;       /* list views: see sort_modes()/sort_label() */
       int top = 0, sel = 0, hoff = 0;
    };
 
@@ -56,6 +57,10 @@ private:
    void handle_key(int ch);
 
    void build_rows();
+   int sort_modes() const;          /* number of sort orders for cur view */
+   const char *sort_label() const;  /* name of the active sort order */
+   void cycle_sort();
+   void show_help();
    int source_lines(int file_idx);
    const source_file &source_for(int file_idx);
 
