@@ -10,7 +10,7 @@
  * In-memory coverage model, built from an LCOV tracefile (coverage.info).
  * It carries exactly the data the genhtml HTML report is derived from:
  * per-file line/function hit counts plus a flat per-directory
- * aggregation. See docs/coverage-viewer-feature-spec.md.
+ * aggregation. See docs/plans/coverage-viewer-feature-spec.md.
  */
 
 /* A line's coverage state. */

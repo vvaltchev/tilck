@@ -3,7 +3,7 @@
 A terminal UI for browsing Tilck's code coverage, without leaving the
 terminal to open a browser. It is a functional equivalent of the LCOV
 `genhtml` HTML report (the full parity catalog is in
-`docs/coverage-viewer-feature-spec.md`).
+`docs/plans/coverage-viewer-feature-spec.md`).
 
 ## Building
 

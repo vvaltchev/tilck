@@ -3,7 +3,7 @@
 /*
  * coverage-viewer: a terminal UI to browse LCOV coverage data, a
  * functional equivalent of the genhtml HTML report (see
- * docs/coverage-viewer-feature-spec.md). It reads an LCOV tracefile
+ * docs/plans/coverage-viewer-feature-spec.md). It reads an LCOV tracefile
  * (coverage.info) and the source files it references.
  */
 
