@@ -11,11 +11,18 @@
 #include "model.h"
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 
+#ifndef COVVIEW_BUILD_DIR
+#define COVVIEW_BUILD_DIR "."
+#endif
+
 struct cli_args {
-   std::string info_path = "coverage.info";
+   std::string info_path;
    bool dump = false;
+   bool help = false;
+   bool bad = false;
 };
 
 static cli_args
@@ -27,13 +34,40 @@ parse_args(int argc, char **argv)
 
       const std::string arg = argv[i];
 
-      if (arg == "--dump")
+      if (arg == "-h" || arg == "--help")
+         a.help = true;
+      else if (arg == "--dump")
          a.dump = true;
+      else if (!arg.empty() && arg[0] == '-')
+         a.bad = true;
       else
          a.info_path = arg;
    }
 
+   if (a.info_path.empty())
+      a.info_path = std::string(COVVIEW_BUILD_DIR) + "/coverage.info";
+
    return a;
+}
+
+static void
+usage(const char *prog)
+{
+   printf("Usage: %s [OPTIONS] [coverage.info]\n\n", prog);
+   printf("Browse LCOV coverage data in the terminal, a functional\n");
+   printf("equivalent of the genhtml HTML report.\n\n");
+   printf("Arguments:\n");
+   printf("  coverage.info    LCOV tracefile to open\n");
+   printf("                   (default: %s/coverage.info)\n\n",
+          COVVIEW_BUILD_DIR);
+   printf("Options:\n");
+   printf("  -h, --help       show this help and exit\n");
+   printf("      --dump       print parsed totals and exit (no UI)\n\n");
+   printf("Keys:\n");
+   printf("  arrows / j k     move          Enter / l   open\n");
+   printf("  PgUp PgDn g G    page / ends    Backspace   back\n");
+   printf("  Tab / f          source<->funcs  s          cycle sort\n");
+   printf("  h l              pan source     ? / q       help / quit\n");
 }
 
 static void
@@ -52,6 +86,16 @@ int
 main(int argc, char **argv)
 {
    const cli_args args = parse_args(argc, argv);
+
+   if (args.bad) {
+      usage(argv[0]);
+      return 1;
+   }
+
+   if (args.help) {
+      usage(argv[0]);
+      return 0;
+   }
 
    coverage_model m;
    std::string err;

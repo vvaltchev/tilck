@@ -32,6 +32,15 @@ set_target_properties(
 
 target_compile_options(coverage-viewer PRIVATE -O2 -ggdb -Wall -Wextra)
 
+# So the tool can default to <build>/coverage.info when no path is given.
+target_compile_definitions(
+
+   coverage-viewer
+
+   PRIVATE
+      COVVIEW_BUILD_DIR="${CMAKE_BINARY_DIR}"
+)
+
 # curses.h lives under install/include/ncursesw, but it pulls in its own
 # headers as <ncursesw/...>, so install/include must be on the path too
 # (both dirs are what ncursesw.pc's Cflags list).
