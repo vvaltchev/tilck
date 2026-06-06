@@ -76,7 +76,7 @@ function remove_gcda_files {
    find . -type f -name '*.gcda' -print | xargs /bin/rm -f
 }
 
-function remote_all_lcov_files {
+function remove_all_lcov_files {
    rm -f lcov.info coverage.info
 }
 
@@ -95,7 +95,7 @@ fi
 
 if [[ "$1" == "--clean" ]]; then
    remove_gcda_files
-   remote_all_lcov_files
+   remove_all_lcov_files
    exit 0
 fi
 
@@ -169,7 +169,7 @@ if [[ $gcda_count == 0 ]]; then
 fi
 
 if [[ "$1" != "--acc" ]]; then
-   remote_all_lcov_files
+   remove_all_lcov_files
 fi
 
 ex_list=""
