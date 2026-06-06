@@ -21,6 +21,10 @@ static const int PAD_R = 3;
 /* Unicode building blocks (require a UTF-8 locale; set in app::run). */
 static const char *GL_BAR   = "▅";   /* coverage bar: lower 5/8 block */
 static const char *GL_RULE  = "─";   /* horizontal rule       */
+static const char *GL_SB_UP    = "▲";   /* scrollbar up arrow   */
+static const char *GL_SB_DOWN  = "▼";   /* scrollbar down arrow */
+static const char *GL_SB_TRACK = "░";   /* scrollbar track      */
+static const char *GL_SB_THUMB = "█";   /* scrollbar thumb      */
 static const char *GL_VBAR  = "│";   /* gutter separator      */
 static const char *GL_CRUMB = "›";   /* breadcrumb chevron    */
 static const char *GL_ELL   = "…";   /* ellipsis              */
@@ -478,6 +482,68 @@ app::draw_footer()
    wnoutrefresh(stdscr);
 }
 
+/*
+ * Vertical scrollbar in its own one-column window to the right of the
+ * body, so the body's wscrl() never moves it. ▲/▼ arrows, a ░ track and
+ * a proportional █ thumb (inspired by azpipes' v2 UI). Repainted via the
+ * scroll_view's on-change hook whenever the position changes.
+ */
+void
+app::draw_scrollbar()
+{
+   if (!sbar)
+      return;
+
+   const int h = getmaxy(sbar);
+
+   if (h < 2)
+      return;
+
+   const int total = sv.rows();
+   const int visible = getmaxy(body);
+   const int top = sv.top();
+   const chtype dim = cv_attr(CVP_DIM);
+   const chtype track = cv_attr(CVP_TRACK);
+
+   wattron(sbar, dim);
+   mvwaddstr(sbar, 0, 0, GL_SB_UP);
+   mvwaddstr(sbar, h - 1, 0, GL_SB_DOWN);
+   wattroff(sbar, dim);
+
+   const int inner = h - 2;
+
+   if (inner <= 0) {
+      wnoutrefresh(sbar);
+      return;
+   }
+
+   int thumb_h = inner, thumb_top = 0;
+
+   if (total > visible && total > 0) {
+
+      thumb_h = inner * visible / total;
+      if (thumb_h < 1)
+         thumb_h = 1;
+      if (thumb_h > inner)
+         thumb_h = inner;
+
+      const int max_top = total - visible;
+      if (max_top > 0)
+         thumb_top = (inner - thumb_h) * top / max_top;
+   }
+
+   for (int i = 0; i < inner; i++) {
+
+      const bool on = i >= thumb_top && i < thumb_top + thumb_h;
+
+      wattron(sbar, on ? dim : track);
+      mvwaddstr(sbar, 1 + i, 0, on ? GL_SB_THUMB : GL_SB_TRACK);
+      wattroff(sbar, on ? dim : track);
+   }
+
+   wnoutrefresh(sbar);
+}
+
 /* ---- model helpers --------------------------------------------------- */
 
 const source_file &
@@ -668,12 +734,19 @@ app::layout()
 {
    if (body)
       delwin(body);
+   if (sbar)
+      delwin(sbar);
 
    const int h = std::max(1, LINES - HDR_LINES - FTR_LINES);
    body = newwin(h, COLS, HDR_LINES, 0);
+
+   /* One-column scrollbar inside the right padding (column COLS-2). */
+   sbar = newwin(h, 1, HDR_LINES, std::max(0, COLS - 2));
+
    sv.init(body, [this](WINDOW *w, int y, int i, int ho, bool s) {
       draw_row(w, y, i, ho, s);
    });
+   sv.set_on_change([this] { draw_scrollbar(); });
 }
 
 void
@@ -846,6 +919,8 @@ app::run()
 
    if (body)
       delwin(body);
+   if (sbar)
+      delwin(sbar);
 
    endwin();
 }

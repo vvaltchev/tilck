@@ -21,6 +21,19 @@ scroll_view::init(WINDOW *win, draw_row_fn draw_cb)
    keypad(w, TRUE);
 }
 
+void
+scroll_view::set_on_change(std::function<void()> cb)
+{
+   on_change = std::move(cb);
+}
+
+void
+scroll_view::notify()
+{
+   if (on_change)
+      on_change();
+}
+
 int
 scroll_view::body_h() const
 {
@@ -71,6 +84,7 @@ scroll_view::redraw()
    }
 
    wnoutrefresh(w);
+   notify();
 }
 
 /*
@@ -101,13 +115,14 @@ scroll_view::apply(int new_top, int new_sel)
       }
 
       wnoutrefresh(w);
+      notify();
       return;
    }
 
    if (std::abs(dt) >= h) {
       tp = new_top;
       sel = new_sel;
-      redraw();
+      redraw();   /* redraw() calls notify() */
       return;
    }
 
@@ -137,6 +152,7 @@ scroll_view::apply(int new_top, int new_sel)
 
    draw_at(sel, true);
    wnoutrefresh(w);
+   notify();
 }
 
 void

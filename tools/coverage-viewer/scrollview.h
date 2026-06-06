@@ -33,6 +33,10 @@ public:
 
    void init(WINDOW *win, draw_row_fn draw_cb);
 
+   /* Called after every scroll-position / size change (e.g. to repaint a
+    * companion scrollbar). The callback may query top()/rows() etc. */
+   void set_on_change(std::function<void()> cb);
+
    /* Model size changed: clamp and fully repaint the body. */
    void set_rows(int count);
 
@@ -68,9 +72,11 @@ private:
    void apply(int new_top, int new_sel);   /* the minimal-update core */
    void draw_at(int idx, bool sel);        /* draw row idx at its y */
    void clear_line(int y);
+   void notify();
 
    WINDOW *w = nullptr;
    draw_row_fn draw;
+   std::function<void()> on_change;
    int n = 0;       /* number of model rows */
    int tp = 0;      /* first visible model index */
    int sel = 0;     /* selected model index */

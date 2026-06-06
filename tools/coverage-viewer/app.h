@@ -44,6 +44,7 @@ private:
    std::map<int, source_file> srcs;    /* file_idx -> loaded source */
 
    WINDOW *body = nullptr;
+   WINDOW *sbar = nullptr;     /* vertical scrollbar, right of the body */
    scroll_view sv;
 
    frame &cur() { return stack.back(); }
@@ -67,6 +68,7 @@ private:
    void draw_header();
    void draw_footer();
    void draw_colhdr();
+   void draw_scrollbar();
 
    void draw_row(WINDOW *w, int y, int idx, int hoff, bool sel);
    void draw_dir_row(WINDOW *w, int y, int idx, int hoff, bool sel);
