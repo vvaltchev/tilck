@@ -28,6 +28,7 @@ init_256()
    init_pair(CVP_MED, 179, -1);
    init_pair(CVP_HI, 108, -1);
    init_pair(CVP_DIM, 240, -1);
+   init_pair(CVP_TRACK, 236, -1);   /* faint grey bar track */
    init_pair(CVP_SEL, 254, 24);
    init_pair(CVP_ACCENT, 110, -1);
 }
@@ -40,6 +41,7 @@ init_16()
    init_pair(CVP_MED, COLOR_YELLOW, -1);
    init_pair(CVP_HI, COLOR_GREEN, -1);
    init_pair(CVP_DIM, COLOR_WHITE, -1);
+   init_pair(CVP_TRACK, COLOR_BLACK, -1);
    init_pair(CVP_SEL, COLOR_WHITE, COLOR_BLUE);
    init_pair(CVP_ACCENT, COLOR_CYAN, -1);
 }
@@ -71,6 +73,7 @@ cv_attr(cv_pair p)
          case CVP_SEL:   return A_REVERSE;
          case CVP_LO:    return A_BOLD;
          case CVP_DIM:   return A_DIM;
+         case CVP_TRACK: return A_DIM;
          default:        return A_NORMAL;
       }
    }

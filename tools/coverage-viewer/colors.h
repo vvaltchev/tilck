@@ -17,7 +17,8 @@ enum cv_pair : short {
    CVP_LO,          /* low coverage (also: uncovered, zero-hit fn) */
    CVP_MED,         /* medium coverage */
    CVP_HI,          /* high coverage (also: covered, hit fn) */
-   CVP_DIM,         /* de-emphasized text / bar track / rules */
+   CVP_DIM,         /* de-emphasized text / rules */
+   CVP_TRACK,       /* the unfilled part of a coverage bar */
    CVP_SEL,         /* selected row */
    CVP_ACCENT,      /* small accents: icons, selection marker */
 };

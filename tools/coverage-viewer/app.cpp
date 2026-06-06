@@ -19,19 +19,13 @@ static const int PAD_L = 3;
 static const int PAD_R = 3;
 
 /* Unicode building blocks (require a UTF-8 locale; set in app::run). */
-static const char *GL_FULL  = "█";   /* full block            */
-static const char *GL_TRACK = "░";   /* light shade (bar gap) */
+static const char *GL_BAR   = "▅";   /* coverage bar: lower 5/8 block */
 static const char *GL_RULE  = "─";   /* horizontal rule       */
 static const char *GL_VBAR  = "│";   /* gutter separator      */
 static const char *GL_CRUMB = "›";   /* breadcrumb chevron    */
 static const char *GL_ELL   = "…";   /* ellipsis              */
 static const char *GL_DIR   = "";   /* nerd-font folder      */
 static const char *GL_FILE  = "";   /* nerd-font file        */
-
-/* Left eighth-blocks for the bar's partial cell (1/8 .. 7/8). */
-static const char *GL_EIGHTH[8] = {
-   "", "▏", "▎", "▍", "▌", "▋", "▊", "▉"
-};
 
 struct row_layout {
    int name_x, name_w;
@@ -139,48 +133,37 @@ fmt_count(int hit, int total)
    return buf;
 }
 
-/* A smooth bar: full blocks + a partial eighth-block + a shaded track. */
+/*
+ * Coverage bar. Both the filled part and the track use the lower 5/8
+ * block (GL_BAR): bottom-anchored and 5/8 tall, so it leaves an empty
+ * top margin and adjacent rows' bars stay visually detached. The filled
+ * part is the rate color, the track a faint grey -- the only difference
+ * is color, so fill and track are the same height (no top-edge mismatch).
+ */
 static void
 draw_bar(WINDOW *w, int y, int x, int width, double p, bucket b, bool sel)
 {
    if (width <= 0)
       return;
 
-   double frac = p < 0 ? 0 : (p > 100 ? 100 : p);
-   const double cells = frac / 100.0 * width;
-   int full = static_cast<int>(cells);
-   int part = static_cast<int>((cells - full) * 8.0 + 0.5);
+   const double frac = p < 0 ? 0 : (p > 100 ? 100 : p);
+   int filled = static_cast<int>(frac / 100.0 * width + 0.5);
 
-   if (part > 7) {
-      full++;
-      part = 0;
-   }
-
-   if (full > width) {
-      full = width;
-      part = 0;
-   }
+   if (filled > width)
+      filled = width;
 
    const chtype fa = sel ? cv_attr(CVP_SEL) : bucket_attr(b);
-   const chtype ta = sel ? cv_attr(CVP_SEL) : cv_attr(CVP_DIM);
-   int used = full;
+   const chtype ta = sel ? cv_attr(CVP_SEL) : cv_attr(CVP_TRACK);
 
-   if (full > 0) {
+   if (filled > 0) {
       wattron(w, fa);
-      mvwaddstr(w, y, x, repeat(GL_FULL, full).c_str());
+      mvwaddstr(w, y, x, repeat(GL_BAR, filled).c_str());
       wattroff(w, fa);
    }
 
-   if (part > 0 && used < width) {
-      wattron(w, fa);
-      mvwaddstr(w, y, x + used, GL_EIGHTH[part]);
-      wattroff(w, fa);
-      used++;
-   }
-
-   if (used < width) {
+   if (filled < width) {
       wattron(w, ta);
-      mvwaddstr(w, y, x + used, repeat(GL_TRACK, width - used).c_str());
+      mvwaddstr(w, y, x + filled, repeat(GL_BAR, width - filled).c_str());
       wattroff(w, ta);
    }
 }
