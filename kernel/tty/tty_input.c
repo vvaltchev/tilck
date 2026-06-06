@@ -544,14 +544,23 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
    do {
 
-      if ((h->fl_flags & O_NONBLOCK) && tty_inbuf_is_empty(t))
+      if ((h->fl_flags & O_NONBLOCK) && !tty_read_ready_int(t, h))
          return -EAGAIN;
 
-      while (tty_inbuf_is_empty(t)) {
+      /*
+       * Wait until there is actually data to return: a completed line in
+       * canonical mode, VMIN bytes in raw mode. That is exactly when
+       * input_cond is signalled (canonical signals only on a line delimiter;
+       * raw on every byte), so tty_read_ready_int() is the correct predicate.
+       * A looser "ring is non-empty" check would let the periodic timeout
+       * below drain a half-typed canonical line into read_buf before ENTER,
+       * breaking VERASE/backspace line editing.
+       */
+      while (!tty_read_ready_int(t, h)) {
 
          /*
           * Use a finite timeout instead of KCOND_WAIT_FOREVER: this loop
-          * checks tty_inbuf_is_empty() with no lock held, so a writer
+          * re-checks the predicate with no lock held, so a writer
           * (the kb_worker_thread bottom half) that signals input_cond
           * between our predicate check and our entry into kcond_wait()
           * will hit an empty wait_list and the wakeup is lost. The
