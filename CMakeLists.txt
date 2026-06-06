@@ -1171,6 +1171,7 @@ include(kernel/sources.cmake)
 # Include sub-directories
 
 add_subdirectory(scripts/build_apps)
+add_subdirectory(tools/coverage-viewer)
 
 ################################################################################
 
