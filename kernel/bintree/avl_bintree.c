@@ -12,7 +12,8 @@
  *    (nll) (nlr)               (nlr) (nr)
  */
 
-void rotate_left_child(void **obj_ref, long bintree_offset)
+static void
+rotate_left_child(void **obj_ref, long bintree_offset)
 {
    struct bintree_node *orig_node;
    struct bintree_node *orig_left_child;
@@ -20,13 +21,13 @@ void rotate_left_child(void **obj_ref, long bintree_offset)
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN_NN(*obj_ref);
    ASSERT(orig_node->left_obj != NULL);
 
-   orig_left_child = OBJTN(orig_node->left_obj);
+   orig_left_child = OBJTN_NN(orig_node->left_obj);
    *obj_ref = orig_node->left_obj;
    orig_node->left_obj = orig_left_child->right_obj;
-   OBJTN(*obj_ref)->right_obj = NTOBJ(orig_node);
+   OBJTN_NN(*obj_ref)->right_obj = NTOBJ_NN(orig_node);
 
    UPDATE_HEIGHT(orig_node);
    UPDATE_HEIGHT(orig_left_child);
@@ -42,7 +43,8 @@ void rotate_left_child(void **obj_ref, long bintree_offset)
  *       (nrl) (nrr)         (nl) (nrl)
  */
 
-void rotate_right_child(void **obj_ref, long bintree_offset)
+static void
+rotate_right_child(void **obj_ref, long bintree_offset)
 {
    struct bintree_node *orig_node;
    struct bintree_node *orig_right_child;
@@ -50,26 +52,36 @@ void rotate_right_child(void **obj_ref, long bintree_offset)
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
 
-   orig_node = OBJTN(*obj_ref);
+   orig_node = OBJTN_NN(*obj_ref);
    ASSERT(orig_node->right_obj != NULL);
 
-   orig_right_child = OBJTN(orig_node->right_obj);
+   orig_right_child = OBJTN_NN(orig_node->right_obj);
    *obj_ref = orig_node->right_obj;
    orig_node->right_obj = orig_right_child->left_obj;
-   OBJTN(*obj_ref)->left_obj = NTOBJ(orig_node);
+   OBJTN_NN(*obj_ref)->left_obj = NTOBJ_NN(orig_node);
 
    UPDATE_HEIGHT(orig_node);
    UPDATE_HEIGHT(orig_right_child);
 }
 
 
-static void balance(void **obj_ref, long bintree_offset)
+/*
+ * Returns true if the subtree's root height changed (relative to *obj_ref's
+ * stored height on entry). Used by the insert balance loop to early-exit:
+ * once an ancestor's height stops changing, no further ancestor can be
+ * affected. After a rotation, the new subtree root's stored height has
+ * already been set by the rotation itself; comparing it to the old root's
+ * stored height still answers the right question -- did the subtree's
+ * height change due to this rebalancing?
+ */
+static bool balance(void **obj_ref, long bintree_offset)
 {
    ASSERT(obj_ref != NULL);
 
    if (*obj_ref == NULL)
-      return;
+      return false;
 
+   const u16 old_height = OBJTN_NN(*obj_ref)->height;
    void *const left_obj = LEFT_OF(*obj_ref);
    void *const right_obj = RIGHT_OF(*obj_ref);
    const int bf = HEIGHT(left_obj) - HEIGHT(right_obj);
@@ -93,7 +105,8 @@ static void balance(void **obj_ref, long bintree_offset)
       }
    }
 
-   UPDATE_HEIGHT(OBJTN(*obj_ref));
+   UPDATE_HEIGHT(OBJTN_NN(*obj_ref));
+   return OBJTN_NN(*obj_ref)->height != old_height;
 }
 
 /*
@@ -142,8 +155,8 @@ bintree_remove_internal_aux(void **root_obj_ref,
       }
 
       // restore root's original left and right links
-      OBJTN(*root_obj_ref)->left_obj = *left;
-      OBJTN(*root_obj_ref)->right_obj = *right;
+      OBJTN_NN(*root_obj_ref)->left_obj = *left;
+      OBJTN_NN(*root_obj_ref)->right_obj = *right;
 
    } else {
 

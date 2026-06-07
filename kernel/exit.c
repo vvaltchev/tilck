@@ -275,7 +275,7 @@ void terminate_process(int exit_code, int term_sig)
 
    }  else {
 
-      remove_all_user_zero_mem_mappings(pi);
+      remove_all_user_mappings(pi);
       if (pi->elf)
          release_subsys_flock(pi->elf);
    }

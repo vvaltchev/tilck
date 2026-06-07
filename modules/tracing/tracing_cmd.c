@@ -55,6 +55,7 @@ tilck_sys_dp_trace_get_filter(ulong u_buf, ulong buf_size,
 {
    char kbuf[TRACED_SYSCALLS_STR_LEN];
    ulong cap;
+   int rc;
 
    if (buf_size == 0)
       return 0;
@@ -69,8 +70,9 @@ tilck_sys_dp_trace_get_filter(ulong u_buf, ulong buf_size,
    if (cap > buf_size)
       cap = buf_size;
 
-   if (copy_to_user((void *)u_buf, kbuf, cap))
-      return -EFAULT;
+   rc = copy_to_user((void *)u_buf, kbuf, cap);
+   if (rc)
+      return rc;
 
    return (int)(cap - 1);
 }
@@ -115,12 +117,14 @@ tilck_sys_dp_trace_get_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
       .sys_traced_count   = get_traced_syscalls_count(),
       .tasks_traced_count = get_traced_tasks_count(),
    };
+   int rc;
 
    if (user_out_of_range((void *)u_out, sizeof(out)))
       return -EFAULT;
 
-   if (copy_to_user((void *)u_out, &out, sizeof(out)))
-      return -EFAULT;
+   rc = copy_to_user((void *)u_out, &out, sizeof(out));
+   if (rc)
+      return rc;
 
    return 0;
 }
@@ -131,6 +135,7 @@ tilck_sys_dp_trace_get_sys_name(ulong sys_n, ulong u_buf,
 {
    const char *name;
    size_t len, cap;
+   int rc;
 
    if (buf_sz == 0)
       return -EINVAL;
@@ -146,15 +151,17 @@ tilck_sys_dp_trace_get_sys_name(ulong sys_n, ulong u_buf,
    len = strlen(name);
    cap = (len + 1 < buf_sz) ? len + 1 : buf_sz;
 
-   if (copy_to_user((void *)u_buf, name, cap))
-      return -EFAULT;
+   rc = copy_to_user((void *)u_buf, name, cap);
+   if (rc)
+      return rc;
 
    /* Force NUL termination at the last byte if the name had to be
     * truncated. */
    if (cap == buf_sz) {
       char zero = '\0';
-      if (copy_to_user((char *)u_buf + buf_sz - 1, &zero, 1))
-         return -EFAULT;
+      rc = copy_to_user((char *)u_buf + buf_sz - 1, &zero, 1);
+      if (rc)
+         return rc;
    }
 
    return (int)(cap - 1);   /* length excluding the trailing NUL */
@@ -215,12 +222,14 @@ tilck_sys_dp_trace_get_traced_bitmap(ulong u_buf, ulong buf_sz,
    for (u32 i = 0; copied < remaining; ) {
 
       ulong chunk = MIN(sizeof(tmp), remaining - copied);
+      int rc;
 
       for (ulong k = 0; k < chunk; k++, i++)
          tmp[k] = tracing_is_enabled_on_sys(i) ? 1 : 0;
 
-      if (copy_to_user((u8 *)u_buf + copied, tmp, chunk))
-         return -EFAULT;
+      rc = copy_to_user((u8 *)u_buf + copied, tmp, chunk);
+      if (rc)
+         return rc;
 
       copied += chunk;
    }
@@ -304,10 +313,9 @@ tilck_sys_dp_task_get_traced_tids_and_clear(ulong u_buf, ulong max,
    enable_preemption();
 
    if (ctx.written) {
-      if (copy_to_user((void *)u_buf, kbuf, ctx.written * sizeof(s32))) {
-         rc = -EFAULT;
+      rc = copy_to_user((void *)u_buf, kbuf, ctx.written * sizeof(s32));
+      if (rc)
          goto out;
-      }
    }
 
    rc = (int)ctx.written;

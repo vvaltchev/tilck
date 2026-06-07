@@ -223,7 +223,7 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
             break;
          }
 
-         task_set_wakeup_timer(curr,(u32)(timeout_ticks - elapsed));
+         task_set_wakeup_timer(curr, timeout_ticks - elapsed);
       }
 
       prepare_to_wait_on_multi_obj(waiter);
@@ -304,8 +304,9 @@ int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
    }
 
 end:
-   if (copy_to_user(user_fds, fds, sizeof(struct pollfd) * nfds))
-      return -EFAULT;
+   rc = copy_to_user(user_fds, fds, sizeof(struct pollfd) * nfds);
+   if (rc)
+      return rc;
 
    return ready_fds_cnt;
 }

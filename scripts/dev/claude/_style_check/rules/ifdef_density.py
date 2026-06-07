@@ -8,7 +8,7 @@ import re
 from typing import List
 
 from .base import (
-   COST_MINOR,
+   COST_FULL,
    Rule,
    Diagnostic,
    CheckContext,
@@ -35,7 +35,8 @@ class IfdefDensity(Rule):
    description = (
       'Each preprocessor conditional (#ifdef, #ifndef, #if, #else, '
       '#elif) adds visual noise and complexity. Gradient rule: each '
-      'directive reduces per-line prettiness by COST_MINOR.'
+      'directive drops its line to the minimum-valid prettiness '
+      '(cost 1.00).'
    )
    layers = LAYER_RAW_TEXT
    severity = SEVERITY_WARNING
@@ -76,7 +77,7 @@ class IfdefDensity(Rule):
             ),
             snippet=stripped,
             is_gradient=True,
-            prettiness_cost=COST_MINOR,
+            prettiness_cost=COST_FULL,
          ))
 
       return out

@@ -110,6 +110,11 @@ void *general_kmalloc(size_t *size, u32 flags)
    ASSERT(size != NULL);
    ASSERT(*size);
 
+   if (DEBUG_CHECKS && kmalloc_inject_fail_next && *size >= PAGE_SIZE) {
+      kmalloc_inject_fail_next = false;   /* one-shot test hook */
+      return NULL;
+   }
+
    disable_preemption();
    {
       const size_t orig_size = *size;

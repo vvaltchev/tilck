@@ -83,7 +83,21 @@ extern char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 void early_init_paging();
-bool handle_potential_cow(void *r);
+
+/*
+ * Result of handle_potential_cow(): a page fault is either unrelated to
+ * copy-on-write, a CoW fault we serviced, or a CoW fault we could not service
+ * because we ran out of memory. The last case is reported distinctly (instead
+ * of being disguised as a generic fault) so the dispatcher can recover it
+ * gracefully -- see handle_cow_out_of_mem().
+ */
+enum cow_result {
+   COW_NOT_A_COW = 0,    /* the fault is not a copy-on-write fault */
+   COW_RESOLVED,         /* CoW fault: the page was duplicated/committed */
+   COW_NO_MEM,           /* CoW fault: out of memory while servicing it */
+};
+
+enum cow_result handle_potential_cow(void *r);
 
 /*
  * Map a pageframe at `paddr` at the virtual address `vaddr` in the page

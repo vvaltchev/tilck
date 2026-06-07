@@ -7,7 +7,8 @@
 
 #define ELF_RAW_HEADER_SIZE   128
 
-struct locked_file; /* forward declaration */
+struct locked_file;     /* forward declaration */
+struct mappings_info;   /* forward declaration */
 
 struct elf_program_info {
 
@@ -18,6 +19,11 @@ struct elf_program_info {
    struct locked_file *lf; // ELF's file lock (can be NULL)
    bool wrong_arch;        // The ELF is compiled for the wrong arch
    bool dyn_exec;          // The ELF is a dynamic executable (not supported)
+
+   /* The program's base-region mappings (PT_LOAD segments, stack, heap),
+    * built on the heap during the load and committed to pi->mi by
+    * setup_process(). */
+   struct mappings_info *mi;
 };
 
 /*

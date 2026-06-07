@@ -26,12 +26,7 @@ struct kernel_alloc {
    size_t size;
 };
 
-struct mappings_info {
-
-   struct kmalloc_heap *mmap_heap;
-   size_t mmap_heap_size;
-   struct list mappings;
-};
+struct mappings_info;   /* defined in process_mm.h */
 
 struct process {
 
@@ -53,7 +48,6 @@ struct process {
    bool did_call_execve;
    bool automatic_reaping;       /* the parent explicitly ignored SIGCHLD */
    bool vforked;                 /* after vfork(), before execve() */
-   bool inherited_mmap_heap;
    bool did_set_tty_medium_raw;
 
    int *set_child_tid;                    /* NOTE: this is an user pointer */

@@ -5,19 +5,18 @@
 #include <tilck/kernel/paging_hw.h>
 
 struct user_mapping *
-process_add_user_mapping(fs_handle h,
-                         void *vaddr,
-                         size_t len,
-                         size_t off,
-                         int prot)
+new_user_mapping(struct list *mappings,
+                 enum user_mapping_type type,
+                 struct process *pi,
+                 fs_handle h,
+                 void *vaddr,
+                 size_t len,
+                 size_t off,
+                 int prot)
 {
    struct user_mapping *um;
-   struct process *pi = get_curr_proc();
 
    ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
-   ASSERT(!is_preemption_enabled());
-   ASSERT(!process_get_user_mapping(vaddr));
-   ASSERT(pi->mi);
 
    if (!(um = kzalloc_obj(struct user_mapping)))
       return NULL;
@@ -25,6 +24,7 @@ process_add_user_mapping(fs_handle h,
    list_node_init(&um->pi_node);
    list_node_init(&um->inode_node);
 
+   um->type = type;
    um->pi = pi;
    um->h = h;
    um->len = len;
@@ -32,8 +32,25 @@ process_add_user_mapping(fs_handle h,
    um->off = off;
    um->prot = prot;
 
-   list_add_tail(&pi->mi->mappings, &um->pi_node);
+   list_add_tail(mappings, &um->pi_node);
    return um;
+}
+
+struct user_mapping *
+process_add_user_mapping(fs_handle h,
+                         void *vaddr,
+                         size_t len,
+                         size_t off,
+                         int prot)
+{
+   struct process *pi = get_curr_proc();
+
+   ASSERT(!is_preemption_enabled());
+   ASSERT(!process_get_user_mapping(vaddr));
+   ASSERT(pi->mi);
+
+   return new_user_mapping(&pi->mi->mappings, USER_MAPPING_MMAP,
+                           pi, h, vaddr, len, off, prot);
 }
 
 void process_remove_user_mapping(struct user_mapping *um)
@@ -52,50 +69,52 @@ struct user_mapping *process_get_user_mapping(void *vaddrp)
    struct process *pi = get_curr_proc();
 
    ASSERT(!is_preemption_enabled());
+   ASSERT(pi->mi);
 
-   if (pi->mi) {
+   /*
+    * The list contains the process' base regions (program segments, stack,
+    * heap) plus any mmap()ed region. It is supposed to be *short*, so a linear
+    * scan is acceptable. If it ever grows large, switch to a BST here.
+    */
 
-      /*
-       * Given that pi->mi->mappings contains at the moment only the memory
-       * mappings done with mmap(), some small processes that don't use dynamic
-       * memory allocation will not even have this field (pi->mi == NULL).
-       *
-       * For the rest, the list is supposed to be *short*, so a linear scan
-       * is acceptable for the moment. If in the future we start to put
-       * there also the mappings for program's text and data and expect to have
-       * more than a few elements, it will be necessary to use a BST to perform
-       * the lookup here below.
-       */
+   list_for_each_ro(pos, &pi->mi->mappings, pi_node) {
 
-      list_for_each_ro(pos, &pi->mi->mappings, pi_node) {
-
-         if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
-            return pos;
-      }
+      if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
+         return pos;
    }
 
    return NULL;
 }
 
-void remove_all_user_zero_mem_mappings(struct process *pi)
+void remove_all_user_mappings(struct process *pi)
 {
-   struct user_mapping *um;
-   struct list *mappings_list_p;
+   struct user_mapping *um, *tmp;
+   struct mappings_info *mi = pi->mi;
 
    ASSERT(!is_preemption_enabled());
+   ASSERT(mi);
 
-   if (!pi->mi)
-      return;
+   /*
+    * Remove every non file-backed mapping: the anonymous mmap()s and the base
+    * regions (program segments, stack, heap). File-backed mappings are removed
+    * separately when their handle is closed (remove_all_mappings_of_handle /
+    * remove_all_file_mappings), so by the time we get here none remain -- hence
+    * the final list_is_empty() assertion.
+    */
 
-   mappings_list_p = &pi->mi->mappings;
+   list_for_each(um, tmp, &mi->mappings, pi_node) {
 
-   list_for_each_ro(um, mappings_list_p, pi_node) {
+      if (um->h)
+         continue;
 
-      if (!um->h)
-         full_remove_user_mapping(pi, um);
+      if (um->type == USER_MAPPING_MMAP)
+         full_remove_user_mapping(pi, um);   /* anon mmap: lives in mmap_heap */
+      else
+         process_remove_user_mapping(um);    /* base region: free the struct;
+                                              * pages freed by pdir_destroy() */
    }
 
-   ASSERT(list_is_empty(mappings_list_p));
+   ASSERT(list_is_empty(&mi->mappings));
 }
 
 void remove_all_mappings_of_handle(struct process *pi, fs_handle h)
@@ -150,6 +169,38 @@ void remove_all_file_mappings(struct process *pi)
    }
 }
 
+struct mappings_info *alloc_mappings_info(void)
+{
+   struct mappings_info *mi;
+
+   if (!(mi = kalloc_obj(struct mappings_info)))
+      return NULL;
+
+   list_init(&mi->mappings);
+   mi->mmap_heap = NULL;
+   mi->mmap_heap_size = 0;
+   mi->brk_region = NULL;
+   return mi;
+}
+
+void free_mappings_info(struct mappings_info *mi)
+{
+   struct user_mapping *um, *tmp;
+
+   if (mi->mmap_heap) {
+      kmalloc_destroy_heap(mi->mmap_heap);
+      kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
+   }
+
+   list_for_each(um, tmp, &mi->mappings, pi_node) {
+      list_remove(&um->pi_node);
+      list_remove(&um->inode_node);
+      kfree_obj(um, struct user_mapping);
+   }
+
+   kfree_obj(mi, struct mappings_info);
+}
+
 struct mappings_info *
 duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
 {
@@ -160,11 +211,17 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
       goto oom_case;
 
    list_init(&new_mi->mappings);
+   new_mi->mmap_heap = NULL;
+   new_mi->mmap_heap_size = 0;
+   new_mi->brk_region = NULL;
 
-   if (!(new_mi->mmap_heap = kmalloc_heap_dup(mi->mmap_heap)))
-      goto oom_case;
+   if (mi->mmap_heap) {
 
-   new_mi->mmap_heap_size = mi->mmap_heap_size;
+      if (!(new_mi->mmap_heap = kmalloc_heap_dup(mi->mmap_heap)))
+         goto oom_case;
+
+      new_mi->mmap_heap_size = mi->mmap_heap_size;
+   }
 
    list_for_each_ro(um, &mi->mappings, pi_node) {
 
@@ -176,6 +233,10 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
 
       /* Re-assign the process pointer */
       um2->pi = new_pi;
+
+      /* Keep the per-process heap-mapping shortcut pointing at our copy */
+      if (um2->type == USER_MAPPING_HEAP)
+         new_mi->brk_region = um2;
 
       /* Re-init the new nodes */
       list_node_init(&um2->pi_node);

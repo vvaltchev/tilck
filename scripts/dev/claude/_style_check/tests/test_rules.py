@@ -340,6 +340,18 @@ class TestRulesOnFixtures(unittest.TestCase):
       self.assertEqual(len(diags), 1)
       self.assertEqual(diags[0].rule, 'multiline_call_style')
 
+   def test_bad_multiline_call_style_cpp(self):
+
+      r = RULES_BY_ID['multiline_call_style']
+      diags = _run_rule(
+         r,
+         FIXTURES / 'bad_multiline_call_style.cpp',
+         self.parser
+      )
+      self.assertEqual(len(diags), 1)
+      self.assertEqual(diags[0].rule, 'multiline_call_style')
+      self.assertEqual(diags[0].severity, 'error')
+
    def test_bad_empty_body_braces(self):
 
       r = RULES_BY_ID['empty_body_braces']
@@ -648,6 +660,34 @@ class TestRulesOnFixtures(unittest.TestCase):
       )
       self.assertTrue(all(len(d.fixes) > 0 for d in diags))
 
+   def test_bad_qualified_name_density(self):
+
+      r = RULES_BY_ID['qualified_name_density']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_qualified_name_density.cpp', self.parser
+      )
+      # 1 stmt with 2 ::, 2 stmts with 3 ::, 1 stmt with 4 ::
+      self.assertEqual(len(diags), 4)
+      self.assertTrue(
+         all(d.rule == 'qualified_name_density' for d in diags)
+      )
+      self.assertTrue(all(d.is_gradient for d in diags))
+
+      costs = sorted(d.prettiness_cost for d in diags)
+      # Super-linear quadratic: cost = 0.40 * (N-1)**2.
+      # 2 ::  -> 0.40
+      # 3 ::  -> 1.60 (twice in the fixture)
+      # 4 ::  -> 3.60 -> HARD FAILURE
+      self.assertAlmostEqual(costs[0], 0.40, places=2)
+      self.assertAlmostEqual(costs[1], 1.60, places=2)
+      self.assertAlmostEqual(costs[2], 1.60, places=2)
+      self.assertAlmostEqual(costs[3], 3.60, places=2)
+
+      # The 4-:: statement should be flagged as a hard failure.
+      hard_fail = [d for d in diags if d.is_hard_failure]
+      self.assertEqual(len(hard_fail), 1)
+      self.assertAlmostEqual(hard_fail[0].prettiness_cost, 3.60, 2)
+
 
 class TestRulesNoFalsePositives(unittest.TestCase):
    """Synthetic `good_*` fixtures exercise the no-violation code paths
@@ -679,6 +719,16 @@ class TestRulesNoFalsePositives(unittest.TestCase):
    def test_good_multiline_call_complex(self):
       self._assert_no_diags(
          'multiline_call_style', 'good_multiline_call_complex.c'
+      )
+
+   def test_good_multiline_call_style_cpp(self):
+      self._assert_no_diags(
+         'multiline_call_style', 'good_multiline_call_style.cpp'
+      )
+
+   def test_good_qualified_name_density(self):
+      self._assert_no_diags(
+         'qualified_name_density', 'good_qualified_name_density.cpp'
       )
 
    def test_good_static_fn_def(self):
@@ -1108,6 +1158,58 @@ class TestAggregator(unittest.TestCase):
       )
       self.assertEqual(summary.functions, [])
       self.assertEqual(len(summary.file_level_diagnostics), 1)
+
+   def test_function_prettiness_unclamped_negative(self):
+      """A catastrophically ugly function should report a NEGATIVE
+      prettiness score (not clamped to 0). This is what makes the
+      ugliness visible to the reader."""
+
+      from ..rules.base import Diagnostic
+
+      lines = ['void foo(void)', '{', '   bad_line();', '}']
+      diag = Diagnostic(
+         file='x.c', line=3, col=1, end_line=3, end_col=10,
+         rule='r', severity='warning', message='m',
+         is_gradient=True, prettiness_cost=10.0,
+      )
+      f = self._agg.FunctionRegion(
+         name='foo', start_line=1, end_line=4, stmt_count=1,
+      )
+      f.diagnostics.append(diag)
+      f.prettiness = self._agg._compute_prettiness(
+         lines, f.start_line, f.end_line, f.diagnostics
+      )
+      # Only two scoreable lines: `void foo(void)` (header) and
+      # `bad_line();` (the call). Cost 10.0 hits line 3 -> -9.0.
+      # Mean: (1.0 + -9.0) / 2 = -4.0. Pre-change this would have
+      # been clamped to 0.0; post-change it must reflect the real
+      # depth of ugliness.
+      self.assertAlmostEqual(f.prettiness, -4.0, places=1)
+      self.assertLess(f.prettiness, 0.0)
+
+   def test_hard_failure_gradient_breaks_verdict(self):
+      """A gradient diagnostic whose cost >= STATEMENT_HARD_FAIL_THRESHOLD
+      must escalate the function verdict to 'broken' even though the
+      diagnostic carries severity='warning'."""
+
+      from ..rules.base import (
+         Diagnostic,
+         STATEMENT_HARD_FAIL_THRESHOLD,
+      )
+
+      f = self._agg.FunctionRegion(
+         name='foo', start_line=1, end_line=10, stmt_count=10,
+      )
+      f.diagnostics.append(Diagnostic(
+         file='x', line=2, col=1, end_line=2, end_col=10,
+         rule='qualified_name_density', severity='warning',
+         message='catastrophic',
+         is_gradient=True,
+         prettiness_cost=STATEMENT_HARD_FAIL_THRESHOLD + 0.6,
+      ))
+      self.assertEqual(f.hard_failure_gradients, 1)
+      self.assertEqual(f.hard_violations, 0)   # gradient, not violation
+      self.assertEqual(f.verdict, 'broken')
 
 
 class TestStyleConfig(unittest.TestCase):

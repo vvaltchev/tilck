@@ -31,6 +31,7 @@ set_process_str_cwd(struct process *pi, const char *path)
 static int
 getcwd_nolock(struct process *pi, char *user_buf, size_t buf_size)
 {
+   int rc;
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
    const size_t cl = strlen(pi->str_cwd) + 1;
 
@@ -40,8 +41,9 @@ getcwd_nolock(struct process *pi, char *user_buf, size_t buf_size)
    if (buf_size < cl)
       return -ERANGE;
 
-   if (copy_to_user(user_buf, pi->str_cwd, cl))
-      return -EFAULT;
+   rc = copy_to_user(user_buf, pi->str_cwd, cl);
+   if (rc < 0)
+      return rc;
 
    if (cl > 2) { /* NOTE: `cl` counts the trailing `\0` */
       ASSERT(user_buf[cl - 2] == '/');

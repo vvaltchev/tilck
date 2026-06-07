@@ -24,6 +24,15 @@ KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 ELFHACK = '@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack@ARCH_BITS@'
 ARCH_BITS = int('@ARCH_BITS@')
 KERNEL_SELFTESTS = '@KERNEL_SELFTESTS@'
+GTESTS_FILE = '@CMAKE_BINARY_DIR@/gtests'
+
+# Coverage (gcov) integration
+TEST_GCOV = '@TEST_GCOV@'
+KERNEL_GCOV = '@KERNEL_GCOV@'
+COVERAGE_HTML_DIR = '@COVERAGE_HTML_DIR@'
+GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
+GEN_TEST_COV_REPORT = \
+   '@CMAKE_BINARY_DIR@/tests/unit/scripts/generate_test_coverage_report'
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -57,6 +66,7 @@ ordered_timeouts = sorted(list(INV_TIMEOUTS.keys()))
 ALL_TESTS_TIMEOUT   = 4 * TIMEOUTS['med']
 
 load_tests_func_by_type_list = [
+   'load_list_of_unit_tests',
    'load_list_of_kernel_self_tests',
    'load_list_of_shell_cmd_tests',
    'load_list_of_interactive_tests',
@@ -80,6 +90,11 @@ tests_by_type : Dict[str, List[Tuple[str,int]]] = { k: [] for k in TEST_TYPES }
 tests_to_run  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
 tests_passed  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
 test_runners  : Dict[str, str]                  = { k: "" for k in TEST_TYPES }
+
+# Set by coverage_preflight() when host-side unit-test coverage must be
+# captured right after the unit tests run; see the host-vs-cross gcov
+# ordering note there.
+g_capture_unit_cov = False
 
 def timeout_name(val):
 
@@ -133,6 +148,63 @@ def load_all_tests():
 
    for tt in TEST_TYPES:
       tests_by_type[tt] = globals()[load_tests_func_by_type[tt]]()
+
+def load_list_of_unit_tests():
+
+   result = []
+
+   try:
+
+      output = subprocess.check_output(
+         [GTESTS_FILE, '--gtest_list_tests']
+      ).decode("utf-8")
+
+   except (FileNotFoundError, subprocess.CalledProcessError):
+
+      # The gtests binary hasn't been built (it is EXCLUDE_FROM_ALL and
+      # needs the host gtest deps) or it failed to list its tests. Either
+      # way just return an empty list, like the interactive loader does
+      # when its own feature is absent.
+      return []
+
+   suite = None
+   seen = set()
+
+   for line in output.split("\n"):
+
+      if not line.strip():
+         continue
+
+      if not line.startswith(" "):
+         # Suite line: a test-suite name terminated by a '.'. For value-
+         # parametric tests the instantiation prefix is part of it
+         # (e.g. "do_nothing/mem_regions_test.").
+         suite = line.strip().rstrip(".")
+         continue
+
+      # Test-case line: drop the trailing " # GetParam() = ..." comment
+      # and the "/N" parametric index, folding every instance of a
+      # parametric test into a single entry.
+      case = re.sub(r'\s+#.*$', '', line.strip())
+      base = case.split("/")[0]
+      key = (suite, base)
+
+      if key in seen:
+         continue
+
+      seen.add(key)
+      name = suite + "." + base
+
+      # `DISABLED_` tests (on the case or the suite) are the unit-test
+      # equivalent of manual self-tests: always listed, only run with -a.
+      is_disabled = base.startswith("DISABLED_") or \
+                    suite.rsplit("/", 1)[-1].startswith("DISABLED_")
+
+      timeout = MANUAL_TEST_TIMEOUT if is_disabled else TIMEOUTS['short']
+      result.append([name, timeout])
+
+   test_runners["unit"] = "@CMAKE_BINARY_DIR@/st/run_unit_test"
+   return sorted(result, key = lambda x: (x[1], x[0]))
 
 def load_list_of_interactive_tests():
 
@@ -347,8 +419,22 @@ def does_test_match_criteria(x : Tuple[str,int],
 
 def list_tests(reg : str, max_timeout : int, test_type : str):
 
+   # Size the name column to the longest name that will be shown (min 30)
+   # so the table stays aligned even with the long fully-qualified
+   # unit-test names.
+   name_w = 30
+
+   for tt in TEST_TYPES:
+
+      if test_type and tt != test_type:
+         continue
+
+      for x in tests_by_type[tt]:
+         if does_test_match_criteria(x, reg, max_timeout, True):
+            name_w = max(name_w, len(x[0]) + 1)
+
    col_names : List[Tuple[str, int]] = [
-      ('test name', 30),
+      ('test name', name_w),
       ('test type', 12),
       ('timeout', 10),
    ]
@@ -440,6 +526,70 @@ def run_test(test_type : str,
          tests_passed[test_type] += 1
 
 
+def coverage_run_tool(tool : str, *tool_args : str):
+
+   if not os.path.isfile(tool):
+      raw_print("[coverage] ERROR: tool not found: {}".format(tool))
+      return False
+
+   p = subprocess.run([tool, *tool_args], stdin = subprocess.DEVNULL)
+   return p.returncode == 0
+
+def coverage_preflight():
+
+   """
+   Prepare a --coverage run: verify this is a gcov build, wire the in-VM
+   runners to dump + merge kernel coverage, and clear any stale data so the
+   resulting coverage.info reflects only this run.
+   """
+
+   global g_capture_unit_cov
+
+   test_cov = is_cmake_opt_enabled(TEST_GCOV)
+   kern_cov = is_cmake_opt_enabled(KERNEL_GCOV)
+
+   if not test_cov and not kern_cov:
+      raw_print(
+         "ERROR: --coverage needs a gcov build. "
+         "Reconfigure with: cmake_run --gcov"
+      )
+      sys.exit(Fail.invalid_build_config.value)
+
+   # The in-VM runners (single_test_run / run_interactive_test) dump the
+   # kernel's gcda over serial and merge them (generate_kernel_coverage_report
+   # --acc) only when these are set in the environment.
+   if kern_cov:
+      os.environ['DUMP_COV'] = '1'
+      os.environ['REPORT_COV'] = '1'
+
+   # Host-side unit-test gcda are captured with the host gcov; the in-VM
+   # gcda with the cross gcov. Each capture deletes every gcda file, so the
+   # host capture must run before any in-VM one. 'unit' is the first test
+   # type, so capturing right after it runs is both correct and sufficient.
+   g_capture_unit_cov = test_cov
+
+   raw_print("[coverage] cleaning previous coverage data")
+
+   if not coverage_run_tool(GEN_KCOV_REPORT, '--clean'):
+      sys.exit(Fail.gcov_error.value)
+
+def capture_unit_coverage():
+
+   raw_print("[coverage] capturing unit-test coverage (host gcov)")
+
+   if not coverage_run_tool(GEN_TEST_COV_REPORT, '--acc'):
+      raw_print("[coverage] ERROR: failed to capture unit-test coverage")
+      sys.exit(Fail.gcov_error.value)
+
+def generate_coverage_html():
+
+   raw_print("[coverage] generating the HTML report")
+
+   if not coverage_run_tool(GEN_KCOV_REPORT, '--gen'):
+      sys.exit(Fail.gcov_error.value)
+
+   raw_print("[coverage] HTML report: {}/index.html".format(COVERAGE_HTML_DIR))
+
 def run_all_tests(max_timeout : int,
                   show_output : bool,
                   reg : str,
@@ -455,6 +605,9 @@ def run_all_tests(max_timeout : int,
       for x in tests_by_type[tt]:
          if does_test_match_criteria(x, reg, max_timeout, allow_manual):
             run_test(tt, x, show_output)
+
+      if g_capture_unit_cov and tt == 'unit' and tests_to_run['unit'] > 0:
+         capture_unit_coverage()
 
    if fail_on_zero:
       if sum(tests_to_run.values()) == 0:
@@ -523,14 +676,29 @@ def parse_args():
    parser.add_argument(
       "-c", "--compact-run",
       action = "store_true",
-      help = "Run all the tests of a each type "
-             "in a single VM boot (filters ignored)",
+      help = "Run all the tests of each type in a single VM boot. "
+             "Combine with -f to limit the single boot to the "
+             "filter-matched tests (capped at "
+             "{} matches per type).".format(COMPACT_FILTER_MAX),
    )
 
    parser.add_argument(
       "-o", "--show-output",
       action = "store_true",
       help = "Show test's output even in case of success"
+   )
+
+   parser.add_argument(
+      "--coverage",
+      action = "store_true",
+      help = "Collect a single merged coverage.info from every test type "
+             "that runs (needs a gcov build: cmake_run --gcov)."
+   )
+
+   parser.add_argument(
+      "--html",
+      action = "store_true",
+      help = "With --coverage, also generate the HTML coverage report."
    )
 
    parser.add_argument(
@@ -578,6 +746,109 @@ def list_timeouts():
    for s in INF_STR_TIMEOUTS:
       raw_print("{:8}: <no timeout>".format(s))
 
+COMPACT_FILTER_MAX = 50
+
+def compact_pack_tests(args):
+
+   """
+   In -c (compact-run) mode, override tests_by_type so that each test
+   type runs as a *single* VM boot. Without -f, that single boot just
+   invokes the kernel-side runall path -- the historical behavior.
+
+   With -f, the inner runners would otherwise ignore the filter (they
+   have no per-test loop of their own), so we resolve the regex here
+   and hand the inner runner a packed list of test names instead. The
+   shellcmd inner runner becomes `runall N1 N2 ...` (cmd_runall picks
+   only the listed names) and the selftest inner runner becomes
+   `N1 N2 ...` (cmd_selftest loops through them, one sysenter each).
+   The unit inner runner likewise becomes `N1 N2 ...` and runs them
+   all in a single gtests process (one combined --gtest_filter).
+
+   Capped at COMPACT_FILTER_MAX matches per type to keep argv inside
+   the in-VM runners' modest buffer sizes; if you actually need to
+   blast through more than that, drop -f and run the full compact
+   pass instead. The unit runner is exempt from the cap (a single
+   host process handles any number of names).
+   """
+
+   has_filter = args.filter != '.*'
+
+   if not has_filter:
+
+      tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+      if is_cmake_opt_enabled(KERNEL_SELFTESTS):
+         tests_by_type['selftest'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+
+      # The unit runner runs the whole gtests binary in one process on
+      # `runall`; only pack it when the binary is actually present.
+      if tests_by_type['unit']:
+         tests_by_type['unit'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+
+      return
+
+   reg = args.filter
+
+   for tt in TEST_TYPES:
+
+      if tt == 'selftest' and not is_cmake_opt_enabled(KERNEL_SELFTESTS):
+         tests_by_type[tt] = []
+         continue
+
+      matches = []
+
+      for x in tests_by_type[tt]:
+
+         name, timeout = x[0], x[1]
+         is_manual = timeout == MANUAL_TEST_TIMEOUT
+
+         if not re.match(reg, name):
+            continue
+
+         if is_manual and not args.allow_manual:
+            continue
+
+         matches.append(x)
+
+      if not matches:
+         tests_by_type[tt] = []
+         continue
+
+      # Interactive tests have their own runner and inherently boot one
+      # VM per test; compact-run can't fold them into a single boot. Keep
+      # the matched ones as individual entries -- this still respects -f,
+      # whereas the global filter reset below ('.*') would otherwise let
+      # every interactive test run.
+      if tt == 'interactive':
+         tests_by_type[tt] = matches
+         continue
+
+      # The unit runner consumes all packed names in a single gtests
+      # process, so the argv-buffer cap that protects the in-VM runners
+      # does not apply to it.
+      if tt != 'unit' and len(matches) > COMPACT_FILTER_MAX:
+         raw_print(
+            "ERROR: -f '{}' matched {} {} tests; max in compact mode is {}. "
+            "Refusing to run -- narrow the filter or drop -c."
+               .format(reg, len(matches), tt, COMPACT_FILTER_MAX)
+         )
+         sys.exit(Fail.no_tests_matching.value)
+
+      names_str = ' '.join(m[0] for m in matches)
+      # Sum of per-test timeouts + a generous boot/teardown margin.
+      packed_timeout = sum(m[1] for m in matches) + 30
+
+      if tt == 'shellcmd':
+         packed_name = 'runall ' + names_str
+      else:
+         packed_name = names_str
+
+      tests_by_type[tt] = [ [packed_name, packed_timeout] ]
+
+   # After packing, the entries in tests_by_type[*] are synthetic and
+   # won't match the original regex; bypass the per-test filter check
+   # downstream.
+   args.filter = '.*'
+
 def main():
 
    set_runner_name("test runner")
@@ -585,9 +856,7 @@ def main():
    args = parse_args()
 
    if args.compact_run:
-      tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
-      if is_cmake_opt_enabled(KERNEL_SELFTESTS):
-         tests_by_type['selftest'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+      compact_pack_tests(args)
 
    if args.list_timeouts:
       list_timeouts()
@@ -604,7 +873,17 @@ def main():
       list_tests(args.filter, args.max_timeout, args.test_type)
       sys.exit(0)
 
-   detect_kvm()
+   if args.html and not args.coverage:
+      raw_print("ERROR: --html requires --coverage")
+      sys.exit(Fail.invalid_args.value)
+
+   if args.coverage:
+      coverage_preflight()
+
+   # Unit tests run on the host with no VM, so a unit-only run needs no
+   # KVM probe (and shouldn't print the spurious "qemu-kvm not found").
+   if args.test_type != 'unit':
+      detect_kvm()
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()
@@ -623,6 +902,13 @@ def main():
       sys.exit(Fail.user_interruption.value)
 
    dump_test_stats()
+
+   if args.coverage:
+      raw_print("")
+      raw_print("[coverage] merged coverage.info: {}/coverage.info"
+                   .format(BUILD_DIR))
+      if args.html:
+         generate_coverage_html()
 
    if get_sum(tests_passed) != get_sum(tests_to_run):
       sys.exit(Fail.some_tests_failed.value)

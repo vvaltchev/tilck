@@ -145,8 +145,48 @@ void *wake_up(struct task *ti)
             ti->stop_pending = false;
          }
 
-         if (next == TASK_STATE_RUNNABLE)
+         if (next == TASK_STATE_RUNNABLE) {
+
             wake_vruntime_handoff(ti);
+
+            /*
+             * Wake-time reschedule trigger.
+             *
+             * Without this, a CPU-bound curr can hold the CPU until
+             * its EEVDF slice expires (O(SCHED_LATENCY), tens of ms
+             * at 250 Hz). do_schedule isn't otherwise invoked: timer
+             * IRQ ticks only set need_resched on slice timeout, and
+             * the wakee — even after wake_vruntime_handoff places it
+             * at the leading edge — just sits in the runnable tree
+             * waiting to be looked at. Any ipc-driven wakeup (pipe,
+             * kcond) is then deferred by that much, which manifests
+             * as "kill() sent before the child observes any signal"
+             * in tight-loop signal tests (sig3 / sig4) and as a
+             * general latency floor for wakeup-driven workloads.
+             *
+             * A vruntime comparison here is appealing but doesn't
+             * work: at a fresh fork + immediate IPC handoff, the
+             * wakee and curr share a vruntime (the wakee inherited
+             * min_vruntime via fork_vruntime_handoff and no timer
+             * tick has yet grown either) -- a strict `<` test would
+             * skip the very case that's failing, and `<=` would
+             * sometimes go the wrong way under equal-key tiebreak.
+             * Unconditionally setting need_resched is correct: the
+             * scheduler still does the final pick on the next
+             * do_schedule and can keep curr if it's still the right
+             * answer; the worst case is one extra ~µs lookup per
+             * non-self-wake.
+             *
+             * Skip for idle (sched_account_ticks already drives idle
+             * off via slice timeout; not worth the extra reschedule)
+             * and for workers (they own do_schedule's first pass and
+             * are never displaced by a non-worker wake).
+             */
+            struct task *const curr = get_curr_task();
+
+            if (curr != idle_task && !is_worker_thread(curr))
+               sched_set_need_resched();
+         }
 
          task_change_state_idempotent(ti, next);
       }

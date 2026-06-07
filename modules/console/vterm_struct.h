@@ -19,7 +19,6 @@ struct vterm {
    u16 rows;                  /* term's rows count */
    u16 cols;                  /* term's columns count */
 
-   u16 col_offset;
    u16 r;                     /* current row */
    u16 c;                     /* current col */
 
@@ -46,9 +45,15 @@ struct vterm {
    u16 *start_scroll_region;
    u16 *end_scroll_region;
 
-   bool *tabs_buf;
-   bool *main_tabs_buf;
-   bool *alt_tabs_buf;
+   /*
+    * Per-cell tab map: 0 means "no tab ends here", a non-zero value N means a
+    * tab ends at this cell and spans N cells, so backspace can jump the cursor
+    * straight back to where the tab began. One byte per cell (not bool: it must
+    * hold the width, not just a flag).
+    */
+   u8 *tabs_buf;
+   u8 *main_tabs_buf;
+   u8 *alt_tabs_buf;
 
    struct term_action actions_buf[32];
 

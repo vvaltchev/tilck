@@ -41,16 +41,25 @@ SCORE_NUDGE       = -0.2
 SCORE_CONTEXT_OK  = +0.5
 
 # Prettiness cost tiers for gradient rules. Each scoreable line
-# starts at 1.0; gradient diagnostics subtract their cost from
-# the affected line's prettiness. The line score is clamped to
-# [0.0, 1.0]. Function prettiness = mean of line scores.
+# starts at 1.0; gradient diagnostics subtract their cost from the
+# affected line's prettiness. Individual line scores CAN go negative
+# (no per-line floor). Function prettiness = mean of line scores --
+# also UNCLAMPED, so an ugly function can score well below 0.
 #
-# Gradient diagnostics are NOT shown as violations — they only
-# affect the per-function prettiness metric.
+# Hard-failure escalation: a gradient diagnostic whose cost meets or
+# exceeds STATEMENT_HARD_FAIL_THRESHOLD is treated as a hard failure
+# (red in the reporter, factored into the 'broken' verdict). The
+# rest of the function's prettiness is still computed -- useful for
+# spotting whether a single bad statement is the only problem or the
+# function is broadly ugly.
 COST_MINOR      = 0.10   # barely noticeable imperfection
 COST_MILD       = 0.20   # acceptable tradeoff for line length
 COST_MODERATE   = 0.35   # clearly suboptimal, prefer alternative
 COST_SIGNIFICANT = 0.50  # ugly but technically valid
+COST_FULL       = 1.00   # drops a clean statement to the minimum
+                         # "still valid" score of 0.0; the next bit
+                         # past this enters hard-failure territory
+STATEMENT_HARD_FAIL_THRESHOLD = 3.0
 
 
 @dataclass
@@ -76,7 +85,27 @@ class Diagnostic:
    suggestion: Optional[str] = None
    fixes: list = field(default_factory=list)  # List[Fix]
    is_gradient: bool = False       # gradient: affects prettiness only
-   prettiness_cost: float = 0.0    # 0.0..1.0 reduction to line score
+   prettiness_cost: float = 0.0    # subtracted from the affected
+                                   # line; may exceed 1.0 in which
+                                   # case the line score goes
+                                   # negative -- intentional
+
+   @property
+   def is_hard_failure(self) -> bool:
+      """True when the diagnostic should be treated as a hard
+      failure: either a hard-rule violation (severity='error'), or a
+      gradient with cost >= STATEMENT_HARD_FAIL_THRESHOLD (which
+      indicates the locality is so catastrophically ugly the rule
+      escalates it on its own)."""
+
+      if self.severity == 'error':
+         return True
+
+      if self.is_gradient and \
+         self.prettiness_cost >= STATEMENT_HARD_FAIL_THRESHOLD:
+         return True
+
+      return False
 
 
 @dataclass

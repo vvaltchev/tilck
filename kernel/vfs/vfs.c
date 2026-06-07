@@ -840,6 +840,7 @@ ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
 
    for (int i = 0; i < iovcnt; i++) {
 
+      int copy_rc;
       len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
 
       rc = vfs_read(h, curr->io_copybuf, len);
@@ -849,8 +850,9 @@ ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
          break;
       }
 
-      if (copy_to_user(iov[i].iov_base, curr->io_copybuf, len))
-         return -EFAULT;
+      copy_rc = copy_to_user(iov[i].iov_base, curr->io_copybuf, len);
+      if (copy_rc < 0)
+         return copy_rc;
 
       ret += rc;
 

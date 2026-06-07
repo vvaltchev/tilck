@@ -462,7 +462,7 @@ static bool got_all_signals(int n)
    }
 }
 
-static void test_sig_child_body(int n, bool busy_loop)
+static void test_sig_child_body(int n, bool busy_loop, int ready_fd)
 {
    /*
     * Special variables FORCED to be on the stack by using "volatile" and the
@@ -471,6 +471,7 @@ static void test_sig_child_body(int n, bool busy_loop)
     */
    volatile unsigned long magic1 = 0xcafebabe;
    volatile unsigned long magic2 = 0x11223344;
+   const char ready_byte = 'r';
 
    DO_NOT_OPTIMIZE_AWAY(magic1);
    DO_NOT_OPTIMIZE_AWAY(magic2);
@@ -480,6 +481,36 @@ static void test_sig_child_body(int n, bool busy_loop)
    signal(SIGHUP, &child_sig_handler);
    signal(SIGINT, &child_sig_handler);
 
+   write(ready_fd, &ready_byte, 1);
+   close(ready_fd);
+
+   /*
+    * Wait for all expected signals to arrive. Both variants poll
+    * test_got_sig (set by child_sig_handler) and BOUND the wait:
+    * if the kernel ever fails to deliver an expected signal, the
+    * loop terminates after a finite time and the child exits 1
+    * with the "didn't run handlers" message below -- devshell's
+    * run_child then reaps a clean exit and moves on. We avoid
+    * pause()/sigsuspend() here precisely because they would let
+    * a missed signal hang the child forever: devshell's
+    * waitpid(child_pid, ..., 0) has no timeout, so any orphan
+    * grandchild stuck in an indefinite wait would freeze the
+    * whole runall loop until the outer Python test runner timed
+    * out the VM, turning a precise "didn't run handlers" failure
+    * into a vague "test timed out" one.
+    *
+    *   busy_loop variant -- tight userspace spin, ~hundreds of ms
+    *                        of headroom. Tests signal delivery on
+    *                        the IRQ/return-to-usermode path.
+    *
+    *   sleep variant     -- usleep loop. usleep is a syscall that
+    *                        returns -EINTR when a signal handler
+    *                        runs, so each delivered signal wakes
+    *                        the child immediately and we re-check.
+    *                        ~2 s wall-clock budget total. Tests
+    *                        signal delivery on the syscall-exit
+    *                        path.
+    */
    if (busy_loop) {
 
       for (int i = 0; i < 100*1000*1000; i++) {
@@ -489,7 +520,11 @@ static void test_sig_child_body(int n, bool busy_loop)
 
    } else {
 
-      pause();
+      for (int i = 0; i < 2000; i++) {
+         if (got_all_signals(n))
+            break;
+         usleep(1000);
+      }
    }
 
    if (!got_all_signals(n)) {
@@ -527,24 +562,40 @@ static int test_sig_n(int n, bool busy_loop, int exp_term_sig)
    int child_pid;
    int wstatus;
    int rc;
+   int ready_pipe[2];
+   char ready_byte;
 
    DEVSHELL_CMD_ASSERT(n == 1 || n == 2);
+
+   if (pipe(ready_pipe) < 0) {
+      printf("FAIL: pipe() failed: %s\n", strerror(errno));
+      return 1;
+   }
+
    child_pid = fork();
 
    if (!child_pid) {
-      test_sig_child_body(n, busy_loop);
+      close(ready_pipe[0]);
+      test_sig_child_body(n, busy_loop, ready_pipe[1]);
    }
 
    /* --- parent --- */
 
+   close(ready_pipe[1]);
+
    /*
-    * Sleep a bit in order to give some time to the child to enter in the busy
-    * loop. NOTE: this is an extremely poor way of synchronizing two tasks,
-    * even if it's simple and "just works" for tests.
-    *
-    * TODO: impl. a proper synchronization mechanism for sig3 and sig4 tests.
+    * Block on the ready byte from the child. By the time read()
+    * returns, the child has installed its signal handlers (and, for
+    * the pause variant, blocked SIGHUP/SIGINT in preparation for
+    * sigsuspend). Signals fired now can't be lost or mis-routed.
     */
-   usleep(25 * 1000);
+   if (read(ready_pipe[0], &ready_byte, 1) != 1) {
+      printf("FAIL: parent: child sync read failed\n");
+      close(ready_pipe[0]);
+      return 1;
+   }
+
+   close(ready_pipe[0]);
 
    if (exp_term_sig) {
 
@@ -1121,4 +1172,85 @@ int cmd_sigsegv5(int argc, char **argv)
       42,
       0
    );
+}
+
+/*
+ * Manual test for devshell's per-test timeout + process-group SIGKILL
+ * in userapps/devshell/commands.c:run_child. Not auto-enabled
+ * (cmds_table.h sets enabled_in_st = false): invoking it via `-c
+ * test_hang` bypasses run_child entirely and just hangs the shell,
+ * which is the point -- the test verifies that run_child catches
+ * the hang when it owns the wrapper fork.
+ *
+ * To re-verify after touching the watchdog: temporarily flip the
+ * enabled_in_st field for test_hang to `true` so it lands in
+ * cmd_runall's loop. The expected output sequence is
+ *
+ *   test_hang: parent pid=N, forking 3 children
+ *   test_hang: parent pid=N entering pause()
+ *   test_hang: child 0 pid=... entered
+ *   test_hang: child 1 pid=... entered
+ *   test_hang: child 2 pid=... entered
+ *   ... children print "alive tick=K" every 500 ms ...
+ *   [devshell] TIMEOUT: 'test_hang' didn't finish in 12000 ms;
+ *             killing process group
+ *   [devshell] [FAILED] test_hang (12001 ms)
+ *
+ * with NO "alive tick=" lines from any child past the TIMEOUT
+ * marker and NO "SURVIVED kill!" lines at all. If you see ticks
+ * after the TIMEOUT, the pgrp kill didn't reach the grandchildren
+ * and run_child is broken.
+ */
+int cmd_test_hang(int argc, char **argv)
+{
+   const int kids = 3;
+   int i, j, cpid;
+
+   printf("test_hang: parent pid=%d, forking %d children\n",
+          getpid(), kids);
+   fflush(stdout);
+
+   for (i = 0; i < kids; i++) {
+
+      cpid = fork();
+
+      if (cpid < 0) {
+         perror("fork");
+         exit(1);
+      }
+
+      if (!cpid) {
+
+         /*
+          * Grandchild: tick every 500 ms for 30 s. Each tick is a
+          * usleep + print, so if SIGKILL reaches us mid-usleep we
+          * stop printing immediately; if it doesn't, the ticks
+          * keep landing in the output past the watchdog deadline.
+          * The SURVIVED line at the end only fires if we complete
+          * the full 30 s -- a stronger negative signal than just
+          * missing ticks.
+          */
+         printf("test_hang: child %d pid=%d entered\n", i, getpid());
+         fflush(stdout);
+
+         for (j = 0; j < 60; j++) {
+            usleep(500 * 1000);
+            printf("test_hang: child %d pid=%d alive tick=%d\n",
+                   i, getpid(), j);
+            fflush(stdout);
+         }
+
+         printf("test_hang: child %d pid=%d SURVIVED kill!\n",
+                i, getpid());
+         fflush(stdout);
+         exit(0);
+      }
+   }
+
+   printf("test_hang: parent pid=%d entering pause()\n", getpid());
+   fflush(stdout);
+   pause();
+   printf("test_hang: parent SURVIVED kill!\n");
+   fflush(stdout);
+   return 0;
 }

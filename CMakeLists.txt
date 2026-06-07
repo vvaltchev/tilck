@@ -393,6 +393,25 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 # tilck_option() so they show up in the generated run_config's menuconfig.
 # =====================================================================
 
+# --- Build type ---
+#
+# CATEGORY "." pins this to the very top of the menu (above every
+# submenu). The backing variable is CMake's own CMAKE_BUILD_TYPE,
+# already set by scripts/cmake_run; declaring it here just exposes it
+# in the configurator. STRINGS must stay in sync with the build types
+# handled in other/cmake/compiler_flags.cmake.
+
+tilck_option(CMAKE_BUILD_TYPE
+   TYPE     ENUM
+   CATEGORY "."
+   DEFAULT  Debug
+   STRINGS  Debug Release MinSizeRel RelWithDebInfo
+   HELP     "Build type"
+            "CMake build type: optimization level (-ggdb is always on)."
+            "Debug -O0, RelWithDebInfo -O2, Release -O3, MinSizeRel -Os."
+            "Debug/RelWithDebInfo default DEBUG_CHECKS on, others off."
+)
+
 # --- Graphics ---
 
 tilck_option(PREFERRED_GFX_MODE_W
@@ -569,11 +588,25 @@ tilck_option(KERNEL_SERCON
 
 # --- Kernel / Debug ---
 
+# DEBUG_CHECKS gates ASSERT() and all #if DEBUG_CHECKS code; with it off,
+# NDEBUG is defined so ASSERTs don't fire (see compiler_flags.cmake).
+# Default on for the debuggable build types, off for the production ones;
+# it stays freely toggleable -- this only picks the initial default, which
+# (as for any option) a cached value overrides on reconfigure.
+set(_debug_checks_default OFF)
+if (CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo)$")
+   set(_debug_checks_default ON)
+endif()
+
 tilck_option(DEBUG_CHECKS
    TYPE     BOOL
    CATEGORY "Kernel Debug"
-   DEFAULT  ON
-   HELP     "Keep ASSERTs + debug checks in release builds"
+   DEFAULT  ${_debug_checks_default}
+   HELP     "ASSERTs and DEBUG checks"
+            "Compile in ASSERT() checks and other debug-only code."
+            "With it off, NDEBUG is defined and ASSERTs never fire,"
+            "on Debug builds too. Defaults on for Debug and"
+            "RelWithDebInfo, off for Release and MinSizeRel."
 )
 
 tilck_option(KERNEL_SELFTESTS
@@ -1138,6 +1171,7 @@ include(kernel/sources.cmake)
 # Include sub-directories
 
 add_subdirectory(scripts/build_apps)
+add_subdirectory(tools/coverage-viewer)
 
 ################################################################################
 

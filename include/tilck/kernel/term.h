@@ -63,7 +63,6 @@ struct term_interface {
    void (*write)(term *t, const char *buf, size_t len, u8 color);
    void (*scroll_up)(term *t, u32 lines);
    void (*scroll_down)(term *t, u32 lines);
-   void (*set_col_offset)(term *t, int off);
    void (*pause_output)(term *t);
    void (*restart_output)(term *t);
    void (*set_filter)(term *t, term_filter func, void *ctx);

@@ -121,37 +121,50 @@ static void fault_in_panic(regs_t *r)
 
 void handle_fault(regs_t *r)
 {
-   bool cow = false;
    const int int_num = r->int_num;
+   const bool is_page_fault = (int_num == EXC_INST_PAGE_FAULT) ||
+                              (int_num == EXC_LOAD_PAGE_FAULT) ||
+                              (int_num == EXC_STORE_PAGE_FAULT);
 
    ASSERT(is_fault(int_num));
 
    if (UNLIKELY(in_panic()))
       return fault_in_panic(r);
 
-   if (LIKELY((int_num == EXC_INST_PAGE_FAULT)   ||
-              (int_num == EXC_LOAD_PAGE_FAULT)   ||
-              (int_num == EXC_STORE_PAGE_FAULT))) {
+   if (LIKELY(is_page_fault)) {
+      const enum cow_result cow = handle_potential_cow(r);
 
-      cow = handle_potential_cow(r);
+      if (cow == COW_RESOLVED)
+         return;                         /* serviced transparently: retry */
+
+      /*
+       * User-access fast path: a page fault inside copy_{to,from}_user().
+       * Resume in place at the primitive's fixup, reporting -ENOMEM for an
+       * out-of-memory CoW page or -EFAULT (reason left 0) for a bad pointer.
+       */
+      if (user_access_resume_on_fault(r, cow == COW_NO_MEM))
+         return;
+
+      if (cow == COW_NO_MEM)
+         return handle_cow_out_of_mem(r); /* recover / kill / panic */
    }
 
-   if (!cow) {
+   /* An ordinary fault: bad-address page fault, or a non-page-fault */
+   if (is_fault_resumable(int_num)) {
+      get_curr_task()->fault_resume_reason = 0;
+      return handle_resumable_fault(r);
+   }
 
-      if (is_fault_resumable(int_num))
-         return handle_resumable_fault(r);
+   if (LIKELY(fault_handlers[int_num] != NULL)) {
 
-      if (LIKELY(fault_handlers[int_num] != NULL)) {
+      fault_handlers[int_num](r);
 
-         fault_handlers[int_num](r);
+   } else {
 
-      } else {
-
-         panic("Unhandled fault #%i: %s EIP: %p",
-               int_num,
-               riscv_exception_names[int_num],
-               regs_get_ip(r));
-      }
+      panic("Unhandled fault #%i: %s EIP: %p",
+            int_num,
+            riscv_exception_names[int_num],
+            regs_get_ip(r));
    }
 }
 

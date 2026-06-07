@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <time.h>
 #include <sys/wait.h>
 
@@ -40,24 +41,81 @@ static int get_cmds_count(void)
 
 int cmd_selftest(int argc, char **argv)
 {
+   const char *failed_names[32];
+   int failed_count = 0;
    int rc;
+   bool any_failure = false;
 
    if (argc < 1) {
       fprintf(stderr, PFX "Expected a <selftest> argument.\n");
       return 1;
    }
 
-   rc = sysenter_call3(TILCK_CMD_SYSCALL,
-                       TILCK_CMD_RUN_SELFTEST,
-                       argv[0], /* self test name */
-                       NULL);
+   if (argc == 1) {
 
-   if (rc != 0) {
-      fprintf(stderr, PFX "Invalid selftest '%s'\n", argv[0]);
-      return 1;
+      /*
+       * Single-name case (incl. "runall"): defer to the kernel.
+       * For "runall", se_runall emits [RUN]/[PASSED]/[FAILED] per
+       * test itself; for any other name, se_run runs the test
+       * without those markers -- same behavior as before this
+       * command grew multi-name support.
+       */
+      rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                          TILCK_CMD_RUN_SELFTEST,
+                          argv[0],
+                          NULL);
+
+      if (rc != 0) {
+         fprintf(stderr, PFX "Invalid selftest '%s'\n", argv[0]);
+         return 1;
+      }
+
+      return 0;
    }
 
-   return 0;
+   /*
+    * Multi-name case (the run_all_tests Python runner uses this
+    * for `-c -f <regex>`): the kernel-side se_run doesn't emit
+    * the [RUN]/[PASSED]/[FAILED] markers se_runall does, so emit
+    * them here so the runner's output stays regular regardless of
+    * which path produced the test list.
+    */
+   for (int i = 0; i < argc; i++) {
+
+      printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+             STR_RUN "%s\n", argv[i]);
+      fflush(stdout);
+
+      rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                          TILCK_CMD_RUN_SELFTEST,
+                          argv[i],
+                          NULL);
+
+      if (rc != 0) {
+         printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+                COLOR_RED STR_FAIL RESET_ATTRS "%s\n", argv[i]);
+         any_failure = true;
+         if (failed_count < ARRAY_SIZE(failed_names))
+            failed_names[failed_count++] = argv[i];
+      } else {
+         printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+                COLOR_GREEN STR_PASS RESET_ATTRS "%s\n", argv[i]);
+      }
+
+      fflush(stdout);
+   }
+
+   if (failed_count > 0) {
+
+      printf(COLOR_YELLOW "[selftest]" RESET_ATTRS " "
+             COLOR_RED "Failed:" RESET_ATTRS "\n");
+
+      for (int i = 0; i < failed_count; i++)
+         printf(COLOR_YELLOW "[selftest]" RESET_ATTRS
+                "   %s\n", failed_names[i]);
+   }
+
+   return any_failure ? 1 : 0;
 }
 
 static u64 get_monotonic_time_ms(void)
@@ -75,8 +133,30 @@ static u64 get_monotonic_time_ms(void)
    return (u64)tp.tv_sec * 1000 + (u64)tp.tv_nsec / 1000000;
 }
 
+/*
+ * Per-test wall-clock budget. Matches the Python test runner's
+ * per-test timeouts in tests/runners/run_all_tests so devshell's
+ * own watchdog races the runner's; whichever fires first wins,
+ * and devshell's cleaner failure path -- "TIMEOUT: '<name>' ...,
+ * killing process group" + continue with the next test -- beats
+ * the runner-level "VM timed out" outcome.
+ */
+static int test_timeout_ms(enum timeout_type tt)
+{
+   switch (tt) {
+      case TT_SHORT: return  12 * 1000;
+      case TT_MED:   return  36 * 1000;
+      case TT_LONG:  return 108 * 1000;
+   }
+   return 36 * 1000;
+}
+
 static bool
-run_child(int argc, char **argv, cmd_func_type func, const char *name)
+run_child(int argc,
+          char **argv,
+          cmd_func_type func,
+          const char *name,
+          enum timeout_type tt)
 {
    static const char *pass_fail_strings[2] = {
       COLOR_RED STR_FAIL RESET_ATTRS,
@@ -85,7 +165,8 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
    int child_pid, wstatus, rc;
    u64 start_ms, end_ms;
-   bool pass;
+   int timeout_ms, waited_ms = 0;
+   bool pass, timed_out = false;
 
    start_ms = get_monotonic_time_ms();
 
@@ -100,14 +181,75 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
    }
 
    if (!child_pid) {
+
+      /*
+       * Become leader of a new process group so the run_child
+       * parent can SIGKILL the entire test process tree --
+       * including any grandchildren the test itself fork()ed --
+       * if the test hangs. Without this, devshell can only
+       * waitpid() on its direct child; a grandchild stuck in an
+       * indefinite wait (sigsuspend, pause, deadlocked pipe,
+       * ...) would otherwise leak as an orphan and block runall.
+       */
+      setpgid(0, 0);
       exit(func(argc, argv));
    }
 
-   rc = waitpid(child_pid, &wstatus, 0);
+   /*
+    * Race-close: also set the child's pgrp from the parent. If
+    * the child hasn't yet reached its own setpgid() and we time
+    * out and kill(-child_pid, ...) the group, this guarantees
+    * the child is in the right group at that moment. Idempotent
+    * if the child already did it; -ESRCH (child exited) is fine.
+    */
+   setpgid(child_pid, child_pid);
 
-   if (rc < 0) {
-      perror("waitpid() failed");
-      return false;
+   timeout_ms = test_timeout_ms(tt);
+
+   while (true) {
+
+      rc = waitpid(child_pid, &wstatus, WNOHANG);
+
+      if (rc < 0) {
+         perror("waitpid() failed");
+         return false;
+      }
+
+      if (rc == child_pid)
+         break;   /* child exited and was reaped */
+
+      /* rc == 0: child still alive */
+
+      if (waited_ms >= timeout_ms) {
+         timed_out = true;
+         break;
+      }
+
+      usleep(100 * 1000);   /* poll every 100 ms */
+      waited_ms += 100;
+   }
+
+   if (timed_out) {
+
+      printf(COLOR_YELLOW PFX COLOR_RED "TIMEOUT: " RESET_ATTRS
+             "'%s' didn't finish in %d ms; killing process group\n",
+             name, timeout_ms);
+
+      /*
+       * kill(-pgid, SIGKILL): hit every process in the test's
+       * process group. The child + any grandchildren it forked
+       * die at once and the final waitpid below reaps the direct
+       * child; grandchildren get reparented to init and reaped
+       * there.
+       */
+      kill(-child_pid, SIGKILL);
+
+      rc = waitpid(child_pid, &wstatus, 0);
+
+      if (rc < 0) {
+         perror("waitpid() after SIGKILL failed");
+         return false;
+      }
    }
 
    if (rc != child_pid) {
@@ -118,7 +260,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
    end_ms = get_monotonic_time_ms();
 
-   pass = WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
+   pass = !timed_out && WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
    printf(COLOR_YELLOW PFX "%s", pass_fail_strings[pass]);
    printf("%s (%" PRIu64 " ms)\n\n", name, end_ms - start_ms);
    return pass;
@@ -129,22 +271,76 @@ int cmd_runall(int argc, char **argv)
    u64 start_ms, end_ms;
    bool any_failure = false;
    int to_run = 0, passed = 0;
+   const char *failed_names[128];
+   int failed_count = 0;
 
    start_ms = get_monotonic_time_ms();
 
-   for (int i = 1; i < get_cmds_count(); i++) {
+   if (argc > 0) {
 
-      if (!cmds_table[i].enabled_in_st || cmds_table[i].tt == TT_LONG)
-         continue;
+      /*
+       * Explicit list of test names (the run_all_tests Python runner
+       * uses this for `-c -f <regex>`, packing the matching names
+       * into argv). Run only what the caller asked for; skip the
+       * enabled_in_st / TT_LONG gates since the caller named these
+       * deliberately. Tests don't expect to see this list as their
+       * own argv, so the run_child fork gets (0, NULL).
+       */
+      for (int a = 0; a < argc; a++) {
 
-      to_run++;
+         int i;
 
-      if (!run_child(argc, argv, cmds_table[i].func, cmds_table[i].name)) {
-         any_failure = true;
-         continue;
+         for (i = 1; i < get_cmds_count(); i++)
+            if (!strcmp(cmds_table[i].name, argv[a]))
+               break;
+
+         if (i == get_cmds_count()) {
+            fprintf(stderr, COLOR_YELLOW PFX RESET_ATTRS
+                    "Unknown test '%s'\n", argv[a]);
+            any_failure = true;
+            if (failed_count < ARRAY_SIZE(failed_names))
+               failed_names[failed_count++] = argv[a];
+            continue;
+         }
+
+         to_run++;
+
+         if (!run_child(0, NULL,
+                        cmds_table[i].func,
+                        cmds_table[i].name,
+                        cmds_table[i].tt))
+         {
+            any_failure = true;
+            if (failed_count < ARRAY_SIZE(failed_names))
+               failed_names[failed_count++] = cmds_table[i].name;
+            continue;
+         }
+
+         passed++;
       }
 
-      passed++;
+   } else {
+
+      for (int i = 1; i < get_cmds_count(); i++) {
+
+         if (!cmds_table[i].enabled_in_st || cmds_table[i].tt == TT_LONG)
+            continue;
+
+         to_run++;
+
+         if (!run_child(argc, argv,
+                        cmds_table[i].func,
+                        cmds_table[i].name,
+                        cmds_table[i].tt))
+         {
+            any_failure = true;
+            if (failed_count < ARRAY_SIZE(failed_names))
+               failed_names[failed_count++] = cmds_table[i].name;
+            continue;
+         }
+
+         passed++;
+      }
    }
 
    end_ms = get_monotonic_time_ms();
@@ -155,7 +351,22 @@ int cmd_runall(int argc, char **argv)
 
    printf(passed == to_run ? COLOR_GREEN : COLOR_RED);
    printf("Tests passed %d/%d" RESET_ATTRS " ", passed, to_run);
-   printf("(%" PRIu64 " ms)\n\n", end_ms - start_ms);
+   printf("(%" PRIu64 " ms)\n", end_ms - start_ms);
+
+   if (failed_count > 0) {
+
+      printf(COLOR_YELLOW PFX RESET_ATTRS
+             COLOR_RED "Failed:" RESET_ATTRS "\n");
+
+      for (int i = 0; i < failed_count; i++)
+         printf(COLOR_YELLOW PFX RESET_ATTRS "  %s\n", failed_names[i]);
+
+      if (failed_count == ARRAY_SIZE(failed_names))
+         printf(COLOR_YELLOW PFX RESET_ATTRS
+                "  ... (failure list truncated)\n");
+   }
+
+   printf("\n");
 
    if (dump_coverage) {
       dump_coverage_files();

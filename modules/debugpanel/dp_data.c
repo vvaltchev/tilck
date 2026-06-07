@@ -170,7 +170,7 @@ tilck_sys_dp_get_tasks(ulong u_buf, ulong max_count, ulong _3, ulong _4)
    kfree_array_obj(ctx.kbuf, struct dp_task_info, max_count);
 
    if (rc)
-      return -EFAULT;
+      return rc;
 
    return (int)ctx.count;
 }
@@ -225,7 +225,7 @@ tilck_sys_dp_get_heaps(ulong u_buf, ulong max_count, ulong u_stats, ulong _4)
       rc = copy_to_user((void *)u_buf, kbuf,
                         count * sizeof(struct dp_heap_info));
       if (rc)
-         return -EFAULT;
+         return rc;
    }
 
    if (u_stats) {
@@ -241,7 +241,7 @@ tilck_sys_dp_get_heaps(ulong u_buf, ulong max_count, ulong u_stats, ulong _4)
 
       rc = copy_to_user((void *)u_stats, &us, sizeof(us));
       if (rc)
-         return -EFAULT;
+         return rc;
    }
 
    return (int)count;
@@ -306,7 +306,7 @@ tilck_sys_dp_get_kmalloc_chunks(ulong u_buf, ulong max_count,
    kfree_array_obj(kbuf, struct dp_kmalloc_chunk, max_count);
 
    if (rc)
-      return -EFAULT;
+      return rc;
 
    return (int)count;
 }
@@ -321,6 +321,7 @@ tilck_sys_dp_get_irq_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
 
    struct dp_irq_stats out = {0};
    u32 mask = 0;
+   int rc;
 
    if (user_out_of_range((void *)u_out, sizeof(out)))
       return -EFAULT;
@@ -345,8 +346,9 @@ tilck_sys_dp_get_irq_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
 
    out.unmasked_mask_lo16 = mask;
 
-   if (copy_to_user((void *)u_out, &out, sizeof(out)))
-      return -EFAULT;
+   rc = copy_to_user((void *)u_out, &out, sizeof(out));
+   if (rc)
+      return rc;
 
    return 0;
 }
@@ -397,7 +399,7 @@ tilck_sys_dp_get_mem_map(ulong u_buf, ulong max_count, ulong _3, ulong _4)
    kfree_array_obj(kbuf, struct dp_mem_region, max_count);
 
    if (rc)
-      return -EFAULT;
+      return rc;
 
    return (int)count;
 }
@@ -408,6 +410,7 @@ tilck_sys_dp_get_mem_global_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
    struct dp_mem_global_stats out = {0};
    struct debug_kmalloc_heap_info hi;
    struct mem_region ma;
+   int rc;
 
    if (user_out_of_range((void *)u_out, sizeof(out)))
       return -EFAULT;
@@ -444,8 +447,9 @@ tilck_sys_dp_get_mem_global_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
    if (out.kernel_used >= KMALLOC_FIRST_HEAP_SIZE)
       out.kernel_used -= KMALLOC_FIRST_HEAP_SIZE;
 
-   if (copy_to_user((void *)u_out, &out, sizeof(out)))
-      return -EFAULT;
+   rc = copy_to_user((void *)u_out, &out, sizeof(out));
+   if (rc)
+      return rc;
 
    return 0;
 }
@@ -526,11 +530,14 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
       kfree_array_obj(kbuf, struct dp_mtrr_entry, max_count);
 
       if (rc)
-         return -EFAULT;
+         return rc;
    }
 
-   if (u_info && copy_to_user((void *)u_info, &info, sizeof(info)))
-      return -EFAULT;
+   if (u_info) {
+      rc = copy_to_user((void *)u_info, &info, sizeof(info));
+      if (rc)
+         return rc;
+   }
 
    return (int)count;
 }
@@ -541,13 +548,15 @@ static int
 tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
 {
    struct dp_mtrr_info info = {0};
+   int rc;
 
    if (u_info) {
       if (user_out_of_range((void *)u_info, sizeof(info)))
          return -EFAULT;
 
-      if (copy_to_user((void *)u_info, &info, sizeof(info)))
-         return -EFAULT;
+      rc = copy_to_user((void *)u_info, &info, sizeof(info));
+      if (rc)
+         return rc;
    }
 
    return -EOPNOTSUPP;
@@ -562,6 +571,7 @@ tilck_sys_dp_get_runtime_info(ulong u_out, ulong _2, ulong _3, ulong _4)
 {
    struct dp_runtime_info out = {0};
    struct clock_resync_stats cstats;
+   int rc;
 
    if (user_out_of_range((void *)u_out, sizeof(out)))
       return -EFAULT;
@@ -590,8 +600,9 @@ tilck_sys_dp_get_runtime_info(ulong u_out, ulong _2, ulong _3, ulong _4)
    out.clk_full_resync_count          = cstats.full_resync_count;
    out.clk_multi_second_resync_count  = cstats.multi_second_resync_count;
 
-   if (copy_to_user((void *)u_out, &out, sizeof(out)))
-      return -EFAULT;
+   rc = copy_to_user((void *)u_out, &out, sizeof(out));
+   if (rc)
+      return rc;
 
    return 0;
 }

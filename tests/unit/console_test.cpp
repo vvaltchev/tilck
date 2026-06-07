@@ -41,6 +41,11 @@ using namespace testing;
 static u16 test_video_framebuffer[TEST_TERM_ROWS][TEST_TERM_COLS];
 static u16 cursor_row;
 static u16 cursor_col;
+
+/* Records the data passed to set_row() for the bottom row (see the
+ * scroll_blanks_bottom_row_before_redraw test). */
+static u16 captured_bottom_row[TEST_TERM_COLS];
+static bool capture_bottom_set_row;
 static bool cursor_enabled = true;
 
 static void console_test_dump_char(int row, int col, bool safe)
@@ -113,7 +118,7 @@ static void check_screen_vs_expected(const char *exp_screen)
 
          if (expected != '$') {
 
-            if (cursor_row == i && cursor_col == j) {
+            if (cursor_enabled && cursor_row == i && cursor_col == j) {
                /* We didn't expect the cursor, but it's there */
                FAIL() << "Unexpected cursor at row " << i+1 << ", col " << j+1;
             }
@@ -178,6 +183,9 @@ static void test_vi_set_row(u16 row, u16 *data, bool fpu_allowed)
    memcpy(&test_video_framebuffer[row],
           data,
           TEST_TERM_COLS * sizeof(u16));
+
+   if (capture_bottom_set_row && row == TEST_TERM_ROWS - 1)
+      memcpy(captured_bottom_row, data, TEST_TERM_COLS * sizeof(u16));
 }
 
 static void test_vi_clear_row(u16 row, u8 color)
@@ -192,9 +200,15 @@ static void test_vi_clear_row(u16 row, u8 color)
 static void test_vi_move_cursor(u16 row, u16 col, int color)
 {
    ASSERT_LT(row, TEST_TERM_ROWS);
-   ASSERT_LT(col, TEST_TERM_COLS);
+
+   /*
+    * col == cols is the legitimate "deferred wrap" position: after a character
+    * fills the last column the term parks the cursor one past it until the next
+    * character wraps. Model it as the last column rather than rejecting it.
+    */
+   ASSERT_LE(col, TEST_TERM_COLS);
    cursor_row = row;
-   cursor_col = col;
+   cursor_col = (u16)MIN((int)col, TEST_TERM_COLS - 1);
 }
 
 static void test_vi_enable_cursor()
@@ -261,6 +275,14 @@ public:
       while (count < maxlen && ringbuf_read_elem1(&t->input_ringbuf, &b))
          out[count++] = (char)b;
       return count;
+   }
+
+   /* Inject one input byte as if typed (drives the tty line discipline). */
+   void feed_key(u8 c) {
+      struct key_event ke = {};
+      ke.pressed = true;
+      ke.print_char = (char)c;
+      tty_send_keyevent(t, ke, false);
    }
 
    /*
@@ -1612,6 +1634,600 @@ TEST_F(console_test, sm_interm_bytes_overflow_recovers)
    check_screen_vs_expected(R"(
       +--------------------+
       |X$                  |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, scroll_blanks_bottom_row_before_redraw)
+{
+   /*
+    * A newline at the bottom scrolls the screen up by one line. The ring slot
+    * that becomes the new bottom row still holds the line that scrolled off the
+    * top of the scrollback; the scroll must blank it before (re)drawing it, or
+    * the redraw briefly shows that stale line. Fill the whole ring with
+    * non-blank rows so the recycled slot is deterministically non-blank, then
+    * capture what the next scroll draws for the bottom row: it must be blank.
+    */
+   /* > total_buffer_rows lines, so the ring buffer wraps around. */
+   for (int i = 0; i < 1000; i++)
+      console_write("XXXXXXXXXXXXXXXXXXX\r\n");
+
+   capture_bottom_set_row = true;
+   console_write("\n");
+   capture_bottom_set_row = false;
+
+   for (int j = 0; j < TEST_TERM_COLS; j++)
+      ASSERT_EQ((char)vgaentry_get_char(captured_bottom_row[j]), ' ')
+         << "bottom row col " << j << " redrawn with stale content";
+}
+
+/*
+ * Direct tests of the video terminal's scrollback, exercised through the term
+ * interface's scroll_up()/scroll_down() (keyboard-driven in production) rather
+ * than escape sequences -- this whole path was previously uncovered. Each test
+ * writes 14 numbered lines: the first five fill rows 0..4, the rest scroll, so
+ * "row10".."row13" end up on screen with the cursor on the fresh bottom line.
+ */
+TEST_F(console_test, scrollback_scroll_up_and_down)
+{
+   for (int i = 0; i < 14; i++) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "row%02d\r\n", i);
+      console_write(buf);
+   }
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row10               |
+      |row11               |
+      |row12               |
+      |row13               |
+      |$                   |
+      +--------------------+
+   )");
+
+   /* One line back into history: the cursor hides, an older line appears. */
+   t->tintf->scroll_up(t->tstate, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row09               |
+      |row10               |
+      |row11               |
+      |row12               |
+      |row13               |
+      +--------------------+
+   )");
+
+   /* Three more lines back. */
+   t->tintf->scroll_up(t->tstate, 3);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row06               |
+      |row07               |
+      |row08               |
+      |row09               |
+      |row10               |
+      +--------------------+
+   )");
+
+   /* Forward two lines. */
+   t->tintf->scroll_down(t->tstate, 2);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row08               |
+      |row09               |
+      |row10               |
+      |row11               |
+      |row12               |
+      +--------------------+
+   )");
+
+   /* Forward past the end clamps to the bottom; the cursor returns. */
+   t->tintf->scroll_down(t->tstate, 100);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row10               |
+      |row11               |
+      |row12               |
+      |row13               |
+      |$                   |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, scrollback_clamps_at_the_top)
+{
+   for (int i = 0; i < 14; i++) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "row%02d\r\n", i);
+      console_write(buf);
+   }
+
+   /* Scroll far past the top: ts_set_scroll() clamps at the oldest line. */
+   t->tintf->scroll_up(t->tstate, 1000);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row00               |
+      |row01               |
+      |row02               |
+      |row03               |
+      |row04               |
+      +--------------------+
+   )");
+
+   /* Already clamped: scrolling up further is a no-op. */
+   t->tintf->scroll_up(t->tstate, 10);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row00               |
+      |row01               |
+      |row02               |
+      |row03               |
+      |row04               |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, scroll_up_then_new_output_snaps_to_bottom)
+{
+   for (int i = 0; i < 14; i++) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "row%02d\r\n", i);
+      console_write(buf);
+   }
+
+   t->tintf->scroll_up(t->tstate, 5);   /* scroll into history */
+
+   /* New output snaps the view back to the newest line. */
+   console_write("new\r\n");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |row11               |
+      |row12               |
+      |row13               |
+      |new                 |
+      |$                   |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, pause_output_buffers_then_restart_redraws)
+{
+   console_write("\033[2J\033[1;1Hbefore");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |before$             |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   /* While paused, output is processed into the buffer but not drawn. */
+   t->tintf->pause_output(t->tstate);
+   console_write("\r\nPAUSED");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |before              |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   /* Restart redraws the whole buffer, revealing the buffered output. */
+   t->tintf->restart_output(t->tstate);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |before              |
+      |PAUSED$             |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, secondary_term_alloc_init_dispose)
+{
+   term *t2 = t->tintf->alloc();
+   ASSERT_NE(t2, nullptr);
+
+   /* A non-first term gets the no-output video interface internally. */
+   ASSERT_EQ(t->tintf->video_term_init(t2, &test_console_vi, 8, 30, -1), 0);
+
+   struct term_params p;
+   t->tintf->get_params(t2, &p);
+   ASSERT_EQ(p.rows, 8);
+   ASSERT_EQ(p.cols, 30);
+
+   /* Writing to it exercises the buffer path (drawing is a no-op). */
+   t->tintf->write(t2, "hi\r\nthere\r\n", 11, DEFAULT_COLOR16);
+
+   t->tintf->dispose(t2);
+   t->tintf->free(t2);
+}
+
+TEST_F(console_test, canon_erase_handles_caret_control_char)
+{
+   /* ESC echoes as "^[" (two cells); a single backspace must clear both. */
+   feed_key(0x1B);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |^[$                 |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_erase_full_arrow_key_sequence)
+{
+   /*
+    * An UP-arrow arrives as the bytes ESC '[' 'A' and echoes "^[[A" (4 cells
+    * over 3 bytes). Three backspaces (one per byte) must clear all four cells:
+    * ESC is worth two, '[' and 'A' one each.
+    */
+   feed_key(0x1B);
+   feed_key('[');
+   feed_key('A');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |^[[A$               |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 3; i++)
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_tab_erase_is_exact)
+{
+   /*
+    * A tab from column 0 advances to the next tab stop (8). Backspacing it
+    * must put the cursor back exactly at column 0 in one step -- the term
+    * stored the tab's width, so there is no walk-back heuristic to overshoot.
+    */
+   feed_key('\t');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |        $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_erase_stops_at_input_start)
+{
+   /*
+    * With col_offset gone, the line discipline alone must stop erasing once
+    * its input buffer is empty -- an already-printed prompt is never touched,
+    * even when more VERASEs arrive than characters were typed.
+    */
+   console_write("# ");        /* a fake shell prompt (output path) */
+   feed_key('a');
+   feed_key('b');
+   feed_key('c');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |# abc$              |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 6; i++)   /* three more erases than typed */
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |# $                 |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_tab_erase_after_text)
+{
+   /* "ab" then a tab: the tab spans columns 2..7. Backspacing it must return
+    * the cursor to column 2 (right after 'b'), not to column 0. */
+   feed_key('a');
+   feed_key('b');
+   feed_key('\t');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |ab      $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |ab$                 |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_consecutive_tabs_erase)
+{
+   /* Two tabs land at cols 8 and 16; each erases back one full stop. */
+   feed_key('\t');
+   feed_key('\t');
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |                $   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |        $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   feed_key((u8)t->c_term.c_cc[VERASE]);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, tab_marks_cleared_when_row_scrolls_away)
+{
+   /*
+    * A row that scrolls off and is reused must not keep its old tab marks: the
+    * stale mark would make a later backspace over a *real* character jump like
+    * a tab. Put a tab on the bottom row, scroll it away, type fresh text on the
+    * reused row, then erase one char -- it must be a plain one-cell backspace.
+    */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   set_cursor_to(4, 0);
+   console_write("\t");              /* tab on the bottom row, ends at col 7 */
+   console_write("\r\n");            /* scroll: bottom row reused and cleared */
+   console_write("abcdefgh");        /* 8 fresh chars on the reused row       */
+   console_write(&bs, 1);            /* erase the last one                    */
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      |abcdefg$            |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, tab_marks_follow_content_when_scrolling)
+{
+   /*
+    * The tab map is indexed by screen row, so it must shift with the content on
+    * scroll. A tab typed on the bottom row moves up one row when the screen
+    * scrolls; backspacing it there must still jump back its full width.
+    */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   set_cursor_to(4, 0);
+   console_write("\t");              /* tab on the bottom row (cols 0..7) */
+   console_write("\r\n");            /* scroll: the tab moves up to row 3 */
+
+   set_cursor_to(3, 8);
+   console_write(&bs, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |                    |
+      |                    |
+      |                    |
+      |$                   |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, backspace_wraps_to_previous_row)
+{
+   /*
+    * A line longer than the screen width wraps onto the next row; backspacing
+    * across the wrap must step back onto the previous row's last column and
+    * keep erasing there, rather than stalling at the left margin.
+    */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   console_write("abcdefghijklmnopqrstuvwxy");   /* 20 on row 0, 5 on row 1 */
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |abcdefghijklmnopqrst|
+      |uvwxy$              |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 6; i++)   /* erase uvwxy, then wrap and erase t */
+      console_write(&bs, 1);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |abcdefghijklmnopqrs$|
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_erase_unwraps_without_touching_prompt)
+{
+   /*
+    * Wrapping meets the discipline's bound: an input line that wrapped onto a
+    * second row must erase back across the wrap and stop exactly at the prompt,
+    * never wrapping up into the prompt's own text.
+    */
+   console_write("PROMPT> ");          /* prompt on row 0, cols 0..7 */
+
+   for (int i = 0; i < 15; i++)        /* 12 fill row 0, 3 wrap to row 1 */
+      feed_key((u8)('a' + i % 26));
+
+   for (int i = 0; i < 18; i++)        /* erase all 15, plus 3 extra no-ops */
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |PROMPT> $           |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, backspace_at_top_left_is_noop)
+{
+   /* Nothing to erase and nowhere to wrap: a backspace at the home position
+    * must do nothing rather than step off-screen. */
+   const char bs = (char)t->c_term.c_cc[VERASE];
+
+   console_write(&bs, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, canon_edit_mixed_line_erases_exactly)
+{
+   /*
+    * One line mixing a normal char, a tab, more normals and a control char:
+    * erasing it must undo each echo exactly -- two cells for the caret-echoed
+    * control char, the tab's full width, one cell per normal char.
+    */
+   feed_key('a');
+   feed_key('b');
+   feed_key('\t');            /* tab spans cols 2..7  */
+   feed_key('c');
+   feed_key('d');
+   feed_key(0x1b);            /* ESC echoes "^[" at cols 10,11 */
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |ab      cd^[$       |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+
+   for (int i = 0; i < 6; i++)   /* ESC, d, c, tab, b, a */
+      feed_key((u8)t->c_term.c_cc[VERASE]);
+
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |$                   |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, term_word_erase_uses_backspace)
+{
+   /*
+    * VWERASE (word erase) walks term_internal_write_backspace back over any
+    * trailing spaces and then the last word; exercise both loops on the term
+    * side.
+    */
+   const char ww = (char)t->c_term.c_cc[VWERASE];
+
+   console_write("hello world  ");
+   console_write(&ww, 1);
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |hello $             |
       |                    |
       |                    |
       |                    |

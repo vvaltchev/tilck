@@ -32,6 +32,12 @@ buf_copy_row(struct vterm *t, u32 dest, u32 src)
       return;
 
    memcpy(get_buf_row(t, dest), get_buf_row(t, src), t->cols * 2);
+
+   /* Move the tab map with the content, so tab-erase stays correct. */
+   if (t->tabs_buf)
+      memcpy(t->tabs_buf + dest * t->cols,
+             t->tabs_buf + src * t->cols,
+             t->cols);
 }
 
 static ALWAYS_INLINE bool ts_is_at_bottom(struct vterm *t)
@@ -149,6 +155,11 @@ static void ts_buf_clear_row(struct vterm *t, u16 row, u8 color)
       return;
 
    memset16(get_buf_row(t, row), make_vgaentry(' ', color), t->cols);
+
+   /* A cleared row holds no tabs: drop any tab marks so they cannot be
+    * mistaken for tabs when the row is later reused. */
+   if (t->tabs_buf)
+      memset(t->tabs_buf + row * t->cols, 0, t->cols);
 }
 
 static void ts_clear_row(struct vterm *t, u16 row, u8 color)
@@ -242,8 +253,6 @@ static void term_internal_incr_row(struct vterm *t)
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
-   t->col_offset = 0;
-
    if (t->r < eR - 1) {
       ++t->r;
       return;
@@ -261,14 +270,33 @@ static void term_internal_incr_row(struct vterm *t)
 
    t->max_scroll++;
 
+   /*
+    * The visible content just scrolled up by one row. tabs_buf is indexed by
+    * screen row (not through the ring), so shift it up to match; the new bottom
+    * row is cleared just below by ts_*_clear_row().
+    */
+   if (t->tabs_buf)
+      memmove(t->tabs_buf,
+              t->tabs_buf + t->cols,
+              (size_t)(t->rows - 1) * t->cols);
+
    if (t->vi->scroll_one_line_up) {
       t->scroll++;
       t->vi->scroll_one_line_up();
+      ts_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
    } else {
-      ts_set_scroll(t, t->max_scroll);
-   }
 
-   ts_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
+      /*
+       * Software scroll: advance the ring view and blank the new bottom row in
+       * the buffer BEFORE redrawing it. The ring slot now mapped to the last
+       * visible row still holds the line that scrolled off the top (or
+       * uninitialized data early on); redrawing before the clear would briefly
+       * flash that stale content on the bottom row.
+       */
+      t->scroll = t->max_scroll;
+      ts_buf_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
+      term_redraw(t);
+   }
 }
 
 static void term_internal_write_printable_char(struct vterm *t, u8 c, u8 color)
@@ -293,40 +321,53 @@ static void term_internal_write_tab(struct vterm *t, u8 color)
    }
 
    tab_col = (u32) MIN(round_up_at(t->c+1, t->tabsize), (u32)t->cols-1) - 1;
-   t->tabs_buf[t->r * t->cols + tab_col] = 1;
+
+   /*
+    * Store the tab's *width* (the number of cells it spans) at its last cell,
+    * rather than a bare "this is a tab" flag. A later backspace then jumps the
+    * cursor straight back to where the tab began, so the line discipline does
+    * not need to tell the term where input started (no col_offset floor).
+    */
+   t->tabs_buf[t->r * t->cols + tab_col] = (u8)(tab_col + 1 - t->c);
    t->c = (u16)(tab_col + 1);
 }
 
 static void term_internal_write_backspace(struct vterm *t, u8 color)
 {
-   if (!t->c || t->c <= t->col_offset)
-      return;
+   if (!t->c) {
+
+      /*
+       * At the left margin, step back onto the previous row's last column: a
+       * line that wrapped is erased seamlessly across the wrap. The line
+       * discipline drives backspace across only as many cells as it echoed, so
+       * it never wraps past where input began into an earlier, unrelated line.
+       */
+      if (!t->r)
+         return;
+
+      t->r--;
+      t->c = t->cols;
+   }
 
    const u16 space_entry = make_vgaentry(' ', color);
    t->c--;
 
-   if (!t->tabs_buf || !t->tabs_buf[t->r * t->cols + t->c]) {
+   const u8 tab_width =
+      t->tabs_buf ? t->tabs_buf[t->r * t->cols + t->c] : 0;
+
+   if (!tab_width) {
       buf_set_entry(t, t->r, t->c, space_entry);
       t->vi->set_char_at(t->r, t->c, space_entry);
       return;
    }
 
-   /* we hit the end of a tab */
+   /*
+    * We stepped onto the last cell of a tab: jump straight back over the rest
+    * of it using the width stored when the tab was echoed (its first cell is
+    * t->c - (tab_width - 1)). The cells in between are already blank.
+    */
    t->tabs_buf[t->r * t->cols + t->c] = 0;
-
-   for (int i = t->tabsize - 1; i >= 0; i--) {
-
-      if (!t->c || t->c == t->col_offset)
-         break;
-
-      if (t->tabs_buf[t->r * t->cols + t->c - 1])
-         break; /* we hit the previous tab */
-
-      if (buf_get_char_at(t, t->r, t->c - 1) != ' ')
-         break;
-
-      t->c--;
-   }
+   t->c = (u16)(t->c - (tab_width - 1));
 }
 
 static void term_internal_delete_last_word(struct vterm *t, u8 color)
@@ -458,7 +499,7 @@ debug_term_dump_font_table(term *_t)
 static term *
 alloc_term_struct(void)
 {
-   return kzalloc_obj(struct vterm);
+   return kalloc_obj(struct vterm);
 }
 
 static void
@@ -548,6 +589,14 @@ init_vterm(term *_t,
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 #endif
 
+   /*
+    * Start from a fully-zeroed term so init_vterm() is self-contained: every
+    * field left untouched below (scroll, max_scroll,
+    * using_alt_buffer, screen_buf_copy, ...) is reset rather than inherited.
+    * The term struct is therefore allocated with a non-zeroing kalloc_obj().
+    */
+   bzero(t, sizeof(struct vterm));
+
    t->tabsize = 8;
 
    if (intf) {
@@ -565,7 +614,7 @@ init_vterm(term *_t,
       t->vi = &no_output_vi;
    }
 
-   t->main_scroll_region_start = t->alt_scroll_region_start = 0;
+   /* Scroll region spans the whole screen (the *_start fields are 0 above). */
    t->main_scroll_region_end = t->alt_scroll_region_end = t->rows - 1;
 
    t->start_scroll_region = &t->main_scroll_region_start;
@@ -656,7 +705,6 @@ static const struct term_interface intf = {
    .write = vterm_write,
    .scroll_up = vterm_scroll_up,
    .scroll_down = vterm_scroll_down,
-   .set_col_offset = vterm_set_col_offset,
    .pause_output = vterm_pause_output,
    .restart_output = vterm_restart_output,
    .set_filter = vterm_set_filter,

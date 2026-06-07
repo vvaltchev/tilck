@@ -46,7 +46,8 @@ class Parser:
 
       self.build_dir = build_dir
       self.compile_db = None
-      self._proxy_args = None
+      self._proxy_args_c = None
+      self._proxy_args_cpp = None
 
       if build_dir and (build_dir / 'compile_commands.json').exists():
 
@@ -95,12 +96,22 @@ class Parser:
       if cmds:
          return self._clean_args(list(cmds[0].arguments))
 
-      # No direct entry (typical for headers). Use a proxy set of args
-      # taken from any .c file in the kernel.
-      if self._proxy_args is None:
-         self._proxy_args = self._build_proxy_args()
+      # No direct entry (typical for headers and test fixtures). Use a
+      # proxy set of args taken from any source file of the right kind
+      # in the build DB.
+      want_cpp = file_path.suffix in ('.cpp', '.hpp')
 
-      return self._proxy_args
+      if want_cpp:
+
+         if self._proxy_args_cpp is None:
+            self._proxy_args_cpp = self._build_proxy_args(cpp=True)
+
+         return self._proxy_args_cpp
+
+      if self._proxy_args_c is None:
+         self._proxy_args_c = self._build_proxy_args(cpp=False)
+
+      return self._proxy_args_c
 
    @staticmethod
    def _clean_args(args: list) -> List[str]:
@@ -125,7 +136,7 @@ class Parser:
             continue
 
          # Skip input source files
-         if a.endswith('.c') or a.endswith('.S'):
+         if a.endswith('.c') or a.endswith('.S') or a.endswith('.cpp'):
             i += 1
             continue
 
@@ -134,8 +145,11 @@ class Parser:
 
       return out
 
-   def _build_proxy_args(self) -> Optional[List[str]]:
-      """Return a clean argv from any kernel/*.c entry in the DB."""
+   def _build_proxy_args(self, cpp: bool = False) -> Optional[List[str]]:
+      """Return a clean argv from any entry in the DB. When `cpp` is
+      True, prefer a .cpp entry (host-side gtest build) so libclang
+      gets `-std=gnu++NN` and friends; otherwise prefer a kernel .c
+      entry."""
 
       if self.build_dir is None:
          return None
@@ -154,11 +168,16 @@ class Parser:
       preferred = None
       fallback = None
 
+      if cpp:
+         wanted_suffix = '.cpp'
+      else:
+         wanted_suffix = '.c'
+
       for entry in entries:
 
          f = entry.get('file', '')
 
-         if not f.endswith('.c'):
+         if not f.endswith(wanted_suffix):
             continue
 
          args = entry.get('arguments')
@@ -167,8 +186,15 @@ class Parser:
             cmd = entry.get('command', '')
             args = cmd.split()
 
-         if '/kernel/' in f and preferred is None:
-            preferred = args
+         if cpp:
+
+            if '/tests/unit/' in f and preferred is None:
+               preferred = args
+
+         else:
+
+            if '/kernel/' in f and preferred is None:
+               preferred = args
 
          if fallback is None:
             fallback = args

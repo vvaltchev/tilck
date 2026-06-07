@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 """Translate mconf's .config output into CMake -D args.
 
-Usage: apply_config.py <dotconfig> <cmakecache>
+Usage: apply_config.py <dotconfig> <cmakecache> [--enum-map <json>]
+
+ENUM options render as a Kconfig `choice` of synthetic per-value
+symbols; pass gen_kconfig's enum_map.json via --enum-map so the
+selected symbol is collapsed back to a single -D<OPTION>=<value>.
 
 Diffs the .config file produced by mconf/nconf against the current
 CMakeCache.txt and emits one -D<NAME>=<value> argument per line (on
@@ -24,6 +28,7 @@ skipped.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -77,6 +82,52 @@ def parse_cmakecache(path: Path) -> dict[str, tuple[str, str]]:
         m = CACHE_LINE_RE.match(s)
         if m:
             out[m.group(1)] = (m.group(2), m.group(3))
+    return out
+
+
+# ---------------------------------------------------------------------
+# Enum resolution
+# ---------------------------------------------------------------------
+
+def load_enum_map(path: Path | None) -> dict[str, list[str]]:
+    """Load gen_kconfig's enum_map.json: {synthetic_symbol: [opt, value]}.
+
+    Returns {} when no map is given or the file is absent, so callers
+    behave exactly as they did before ENUMs rendered as choices.
+    """
+    if path is None or not path.exists():
+        return {}
+    return json.loads(path.read_text())
+
+
+def resolve_enums(
+    dotconfig: dict[str, str],
+    enum_map: dict[str, list[str]],
+) -> dict[str, str]:
+    """Collapse synthetic ENUM `choice` symbols into their option value.
+
+    gen_kconfig renders each ENUM as a `choice` of per-value bool
+    symbols, exactly one of which is 'y'. Replace every such symbol in
+    the parsed .config with a single {option: selected_value} entry, so
+    the downstream cache diff treats the ENUM like any other STRING
+    option (CMakeCache holds it under its real name).
+    """
+    if not enum_map:
+        return dotconfig
+
+    syms = set(enum_map)
+    out: dict[str, str] = {}
+    selected: dict[str, str] = {}
+
+    for name, val in dotconfig.items():
+        if name in syms:
+            opt, opt_val = enum_map[name]
+            if val == "y":
+                selected[opt] = opt_val
+        else:
+            out[name] = val
+
+    out.update(selected)
     return out
 
 
@@ -136,9 +187,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("dotconfig", type=Path)
     ap.add_argument("cmakecache", type=Path)
+    ap.add_argument("--enum-map", type=Path, default=None,
+                    help="gen_kconfig's enum_map.json (maps choice "
+                         "symbols back to ENUM option values)")
     args = ap.parse_args()
 
     dc = parse_dotconfig(args.dotconfig)
+    dc = resolve_enums(dc, load_enum_map(args.enum_map))
     cc = parse_cmakecache(args.cmakecache)
     for d in compute_dflags(dc, cc):
         print(d)

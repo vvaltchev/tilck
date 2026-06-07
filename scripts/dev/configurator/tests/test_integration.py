@@ -76,10 +76,13 @@ def _run_gen_validate(sidecar: Path) -> subprocess.CompletedProcess:
 
 
 def _run_apply(dotconfig: Path, cache: Path) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["python3", str(APPLY_CONFIG), str(dotconfig), str(cache)],
-        capture_output=True, text=True,
-    )
+    cmd = ["python3", str(APPLY_CONFIG), str(dotconfig), str(cache)]
+    # Mirror run_config: hand apply_config the enum_map gen_kconfig
+    # wrote next to the .config, so ENUM choices resolve back to values.
+    enum_map = dotconfig.parent / "enum_map.json"
+    if enum_map.exists():
+        cmd += ["--enum-map", str(enum_map)]
+    return subprocess.run(cmd, capture_output=True, text=True)
 
 
 class FakeMenuconfig:
@@ -125,6 +128,32 @@ class FakeMenuconfig:
                 out.append(line)
         if not matched:
             raise KeyError(f"{name} not found in .config")
+        self.lines = out
+
+    # Enum choice: select `value` for option `name` — set that value's
+    # synthetic symbol to y and every sibling to "is not set", exactly
+    # as mconf's radiolist does. `enum_map` is gen_kconfig's
+    # enum_map.json: {symbol: [option, value]}.
+    def set_choice(self, name: str, value: str,
+                   enum_map: dict[str, list[str]]) -> None:
+        siblings = {sym: val for sym, (opt, val) in enum_map.items()
+                    if opt == name}
+        if not siblings:
+            raise KeyError(f"{name} has no enum symbols")
+        target = next(s for s, v in siblings.items() if v == value)
+        out: list[str] = []
+        for line in self.lines:
+            sym = next(
+                (s for s in siblings
+                 if line.startswith(f"CONFIG_{s}=")
+                 or line == f"# CONFIG_{s} is not set"),
+                None,
+            )
+            if sym is None:
+                out.append(line)
+            else:
+                out.append(f"CONFIG_{sym}=y" if sym == target
+                           else f"# CONFIG_{sym} is not set")
         self.lines = out
 
     def save(self) -> None:
@@ -252,8 +281,10 @@ class TestPipelineEndToEnd(unittest.TestCase):
         self.assertIn("CONFIG_KRN_TIMER_HZ=250", cfg)
         self.assertIn("CONFIG_KRN_USER_STACK_PAGES=16", cfg)
         self.assertIn("CONFIG_KERNEL_BASE_VA=0xffffffff80000000", cfg)
-        # Enum + string are quoted
-        self.assertIn('CONFIG_KRN_HEAP_SIZE="auto"', cfg)
+        # Enum: the current value's choice symbol is on (siblings off);
+        # string is quoted.
+        self.assertIn("CONFIG_KRN_HEAP_SIZE__auto=y", cfg)
+        self.assertIn("# CONFIG_KRN_HEAP_SIZE__64 is not set", cfg)
         self.assertIn('CONFIG_KRN_BOOT_BANNER="Welcome to Tilck"', cfg)
 
     def test_validate_rejects_bad_sidecar(self):
@@ -331,8 +362,9 @@ class TestPipelineEndToEnd(unittest.TestCase):
     def test_enum_change(self):
         _, sidecar, kcfg, cache = self._setup_workspace()
         _run_gen_kconfig(sidecar, kcfg)
+        emap = json.loads((kcfg / "enum_map.json").read_text())
         mc = FakeMenuconfig(kcfg / ".config")
-        mc.set_value("KRN_HEAP_SIZE", "256", quoted=True)
+        mc.set_choice("KRN_HEAP_SIZE", "256", emap)
         mc.save()
         res = _run_apply(kcfg / ".config", cache)
         self.assertEqual(res.stdout.strip(), "-DKRN_HEAP_SIZE=256")
@@ -346,16 +378,35 @@ class TestPipelineEndToEnd(unittest.TestCase):
         res = _run_apply(kcfg / ".config", cache)
         self.assertEqual(res.stdout.strip(), "-DKRN_BOOT_BANNER=Hello World")
 
+    def test_root_enum_build_type_roundtrip(self):
+        """A root-level ENUM (the build-type selector) round-trips to a
+        single -D<OPTION>=<value>, just like a categorized ENUM."""
+        _, sidecar, kcfg, cache = self._setup_workspace()
+        recs = _canonical_records() + [
+            _rec(name="CMAKE_BUILD_TYPE", type="enum", category=".",
+                 strings=["Debug", "Release", "MinSizeRel"],
+                 default="Debug", current="Debug", help="Build type"),
+        ]
+        _write_jsonl(sidecar, recs)
+        _run_gen_kconfig(sidecar, kcfg)
+        emap = json.loads((kcfg / "enum_map.json").read_text())
+        mc = FakeMenuconfig(kcfg / ".config")
+        mc.set_choice("CMAKE_BUILD_TYPE", "Release", emap)
+        mc.save()
+        res = _run_apply(kcfg / ".config", cache)
+        self.assertEqual(res.stdout.strip(), "-DCMAKE_BUILD_TYPE=Release")
+
     # --- Multi-edit + regression checks ---
 
     def test_multiple_edits_emit_all_dflags(self):
         _, sidecar, kcfg, cache = self._setup_workspace()
         _run_gen_kconfig(sidecar, kcfg)
+        emap = json.loads((kcfg / "enum_map.json").read_text())
         mc = FakeMenuconfig(kcfg / ".config")
         mc.set_bool("KRN_SHOW_LOGO", False)
         mc.set_bool("KRN_DEBUG", True)
         mc.set_value("KRN_TIMER_HZ", "1000")
-        mc.set_value("KRN_HEAP_SIZE", "128", quoted=True)
+        mc.set_choice("KRN_HEAP_SIZE", "128", emap)
         mc.save()
         res = _run_apply(kcfg / ".config", cache)
         self.assertEqual(res.returncode, 0)

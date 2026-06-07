@@ -76,7 +76,7 @@ function remove_gcda_files {
    find . -type f -name '*.gcda' -print | xargs /bin/rm -f
 }
 
-function remote_all_lcov_files {
+function remove_all_lcov_files {
    rm -f lcov.info coverage.info
 }
 
@@ -95,7 +95,7 @@ fi
 
 if [[ "$1" == "--clean" ]]; then
    remove_gcda_files
-   remote_all_lcov_files
+   remove_all_lcov_files
    exit 0
 fi
 
@@ -169,7 +169,7 @@ if [[ $gcda_count == 0 ]]; then
 fi
 
 if [[ "$1" != "--acc" ]]; then
-   remote_all_lcov_files
+   remove_all_lcov_files
 fi
 
 ex_list=""
@@ -179,6 +179,12 @@ ex_list="$ex_list '@TCROOT@/*'"
 
 # of course we're not interested in system headers
 ex_list="$ex_list '/usr/include/*'"
+
+# on a Darwin host the unit tests are compiled against the macOS SDK; its
+# libc++ / system headers must not pollute Tilck's coverage
+if [[ "$(uname -s)" == "Darwin" ]]; then
+   ex_list="$ex_list '*/MacOSX.sdk/*'"
+fi
 
 # the header is not used anywhere. It's useful only for manual instrumentation
 ex_list="$ex_list '$SRC/include/tilck/common/debug/termios_debug.c.h'"

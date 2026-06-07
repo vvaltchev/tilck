@@ -78,7 +78,7 @@ int save_regs_on_user_stack(regs_t *r)
 
    if (rc) {
       /* Oops, stack overflow */
-      return -EFAULT;
+      return rc;
    }
 
    /* Now, after we saved the registers, update useresp */

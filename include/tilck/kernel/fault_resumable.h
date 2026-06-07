@@ -29,3 +29,21 @@ static inline int get_fault_num(u32 r)
 void handle_resumable_fault(regs_t *r);
 u32 fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...);
 
+/*
+ * Fast-path fault hook for the user-access copy primitives. If the current
+ * task is inside copy_{to,from}_user() (its user_access_fixup is armed),
+ * redirect the faulting context to the primitive's fixup landing pad and
+ * return true. This resumes in place -- no stack unwinding -- so it is far
+ * cheaper than the generic fault_resumable_call() machinery. 'out_of_mem'
+ * selects the errno reported to the caller (-ENOMEM vs -EFAULT).
+ */
+bool user_access_resume_on_fault(regs_t *r, bool out_of_mem);
+
+/*
+ * Policy for a CoW page fault that ran out of memory (COW_NO_MEM): recover via
+ * the fault-resumable machinery when the kernel was accessing user memory
+ * (copy_to_user() & friends), kill the process on a user-mode fault, or panic
+ * for a genuinely-unguarded in-kernel access.
+ */
+void handle_cow_out_of_mem(regs_t *r);
+

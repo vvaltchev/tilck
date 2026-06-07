@@ -11,6 +11,18 @@ binary level. It runs on i386 (primary), riscv64, and x86_64. It implements
 Micropython, Lua) without custom rewrites. ~13,300 lines of kernel code.
 Licensed BSD 2-Clause.
 
+## Originality and licensing (BSD-2-Clause)
+
+Tilck must remain 100% original work. **Never copy implementation code,
+identifiers, struct layouts, or macro idioms from Linux, glibc, or any
+GPL/copyleft/incompatibly-licensed source.** High-level *ideas* and
+well-known techniques (exception tables, scheduler designs, etc.) are fine to
+learn from and reimplement — the concrete code must be written from scratch in
+Tilck's style. When borrowing a technique from Linux/FreeBSD, give it a
+Tilck-native name and a from-scratch implementation; don't mirror their
+identifiers (`__ex_table`, `fixup_exception`, `pcb_onfault`, ...). If unsure
+whether something crosses from idea into copying, stop and ask.
+
 ## Boot time and runtime latency are non-negotiable
 
 Target: embedded systems with hard-realtime ambitions. Evaluate
@@ -65,6 +77,13 @@ commands — the user grants permission once for
 Canonical pattern: `scripts/dev/claude/annotate_commits`
 (argument-parsed sub-commands, single permission pattern, dev-only).
 
+## AI-generated plans and specs: `docs/plans/`
+
+Plans, designs, and feature specs I generate go in `docs/plans/` (kept for
+history). The root-level `docs/*.md` (contributing, building, scheduler, etc.)
+are the human-facing docs — keep them very readable and uncluttered; never drop
+an AI working document at `docs/` root.
+
 ## Build Commands
 
 ```bash
@@ -80,6 +99,9 @@ export ARCH=i386
 ./scripts/cmake_run -DDEBUG_CHECKS=0
 ./scripts/cmake_run -DARCH={riscv64,x86_64}
 ./scripts/cmake_run --contrib            # clang + -Wconversion + stress opts
+./scripts/cmake_run --gcov               # kernel + unit-test coverage
+./scripts/cmake_run --intr --gcov        # flags are independent + combinable
+./scripts/cmake_run -h                   # list cmake_run's own flags
 
 # Build (cmake_run auto-runs if needed)
 make             # one file at a time, good for debugging
@@ -94,6 +116,11 @@ mkdir build-dir && cd build-dir && /abs/path/scripts/cmake_run && make -j
 ./scripts/adv/gen_other_builds  # builds every scripts/build_generators/* config
 ```
 
+**Build directories are disposable.** `build/`, any out-of-tree `build-*`,
+and per-arch build trees are regenerable artifacts — delete, recreate, or
+reconfigure them freely (e.g. for a throwaway cross-config build). Nothing
+of value is lost: only build output that `cmake_run` + `make` reproduce. No
+need to ask before clobbering or removing one.
 
 ## Testing
 
@@ -106,17 +133,25 @@ Four test types: unit (gtest, host), selftest (in-kernel), shellcmd
 ./build/gtests --gtest_filter=kmalloc_test.*
 ./build/gtests --gtest_list_tests
 
-# Test runner (boots QEMU, needs KVM)
+# Test runner (boots QEMU for VM types; needs KVM)
 ./build/st/run_all_tests             # one VM per test
 ./build/st/run_all_tests -c          # single VM -- ~46s, 60s timeout
 
-# By type (-T prefix-matched: 'se'=selftest, 'sh'=shellcmd)
+# By type (-T prefix-matched: 'u'=unit, 'se'=selftest, 'sh'=shellcmd)
+./build/st/run_all_tests -T unit                # host, no VM/KVM -- ~24s
+./build/st/run_all_tests -T unit -c             # all in one gtests run
 ./build/st/run_all_tests -T selftest
 ./build/st/run_all_tests -T shellcmd [-c]
 ./build/st/run_all_tests -T interactive
 ./build/st/run_all_tests -T shellcmd -l         # list
 ./build/st/run_all_tests -T shellcmd -f <regex> # filter
 ```
+
+Unit tests (the `gtests` binary) are folded into the runner as a 4th
+type: it parses `gtests --gtest_list_tests`, collapses each parametric
+suite to one entry, and treats `DISABLED_` tests as `<manual>` (listed,
+run only with `-a`). A unit test runs on the host, so `-T unit` skips
+the KVM probe entirely.
 
 **Calibrate timeouts to these numbers.** If a run goes 2-3x over,
 something is hung (infinite loop, deadlock, lost wakeup); kill and
@@ -689,6 +724,48 @@ ASSERT(state != TASK_STATE_ZOMBIE);
 ASSERT(state == TASK_STATE_RUNNING || state == TASK_STATE_RUNNABLE);
 ```
 
+**A whole debug-only function: guard the body with `if (!DEBUG_CHECKS)`,
+don't wrap the function in `#if`.** A selftest or helper that only makes
+sense under debug checks should bail at the top, not vanish behind a
+preprocessor block — the function stays compiled and type-checked in
+release while its body dead-code-eliminates:
+
+```c
+void selftest_cow_oom(void)
+{
+   if (!DEBUG_CHECKS) {
+      printk("cow_oom: needs DEBUG_CHECKS=1\n");
+      se_regular_end();
+      return;
+   }
+   ... real test, freely using debug-only hooks ...
+}
+```
+
+**Debug-only state shared across translation units: a `static` + a
+setter, never an `extern` under `#if`.** Keep the storage `static` (with
+the hot-path check written `if (DEBUG_CHECKS && the_static && ...)`) and
+expose an always-declared setter whose body is itself `if (DEBUG_CHECKS)`-
+gated. No `#if`, no exported variable; all of it dead-code-eliminates in
+release. The `if (DEBUG_CHECKS && the_static)` reference counts as a *use*,
+so the `static` does not trip `-Werror=unused-variable` (same reason the
+`if (DEBUG_CHECKS) { use(x); }` form is warning-free — unlike `ASSERT`,
+which removes its argument). Pattern in `kernel/kmalloc/kmalloc.c`
+(`kmalloc_inject_fail_next` + `debug_kmalloc_inject_fail_next()`):
+
+```c
+/* kmalloc.c */
+static bool kmalloc_inject_fail_next;
+void debug_kmalloc_inject_fail_next(void)
+{
+   if (DEBUG_CHECKS)
+      kmalloc_inject_fail_next = true;
+}
+/* general_kmalloc(), hot path: */
+if (DEBUG_CHECKS && kmalloc_inject_fail_next && *size >= PAGE_SIZE) { ... }
+/* kmalloc.h: just `void debug_kmalloc_inject_fail_next(void);` */
+```
+
 `#ifdef DEBUG_CHECKS ... #endif` only when neither form fits
 (debug-only struct fields, debug-only header includes). **Do not use
 `IS_RELEASE_BUILD` as a debug gate — `DEBUG_CHECKS` is the canonical
@@ -754,7 +831,25 @@ out a visual divergence = failure of step 5.
 
 ## Commit Style
 Each commit must be self-contained, compile in all configs, and pass all tests
-(critical for `git bisect`)
+(critical for `git bisect`).
+
+Keeping the series bisect-safe sometimes means folding a fix into the earlier
+commit that introduced a bug, rather than appending a "fixup". `git rebase -i`
+IS usable here: the harness's "interactive flags (`-i`) not supported" note only
+refers to the default editor-driven flow (which hangs waiting for an editor).
+Drive it non-interactively instead, with `GIT_SEQUENCE_EDITOR` (rewrites the
+rebase to-do: `pick`→`edit`/`reword`/`squash`) and `GIT_EDITOR` (supplies
+messages). To edit the commit that introduced a bug:
+
+```bash
+GIT_SEQUENCE_EDITOR='sed -i 1s/^pick/edit/' git rebase -i <bug-commit>~1
+#  ...fix the files, then:  git add -A && git commit --amend --no-edit
+GIT_EDITOR=true git rebase --continue
+```
+
+`GIT_EDITOR=true` accepts existing messages unchanged (use `--amend -F file` /
+`--no-edit` to set them). The same pattern unblocks any editor-driven git
+command (e.g. `git commit` without `-m`). Verified working in this environment.
 
 ## No changes without testing
 

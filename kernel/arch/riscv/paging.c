@@ -70,7 +70,7 @@ pdir_get_page_table(pdir_t *pdir, ulong vaddr)
    return pt;
 }
 
-bool handle_potential_cow(void *context)
+enum cow_result handle_potential_cow(void *context)
 {
    regs_t *r = context;
    ulong vaddr = r->sbadaddr;
@@ -78,10 +78,10 @@ bool handle_potential_cow(void *context)
 
    page_table_t *pt = pdir_get_page_table(get_curr_pdir(), vaddr);
    if (!pt)
-      return false;
+      return COW_NOT_A_COW;
 
    if (!(pt->entries[PTE_INDEX(0, vaddr)].raw & PAGE_COW_ORIG_RW))
-      return false; /* Not a COW page */
+      return COW_NOT_A_COW; /* Not a COW page */
 
    const ulong orig_page_paddr = (ulong)
       pt->entries[PTE_INDEX(0, vaddr)].pfn << PAGE_SHIFT;
@@ -100,7 +100,7 @@ bool handle_potential_cow(void *context)
       pt->entries[PTE_INDEX(0, vaddr)].wr = true;
       pt->entries[PTE_INDEX(0, vaddr)].reserved = 0;
       invalidate_page_hw(vaddr);
-      return true;
+      return COW_RESOLVED;
    }
 
    // Allocate a new page.
@@ -108,21 +108,12 @@ bool handle_potential_cow(void *context)
 
    if (!new_page_vaddr) {
 
-      // Out-of-memory case
-      struct task *curr = get_curr_task();
-
-      if (in_syscall(curr)) {
-
-         // We cannot kill a task running in kernel during a CoW page fault
-         // In this case (but in the one above too), Linux puts the process to
-         // sleep, while the OOM killer runs and frees some memory.
-         panic("Out-of-memory: can't copy a CoW page [pid %d]", get_curr_pid());
-      }
-
-      // The task was not running in kernel: we can safely kill it.
-      printk("Out-of-memory: killing pid %d\n", get_curr_pid());
-      send_signal(get_curr_pid(), SIGKILL, SIG_FL_PROCESS | SIG_FL_FAULT);
-      return true;
+      /*
+       * We could not allocate a page for the CoW copy. Report it distinctly
+       * (COW_NO_MEM) and let the fault dispatcher recover it gracefully via
+       * handle_cow_out_of_mem(), instead of disguising it as a plain fault.
+       */
+      return COW_NO_MEM;
    }
 
    ASSERT(IS_L0_PAGE_ALIGNED(new_page_vaddr));
@@ -148,7 +139,7 @@ bool handle_potential_cow(void *context)
    pt->entries[PTE_INDEX(0, vaddr)].reserved = 0;
 
    invalidate_page_hw(vaddr);
-   return true;
+   return COW_RESOLVED;
 }
 
 static void
@@ -189,7 +180,13 @@ void handle_page_fault_int(regs_t *r)
    p = pt ? pt->entries[PTE_INDEX(0, vaddr)].present : 0;
    um = process_get_user_mapping((void *)vaddr);
 
-   if (um) {
+   /*
+    * Only file-backed mappings can resolve a fault, via their fops. Base
+    * regions (program/stack/heap) have um->h == NULL: there's nothing to call,
+    * so we fall through to the signal path below -- exactly as when no mapping
+    * matched at all.
+    */
+   if (um && um->h) {
       /*
        * Call vfs_handle_fault() only if in first place the mapping allowed
        * writing or if it didn't but the memory access type was a READ.

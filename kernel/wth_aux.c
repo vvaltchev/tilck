@@ -44,3 +44,8 @@ void wth_wakeup(struct worker_thread *t)
    if (!curr_tt || t->priority < curr_tt->priority)
       sched_set_need_resched();
 }
+
+void wth_wakeup_top(void)
+{
+   wth_wakeup(worker_threads[0]);
+}

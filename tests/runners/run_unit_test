@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-2-Clause
+# pylint: disable=unused-wildcard-import, bad-indentation, wildcard-import
+# pylint: disable=missing-function-docstring, wrong-import-position
+# pylint: disable=invalid-name, raise-missing-from, missing-class-docstring
+# pylint: disable=consider-using-f-string
+
+import sys
+import argparse
+import subprocess
+
+# Constants coming from CMake (this file gets pre-processed by CMake)
+RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
+GTESTS_FILE = '@CMAKE_BINARY_DIR@/gtests'
+KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
+
+sys.path.append(RUNNERS_DIR)
+from lib.utils import *
+from lib.stdio import *
+
+# The inner runner counterpart of `selftest` / `shellcmd` (single_test_run)
+# and `interactive` (run_interactive_test), for the host-side googletest
+# unit tests. It runs the `gtests` binary directly: there is no VM, no
+# QEMU and no KVM involved.
+#
+# `test_name` is one folded entry (e.g. "console_test.hello" or the
+# parametric "do_nothing/mem_regions_test.check"), or -- in compact mode
+# -- several such names separated by spaces, or the literal "runall" to
+# run the whole binary.
+
+def build_gtest_filter(names):
+
+   # A folded entry N is matched by two patterns: N (a plain TEST/TEST_F)
+   # and N/* (every instance of a value-parametric TEST_P). Joining with
+   # ':' OR-s them, so a single combined filter covers both kinds and any
+   # number of packed names.
+   patterns = []
+
+   for n in names:
+      patterns.append(n)
+      patterns.append(n + '/*')
+
+   return ':'.join(patterns)
+
+def arg_type_timeout(s):
+
+   try:
+
+      value = int(s)
+
+      if value <= 0:
+         raise TypeError()
+
+   except:
+
+      raise argparse.ArgumentTypeError("expected a positive integer")
+
+   return value
+
+def print_timeout_msg(timeout):
+   msg_print(
+      "gtests is alive after the timeout "
+      "of {} seconds. KILLING IT.".format(timeout)
+   )
+
+def main():
+
+   set_runner_name("unit test runner")
+
+   parser = argparse.ArgumentParser()
+
+   parser.add_argument(
+      'test_type',
+      choices = ['unit'],
+      help = 'type of the test'
+   )
+
+   parser.add_argument(
+      'test_name',
+      type = str,
+      help = 'unit test name, space-separated names, or "runall"'
+   )
+
+   parser.add_argument(
+      'timeout',
+      type = arg_type_timeout,
+      help = 'max test run time before timeout (seconds)'
+   )
+
+   parser.add_argument(
+      'qemu_kvm_version',
+      nargs = "?",
+      help = argparse.SUPPRESS
+   )
+
+   try:
+      args = parser.parse_args()
+   except SystemExit:
+      sys.exit(Fail.invalid_args.value)
+
+   if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
+      unrunnable_build_graceful_exit()
+
+   names = args.test_name.split()
+   cmd = [GTESTS_FILE]
+
+   if names and names != ['runall']:
+      cmd.append('--gtest_filter=' + build_gtest_filter(names))
+
+   # `DISABLED_` (manual) tests need this flag to run at all. Only set it
+   # when the explicit filter actually names one, so regular tests and
+   # the `runall` whole-binary pass keep skipping the disabled tests.
+   if any('DISABLED_' in n for n in names):
+      cmd.append('--gtest_also_run_disabled_tests')
+
+   raw_print("Running gtests: {}".format(' '.join(cmd)))
+   raw_print('-' * 80)
+
+   try:
+
+      p = subprocess.run(
+         cmd,
+         timeout = args.timeout,
+         stdout = subprocess.PIPE,
+         stderr = subprocess.STDOUT,
+      )
+
+   except FileNotFoundError:
+
+      msg_print("The gtests binary was not found. Build it with 'make gtests'.")
+      sys.exit(Fail.invalid_build_config.value)
+
+   except subprocess.TimeoutExpired as e:
+
+      if e.output:
+         direct_print(e.output)
+
+      print_timeout_msg(args.timeout)
+      sys.exit(Fail.timeout.value)
+
+   direct_print(p.stdout)
+   raw_print('-' * 80)
+
+   if p.returncode != 0:
+      sys.exit(Fail.some_tests_failed.value)
+
+   # gtest exits 0 even when the filter selected nothing to run. Guard
+   # against that false pass -- with names coming straight from
+   # --gtest_list_tests it can only happen on a parser/stale-binary bug.
+   if "Running 0 tests" in p.stdout.decode('latin-1'):
+      msg_print("No unit tests were selected -- nothing ran.")
+      sys.exit(Fail.no_tests_matching.value)
+
+   sys.exit(Fail.success.value)
+
+###############################
+if __name__ == '__main__':
+   main()

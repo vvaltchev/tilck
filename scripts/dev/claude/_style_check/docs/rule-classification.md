@@ -26,7 +26,7 @@ on cosmetics.
 
 ## Classification
 
-### HARD (-10.0, error) -- 6 rules. True defects.
+### HARD (-10.0, error) -- 7 rules. True defects and load-bearing visual rules.
 
 | Rule | Source |
 |------|--------|
@@ -36,8 +36,9 @@ on cosmetics.
 | `indent_3sp` | Project convention; tabs are never accepted |
 | `include_order` | Q13 hard: gen_headers must be first or build breaks; subtree grouping required |
 | `per_case_braces_when_locals` | Q12: C language semantics -- case labels do not introduce scope |
+| `multiline_call_style` | User-promoted from SOFT-STRONG: Style 3 must be an error, not a warning, because it's easy to overlook in review (user note 2026-05-27) |
 
-### SOFT-STRONG (-3.0, warning) -- 19 rules. Things the user explicitly labeled "hard rule" / "forbidden" / "must" in CLAUDE.md or preferences but whose violation is cosmetic (compiles + runs the same).
+### SOFT-STRONG (-3.0, warning) -- 18 rules. Things the user explicitly labeled "hard rule" / "forbidden" / "must" in CLAUDE.md or preferences but whose violation is cosmetic (compiles + runs the same).
 
 | Rule | Source |
 |------|--------|
@@ -46,7 +47,6 @@ on cosmetics.
 | `function_def_no_style2` | Q4: Style 2 = hard-no for function definitions |
 | `switch_case_indent` | Q12: case-flush-with-switch forbidden |
 | `break_before_operator_forbidden` | Q25: operator-at-start-of-line forbidden |
-| `multiline_call_style` | Q1: Style 3 hard-no |
 | `cast_no_asymmetric_form` | Q22: `(Type*) expr` forbidden |
 | `empty_body_braces` | Q44: bare `;` body forbidden |
 | `no_packed_case_labels` | Q42: V2 packed = hard rule violation |
@@ -79,13 +79,58 @@ on cosmetics.
 
 ## Total
 
-31 rules: 6 HARD + 19 SOFT-STRONG + 3 SOFT-MEDIUM + 3 SOFT-MILD.
+31 rules: 7 HARD + 18 SOFT-STRONG + 3 SOFT-MEDIUM + 3 SOFT-MILD.
 
 The accumulated prettiness for a sloppy file can easily reach
 -50 across multiple soft rules even with zero hard violations.
 A file's prettiness score is informative whether or not it
 "fails" -- the soft-only profile gives a continuous-scale read
 on style debt.
+
+## Gradient growth profiles
+
+Gradient (NUDGE-tier) rules pick one of three shapes for how their
+cost grows with occurrence count in a locality:
+
+1. **Flat per-occurrence** -- a fixed `prettiness_cost` per
+   occurrence, no compounding. Used for rules where each
+   individual occurrence is mildly ugly and stacking is just
+   "more of the same" (`prefer_nullptr`, `prefer_cpp_cast`,
+   `cast_density`, `ifdef_density`, `paren_explicit_precedence`,
+   `typed_literal_suffix`, `else_after_return`,
+   `no_void_cast_discard`, etc.).
+
+2. **Super-linear in a locality** -- the rule scans a locality
+   (typically a statement), counts occurrences, and emits a
+   single diagnostic whose `prettiness_cost` follows a
+   super-linear formula (e.g. quadratic `base * (N-1)^2`). The
+   first occurrence may be free if it's legitimate in isolation.
+   Beyond a threshold, the cost crosses
+   `STATEMENT_HARD_FAIL_THRESHOLD = 3.0` and the diagnostic is
+   surfaced as a HARD-FAIL in the reporter (red, factors into
+   the function's `broken` verdict). Used so far for
+   `qualified_name_density` (`::` chains); the same shape applies
+   naturally to other "compounding ugliness" rules.
+
+3. **State-dependent / catastrophic** -- the rule first detects
+   whether a "baseline pattern" exists (e.g. some lines in a
+   cluster are aligned); if yes, every deviation is much uglier
+   than its isolated cost would suggest. Reserved for alignment
+   rules; `call_cluster_column_align` and `align_multiline_operators`
+   are candidates.
+
+The aggregator (`_compute_prettiness` in `aggregator.py`) **no
+longer clamps** line scores or function prettiness to [0, 1]; a
+function with a HARD-FAIL gradient and many soft hits can score
+deep negative, which is the intent.
+
+`Diagnostic.is_hard_failure` returns True for:
+- a non-gradient diagnostic with `severity == 'error'`, OR
+- a gradient diagnostic with
+  `prettiness_cost >= STATEMENT_HARD_FAIL_THRESHOLD`.
+
+`FunctionRegion.hard_failure_gradients` counts the latter, and
+the verdict path treats them the same as hard violations.
 
 ## Context-sensitive rules to add
 
@@ -110,9 +155,16 @@ deserve their own scoring logic:
   function (libclang gives function extents), report
   `total_prettiness` and `normalized_score` (total / statements).
 
-- **Per-statement aggregation** -- multiple soft diagnostics on
-  the same statement should normalize: a single ugly statement
-  costs at most ~3-5 prettiness, not the unbounded sum.
+- **Per-statement aggregation** -- the OPPOSITE direction from the
+  earlier "normalize to a cap" plan: when ugliness concentrates in
+  one statement, accumulation should *accelerate*, not cap. Tightly
+  clustered violations are psychologically far uglier than the same
+  count spread across a function. Rules that match this profile
+  (qualified_name_density, alignment rules, etc.) emit super-linear
+  cumulative cost; rules whose individual occurrences don't
+  compound (prefer_nullptr, ifdef_density) keep flat per-occurrence
+  cost. The aggregator no longer clamps line or function prettiness
+  to [0, 1]; catastrophic statements must read as catastrophic.
 
 - **Cascade scoring** (Q1b H1/H2/H3/H4) -- call-site formatting
   has a hierarchy where the highest-fitting form is the one to

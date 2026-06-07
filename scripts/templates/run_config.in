@@ -143,6 +143,7 @@ fi
 
 mapfile -t DARGS < <( \
    python3 "$APPLY_CONFIG" "$KCFG_DIR/.config" "$BUILD_DIR/CMakeCache.txt" \
+      --enum-map "$KCFG_DIR/enum_map.json" \
 )
 
 if [ "${#DARGS[@]}" -eq 0 ]; then

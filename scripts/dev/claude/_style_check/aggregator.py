@@ -57,6 +57,15 @@ class FunctionRegion:
       )
 
    @property
+   def hard_failure_gradients(self) -> int:
+      """Count of gradient diagnostics whose prettiness_cost reached
+      the hard-fail threshold. Each one is a statement that the rule
+      flagged as catastrophically ugly."""
+
+      return sum(1 for d in self.diagnostics if d.is_hard_failure
+                 and d.is_gradient)
+
+   @property
    def soft_violations(self) -> int:
       return sum(
          1 for d in self.diagnostics
@@ -66,9 +75,10 @@ class FunctionRegion:
    @property
    def verdict(self) -> str:
       """Coarse label combining severity + normalized prettiness.
-      Hard violation -> broken; otherwise depends on normalized score."""
+      Hard violation or hard-failure gradient -> broken; otherwise
+      depends on normalized score."""
 
-      if self.hard_violations > 0:
+      if self.hard_violations > 0 or self.hard_failure_gradients > 0:
          return 'broken'
 
       if not self.diagnostics:
@@ -123,7 +133,7 @@ class FileSummary:
 
       if file_gradient_cost > 0 and total_stmts > 0:
          per_line = file_gradient_cost / total_stmts
-         base = max(0.0, base - per_line)
+         base = base - per_line
 
       return base
 
@@ -247,10 +257,11 @@ _BRACE_ONLY = frozenset((
 def _compute_prettiness(lines, start, end, diagnostics):
    """Compute per-function prettiness from ALL diagnostics.
    Each scoreable line starts at 1.0; both gradient costs and
-   violation scores reduce the affected line. Lines CAN go
-   negative -- a HARD violation (-10.0) on one line drags the
-   function mean significantly. The function score is the mean
-   of all line scores, clamped to [0.0, 1.0]."""
+   violation scores reduce the affected line. Line scores and the
+   final mean are UNCLAMPED -- a HARD violation (-10.0) on one
+   line, or a hard-failure gradient (cost >= 3.0), drags the
+   function score deep negative, which is the point: catastrophic
+   ugliness should be visible as a catastrophic score."""
 
    line_scores = {}
 
@@ -287,8 +298,7 @@ def _compute_prettiness(lines, start, end, diagnostics):
          if ln in line_scores:
             line_scores[ln] -= cost
 
-   raw = sum(line_scores.values()) / len(line_scores)
-   return max(0.0, min(1.0, raw))
+   return sum(line_scores.values()) / len(line_scores)
 
 
 def build_file_summary(file_path: Path,

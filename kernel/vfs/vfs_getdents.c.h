@@ -37,6 +37,7 @@ static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
    struct linux_dirent64 *user_ent;
    struct vfs_getdents_ctx *ctx = arg;
    char *user_ent_dname;
+   int rc;
 
    if (ctx->fs_flags & VFS_FS_RQ_DE_SKIP) {
 
@@ -82,11 +83,13 @@ static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
    user_ent = (void *)((char *)ctx->user_dirp + ctx->offset);
    user_ent_dname = (char *)user_ent + OFFSET_OF(struct linux_dirent64, d_name);
 
-   if (copy_to_user(user_ent, &ctx->ent, sizeof(ctx->ent)) < 0)
-      return -EFAULT;
+   rc = copy_to_user(user_ent, &ctx->ent, sizeof(ctx->ent));
+   if (rc < 0)
+      return rc;
 
-   if (copy_to_user(user_ent_dname, vde->name, vde->name_len) < 0)
-      return -EFAULT;
+   rc = copy_to_user(user_ent_dname, vde->name, vde->name_len);
+   if (rc < 0)
+      return rc;
 
    ctx->offset += entry_size;
    ctx->off++;

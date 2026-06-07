@@ -7,8 +7,7 @@ import re
 from typing import List
 
 from .base import (
-   COST_MILD,
-      Rule,
+   Rule,
    Diagnostic,
    CheckContext,
    LAYER_TOKENS,
@@ -16,6 +15,10 @@ from .base import (
    SCORE_MEDIUM_PREF,
 )
 from .. import tokens as _tokens_mod
+
+# Each (void)ident discard drops the line's prettiness by this much --
+# same tier as a C-style cast (0.30).
+_VOID_DISCARD_COST = 0.30
 
 # Cast to void: `(void) ident;` — bare identifier, no function call.
 # Matches `(void) src;` but NOT `(void) func(args);`.
@@ -97,7 +100,7 @@ class NoVoidCastDiscard(Rule):
             ),
             snippet=line_text.strip(),
             is_gradient=True,
-            prettiness_cost=COST_MILD,
+            prettiness_cost=_VOID_DISCARD_COST,
          ))
 
       return out

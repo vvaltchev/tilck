@@ -204,17 +204,49 @@ class TestGenerate(unittest.TestCase):
         self.assertIn("CONFIG_U=100", cfg)
         self.assertIn("CONFIG_A=0xdeadbeef", cfg)
 
-    def test_enum_emits_string_with_help_annotation(self):
+    def test_enum_emits_choice_block(self):
         d = self._gen([_rec(
             name="MODE", type="enum",
             strings=["auto", "fast", "slow"],
             default="auto", current="fast",
         )])
         kcfg = (d / "Kconfig.kernel").read_text()
-        self.assertIn('string "Demo option"', kcfg)
-        self.assertIn("Valid values: auto, fast, slow", kcfg)
+        self.assertIn("choice", kcfg)
+        self.assertIn('prompt "Demo option"', kcfg)
+        self.assertIn("default MODE__auto", kcfg)
+        self.assertIn("config MODE__auto", kcfg)
+        self.assertIn('bool "auto"', kcfg)
+        self.assertIn('bool "fast"', kcfg)
+        self.assertIn('bool "slow"', kcfg)
+        self.assertIn("endchoice", kcfg)
+        # .config: the current value's symbol is on, siblings off.
         cfg = (d / ".config").read_text()
-        self.assertIn('CONFIG_MODE="fast"', cfg)
+        self.assertIn("CONFIG_MODE__fast=y", cfg)
+        self.assertIn("# CONFIG_MODE__auto is not set", cfg)
+        self.assertIn("# CONFIG_MODE__slow is not set", cfg)
+        # enum_map round-trips each symbol -> [option, value].
+        emap = json.loads((d / "enum_map.json").read_text())
+        self.assertEqual(emap["MODE__fast"], ["MODE", "fast"])
+
+    def test_root_category_emitted_at_top_of_root_menu(self):
+        d = self._gen([
+            _rec(name="BT", type="enum", category=".",
+                 strings=["Debug", "Release"], default="Debug",
+                 current="Debug", help="Build type"),
+            _rec(name="X", category="Kernel/Demo"),
+        ])
+        root = (d / "Kconfig").read_text()
+        # The root-level choice lives in the root Kconfig itself...
+        self.assertIn('prompt "Build type"', root)
+        # ...above the category submenu's source line.
+        self.assertLess(root.index('prompt "Build type"'),
+                        root.index('source "Kconfig.kernel"'))
+        # ...and is not duplicated into a per-category file.
+        self.assertNotIn("BT__Debug", (d / "Kconfig.kernel").read_text())
+
+    def test_enum_map_empty_when_no_enums(self):
+        d = self._gen([_rec(name="X", category="K", type="bool")])
+        self.assertEqual(json.loads((d / "enum_map.json").read_text()), {})
 
     def test_depends_emitted(self):
         d = self._gen([

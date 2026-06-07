@@ -70,7 +70,7 @@ sys_nanosleep_time32(const struct k_timespec32 *user_req,
    struct k_timespec64 req;
    struct k_timespec32 rem32;
    struct k_timespec64 rem;
-   int rc;
+   int rc, copy_rc;
 
    if (copy_from_user(&req32, user_req, sizeof(req)))
       return -EFAULT;
@@ -89,8 +89,8 @@ sys_nanosleep_time32(const struct k_timespec32 *user_req,
          .tv_nsec = rem.tv_nsec,
       };
 
-      if (copy_to_user(user_rem, &rem32, sizeof(rem32)))
-         return -EFAULT;
+      if ((copy_rc = copy_to_user(user_rem, &rem32, sizeof(rem32))))
+         return copy_rc;
    }
 
    return rc;
@@ -101,7 +101,7 @@ long sys_nanosleep(const struct k_timespec64 *u_req,
 {
    struct k_timespec64 req;
    struct k_timespec64 rem;
-   int rc;
+   int rc, copy_rc;
 
    if (copy_from_user(&req, u_req, sizeof(req)))
       return -EFAULT;
@@ -109,8 +109,8 @@ long sys_nanosleep(const struct k_timespec64 *u_req,
    rc = do_nanosleep(&req, &rem);
 
    if (u_rem) {
-      if (copy_to_user(u_rem, &rem, sizeof(rem)))
-         return -EFAULT;
+      if ((copy_rc = copy_to_user(u_rem, &rem, sizeof(rem))))
+         return copy_rc;
    }
 
    return rc;
@@ -120,6 +120,7 @@ int sys_newuname(struct utsname *user_buf)
 {
    struct utsname buf = {0};
    struct commit_hash_and_date comm;
+   int rc;
 
    extract_commit_hash_and_date(&tilck_build_info, &comm);
 
@@ -129,8 +130,8 @@ int sys_newuname(struct utsname *user_buf)
    strcpy(buf.release, tilck_build_info.ver);
    strcpy(buf.machine, tilck_build_info.arch);
 
-   if (copy_to_user(user_buf, &buf, sizeof(struct utsname)) < 0)
-      return -EFAULT;
+   if ((rc = copy_to_user(user_buf, &buf, sizeof(struct utsname))) < 0)
+      return rc;
 
    return 0;
 }
@@ -153,6 +154,7 @@ ulong sys_times(struct tms *user_buf)
 {
    struct tms buf;
    struct task *curr = get_curr_task();
+   int rc;
 
    // TODO (threads): when threads are supported, update sys_times()
    // TODO: consider supporting tms_cutime and tms_cstime in sys_times()
@@ -170,8 +172,8 @@ ulong sys_times(struct tms *user_buf)
    }
    enable_preemption();
 
-   if (copy_to_user(user_buf, &buf, sizeof(buf)) != 0)
-      return (ulong) -EBADF;
+   if ((rc = copy_to_user(user_buf, &buf, sizeof(buf))) != 0)
+      return (ulong) rc;
 
    return (ulong) get_ticks();
 }
@@ -184,6 +186,7 @@ int sys_getrusage(int who, struct k_rusage *user_buf)
    struct k_timespec64 utime;
    struct k_timespec64 stime;
    struct task *curr = get_curr_task();
+   int rc;
 
    /*
     * Of course in the syscall entry point
@@ -237,8 +240,8 @@ int sys_getrusage(int who, struct k_rusage *user_buf)
       .ru_nivcsw = 0,
    };
 
-   if (copy_to_user(user_buf, &buf, sizeof(buf)))
-      return -EFAULT;
+   if ((rc = copy_to_user(user_buf, &buf, sizeof(buf))))
+      return rc;
 
    return 0;
 }

@@ -8,7 +8,7 @@ import re
 from typing import List
 
 from .base import (
-   COST_MINOR,
+   COST_FULL,
    Rule,
    Diagnostic,
    CheckContext,
@@ -44,8 +44,9 @@ class ElseAfterReturn(Rule):
    description = (
       'Prefer guard-clause style: when an `if` branch ends with '
       '`return`, drop the `else` and dedent the alternative. The '
-      '`else` is redundant after an unconditional return. Very soft '
-      'preference (nudge).'
+      '`else` is redundant after an unconditional return. Each '
+      'occurrence drops the statement to the minimum-valid '
+      'prettiness (cost 1.00).'
    )
    layers = LAYER_RAW_TEXT
    severity = SEVERITY_WARNING
@@ -89,7 +90,7 @@ class ElseAfterReturn(Rule):
             snippet=line_text.strip(),
             suggestion='remove `else`, add blank line after return',
             is_gradient=True,
-            prettiness_cost=COST_MINOR,
+            prettiness_cost=COST_FULL,
          ))
 
       return out

@@ -147,7 +147,7 @@ void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)
    NOT_IMPLEMENTED();
 }
 
-bool handle_potential_cow(void *context)
+enum cow_result handle_potential_cow(void *context)
 {
    NOT_IMPLEMENTED();
 }

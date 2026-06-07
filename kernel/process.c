@@ -136,13 +136,8 @@ static bool do_common_task_allocs(struct task *ti, bool alloc_bufs)
 
 void process_free_mappings_info(struct process *pi)
 {
-   struct mappings_info *mi = pi->mi;
-
-   if (mi) {
-      ASSERT(mi->mmap_heap);
-      kmalloc_destroy_heap(mi->mmap_heap);
-      kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
-      kfree_obj(mi, struct mappings_info);
+   if (pi->mi) {
+      free_mappings_info(pi->mi);
       pi->mi = NULL;
    }
 }
@@ -187,12 +182,16 @@ void init_task_lists(struct task *ti)
 {
    bintree_node_init(&ti->tree_by_tid_node);
    bintree_node_init(&ti->runnable_tree_node);
-   list_node_init(&ti->wakeup_timer_node);
    list_node_init(&ti->siblings_node);
 
    list_init(&ti->tasks_waiting_list);
    list_init(&ti->on_exit);
    bzero(&ti->wobj, sizeof(struct wait_obj));
+
+   ktimer_init(&ti->primary_timer,
+               task_primary_timer_fire,
+               NULL,
+               KTIMER_MODE_IRQ);
 }
 
 void init_process_lists(struct process *pi)
@@ -242,7 +241,6 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    pi->automatic_reaping = false;
    pi->cwd.fs = NULL;
    pi->vforked = false;
-   pi->inherited_mmap_heap = false;
 
    if (new_pdir != parent_pi->pdir) {
 
@@ -256,7 +254,6 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    } else {
       pi->vforked = true;
-      pi->inherited_mmap_heap = !!pi->mi;
    }
 
    ti->pi = pi;
@@ -563,50 +560,21 @@ unblock_parent_of_vforked_child(struct process *pi)
 void
 vforked_child_transfer_dispose_mi(struct process *pi)
 {
-   struct task *parent;
    ASSERT(pi->vforked);
 
-   parent = get_task(pi->parent_pid);
+   /*
+    * A vforked child shares its parent's address space (the same pdir) and the
+    * very same mappings_info object: pi->mi was copied by-pointer from the
+    * parent in allocate_new_process(). Now that `mi` is allocated
+    * unconditionally, the parent always owns one, so there is nothing to hand
+    * back: we just detach our (shared) reference and leave the object owned by
+    * the parent. This makes process_free_mappings_info() a no-op for us.
+    */
 
-   if (!pi->inherited_mmap_heap) {
+   DEBUG_ONLY(struct task *parent = get_task(pi->parent_pid));
+   ASSERT(parent != NULL);
+   ASSERT(parent->pi->mi == pi->mi);
 
-      /* We're in a vfork-ed child: the parent cannot die */
-      ASSERT(parent != NULL);
-
-      /*
-      * If we didn't inherit mappings info from the parent and the parent
-      * didn't run the whole time: its `mi` must continue to be NULL.
-      */
-      ASSERT(!parent->pi->mi);
-
-      /*
-      * Transfer the ownership of our mappings info, created after vfork(),
-      * back to our parent. We do this trick because in Tilck processes
-      * are so lightweight that they don't have even a mappings object.
-      * Since a vforked-child is allowed to use mmap() and that must affect
-      * parent's address space, because that's the *same* address space,
-      * in the corner case the child called mmap(), we must transfer that
-      * object back to the parent.
-      */
-      parent->pi->mi = pi->mi;
-
-   } else {
-
-      /*
-       * The pi->mi object was inherited and, therefore, the one in the parent
-       * MUST BE the same.
-       */
-      ASSERT(parent->pi->mi != NULL);
-      ASSERT(parent->pi->mi == pi->mi);
-   }
-
-  /*
-   * Reset the mappings info object, no matter if we inherited it from the
-   * parent or not. In case we did inherited, that was never ours. In the
-   * other case, we didn't inherit it, but we just transferred its ownership
-   * to the parent process. So, we want process_free_mappings_info() to
-   * never found it non-null the case of vforked-processes.
-   */
    pi->mi = NULL;
 }
 
@@ -846,8 +814,8 @@ int setup_process(struct elf_program_info *pinfo,
 
       } else {
 
-         remove_all_user_zero_mem_mappings(pi);
          remove_all_file_mappings(pi);
+         remove_all_user_mappings(pi);
          process_free_mappings_info(pi);
 
          ASSERT(old_pdir == pi->pdir);
@@ -867,6 +835,17 @@ int setup_process(struct elf_program_info *pinfo,
       arch_specific_new_proc_setup(pi, NULL);
    }
 
+   /* Commit the base mappings built during the ELF load to the process */
+   pi->mi = pinfo->mi;
+
+   /* Now that pi is known, point the base mappings back at it */
+   {
+      struct user_mapping *um;
+
+      list_for_each_ro(um, &pi->mi->mappings, pi_node)
+         um->pi = pi;
+   }
+
    pi->elf = pinfo->lf;
    *ti_ref = ti;
    return 0;
@@ -877,6 +856,7 @@ err:
    if (old_pdir) {
       set_curr_pdir(old_pdir);
       pdir_destroy(pinfo->pdir);
+      free_mappings_info(pinfo->mi);
    }
 
    return rc;
