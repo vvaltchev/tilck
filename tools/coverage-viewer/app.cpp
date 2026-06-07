@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <clocale>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -116,6 +117,53 @@ put_field(WINDOW *w, int y, int x, int fw, const std::string &s,
    wattron(w, attr);
    mvwaddstr(w, y, x, out.c_str());
    wattroff(w, attr);
+}
+
+/* Like put_field (left-justified) but highlights every occurrence of
+ * `needle` with `hl`. ASCII text/needle assumed. */
+static void
+put_field_hl(WINDOW *w, int y, int x, int fw, std::string text,
+             chtype base, const std::string &needle, chtype hl)
+{
+   if (fw <= 0)
+      return;
+
+   if (needle.empty()) {
+      put_field(w, y, x, fw, text, base, false);
+      return;
+   }
+
+   if (static_cast<int>(text.size()) > fw)
+      text = text.substr(0, fw);
+
+   int col = 0;
+   size_t pos = 0;
+
+   const auto emit = [&](const std::string &s, chtype a) {
+      if (s.empty())
+         return;
+      wattron(w, a);
+      mvwaddstr(w, y, x + col, s.c_str());
+      wattroff(w, a);
+      col += static_cast<int>(s.size());
+   };
+
+   while (pos < text.size()) {
+
+      const size_t mt = text.find(needle, pos);
+
+      if (mt == std::string::npos) {
+         emit(text.substr(pos), base);
+         break;
+      }
+
+      emit(text.substr(pos, mt - pos), base);
+      emit(text.substr(mt, needle.size()), hl);
+      pos = mt + needle.size();
+   }
+
+   if (col < fw)
+      put_field(w, y, x + col, fw - col, "", base, false);
 }
 
 static std::string
@@ -300,8 +348,8 @@ app::draw_source_row(WINDOW *w, int y, int idx, int hoff, bool sel)
    const chtype text_a =
       sel ? sa : (st == line_state::uncovered ? cv_attr(CVP_LO) : 0);
 
-   put_field(w, y, src_x, std::max(0, width - src_x - PAD_R), text,
-             text_a, false);
+   put_field_hl(w, y, src_x, std::max(0, width - src_x - PAD_R), text,
+                text_a, search, cv_attr(CVP_MATCH));
 }
 
 void
@@ -459,10 +507,18 @@ app::draw_footer()
    wmove(stdscr, LINES - 1, 0);
    wclrtoeol(stdscr);
 
+   if (!status.empty()) {
+      wattron(stdscr, cv_attr(CVP_LO));
+      mvwaddnstr(stdscr, LINES - 1, PAD_L, status.c_str(), width - 2 * PAD_L);
+      wattroff(stdscr, cv_attr(CVP_LO));
+      wnoutrefresh(stdscr);
+      return;
+   }
+
    const char *keys =
       cur().kind == view_kind::source
-         ? "j/k scroll  h/l pan  Tab funcs  Bksp back  ? help  q quit"
-         : "j/k move  Enter open  Tab src/funcs  s sort  Bksp back  ? help";
+         ? "j/k scroll  / ? search  n N next  g goto  < > ends  Tab funcs"
+         : "j/k move  Enter open  < > ends  Tab src/funcs  s sort  ? help";
 
    wattron(stdscr, cv_attr(CVP_DIM));
    mvwaddnstr(stdscr, LINES - 1, PAD_L, keys, width - 2 * PAD_L);
@@ -687,16 +743,21 @@ app::show_help()
       "",
       " Up / k, Down / j   move selection",
       " PgUp / PgDn        page",
-      " g / G              first / last",
+      " < / >              first / last",
       " Enter / Right      open (dir -> files -> source)",
       " Backspace / u      back",
       " Left / h           back (lists), pan left (source)",
       " Right / l          open (lists), pan right (source)",
       " Tab / f            toggle source <-> functions",
       " s                  cycle sort order",
-      " ? / q              this help / quit",
       "",
-      " press any key to close ",
+      " in the source view:",
+      " g                  go to line",
+      " / , ?              search forward / backward",
+      " n / N              next / previous match",
+      " Esc                clear search",
+      "",
+      " ? help (lists)     q quit     any key: close ",
    };
 
    const int n = static_cast<int>(sizeof(lines) / sizeof(lines[0]));
@@ -725,6 +786,187 @@ app::show_help()
    wnoutrefresh(stdscr);
    sv.redraw();
    doupdate();
+}
+
+/* ---- prompt / search ------------------------------------------------- */
+
+/*
+ * A one-line input prompt on the footer row (vi/less style). Returns true
+ * with `out` set on Enter, false on ESC. Restores the footer on exit.
+ */
+bool
+app::prompt(const std::string &label, std::string &out)
+{
+   std::string buf;
+   bool ok = false;
+
+   curs_set(1);
+
+   while (true) {
+
+      wmove(stdscr, LINES - 1, 0);
+      wclrtoeol(stdscr);
+      mvwaddstr(stdscr, LINES - 1, PAD_L, label.c_str());
+      mvwaddnstr(stdscr, LINES - 1, PAD_L + static_cast<int>(label.size()),
+                 buf.c_str(), COLS - PAD_L - 1);
+      wnoutrefresh(stdscr);
+      doupdate();
+
+      const int ch = getch();
+
+      if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+         ok = true;
+         break;
+      }
+
+      if (ch == 27) {
+         ok = false;
+         break;
+      }
+
+      if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+         if (!buf.empty())
+            buf.pop_back();
+         continue;
+      }
+
+      if (ch >= 32 && ch < 127)
+         buf += static_cast<char>(ch);
+   }
+
+   curs_set(0);
+   out = buf;
+   draw_footer();
+   doupdate();
+   return ok;
+}
+
+void
+app::set_status(const std::string &msg)
+{
+   status = msg;
+   draw_footer();
+   doupdate();
+}
+
+void
+app::goto_line()
+{
+   if (cur().kind != view_kind::source)
+      return;
+
+   std::string s;
+
+   if (!prompt("Go to line: ", s))
+      return;
+
+   size_t a = s.find_first_not_of(" \t");
+   size_t b = s.find_last_not_of(" \t");
+
+   if (a == std::string::npos) {
+      return;   /* empty input: do nothing */
+   }
+
+   s = s.substr(a, b - a + 1);
+   bool digits = true;
+
+   for (char c : s)
+      if (c < '0' || c > '9')
+         digits = false;
+
+   if (!digits) {
+      set_status("Invalid line number: " + s);
+      return;
+   }
+
+   const int ln = std::atoi(s.c_str());
+   const int last = sv.rows();
+
+   if (ln < 1 || ln > last) {
+      set_status("Line out of range (1-" + std::to_string(last) + ")");
+      return;
+   }
+
+   sv.goto_index(ln - 1);
+   doupdate();
+}
+
+int
+app::find_match_line(int from, int dir)
+{
+   if (search.empty() || cur().kind != view_kind::source)
+      return -1;
+
+   const source_file &src = source_for(cur().file_idx);
+   const int n = sv.rows();
+
+   for (int i = from; i >= 0 && i < n; i += dir) {
+
+      if (i < static_cast<int>(src.lines.size()) &&
+          src.lines[i].find(search) != std::string::npos)
+         return i;
+   }
+
+   return -1;
+}
+
+void
+app::start_search(int dir)
+{
+   if (cur().kind != view_kind::source)
+      return;
+
+   std::string s;
+
+   if (!prompt(dir > 0 ? "/" : "?", s) || s.empty())
+      return;
+
+   search = s;
+   search_dir = dir;
+
+   const int found = find_match_line(sv.selected(), dir);
+
+   if (found < 0) {
+      search.clear();
+      sv.redraw();
+      set_status("Pattern not found: " + s);
+      return;
+   }
+
+   sv.goto_index(found);
+   doupdate();
+}
+
+void
+app::search_move(int sign)
+{
+   if (search.empty() || cur().kind != view_kind::source)
+      return;
+
+   const int d = sign * search_dir;
+   const int found = find_match_line(sv.selected() + d, d);
+
+   if (found < 0) {
+      set_status("Pattern not found: " + search);
+      return;
+   }
+
+   sv.goto_index(found);
+   doupdate();
+}
+
+void
+app::clear_search()
+{
+   if (search.empty())
+      return;
+
+   search.clear();
+
+   if (cur().kind == view_kind::source) {
+      sv.redraw();
+      doupdate();
+   }
 }
 
 /* ---- navigation ------------------------------------------------------ */
@@ -836,14 +1078,21 @@ app::handle_key(int ch)
 {
    const bool in_source = cur().kind == view_kind::source;
 
+   /* A transient status message clears on the next keystroke. */
+   if (!status.empty()) {
+      status.clear();
+      draw_footer();
+      doupdate();
+   }
+
    switch (ch) {
 
       case KEY_DOWN: case 'j': sv.move_sel(1); doupdate(); break;
       case KEY_UP:   case 'k': sv.move_sel(-1); doupdate(); break;
       case KEY_NPAGE: sv.page(1); doupdate(); break;
       case KEY_PPAGE: sv.page(-1); doupdate(); break;
-      case 'g': case KEY_HOME: sv.to_first(); doupdate(); break;
-      case 'G': case KEY_END:  sv.to_last(); doupdate(); break;
+      case '<': case KEY_HOME: sv.to_first(); doupdate(); break;
+      case '>': case KEY_END:  sv.to_last(); doupdate(); break;
 
       case '\n': case '\r': case KEY_ENTER:
          on_enter();
@@ -857,8 +1106,26 @@ app::handle_key(int ch)
          cycle_sort();
          break;
 
+      case 'g':
+         goto_line();
+         break;
+
+      case '/':
+         start_search(1);
+         break;
+
       case '?':
-         show_help();
+         if (in_source)
+            start_search(-1);
+         else
+            show_help();
+         break;
+
+      case 'n': search_move(1); break;
+      case 'N': search_move(-1); break;
+
+      case 27:   /* ESC */
+         clear_search();
          break;
 
       case KEY_BACKSPACE: case 127: case 'u':
@@ -903,6 +1170,7 @@ app::run()
    noecho();
    keypad(stdscr, TRUE);
    curs_set(0);
+   set_escdelay(25);   /* make a lone ESC responsive */
    colors_init();
 
    frame root;

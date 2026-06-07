@@ -31,6 +31,7 @@ init_256()
    init_pair(CVP_TRACK, 236, -1);   /* faint grey bar track */
    init_pair(CVP_SEL, 254, 24);
    init_pair(CVP_ACCENT, 110, -1);
+   init_pair(CVP_MATCH, 232, 215);   /* dark on amber */
 }
 
 static void
@@ -44,6 +45,7 @@ init_16()
    init_pair(CVP_TRACK, COLOR_BLACK, -1);
    init_pair(CVP_SEL, COLOR_WHITE, COLOR_BLUE);
    init_pair(CVP_ACCENT, COLOR_CYAN, -1);
+   init_pair(CVP_MATCH, COLOR_BLACK, COLOR_YELLOW);
 }
 
 void
@@ -74,6 +76,7 @@ cv_attr(cv_pair p)
          case CVP_LO:    return A_BOLD;
          case CVP_DIM:   return A_DIM;
          case CVP_TRACK: return A_DIM;
+         case CVP_MATCH: return A_REVERSE;
          default:        return A_NORMAL;
       }
    }

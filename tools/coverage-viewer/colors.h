@@ -21,6 +21,7 @@ enum cv_pair : short {
    CVP_TRACK,       /* the unfilled part of a coverage bar */
    CVP_SEL,         /* selected row */
    CVP_ACCENT,      /* small accents: icons, selection marker */
+   CVP_MATCH,       /* search match highlight */
 };
 
 /* Set up color pairs (or the monochrome fallback). Call after initscr(). */

@@ -43,6 +43,10 @@ private:
    std::vector<int> rows;              /* current view backing indices */
    std::map<int, source_file> srcs;    /* file_idx -> loaded source */
 
+   std::string status;                 /* transient footer message */
+   std::string search;                 /* active search needle ("" = none) */
+   int search_dir = 1;                 /* +1 if started with /, -1 with ? */
+
    WINDOW *body = nullptr;
    WINDOW *sbar = nullptr;     /* vertical scrollbar, right of the body */
    scroll_view sv;
@@ -56,6 +60,14 @@ private:
    void toggle_source_funcs();
    void on_enter();
    void handle_key(int ch);
+
+   bool prompt(const std::string &label, std::string &out);
+   void set_status(const std::string &msg);
+   void goto_line();
+   void start_search(int dir);
+   void search_move(int sign);
+   void clear_search();
+   int  find_match_line(int from, int dir);
 
    void build_rows();
    int sort_modes() const;          /* number of sort orders for cur view */
