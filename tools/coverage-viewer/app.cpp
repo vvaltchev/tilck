@@ -934,6 +934,7 @@ app::start_search(int dir)
    }
 
    sv.goto_index(found);
+   sv.redraw();   /* repaint the whole viewport so every match highlights */
    doupdate();
 }
 
@@ -952,6 +953,7 @@ app::search_move(int sign)
    }
 
    sv.goto_index(found);
+   sv.redraw();   /* repaint the whole viewport so every match highlights */
    doupdate();
 }
 
