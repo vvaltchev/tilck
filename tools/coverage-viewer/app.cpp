@@ -324,7 +324,7 @@ app::draw_source_row(WINDOW *w, int y, int idx, int hoff, bool sel)
     : st == line_state::uncovered ? cv_attr(CVP_LO)
                                   : cv_attr(CVP_DIM);
 
-   char ln[8], cnt[16];
+   char ln[12], cnt[24];
    snprintf(ln, sizeof(ln), "%d", lineno);
    if (hits >= 0)
       snprintf(cnt, sizeof(cnt), "%lld", hits);
