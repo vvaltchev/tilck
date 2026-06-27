@@ -111,7 +111,8 @@ def collect_files(args, repo_root: Path) -> list:
 def build_context(file_path: Path,
                   parser_obj,
                   need_tu: bool,
-                  need_comments: bool) -> CheckContext:
+                  need_comments: bool,
+                  indent: int = 3) -> CheckContext:
 
    source_bytes = file_path.read_bytes()
 
@@ -132,6 +133,7 @@ def build_context(file_path: Path,
       lines=lines,
       is_header=is_header,
       is_cpp=is_cpp,
+      indent=indent,
       is_c_dot_h=detect_c_dot_h(file_path),
       is_multi_include=detect_multi_include(lines),
    )
@@ -169,6 +171,25 @@ def filter_rules(rules_list, args) -> list:
       selected = [r for r in selected if r.severity == 'warning']
 
    return selected
+
+
+def _indent_arg(raw: str) -> int:
+   """argparse type for `--indent`: an integer in [1, 8] (inclusive).
+   The number of space chars per indentation level in the code base."""
+
+   try:
+      val = int(raw)
+   except ValueError:
+      raise argparse.ArgumentTypeError(
+         "indent must be an integer, got {!r}".format(raw)
+      )
+
+   if not 1 <= val <= 8:
+      raise argparse.ArgumentTypeError(
+         "indent must be between 1 and 8 (got {})".format(val)
+      )
+
+   return val
 
 
 def _split_rule_args(raw_list) -> set:
@@ -332,7 +353,7 @@ def cmd_check(args) -> int:
          ))
          sys.stdout.flush()
 
-      ctx = build_context(f, parser_obj, need_tu, need_cm)
+      ctx = build_context(f, parser_obj, need_tu, need_cm, args.indent)
 
       if args.diff:
          file_lines_map[str(f)] = ctx.source_text.splitlines(True)
@@ -850,6 +871,17 @@ def build_argparser():
       '--build-dir',
       default='build/compile_db',
       help='Path to the merged compile_commands.json directory'
+   )
+
+   check_p.add_argument(
+      '--indent',
+      type=_indent_arg,
+      default=3,
+      metavar='N',
+      help=('Number of space chars per indentation level in the code '
+            'base (1-8). Drives the width-sensitive rules: tab '
+            'expansion (indent_3sp) and the case-label step '
+            '(switch_case_indent). Default: 3 (Tilck style).')
    )
 
    check_p.add_argument(

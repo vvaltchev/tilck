@@ -22,8 +22,8 @@ class SwitchCaseIndent(Rule):
 
    id = 'switch_case_indent'
    description = (
-      'Case labels indented +3 from `switch`; Linux-style case-flush-'
-      'with-switch is forbidden'
+      'Case labels indented one level (--indent width, default +3) '
+      'from `switch`; Linux-style case-flush-with-switch is forbidden'
    )
    layers = 'S+T'
    needs_tu = True
@@ -58,7 +58,7 @@ class SwitchCaseIndent(Rule):
             continue
 
          switch_col = loc.column
-         expected_case_col = switch_col + 3
+         expected_case_col = switch_col + ctx.indent
 
          # Walk the switch's body for CASE_STMT and DEFAULT_STMT children
          for child in cursor.walk_preorder():
@@ -113,8 +113,8 @@ class SwitchCaseIndent(Rule):
                rule=self.id,
                severity=self.severity,
                message=('case label at column {} -- expected column {} '
-                        '(switch at column {}, case must be at +3)').format(
-                  actual_col, expected_case_col, switch_col
+                        '(switch at column {}, case must be at +{})').format(
+                  actual_col, expected_case_col, switch_col, ctx.indent
                ),
                snippet=line_text.strip(),
             ))

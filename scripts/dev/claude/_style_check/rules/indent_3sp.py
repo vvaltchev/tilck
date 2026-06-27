@@ -17,12 +17,14 @@ from .base import (
 class Indent3sp(Rule):
 
    id = 'indent_3sp'
-   description = '3-space indentation; never tabs in leading whitespace'
+   description = ('Space-only indentation (width from --indent, default '
+                  '3); never tabs in leading whitespace')
    layers = LAYER_RAW_TEXT
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:
 
       out = []
+      spaces = ' ' * ctx.indent
 
       for i, line in enumerate(ctx.lines, start=1):
 
@@ -32,7 +34,7 @@ class Indent3sp(Rule):
          if '\t' not in leading:
             continue
 
-         fixed_leading = leading.replace('\t', '   ')
+         fixed_leading = leading.replace('\t', spaces)
          fixed_line = fixed_leading + stripped
 
          out.append(Diagnostic(
@@ -43,10 +45,12 @@ class Indent3sp(Rule):
             end_col=len(leading) + 1,
             rule=self.id,
             severity=self.severity,
-            message='leading whitespace contains tab(s); use 3 spaces',
+            message=('leading whitespace contains tab(s); use {} '
+                     'spaces').format(ctx.indent),
             snippet=line.expandtabs(8),
             fixes=[Fix(i, i, [fixed_line],
-                        'convert leading tabs to 3 spaces')],
+                        'convert leading tabs to {} spaces'.format(
+                           ctx.indent))],
          ))
 
       return out

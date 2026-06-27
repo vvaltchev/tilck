@@ -17,7 +17,8 @@ HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / 'fixtures'
 
 
-def _ctx_for(file_path, parser_obj, need_tu=False, need_comments=False):
+def _ctx_for(file_path, parser_obj, need_tu=False, need_comments=False,
+             indent=3):
 
    source_bytes = file_path.read_bytes()
    source_text = source_bytes.decode('utf-8', errors='replace')
@@ -29,6 +30,7 @@ def _ctx_for(file_path, parser_obj, need_tu=False, need_comments=False):
       lines=source_text.split('\n'),
       is_header=file_path.suffix in ('.h', '.hpp'),
       is_cpp=file_path.suffix in ('.cpp', '.hpp'),
+      indent=indent,
    )
 
    if need_tu and parser_obj is not None:
@@ -45,13 +47,14 @@ def _ctx_for(file_path, parser_obj, need_tu=False, need_comments=False):
    return ctx
 
 
-def _run_rule(rule, file_path, parser_obj):
+def _run_rule(rule, file_path, parser_obj, indent=3):
 
    ctx = _ctx_for(
       file_path,
       parser_obj,
       need_tu=rule.needs_tu,
-      need_comments=rule.needs_comments
+      need_comments=rule.needs_comments,
+      indent=indent,
    )
    return rule.check(ctx)
 
@@ -107,6 +110,23 @@ class TestRulesOnFixtures(unittest.TestCase):
       r = RULES_BY_ID['indent_3sp']
       diags = _run_rule(r, FIXTURES / 'bad_indent_3sp.c', self.parser)
       self.assertEqual(len(diags), 2)  # two tab-indented lines
+
+   def test_indent_3sp_width_follows_indent_opt(self):
+
+      # The same tab-indented fixture, but with --indent 4: still two
+      # violations, but the tab-expansion fix now emits 4 spaces and
+      # the message names the configured width.
+      r = RULES_BY_ID['indent_3sp']
+      diags = _run_rule(
+         r, FIXTURES / 'bad_indent_3sp.c', self.parser, indent=4
+      )
+      self.assertEqual(len(diags), 2)
+
+      for d in diags:
+         fixed = d.fixes[0].new_lines[0]
+         lead = len(fixed) - len(fixed.lstrip(' '))
+         self.assertEqual(lead, 4)
+         self.assertIn('4 spaces', d.message)
 
    def test_bad_trailing_ws(self):
 
@@ -230,6 +250,28 @@ class TestRulesOnFixtures(unittest.TestCase):
       )
       self.assertEqual(len(diags), 3)
       self.assertTrue(all(d.rule == 'switch_case_indent' for d in diags))
+
+   def test_switch_case_indent_step_follows_indent_opt(self):
+
+      # The case-label step tracks --indent. A fixture whose cases sit
+      # at +4 is compliant under `--indent 4` but a violation under the
+      # default +3; the +3 `good_switch_case.c` is the mirror image.
+      r = RULES_BY_ID['switch_case_indent']
+
+      four = _run_rule(
+         r, FIXTURES / 'good_switch_case_4sp.c', self.parser, indent=4
+      )
+      self.assertEqual(four, [])
+
+      three = _run_rule(
+         r, FIXTURES / 'good_switch_case_4sp.c', self.parser, indent=3
+      )
+      self.assertEqual(len(three), 3)
+
+      mirror = _run_rule(
+         r, FIXTURES / 'good_switch_case.c', self.parser, indent=4
+      )
+      self.assertTrue(len(mirror) > 0)
 
    def test_bad_blank_line_after_decl_block(self):
 

@@ -85,6 +85,11 @@ has its own `--help` (e.g. `style_check check --help`).
 # Skip specific rules
 ./scripts/dev/claude/style_check check --exclude-rule trailing_ws kernel/poll.c
 
+# Check a code base that uses a different indentation width (1-8).
+# Default is 3 (Tilck style). Affects the width-sensitive rules:
+# tab expansion (indent_3sp) and the case-label step (switch_case_indent).
+./scripts/dev/claude/style_check check --indent 4 ../other-project/src/foo.c
+
 # List all rules / explain one
 ./scripts/dev/claude/style_check list-rules
 ./scripts/dev/claude/style_check explain multiline_call_style

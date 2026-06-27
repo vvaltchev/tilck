@@ -119,6 +119,12 @@ class CheckContext:
    is_header: bool
    is_cpp: bool
 
+   # Number of space characters per indentation level in this code
+   # base. Drives the width-sensitive rules (tab-expansion in
+   # `indent_3sp`, the case-label step in `switch_case_indent`).
+   # Defaults to 3 (Tilck style); the CLI `--indent N` overrides it.
+   indent: int = 3
+
    # `.c.h` "implementation-include" files: included exactly once by
    # a specific .c file. Not standalone headers, so they don't need
    # `#pragma once` (and several other header-only rules don't apply).
