@@ -1,0 +1,52 @@
+# Migrated from other/ci/tc-fedora-riscv64.yml (Azure Pipelines).
+name: Toolchain fedora riscv64
+
+on:
+  push:
+    branches-ignore: [readme*, temp-*, exp-*]
+    paths:
+      - '.github/workflows/ci-tc-fedora-riscv64.yml'
+      - 'scripts/build_toolchain'
+      - 'scripts/pkgmgr/**'
+      - '!README.md'
+      - '!**/*.md'
+  workflow_dispatch:
+
+env:
+  RUNNING_IN_CI: 1
+  # let git trust the root-owned container checkout (the build runs git)
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: '*'
+  GTEST_SHUFFLE: 0
+  ARCH: riscv64
+
+jobs:
+  toolchain:
+    runs-on: ubuntu-22.04
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: printenv
+      - name: Run pkgmgr unit tests
+        run: ./scripts/build_toolchain -t
+      - name: Install pkgs
+        run: ./scripts/build_toolchain
+      - name: Build gtest
+        run: ./scripts/build_toolchain -s gtest
+      - name: Build lcov
+        run: ./scripts/build_toolchain -s lcov
+      - name: Build ncurses
+        run: ./scripts/build_toolchain -s ncurses
+      - name: Build treecmd
+        run: ./scripts/build_toolchain -s treecmd
+      - name: Build tcc
+        run: ./scripts/build_toolchain -s tcc
+      - name: Build the kernel
+        run: make -j
+      - name: Build the unit tests
+        run: make -j gtests
+      - name: Run the unit tests
+        run: ./build/gtests
+      - name: Run the system tests
+        run: ./tests/runners/ci_run_all_tests_wrapper -c
