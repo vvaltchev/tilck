@@ -117,7 +117,7 @@ jobs:
     steps:
       - script: printenv
         displayName: Dump env
-      - script: ./scripts/cmake_run
+      - script: ./scripts/build_generators/$(GEN)
         displayName: Run CMake
       - script: make -j
         displayName: Build the kernel
