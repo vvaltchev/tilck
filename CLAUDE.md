@@ -683,8 +683,8 @@ CMAKE_ARGS='-DARCH=riscv64 -DKERNEL_UBSAN=1 -DKRN_HANG_DETECTION=1 -DKRN_MINIMAL
 ```
 
 Full sweep: `./scripts/adv/gen_other_builds`. CI flags layered on
-i386/riscv64 (`other/ci/{i386,riscv64}.yml`): `KERNEL_UBSAN`,
-`KRN_HANG_DETECTION`, `KRN_MINIMAL_TIME_SLICE`,
+i386/riscv64 (`.github/workflows/ci-{i386,riscv64}.yml`):
+`KERNEL_UBSAN`, `KRN_HANG_DETECTION`, `KRN_MINIMAL_TIME_SLICE`,
 `KRN_RESCHED_ENABLE_PREEMPT`, `TIMER_HZ=500`,
 `KRN_KMALLOC_FREE_MEM_POISONING`. Matrix includes release configs
 with `DEBUG_CHECKS=0`.
