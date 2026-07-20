@@ -63,7 +63,7 @@ function popd {
 }
 
 function link_or_copy {
-   if [ -n "$AZURE_HTTP_USER_AGENT" ]; then
+   if [ -n "$AZURE_HTTP_USER_AGENT" ] || [ -n "$GITHUB_ACTIONS" ]; then
       cp $1 $2
    else
       ln $1 $2

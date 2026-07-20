@@ -15,11 +15,13 @@ GEN_TEST_DATA = env_bool('GEN_TEST_DATA')
 IN_TRAVIS = env_bool('TRAVIS')
 IN_CIRCLECI = env_bool('CIRCLECI')
 IN_AZURE = env_bool('AZURE_HTTP_USER_AGENT')
+IN_GITHUB = env_bool('GITHUB_ACTIONS')
 CI = env_bool('RUNNING_IN_CI')
 DUMP_COV = env_bool('DUMP_COV')
 REPORT_COV = env_bool('REPORT_COV')
 VERBOSE = env_bool('VERBOSE')
-IN_ANY_CI = Const(IN_TRAVIS.val or IN_CIRCLECI.val or IN_AZURE.val or CI.val)
+IN_ANY_CI = Const(IN_TRAVIS.val or IN_CIRCLECI.val or IN_AZURE.val or
+                  IN_GITHUB.val or CI.val)
 
 ReloadAsConstModule(__name__)
 
