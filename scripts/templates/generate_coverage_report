@@ -113,11 +113,10 @@ if [[ "$1" == "--codecov" ]]; then
       exit 1
    fi
 
-   # CodeCov maps each report path against the repository file tree. lcov
-   # records absolute build-host paths (e.g. /__w/tilck/tilck/kernel/x.c under
-   # CI) and the Codecov CLI uploads them verbatim; an absolute path matches no
-   # repo file, so every line is dropped and the report reads as 0%. Rewrite the
-   # SF: entries to be repo-relative so they line up with the repository tree.
+   # Make the SF: paths repo-relative. lcov records absolute build-host paths
+   # (/__w/tilck/tilck/kernel/x.c under CI); stripping the repo-root prefix lines
+   # them up with the file network the CLI sends (see --network-root-folder at
+   # the upload step below).
    sed "s#^SF:$SRC/#SF:#" coverage.info > coverage.info.tmp
    mv coverage.info.tmp coverage.info
 
@@ -197,7 +196,15 @@ if [[ "$1" == "--codecov" ]]; then
 
    # Upload this build directory's coverage.info. Each build dir (kernel, unit
    # tests) uploads its own report.
+   #
+   # --network-root-folder is critical. The CLI builds the "network" of repo
+   # files it maps coverage onto from that folder (default: the working dir).
+   # We run from $BUILD, whose tree holds only build artifacts, so without this
+   # the network is nearly empty and CodeCov matches none of the coverage -- the
+   # report processes to 0%. Point it at the repo root so the real source tree
+   # is enumerated.
    "$BUILD/tmp/codecov" upload-process \
+      --network-root-folder "$SRC" \
       --disable-search -f coverage.info $token_arg $slug_arg
    exit 0
 fi
