@@ -1,0 +1,51 @@
+# Migrated from other/ci/x86_64.yml (Azure Pipelines).
+name: Tilck x86_64
+
+on:
+  push:
+    branches-ignore: [readme*, temp-*, exp-*]
+    paths:
+      - '.github/workflows/ci-x86_64.yml'
+      - 'other/busybox.config'
+      - 'kernel/**'
+      - 'modules/**'
+      - 'include/**'
+      - 'common/**'
+      - 'boot/**'
+      - 'tests/**'
+      - 'userapps/**'
+      - 'scripts/**'
+      - 'config/**'
+      - '!README.md'
+      - '!docs/**'
+      - '!scripts/configurator/**'
+      - '!kernel/arch/riscv/**'
+      - '!kernel/arch/riscv64/**'
+      - '!include/tilck/kernel/arch/riscv/**'
+      - '!include/tilck/common/arch/riscv/**'
+  # PR validation is off to match Azure (push-only). To enable, add a
+  # 'pull_request:' block mirroring the push paths above, targeting master.
+  workflow_dispatch:
+
+env:
+  RUNNING_IN_CI: 1
+  # let git trust the root-owned container checkout (the build runs git)
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: '*'
+  TCROOT: /tc
+  GTEST_SHUFFLE: 0
+  TILCK_NO_LOGO: 1
+  GCC_TC_VER: 13.3.0
+  ARCH: x86_64
+
+jobs:
+
+  build:
+    runs-on: ubuntu-24.04
+    container: ghcr.io/vvaltchev/tilck-x86_64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: printenv
+      - run: ./scripts/cmake_run
+      - run: make -j

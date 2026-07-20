@@ -1,0 +1,128 @@
+# Migrated from other/ci/i386.yml (Azure Pipelines).
+name: Tilck i386
+
+on:
+  push:
+    branches-ignore: [readme*, temp-*, exp-*]
+    paths:
+      - '.github/workflows/ci-i386.yml'
+      - 'other/busybox.config'
+      - 'kernel/**'
+      - 'modules/**'
+      - 'include/**'
+      - 'common/**'
+      - 'boot/**'
+      - 'tests/**'
+      - 'userapps/**'
+      - 'scripts/**'
+      - 'config/**'
+      - '!README.md'
+      - '!docs/**'
+      - '!scripts/configurator/**'
+      - '!kernel/arch/riscv/**'
+      - '!kernel/arch/riscv64/**'
+      - '!include/tilck/kernel/arch/riscv/**'
+      - '!include/tilck/common/arch/riscv/**'
+  # PR validation is off to match Azure (push-only). To enable, add a
+  # 'pull_request:' block mirroring the push paths above, targeting master.
+  workflow_dispatch:
+
+env:
+  RUNNING_IN_CI: 1
+  # let git trust the root-owned container checkout (the build runs git)
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: '*'
+  TCROOT: /tc
+  GTEST_SHUFFLE: 0
+  TILCK_NO_LOGO: 1
+  GCC_TC_VER: 13.3.0
+
+jobs:
+
+  interactive:
+    runs-on: ubuntu-24.04
+    container: ghcr.io/vvaltchev/tilck-i386:latest
+    env:
+      CMAKE_ARGS: >-
+        -DEXTRA_VIM=1
+        -DKRN_FB_CONSOLE_BANNER=0
+        -DKRN_FB_CONSOLE_CURSOR_BLINK=0
+        -DBOOT_INTERACTIVE=0
+        -DPREFERRED_GFX_MODE_W=640
+        -DPREFERRED_GFX_MODE_H=480
+        -DKRN_KMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DTIMER_HZ=500
+    steps:
+      - uses: actions/checkout@v4
+      - run: printenv
+      - run: ./scripts/build_generators/gcc_gcov
+      - run: make -j
+      - run: make -j gtests
+      - run: ./build/gtests
+      - run: ./build/st/run_all_tests -c
+      - run: ./build/st/run_interactive_test -a
+
+  build-matrix:
+    runs-on: ubuntu-24.04
+    container: ghcr.io/vvaltchev/tilck-i386:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gen:
+          - gcc
+          - gcc_rel
+          - gcc_fast_rel
+          - gcc_nocow
+          - gcc_no_nested_irq_tracking
+          - minimal
+          - gcc_small_offt
+    env:
+      CMAKE_ARGS: >-
+        -DKERNEL_UBSAN=1
+        -DKRN_KMALLOC_FREE_MEM_POISONING=1
+        -DKERNEL_SAT=1
+        -DKRN_HANG_DETECTION=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DTIMER_HZ=500
+    steps:
+      - uses: actions/checkout@v4
+      - run: printenv
+      - run: ./scripts/build_generators/${{ matrix.gen }}
+      - run: make -j
+      - run: make -j gtests
+      - run: ./build/gtests
+      - run: ./build/st/run_all_tests -c
+
+  coverage:
+    runs-on: ubuntu-24.04
+    container: ghcr.io/vvaltchev/tilck-i386:latest
+    environment: Tilck
+    env:
+      DUMP_COV: 1
+      REPORT_COV: 1
+      CMAKE_ARGS: >-
+        -DMOD_acpi=0
+        -DEXTRA_VIM=1
+        -DKRN_FB_CONSOLE_BANNER=0
+        -DKRN_FB_CONSOLE_CURSOR_BLINK=0
+        -DBOOT_INTERACTIVE=0
+        -DPREFERRED_GFX_MODE_W=640
+        -DPREFERRED_GFX_MODE_H=480
+    steps:
+      - uses: actions/checkout@v4
+      - run: printenv
+      - run: ./scripts/build_generators/gcc_gcov
+      - run: make -j
+      - run: make -j gtests
+      - run: ./build/gtests
+      - run: ./build/tests/unit/scripts/generate_test_coverage_report
+      - run: ./build/st/run_all_tests -c
+      - run: ./build/st/run_interactive_test -a
+      - name: Gen kernel gcov report and upload to codecov
+        run: ./build/scripts/generate_kernel_coverage_report --codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

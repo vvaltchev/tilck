@@ -113,24 +113,34 @@ if [[ "$1" == "--codecov" ]]; then
       exit 1
    fi
 
-   if [[ "$CODECOV_TOKEN" == "" ]]; then
-
-      #
-      # CodeCov does not need CODECOV_TOKEN to be defined for public projects
-      # on some CI providers: TravisCI, CircleCI, AppVeyor, Azure Pipelines,
-      # or GitHub Actions.
-      #
-      # See: https://docs.codecov.io/docs/about-the-codecov-bash-uploader
-      #
-
-      echo "WARNING: No CODECOV_TOKEN defined. Upload to CodeCov might fail"
+   #
+   # Authentication: uploads use a CodeCov upload token, passed via the
+   # CODECOV_TOKEN env var (kept as a secret CI variable). We hand it to the
+   # CLI when it is set; if it is unset we still attempt a tokenless upload,
+   # which CodeCov allows for public repos only in limited cases (e.g. PRs from
+   # forks), so it may fail on a protected branch.
+   #
+   # In GitHub Actions, prefer the official 'codecov/codecov-action' (it wraps
+   # this same CLI); pass the token via 'token: ${{ secrets.CODECOV_TOKEN }}'.
+   # This script path is for local / manual uploads and for CI providers
+   # without a dedicated CodeCov integration.
+   #
+   # See: https://docs.codecov.com/docs/the-codecov-cli
+   #
+   token_arg=""
+   if [[ "$CODECOV_TOKEN" != "" ]]; then
+      token_arg="-t $CODECOV_TOKEN"
+   else
+      echo "NOTE: no CODECOV_TOKEN set; relying on tokenless upload"
    fi
 
-   # Remove other files to be sure CodeCov uses only the coverage.info file
+   # We pass the report explicitly below (-f + --disable-search), but still drop
+   # the large *.gcda and the intermediate lcov.info to keep the tree tidy.
    rm -f lcov.info
    remove_gcda_files
 
-   # Upload report to CodeCov
+   # Download the Codecov CLI. It replaces the deprecated uploader that used to
+   # live at uploader.codecov.io; codecov/codecov-action wraps this same CLI.
    if ! [ -d "$BUILD/tmp" ]; then
       mkdir -p "$BUILD/tmp"
    fi
@@ -139,15 +149,15 @@ if [[ "$1" == "--codecov" ]]; then
 
    if ! [ -f codecov ]; then
 
-      curl -Os https://uploader.codecov.io/latest/linux/codecov
+      curl -Os https://cli.codecov.io/latest/linux/codecov
       if ! [ -f codecov ]; then
-         echo "ERROR: codecov did not collect coverage reports"
+         echo "ERROR: failed to download the Codecov CLI"
          echo "Trying again in 1 minute..."
          sleep 60
 
-         curl -Os https://uploader.codecov.io/latest/linux/codecov
+         curl -Os https://cli.codecov.io/latest/linux/codecov
          if ! [ -f codecov ]; then
-            echo "FATAL ERROR: Codecov cannot collect the coverage reports"
+            echo "FATAL ERROR: cannot download the Codecov CLI"
             exit 1
          fi
       fi
@@ -156,7 +166,31 @@ if [[ "$1" == "--codecov" ]]; then
    popd
    chmod +x "$BUILD/tmp/codecov"
 
-   "$BUILD/tmp/codecov" -X gcov
+   # The CLI infers the repo (owner/repo + git host) from the CI environment,
+   # but that detection is unreliable when the git host and CI provider differ
+   # (a GitHub repo built on Azure -> "Repository not found"). Derive both from
+   # the origin remote and pass them explicitly.
+   slug_arg=""
+   git_service=""
+   remote_url="$(git -C "$SRC" remote get-url origin 2>/dev/null || true)"
+   remote_url="${remote_url%.git}"
+   case "$remote_url" in
+      *github.com*)    git_service="github"    ;;
+      *gitlab.com*)    git_service="gitlab"    ;;
+      *bitbucket.org*) git_service="bitbucket" ;;
+   esac
+   slug="$(echo "$remote_url" | sed -E 's#^.*[:/]([^/]+/[^/]+)$#\1#')"
+
+   if [[ "$git_service" != "" && "$slug" == */* ]]; then
+      slug_arg="-r $slug --git-service $git_service"
+   fi
+
+   echo "NOTE: codecov target -> service='$git_service' slug='$slug'"
+
+   # Upload this build directory's coverage.info. Each build dir (kernel, unit
+   # tests) uploads its own report.
+   "$BUILD/tmp/codecov" upload-process \
+      --disable-search -f coverage.info $token_arg $slug_arg
    exit 0
 fi
 

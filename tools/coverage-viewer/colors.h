@@ -6,6 +6,9 @@
 
 #include <curses.h>
 
+/* ncurses #defines bool, breaking libstdc++ headers on GCC 15+; undo it. */
+#undef bool
+
 /*
  * Semantic color roles. With a 256-color terminal these map to a muted,
  * low-contrast palette (we deliberately do NOT reproduce the harsh

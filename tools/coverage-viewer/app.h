@@ -8,6 +8,9 @@
 
 #include <curses.h>
 
+/* ncurses #defines bool, breaking libstdc++ headers on GCC 15+; undo it. */
+#undef bool
+
 #include <map>
 #include <vector>
 
