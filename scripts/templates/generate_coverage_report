@@ -113,6 +113,14 @@ if [[ "$1" == "--codecov" ]]; then
       exit 1
    fi
 
+   # CodeCov maps each report path against the repository file tree. lcov
+   # records absolute build-host paths (e.g. /__w/tilck/tilck/kernel/x.c under
+   # CI) and the Codecov CLI uploads them verbatim; an absolute path matches no
+   # repo file, so every line is dropped and the report reads as 0%. Rewrite the
+   # SF: entries to be repo-relative so they line up with the repository tree.
+   sed "s#^SF:$SRC/#SF:#" coverage.info > coverage.info.tmp
+   mv coverage.info.tmp coverage.info
+
    #
    # Authentication: uploads use a CodeCov upload token, passed via the
    # CODECOV_TOKEN env var (kept as a secret CI variable). We hand it to the
