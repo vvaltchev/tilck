@@ -115,8 +115,8 @@ if [[ "$1" == "--codecov" ]]; then
 
    # Make the SF: paths repo-relative. lcov records absolute build-host paths
    # (/__w/tilck/tilck/kernel/x.c under CI); stripping the repo-root prefix lines
-   # them up with the file network the CLI sends (see --network-root-folder at
-   # the upload step below).
+   # them up with the repo-rooted file network the CLI builds at the upload step
+   # below.
    sed "s#^SF:$SRC/#SF:#" coverage.info > coverage.info.tmp
    mv coverage.info.tmp coverage.info
 
@@ -197,15 +197,17 @@ if [[ "$1" == "--codecov" ]]; then
    # Upload this build directory's coverage.info. Each build dir (kernel, unit
    # tests) uploads its own report.
    #
-   # --network-root-folder is critical. The CLI builds the "network" of repo
-   # files it maps coverage onto from that folder (default: the working dir).
-   # We run from $BUILD, whose tree holds only build artifacts, so without this
-   # the network is nearly empty and CodeCov matches none of the coverage -- the
-   # report processes to 0%. Point it at the repo root so the real source tree
-   # is enumerated.
-   "$BUILD/tmp/codecov" upload-process \
-      --network-root-folder "$SRC" \
-      --disable-search -f coverage.info $token_arg $slug_arg
+   # Run the CLI from the repo root. It builds the "network" of files it maps
+   # coverage onto by walking the working directory, and then opens each of
+   # those files (to compute line fixes) relative to that same directory. Run
+   # from $BUILD the network holds only build artifacts, so CodeCov matches none
+   # of the coverage and the report processes to 0%. (--network-root-folder
+   # alone is NOT enough: it enumerates the source tree, but the CLI still opens
+   # those files relative to the cwd and dies with FileNotFoundError.)
+   (
+      cd "$SRC" && "$BUILD/tmp/codecov" upload-process \
+         --disable-search -f "$BUILD/coverage.info" $token_arg $slug_arg
+   )
    exit 0
 fi
 
