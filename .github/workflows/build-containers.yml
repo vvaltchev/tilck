@@ -27,7 +27,10 @@ on:
       - 'other/containers/**'
       - '.github/workflows/build-containers.yml'
       - 'scripts/build_toolchain'
+      - 'scripts/bash_build_toolchain'
+      - 'scripts/bash_includes/**'
       - 'scripts/pkgmgr/**'
+      - 'other/pkg_versions'
 
 permissions:
   contents: read

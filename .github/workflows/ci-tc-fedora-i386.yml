@@ -7,7 +7,10 @@ on:
     paths:
       - '.github/workflows/ci-tc-fedora-i386.yml'
       - 'scripts/build_toolchain'
+      - 'scripts/bash_build_toolchain'
+      - 'scripts/bash_includes/**'
       - 'scripts/pkgmgr/**'
+      - 'other/pkg_versions'
       - '!README.md'
       - '!**/*.md'
   workflow_dispatch:
