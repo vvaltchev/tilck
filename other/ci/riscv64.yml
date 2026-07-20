@@ -153,4 +153,6 @@ jobs:
         displayName: Run the system tests
       - script: ./build/scripts/generate_kernel_coverage_report --codecov
         displayName: Gen kernel gcov report and upload to codecov
+        env:
+          CODECOV_TOKEN: $(CODECOV_TOKEN)
 
