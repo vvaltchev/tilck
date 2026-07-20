@@ -70,7 +70,7 @@ jobs:
         -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: printenv
       - run: ./scripts/build_generators/${{ matrix.gen }}
       - run: make -j
@@ -101,7 +101,7 @@ jobs:
         -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: printenv
       - run: ./scripts/build_generators/${{ matrix.gen }}
       - run: make -j
@@ -121,7 +121,7 @@ jobs:
         -DKERNEL_SAT=1
         -DKRN_HANG_DETECTION=1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: printenv
       - run: ./scripts/build_generators/gcc_gcov
       - run: make -j

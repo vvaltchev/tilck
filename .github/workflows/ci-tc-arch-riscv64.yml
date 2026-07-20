@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: archlinux:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: printenv
       - name: Run pkgmgr unit tests
         run: ./scripts/build_toolchain -t
