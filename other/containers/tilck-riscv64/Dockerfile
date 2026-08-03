@@ -1,8 +1,6 @@
-# version: v7
+# version: v8
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt update && apt upgrade -y
 
 # Copy Tilck's source to our container
 COPY . /tilck-tmp
@@ -11,8 +9,12 @@ RUN mkdir -p /tc
 ARG TCROOT=/tc
 ARG ARCH=riscv64
 
-# Layer 1: system dependencies only (cached until install_pkgs changes)
-RUN /tilck-tmp/scripts/build_toolchain --contrib --only-system-deps
+# Layer 1: base-image refresh + system dependencies. The `apt update` has to
+# stay in the same layer as the install it feeds: on its own it stays cached
+# for weeks while Ubuntu drops superseded .debs from the pool, so the install
+# then asks for versions the stale index still advertises and gets a 404.
+RUN apt update && apt upgrade -y && \
+    /tilck-tmp/scripts/build_toolchain --contrib --only-system-deps
 
 # Layer 2 + 3: toolchain packages for both GCC versions.
 # First pass: default packages (compilers, core deps).
