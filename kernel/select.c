@@ -12,6 +12,7 @@
 struct select_ctx {
    int nfds;
    fd_set *sets[3];
+   fd_set *rsets[3];
    fd_set *u_sets[3];
    struct k_timeval *tv;
    struct k_timeval *user_tv;
@@ -89,12 +90,17 @@ select_set_kcond(int nfds,
 }
 
 static int
-select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
+select_eval_ready_set(int nfds,
+                      fd_set *set,
+                      fd_set *out,
+                      func_rwe_ready is_ready)
 {
    int tot = 0;
 
    if (!set)
       return tot;
+
+   FD_ZERO(out);
 
    for (int i = 0; i < nfds; i++) {
 
@@ -103,9 +109,8 @@ select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
 
       const fs_handle h = get_fs_handle(i);
 
-      if (!h || !is_ready(h)) {
-         FD_CLR(i, set);
-      } else {
+      if (h && is_ready(h)) {
+         FD_SET(i, out);
          tot++;
       }
    }
@@ -113,42 +118,31 @@ select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
    return tot;
 }
 
+/*
+ * Sample the readiness of every watched fd EXACTLY ONCE, recording the
+ * outcome in c->rsets[]. The input sets in c->sets[] are never touched,
+ * so the caller can evaluate again after a sleep.
+ *
+ * Sampling once is what makes the result trustworthy. The *_ready
+ * callbacks can block (pipe_read_ready() takes the pipe's mutex), so
+ * two consecutive passes over the same fds are not atomic with respect
+ * to other tasks and may legitimately disagree.
+ */
 static int
-count_ready_streams_per_set(int nfds, fd_set *set, func_rwe_ready is_ready)
+select_eval_ready(struct select_ctx *c)
 {
    int count = 0;
 
-   if (!set)
-      return count;
-
-   for (int j = 0; j < nfds; j++) {
-
-      if (!FD_ISSET(j, set))
-         continue;
-
-      const fs_handle h = get_fs_handle(j);
-
-      if (h && is_ready(h))
-         count++;
-   }
+   for (int i = 0; i < 3; i++)
+      count += select_eval_ready_set(c->nfds, c->sets[i], c->rsets[i], grf[i]);
 
    return count;
 }
 
 static int
-count_ready_streams(int nfds, fd_set *sets[3])
-{
-   int count = 0;
-
-   for (int i = 0; i < 3; i++) {
-      count += count_ready_streams_per_set(nfds, sets[i], grf[i]);
-   }
-
-   return count;
-}
-
-static int
-select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
+select_read_user_sets(fd_set *sets[3],
+                      fd_set *rsets[3],
+                      fd_set *u_sets[3])
 {
    struct task *curr = get_curr_task();
 
@@ -158,6 +152,7 @@ select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
          continue;
 
       sets[i] = ((fd_set *)curr->args_copybuf) + i;
+      rsets[i] = ((fd_set *)curr->args_copybuf) + 4 + i;
 
       if (copy_from_user(sets[i], u_sets[i], sizeof(fd_set)))
          return -EFAULT;
@@ -209,23 +204,20 @@ select_compute_cond_cnt(struct select_ctx *c)
    return 0;
 }
 
+/* Copy the already-sampled result sets (and the timeout) back to user */
 static int
 select_write_user_sets(struct select_ctx *c)
 {
-   fd_set **sets = c->sets;
-   fd_set **u_sets = c->u_sets;
-   int total_ready_count = 0;
    int rc;
 
    for (int i = 0; i < 3; i++) {
 
-      total_ready_count += select_set_ready(c->nfds, sets[i], grf[i]);
+      if (!c->u_sets[i])
+         continue;
 
-      if (u_sets[i]) {
-         rc = copy_to_user(u_sets[i], sets[i], sizeof(fd_set));
-         if (rc)
-            return rc;
-      }
+      rc = copy_to_user(c->u_sets[i], c->rsets[i], sizeof(fd_set));
+      if (rc)
+         return rc;
    }
 
    if (c->tv) {
@@ -234,7 +226,7 @@ select_write_user_sets(struct select_ctx *c)
          return rc;
    }
 
-   return total_ready_count;
+   return 0;
 }
 
 static int
@@ -263,7 +255,9 @@ select_wait_on_cond(struct select_ctx *c)
        * Readiness check with preemption enabled — same reasoning
        * as poll_wait_on_cond(): *_ready callbacks may block.
        */
-      if (count_ready_streams(c->nfds, c->sets) > 0) {
+      rc = select_eval_ready(c);
+
+      if (rc > 0) {
 
          if (c->tv) {
 
@@ -278,7 +272,6 @@ select_wait_on_cond(struct select_ctx *c)
                (rem % KRN_TIMER_HZ) * (1000000 / KRN_TIMER_HZ);
          }
 
-         rc = select_write_user_sets(c);
          break;
       }
 
@@ -351,6 +344,7 @@ int sys_select(int user_nfds,
 
       .nfds = user_nfds,
       .sets = { 0 },
+      .rsets = { 0 },
       .u_sets = { user_rfds, user_wfds, user_efds },
       .tv = NULL,
       .user_tv = user_tv,
@@ -363,53 +357,64 @@ int sys_select(int user_nfds,
    if (user_nfds < 0 || user_nfds > KRN_MAX_HANDLES)
       return -EINVAL;
 
-   if ((rc = select_read_user_sets(ctx.sets, ctx.u_sets)))
+   if ((rc = select_read_user_sets(ctx.sets, ctx.rsets, ctx.u_sets)))
       return rc;
 
    if ((rc = select_read_user_tv(user_tv, &ctx.tv, &ctx.timeout_ticks)))
       return rc;
 
-   if ((rc = count_ready_streams(ctx.nfds, ctx.sets)) > 0)
-      return select_write_user_sets(&ctx);
+   rc = select_eval_ready(&ctx);
 
-   if ((rc = select_compute_cond_cnt(&ctx)))
-      return rc;
+   if (rc == 0) {
 
-   if (ctx.cond_cnt > 0 && (!user_tv || ctx.timeout_ticks > 0)) {
-
-      /*
-       * The count of condition variables for all the file descriptors is
-       * greater than 0. That's typical.
-       */
-
-      if ((rc = select_wait_on_cond(&ctx)))
+      if ((rc = select_compute_cond_cnt(&ctx)))
          return rc;
 
-   } else {
-
-      /*
-       * It is not that difficult cond_cnt to be 0: it's enough the specified
-       * files to NOT have r/w/e get kcond functions. Also, all the sets might
-       * be NULL (see the comment below).
-       */
-
-      if (ctx.timeout_ticks > 0) {
+      if (ctx.cond_cnt > 0 && (!user_tv || ctx.timeout_ticks > 0)) {
 
          /*
-          * Corner case: no conditions on which to wait, but timeout is > 0:
-          * this is still a valid case. Many years ago the following call:
-          *    select(0, NULL, NULL, NULL, &tv)
-          * was even used as a portable implementation of nanosleep().
+          * The count of condition variables for all the file descriptors is
+          * greater than 0. That's typical.
           */
 
-         kernel_sleep(ctx.timeout_ticks);
+         if ((rc = select_wait_on_cond(&ctx)) < 0)
+            return rc;
 
-         if (pending_signals())
-            return -EINTR;
+      } else {
+
+         /*
+          * It is not that difficult cond_cnt to be 0: it's enough the
+          * specified files to NOT have r/w/e get kcond functions. Also, all
+          * the sets might be NULL (see the comment below).
+          */
+
+         if (ctx.timeout_ticks > 0) {
+
+            /*
+             * Corner case: no conditions on which to wait, but timeout is > 0:
+             * this is still a valid case. Many years ago the following call:
+             *    select(0, NULL, NULL, NULL, &tv)
+             * was even used as a portable implementation of nanosleep().
+             */
+
+            kernel_sleep(ctx.timeout_ticks);
+
+            if (pending_signals())
+               return -EINTR;
+         }
+
+         rc = select_eval_ready(&ctx);
       }
    }
 
-   return select_write_user_sets(&ctx);
+   {
+      const int wrc = select_write_user_sets(&ctx);
+
+      if (wrc)
+         return wrc;
+   }
+
+   return rc;
 }
 
 long sys_pselect6(int user_nfds,
