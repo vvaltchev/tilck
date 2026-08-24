@@ -355,12 +355,20 @@ function install_arch {
 
    if [ ${#missing_gems[@]} -ne 0 ]; then
       local gems="${missing_gems[*]}"
+
       if [ "$RUNNING_IN_CI" == 1 ] || [[ "$EUID" -eq 0 ]]; then
          run_command "gem install --no-document $gems" || exit 1
-      elif which sudo &> /dev/null; then
-         run_command "sudo gem install --no-document $gems" || exit 1
       else
-         run_command "su -c \"gem install --no-document $gems\"" || exit 1
+
+         # A user-level gem install needs no root: it always lands
+         # under the invoking user's home, regardless of distro. Do
+         # NOT elevate here -- Arch's rubygems forces --user-install
+         # unconditionally (see gem's operating_system_defaults), so
+         # a sudo/su gem install would land the gems under root's
+         # home instead, invisible to the pkgmgr Ruby process that
+         # runs right after this, as the normal user.
+         run_command "gem install --no-document --user-install $gems" \
+            || exit 1
       fi
    fi
 }
