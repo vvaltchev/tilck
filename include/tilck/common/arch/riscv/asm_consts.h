@@ -107,3 +107,8 @@
 #define IE_SIE    (0x1UL << IRQ_S_SOFT)
 #define IE_TIE    (0x1UL << IRQ_S_TIMER)
 #define IE_EIE    (0x1UL << IRQ_S_EXT)
+
+/* SCOUNTEREN flags: the counters user mode is allowed to read */
+#define SCNT_CY       0x00000001UL /* The `cycle` counter */
+#define SCNT_TM       0x00000002UL /* The `time` counter */
+#define SCNT_IR       0x00000004UL /* The `instret` counter */

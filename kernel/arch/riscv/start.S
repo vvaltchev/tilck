@@ -69,6 +69,18 @@ _start_kernel:
    csrw CSR_SIP, zero
    csrw CSR_SSCRATCH, zero
 
+   /*
+    * Let user mode read the `cycle`, `time` and `instret` counters.
+    *
+    * `scounteren` has no architectural reset value, so U-mode inherits
+    * whatever the SBI implementation happened to leave in it. Firmware
+    * that enabled every counter is why RDTSC() in user space worked so
+    * far; when it doesn't, `rdcycle` traps as an illegal instruction.
+    * Never rely on that: set the register explicitly.
+    */
+   li t0, SCNT_CY | SCNT_TM | SCNT_IR
+   csrw CSR_SCOUNTEREN, t0
+
    /* Disable FPU */
    li t0, SR_FS
    csrc sstatus, t0
