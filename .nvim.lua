@@ -1,3 +1,6 @@
+-- Tilck uses 3-space indentation.
+vim.g.indent_width = 3
+
 local function project_root(bufnr)
   local fname = vim.api.nvim_buf_get_name(bufnr or 0)
   local markers = { "compile_commands.json", ".clangd", ".git" }
