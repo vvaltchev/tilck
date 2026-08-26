@@ -1,31 +1,13 @@
 -- Tilck uses 3-space indentation.
 vim.g.indent_width = 3
 
-local function project_root(bufnr)
-  local fname = vim.api.nvim_buf_get_name(bufnr or 0)
-  local markers = { "compile_commands.json", ".clangd", ".git" }
-  local root = vim.fs.root(bufnr or 0, markers)
-  return root or vim.fs.dirname(fname)
-end
-
-local function clangd_cmd(bufnr)
-  local root = project_root(bufnr)
-  local toolchain_glob = root .. "/toolchain4/**/bin/*-linux-*"
-  return {
-    "clangd",
-    "--background-index",
-    "--clang-tidy",
-    "--completion-style=detailed",
-    "--header-insertion=iwyu",
-    "--tweaks=-DefineInline",
-    "--query-driver=" .. toolchain_glob,
-  }
-end
-
-vim.lsp.config["clangd"] = {
-  cmd = clangd_cmd(0),        -- build it once at startup
-  filetypes = { "c", "cpp" },
-  root_markers = { "compile_commands.json", ".clangd", ".git" },
-}
-vim.lsp.enable("clangd")
-
+-- Point clangd's --query-driver at this project's own cross toolchain, so it
+-- extracts the right system includes and target triple (i686-linux-musl)
+-- instead of the host's. 'exrc' only sources .nvim.lua from the directory nvim
+-- was started in, never from a parent, so getcwd() is this file's directory.
+--
+-- This used to be a `vim.lsp.config["clangd"] = { cmd = {...} }` assignment.
+-- That no longer works under a LazyVim-based config: LazyVim configures clangd
+-- through nvim-lspconfig *after* 'exrc' has run, so the assignment was silently
+-- overwritten. A plain global read at LSP-setup time does work.
+vim.g.clangd_query_driver = vim.fn.getcwd() .. "/toolchain4/**/bin/*-linux-*"
