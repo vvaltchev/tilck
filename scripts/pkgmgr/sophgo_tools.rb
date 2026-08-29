@@ -58,7 +58,7 @@ class SophgoToolsPackage < Package
   # The only thing we actually consume from the upstream tarball is the
   # prebuilt cross gcc tree; check for it as a sanity guard that the
   # extraction landed where we expect.
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["gcc", true],
   ]
 

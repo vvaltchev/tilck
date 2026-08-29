@@ -70,7 +70,7 @@ class GnuefiSourcePackage < Package
 
   def pkg_dirname = "gnuefi"
   def default_ver = pkgmgr.get_config_ver("gnuefi")
-  def expected_files = GNUEFI_COMMON_EXPECTED_FILES
+  def expected_files(ver = nil) = GNUEFI_COMMON_EXPECTED_FILES
   def default_arch = nil
   def default_cc = nil
 
@@ -102,7 +102,7 @@ class GnuefiPackage < Package
 
   def pkg_dirname = "gnuefi"
 
-  def expected_files = GNUEFI_COMMON_EXPECTED_FILES
+  def expected_files(ver = nil) = GNUEFI_COMMON_EXPECTED_FILES
 
   #
   # The UEFI bootloader always needs x86_64 gnuefi, even when the
@@ -148,7 +148,7 @@ class GnuefiPackage < Package
           ok = chdir_install_dir(arch_dir, ver) do
             d = mkpathname(getwd)
             ok = install_impl_internal(d, arch)
-            ok = check_install_dir(d, true) if ok
+            ok = check_install_dir(d, ver, true) if ok
           end
         end
       end

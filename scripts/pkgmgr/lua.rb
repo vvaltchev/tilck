@@ -29,7 +29,7 @@ class LuaPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["src/lua", false],
     ["src/luac", false],
   ]

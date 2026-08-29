@@ -39,7 +39,7 @@ class Acpica < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["3rd_party", true],
     ["Makefile", false],
     ["source", true],

@@ -53,7 +53,7 @@ class HostMenuconfigPackage < Package
   # shared tarball is located correctly in the cache.
   def default_ver = pkgmgr.get_config_ver("busybox")
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["install/bin/mconf", false],
     ["install/bin/conf",  false],
     ["install/bin/lxdialog", false],

@@ -35,7 +35,7 @@ class DtcPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["libfdt/libfdt.a", false],
     ["libfdt/libfdt.h", false],
   ]

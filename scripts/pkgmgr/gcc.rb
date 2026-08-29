@@ -41,7 +41,7 @@ class GccCompiler < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     "bin/#{target_arch.gcc_tc}-linux-gcc",
     "bin/#{target_arch.gcc_tc}-linux-g++",
     "bin/#{target_arch.gcc_tc}-linux-ar",

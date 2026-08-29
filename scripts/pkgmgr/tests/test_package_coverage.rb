@@ -109,14 +109,19 @@ end
 class TestCheckInstallDirCoverage < Minitest::Test
   include TestHelper
 
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
   def test_missing_expected_file
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["required_binary", false]]
       }
-      refute pkg.check_install_dir(d)
+      refute pkg.check_install_dir(d, Ver("1.0.0"))
     end
   end
 
@@ -124,10 +129,10 @@ class TestCheckInstallDirCoverage < Minitest::Test
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["required_dir", true]]
       }
-      refute pkg.check_install_dir(d)
+      refute pkg.check_install_dir(d, Ver("1.0.0"))
     end
   end
 
@@ -135,10 +140,10 @@ class TestCheckInstallDirCoverage < Minitest::Test
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["missing", false]]
       }
-      refute pkg.check_install_dir(d, true)
+      refute pkg.check_install_dir(d, Ver("1.0.0"), true)
     end
   end
 
@@ -146,10 +151,10 @@ class TestCheckInstallDirCoverage < Minitest::Test
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["missing_dir", true]]
       }
-      refute pkg.check_install_dir(d, true)
+      refute pkg.check_install_dir(d, Ver("1.0.0"), true)
     end
   end
 
@@ -159,10 +164,53 @@ class TestCheckInstallDirCoverage < Minitest::Test
       FileUtils.touch(d / "binary")
       FileUtils.mkdir_p(d / "subdir")
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["binary", false], ["subdir", true]]
       }
-      assert pkg.check_install_dir(d)
+      assert pkg.check_install_dir(d, Ver("1.0.0"))
+    end
+  end
+
+  # expected_files takes the version so a package whose install layout
+  # diverged across versions can return a different list. Most packages
+  # ignore the argument; these two check the plumbing really delivers it.
+  def test_expected_files_receives_the_version
+    Dir.mktmpdir do |dir|
+      d = Pathname.new(dir)
+      FileUtils.touch(d / "old_binary")
+
+      pkg = FakePackage.new("foo")
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
+        ver >= Ver("2.0.0") ? [["new_binary", false]] : [["old_binary", false]]
+      }
+
+      assert pkg.check_install_dir(d, Ver("1.0.0"))
+      refute pkg.check_install_dir(d, Ver("2.0.0"))
+
+      FileUtils.touch(d / "new_binary")
+      assert pkg.check_install_dir(d, Ver("2.0.0"))
+    end
+  end
+
+  # The install-list scanners must hand each entry ITS OWN version, not
+  # just any version: 1.0.0 stays fine while 2.0.0 is flagged broken.
+  def test_scanner_uses_each_versions_own_expected_files
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        pkg.install_impl(Ver("1.0.0"))
+        pkg.install_impl(Ver("2.0.0"))
+
+        # Demand a file only from 2.0.0; neither install has it.
+        pkg.define_singleton_method(:expected_files) { |ver = nil|
+          ver >= Ver("2.0.0") ? [["missing", false]] : []
+        }
+
+        list = pkg.get_install_list
+        refute list.find { |x| x.ver == Ver("1.0.0") }.broken
+        assert list.find { |x| x.ver == Ver("2.0.0") }.broken
+      end
     end
   end
 end

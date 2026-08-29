@@ -367,7 +367,7 @@ class Package
           ok = install_impl_internal(d)
         end
 
-        ok = check_install_dir(d, true) if ok
+        ok = check_install_dir(d, ver, true) if ok
         ok
       end
 
@@ -405,7 +405,7 @@ class Package
     #     the ambiguity with `-f` (which pre-uninstalls through the
     #     main CLI flow) or `-u <pkg>`.
     if final_ver_dir.exist?
-      if check_install_dir(final_ver_dir)
+      if check_install_dir(final_ver_dir, ver)
         error "#{name}: final install dir #{final_ver_dir} already " \
               "exists and looks complete, but the package was not " \
               "detected as installed. Refusing to overwrite. " \
@@ -430,8 +430,11 @@ class Package
     return true
   end
 
-  def check_install_dir(d, report_error = false)
-    for entry, isdir in expected_files()
+  # `ver` is passed to expected_files so a package whose install
+  # layout changed across versions can return a different file list.
+  # Most packages ignore it.
+  def check_install_dir(d, ver, report_error = false)
+    for entry, isdir in expected_files(ver)
       path = d / entry
       if isdir
         if !path.directory?
@@ -493,7 +496,7 @@ class Package
 
   # Methods not implemented in the base class
   def install_impl_internal(install_dir) = raise NotImplementedError
-  def expected_files = raise NotImplementedError
+  def expected_files(ver = nil) = raise NotImplementedError
 
   # Normalize a kernel-style .config file: strip metadata header,
   # empty lines, non-CONFIG lines, and reverse-sort by binary value.
@@ -561,15 +564,16 @@ class Package
 
     if dir.directory?
       for d in Dir.children(dir)
+        ver = Ver(d.to_s)
         list << InstallInfo.new(
-          name,                          # package name
-          "syscc",                       # compiler used
-          true,                          # runnning on host?
-          HOST_ARCH,                     # arch
-          Ver(d.to_s),                   # package version
-          dir / d,                       # install path
-          self,                          # package object
-          !check_install_dir(dir / d)    # broken?
+          name,                             # package name
+          "syscc",                          # compiler used
+          true,                             # runnning on host?
+          HOST_ARCH,                        # arch
+          ver,                              # package version
+          dir / d,                          # install path
+          self,                             # package object
+          !check_install_dir(dir / d, ver)  # broken?
         )
       end
     end
@@ -595,15 +599,16 @@ class Package
         next if !dir.directory?
 
         for d in Dir.children(dir) do
+          ver = Ver(d.to_s)
           list << InstallInfo.new(
-            name,                        # package name
-            cc_ver,                      # compiler used
-            on_host,                     # runnning on host?
-            arch_obj,                    # arch
-            Ver(d.to_s),                 # package version
-            dir / d,                     # install path
-            self,                        # package object
-            !check_install_dir(dir / d)  # broken?
+            name,                             # package name
+            cc_ver,                           # compiler used
+            on_host,                          # runnning on host?
+            arch_obj,                         # arch
+            ver,                              # package version
+            dir / d,                          # install path
+            self,                             # package object
+            !check_install_dir(dir / d, ver)  # broken?
           )
         end # for ver_dir
       end # for arch
@@ -618,15 +623,16 @@ class Package
 
     if dir.directory?
       for d in Dir.children(dir) do
+        ver = Ver(d.to_s)
         list << InstallInfo.new(
           name,
-          nil,                           # compiler ver
-          false,                         # on host
-          nil,                           # arch
-          Ver(d.to_s),                   # version
-          dir / d,                       # install path
-          self,                          # package object
-          !check_install_dir(dir / d)    # broken?
+          nil,                              # compiler ver
+          false,                            # on host
+          nil,                              # arch
+          ver,                              # version
+          dir / d,                          # install path
+          self,                             # package object
+          !check_install_dir(dir / d, ver)  # broken?
         )
       end
     end

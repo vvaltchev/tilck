@@ -307,7 +307,7 @@ class TestInstallMvGuard < Minitest::Test
   # dir, so `check_install_dir` can be made to pass or fail by
   # creating / deleting that file.
   class FakePackageWithMarker < TestHelper::FakePackage
-    def expected_files = [["marker.txt", false]]
+    def expected_files(ver = nil) = [["marker.txt", false]]
 
     def install_impl_internal(install_dir)
       super(install_dir)

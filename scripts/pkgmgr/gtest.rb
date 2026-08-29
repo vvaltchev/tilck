@@ -48,7 +48,7 @@ class GtestPackage < Package
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["install/lib/libgtest.a", false],
     ["install/lib/libgmock.a", false],
     ["install/include/gtest", true],
@@ -91,7 +91,7 @@ class GtestPackage < Package
       staging_pkg = TC_STAGING / pkg_dirname
       FileUtils.rmdir(staging_pkg) if staging_pkg.directory? &&
                                       Dir.empty?(staging_pkg)
-      ok = check_install_dir(ver_dir, true)
+      ok = check_install_dir(ver_dir, ver, true)
     end
 
     return ok

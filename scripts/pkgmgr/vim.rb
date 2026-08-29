@@ -33,7 +33,7 @@ class VimPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["install/vim.gz", false],
     ["install/vr.tgz", false],
   ]
