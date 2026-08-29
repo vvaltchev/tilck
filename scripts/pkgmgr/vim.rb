@@ -46,7 +46,7 @@ class VimPackage < Package
   def install_impl_internal(install_dir)
 
     arch = default_arch.gcc_tc
-    ncurses_ver = pkgmgr.get_config_ver("ncurses")
+    ncurses_ver = pkgmgr.get_config_ver("ncurses", host: false)
     # Pin ncurses to default_arch.target_dir (not ARCH.target_dir) so
     # `-s vim -a <arch>` reads ncurses from the matching per-arch
     # install tree.

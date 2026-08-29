@@ -13,8 +13,13 @@ class GccCompiler < Package
   include FileUtilsShortcuts
 
   PROJ_NAME = "musl-cross-make"
-  CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME).to_s
-  VER_MUSL = pkgmgr.get_config_ver("musl")
+  CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME, host: true).to_s
+
+  # Deliberately a TARGET version read from a host package: the musl
+  # libc baked into the cross-compiler is the one Tilck links against,
+  # and it is part of the release tarball's name (see build_tarname).
+  # libmusl reads the same entry, so the two cannot drift apart.
+  VER_MUSL = pkgmgr.get_config_ver("musl", host: false)
   ALL_VERSIONS = [Ver("12.4.0"), Ver("13.3.0")]
 
   attr_reader :target_arch, :libc

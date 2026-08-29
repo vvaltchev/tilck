@@ -69,7 +69,7 @@ class GnuefiSourcePackage < Package
   end
 
   def pkg_dirname = "gnuefi"
-  def default_ver = pkgmgr.get_config_ver("gnuefi")
+  def default_ver = pkgmgr.get_config_ver("gnuefi", host: false)
   def expected_files(ver = nil) = GNUEFI_COMMON_EXPECTED_FILES
   def default_arch = nil
   def default_cc = nil
