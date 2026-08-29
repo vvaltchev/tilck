@@ -58,8 +58,13 @@ The package manager handles three categories of packages:
 
 # Reconfigure a package interactively (make menuconfig)
 ./scripts/build_toolchain -C busybox
+./scripts/build_toolchain -C busybox:1.36.1   # a specific version
 
-# Upgrade packages after a version bump in other/pkg_versions
+# Install or remove a specific version (-s, -u and -C all take PKG:VER)
+./scripts/build_toolchain -s host_ncurses:6.4
+./scripts/build_toolchain -u host_ncurses:6.4
+
+# Upgrade packages after a version bump in one of the version files
 ./scripts/build_toolchain --upgrade
 
 # Check if upgrades are needed (used by CMake at configure time)
@@ -129,19 +134,78 @@ registers itself with `pkgmgr.register(MyPackage.new())` at file load time.
 Key methods:
   * `initialize` — declares name, URL, arch_list, dep_list, host_tier, default, etc.
   * `install_impl_internal(dir)` — build logic (configure + make + make install)
-  * `expected_files` — list of files/dirs that must exist after a successful build
+  * `expected_files(ver)` — files/dirs that must exist after a successful build.
+    Most packages ignore `ver`; it is there so a package whose install layout
+    changed between versions can return a different list
   * `clean_build(dir)` — remove build artifacts (for recovery after interruption)
   * `config_impl` — interactive reconfiguration (optional, e.g. make menuconfig)
+  * `build_env(ver)` — what this package offers to packages that depend on it:
+    include dirs, lib dirs, pkg-config dirs, extra environment. The base class
+    offers nothing; a package others link against overrides it
+  * `dep_list_for(ver)` — the dependency list at a given version, for a package
+    whose non-default versions need different dependency versions
 
-Package versions are defined in `other/pkg_versions`.
+### Version files
+
+There are two, and they are unrelated:
+
+| File | Keys | Holds |
+|------|------|-------|
+| `other/pkg_versions` | `VER_<PKG>` | versions that end up in Tilck (target side) |
+| `other/host_pkg_versions` | `HOST_VER_<PKG>` | versions of build-host tools |
+
+A package that exists on both sides — ncurses is both a Tilck library and a
+host kconfig dependency — has one entry in each, and they may differ freely.
+`pkgmgr.get_config_ver(name, host:)` takes the side explicitly rather than
+guessing it from the name.
+
+The keys carry different prefixes because all three readers (the Ruby package
+manager, CMake, and the bash scripts that `source` them) hold both files in
+one namespace.
+
+At startup every registered package must resolve to a version in its file;
+a missing entry is reported by name, not left as a silent nil.
+
+### Build interfaces
+
+A package that others build against publishes `build_env(ver)` and consumers
+call `deps_build_env`, which merges what the whole dependency closure
+publishes, nearest dependency first. No consumer names a dependency and the
+base class knows no package: adding a library to `dep_list` is all it takes
+for its flags to appear.
+
+`BuildEnv` holds neutral data — include dirs, lib dirs, pkg-config dirs — and
+renders it once at the end (`cflags`, `ldflags`, `env`, `kconfig_make_vars`).
+That is what makes several providers combinable: two providers each handing
+over a ready-made `HOSTCFLAGS=...` string would land as two assignments on the
+same `make` command line, where GNU make keeps only the last.
 
 ## Dependency resolution
 
 Packages declare dependencies via `dep_list`:
 
 ```ruby
-dep_list: [Dep('ncurses', false)]   # vim depends on ncurses
+dep_list: [Dep('ncurses', false)]                    # the default version
+dep_list: [Dep('host_ncurses', true, ver: Ver('6.4'))]  # pinned exactly
 ```
+
+Leaving `ver` out — the normal case — means "the default version", so the
+version files stay readable as one coherent set instead of every edge
+restating the version it would have got anyway. A package built at a
+non-default version pins only the dependencies whose version has to differ,
+not its whole closure.
+
+Only host packages can be pinned; a pin on a target dependency is rejected,
+because Tilck itself is built from exactly one version of each package.
+
+Version selection (`version_solver.rb`) follows two rules:
+
+  * an explicit pin beats an implicit default, and says so at info level —
+    a default silently not being used is worth seeing;
+  * two explicit pins that disagree are an error naming both paths, since
+    nothing can satisfy both.
+
+Within one resolution a package name therefore has exactly one version.
 
 When installing a package, the dependency resolver:
 
@@ -170,14 +234,21 @@ package set** for the current `ARCH` and `BOARD`:
 Each package's `default?` method determines if it's in the default set, gated
 by `arch_supported?`, `host_supported?`, and `board_supported?`.
 
-**Upgrades**: when a version is bumped in `other/pkg_versions`, running
+**Upgrades**: when a version is bumped in either version file, running
 `build_toolchain --upgrade` (or just `build_toolchain` with no arguments)
 installs the new version alongside the old one. The old version is NOT deleted.
 
+Only installs that used the *default* version are upgraded. A version someone
+asked for by name is deliberate and is left alone however old it is. The two
+are indistinguishable from the directory tree alone — both are just
+`<pkg>/<ver>/` — so each install records which it was in a hidden
+`.install_origin` file. Installs predating that file read as default, which is
+what they were: naming a version at install time is newer than they are.
+
 CMake detects stale packages at configure time via `--check-for-updates` and
 fails the build with a clear message telling the user to run `--upgrade`.
-The `other/pkg_versions` file is a `CMAKE_CONFIGURE_DEPENDS`, so `make`
-automatically re-runs CMake when versions change.
+Both version files are `CMAKE_CONFIGURE_DEPENDS`, so `make` automatically
+re-runs CMake when versions change.
 
 ## Atomic installs and signal safety
 
@@ -221,7 +292,7 @@ to update the base config file (e.g. `other/busybox.config`) and rebuild.
 
 ## Test infrastructure
 
-The package manager has a comprehensive test suite with 300+ tests. All tests
+The package manager has a comprehensive test suite with 500+ tests. All tests
 are run via `./scripts/build_toolchain -t`.
 
 ### Unit tests
@@ -244,6 +315,11 @@ externals (no real downloads, builds, or network access):
   * **test_progress.rb** — progress bar rendering and update throttling
   * **test_package_coverage.rb** — edge cases for 100% coverage on package.rb
   * **test_pkgmgr_coverage.rb** — edge cases for package_manager.rb
+  * **test_build_env.rb** — BuildEnv: merging, de-duplication, rendering
+  * **test_deps_build_env.rb** — what a package publishes and what a consumer
+    collects, including which version each dependency resolves to
+  * **test_version_solver.rb** — version selection: defaults, pins, pins that
+    displace a default, and pins that conflict
 
 Key testing patterns:
   * `with_fake_tc` — creates a temp toolchain directory, pins ARCH to i386
@@ -312,7 +388,7 @@ class MyPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["mybin", false],             # file that must exist after build
   ]
 
@@ -334,7 +410,9 @@ pkgmgr.register(MyPackage.new())
 
 2. Add `require_relative 'mypackage'` to `scripts/pkgmgr/main.rb`.
 
-3. Add `VER_MYPACKAGE=1.0.0` to `other/pkg_versions`.
+3. Add the version: `VER_MYPACKAGE=1.0.0` in `other/pkg_versions` for a
+   target package, or `HOST_VER_MYPACKAGE=1.0.0` in
+   `other/host_pkg_versions` for a host one.
 
 4. Run: `./scripts/build_toolchain -s mypackage`
 
