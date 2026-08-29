@@ -50,9 +50,9 @@ class BusyBoxPackage < Package
   def configurable? = true
 
   def config_impl
-    make_vars, env = host_ncurses_build_flags
+    be = deps_build_env
 
-    ok = system(env, "make", *make_vars, "menuconfig")
+    ok = system(be.env, "make", *be.kconfig_make_vars, "menuconfig")
     return false if !ok
 
     fix_config_file

@@ -194,13 +194,30 @@ class NcursesHostPackage < Package
   # ncurses installs headers under include/ncursesw/ with widec (curses.h,
   # term.h, etc.). Consumers that use pkg-config get the right -I flag
   # automatically from ncursesw.pc; others need the explicit include
-  # paths surfaced by Package#host_ncurses_build_flags.
+  # paths published by build_env below.
   def expected_files = [
     ["install/lib/libncursesw.a", false],
     ["install/lib/libtinfo.a", false],
     ["install/include/ncursesw/curses.h", false],
     ["install/lib/pkgconfig/ncursesw.pc", false],
   ]
+
+  # What dependents need to compile and link against this ncurses.
+  # With --enable-widec the headers land in include/ncursesw/, so both
+  # that directory and the top-level include/ are published: the former
+  # for sources that include <curses.h> directly, the latter for those
+  # spelling it <ncursesw/curses.h>. Consumers going through pkg-config
+  # find ncursesw.pc via the pkg-config dir instead.
+  def build_env(ver)
+
+    prefix = install_prefix(ver) / "install"
+
+    return BuildEnv.new(
+      include_dirs:    [prefix / "include", prefix / "include" / "ncursesw"],
+      lib_dirs:        [prefix / "lib"],
+      pkg_config_dirs: [prefix / "lib" / "pkgconfig"],
+    )
+  end
 
   def clean_build(dir)
     FileUtils.rm_rf(dir / "install")

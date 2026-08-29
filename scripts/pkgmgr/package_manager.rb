@@ -389,6 +389,13 @@ class PackageManager
     DepResolver.validate(build_dep_graph)
   end
 
+  # Transitive dependency closure of `name`, nearest dependency first.
+  # Used by Package#deps_build_env to collect the build interfaces a
+  # package's dependencies publish.
+  def dep_closure(name)
+    return DepResolver.dep_closure(name, build_dep_graph)
+  end
+
   # Given an array of [name, ver] pairs requested by the user, compute
   # the full install plan: transitive deps resolved, already-installed
   # packages filtered out, topological order (deps first).

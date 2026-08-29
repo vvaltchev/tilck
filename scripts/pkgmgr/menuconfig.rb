@@ -24,8 +24,8 @@ require_relative 'busybox'  # for BUSYBOX_SOURCE
 # source (u-boot, or a direct torvalds/linux partial clone) in a
 # later PR.
 #
-# host_ncurses provides libncursesw.a + libtinfo.a via its
-# HOSTCFLAGS / HOSTLDFLAGS helper (see Package#host_ncurses_build_flags).
+# host_ncurses provides libncursesw.a + libtinfo.a through the build
+# interface it publishes (see NcursesHostPackage#build_env).
 #
 class HostMenuconfigPackage < Package
 
@@ -74,7 +74,7 @@ class HostMenuconfigPackage < Package
     # it — so just drop it to free the name.
     File.delete("INSTALL") if File.exist?("INSTALL")
 
-    make_vars, env = host_ncurses_build_flags
+    be = deps_build_env
 
     # Seed .config from the one busybox.rb uses for its own build —
     # content doesn't matter, we just need a file so silentoldconfig
@@ -85,7 +85,7 @@ class HostMenuconfigPackage < Package
     # silentoldconfig: compiles `conf` and runs `conf -s Config.in`,
     # which exits cleanly with a valid .config present.
     ok = run_command("silentoldconfig.log", [
-      "make", *make_vars,
+      "make", *be.kconfig_make_vars,
       "-j#{BUILD_PAR}",
       "silentoldconfig",
     ])
@@ -99,7 +99,7 @@ class HostMenuconfigPackage < Package
     # simply isn't available, so -lncursesw falls through to system
     # libncurses via $cc -print-file-name, which has no curses.h or
     # wide-char headers).
-    env_args = env.map { |k, v| "#{k}=#{v}" }
+    env_args = be.env.map { |k, v| "#{k}=#{v}" }
 
     # menuconfig: compiles `mconf` + lxdialog, then tries to run
     # mconf. We only want the binaries; the run step is an unwanted
@@ -113,7 +113,7 @@ class HostMenuconfigPackage < Package
     # mconf+lxdialog binaries are on disk ready to copy.
     ok = run_command("menuconfig.log", [
       "env", "TERM=", *env_args,
-      "make", *make_vars,
+      "make", *be.kconfig_make_vars,
       "-j#{BUILD_PAR}",
       "menuconfig",
     ])
