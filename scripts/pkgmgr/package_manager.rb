@@ -6,6 +6,7 @@ require_relative 'version'
 require_relative 'term'
 require_relative 'package'
 require_relative 'dep_resolver'
+require_relative 'version_solver'
 
 require 'singleton'
 require 'set'
@@ -449,6 +450,36 @@ class PackageManager
     return (@found_installed || []).map { |x| x.pkgname }.uniq
   end
 
+  # The version each package in `name`'s closure resolves to, with
+  # `ver` as the version of `name` itself (nil = its default).
+  #
+  # An explicit pin displaces a default, and says so at info level: a
+  # default quietly not being used is exactly the kind of thing worth
+  # seeing in the log.
+  def resolved_versions(name, ver = nil)
+    return resolved_versions_for([[name, ver]])
+  end
+
+  # Same, for several requested packages at once. They must be resolved
+  # together, not one at a time and merged: two of them pinning the
+  # same dependency to different versions is a conflict, and merging
+  # per-root results would silently let the last one win.
+  def resolved_versions_for(pairs)
+
+    return VersionSolver.resolve(
+      pairs,
+      deps_of: ->(n, v) {
+        pkg = get(n)
+        pkg ? pkg.check_dep_pins(pkg.dep_list_for(v)) : []
+      },
+      default_of: ->(n) { get(n)&.default_ver },
+      on_override: ->(n, default_ver, pinned, path) {
+        info "#{n}: using #{pinned}, not the default #{default_ver} " \
+             "(pinned via #{path.join(' -> ')})"
+      },
+    )
+  end
+
   # Transitive dependency closure of `name`, nearest dependency first.
   # Used by Package#deps_build_env to collect the build interfaces a
   # package's dependencies publish.
@@ -464,23 +495,35 @@ class PackageManager
   # for auto-resolved deps is nil (meaning default_ver during install).
   def resolve_install_plan(requested_pairs)
     graph = build_dep_graph
+    user_vers = requested_pairs.to_h
+
+    # Resolve every version in the closure first: a dependency pinned
+    # by one of the requested packages must count as installed (or not)
+    # at the version it is pinned to, not at its default. All the
+    # requested packages go in together, so pins that disagree across
+    # them are caught instead of quietly resolved by merge order.
+    versions = resolved_versions_for(requested_pairs)
 
     # Build the set of already-installed package names.
     installed = Set.new
     @packages.each_value do |pkg|
-      user_ver = requested_pairs.find { |n, _| n == pkg.name }&.last
-      ver = user_ver || pkg.default_ver
+      ver = user_vers[pkg.name] || versions[pkg.name] || pkg.default_ver
       installed.add(pkg.name) if ver && pkg.installed?(ver)
     end
 
     requested_names = requested_pairs.map(&:first)
     ordered_names = DepResolver.resolve(requested_names, graph, installed)
 
-    # Map back to [name, ver] pairs. User-specified versions are
-    # preserved; auto-resolved deps get nil (install() will use
-    # default_ver).
-    user_vers = requested_pairs.to_h
-    ordered_names.map { |name| [name, user_vers[name]] }
+    # Map back to [name, ver] pairs. A version the user asked for is
+    # passed through as-is. Otherwise a version is passed only when a
+    # pin moved it off the default — leaving it nil is what tells
+    # install() this is a default install rather than a pinned one.
+    ordered_names.map { |name|
+      next [name, user_vers[name]] if user_vers[name]
+      pkg = get(name)
+      v = versions[name]
+      [name, (v && pkg && v != pkg.default_ver) ? v : nil]
+    }
   end
 
   # Uninstall the package

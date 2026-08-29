@@ -415,6 +415,76 @@ class TestDepsBuildEnv < Minitest::Test
     end
   end
 
+  #
+  # Pins: a dependency named with an explicit version is built against
+  # that version, not the default.
+  #
+  def test_pinned_dep_uses_the_pinned_version
+    with_fake_tc do
+      with_stubbed_externals do
+        p = ProviderPackage.new("host_prov", on_host: true,
+                                host_tier: :distro)
+        c = TestHelper::FakePackage.new(
+          "host_consumer", on_host: true, host_tier: :distro,
+          dep_list: [Dep("host_prov", true, ver: Ver("2.0.0"))])
+        pkgmgr.register(p)
+        pkgmgr.register(c)
+        p.install_impl(Ver("1.0.0"))     # the default
+        p.install_impl(Ver("2.0.0"))     # the pinned one
+
+        dirs = c.deps_build_env.include_dirs
+        assert_equal 1, dirs.length
+        assert_match(%r{/2\.0\.0/include\z}, dirs.first)
+      end
+    end
+  end
+
+  def test_unpinned_dep_still_uses_the_default
+    with_fake_tc do
+      with_stubbed_externals do
+        p = ProviderPackage.new("host_prov", on_host: true,
+                                host_tier: :distro)
+        c = TestHelper::FakePackage.new(
+          "host_consumer", on_host: true, host_tier: :distro,
+          dep_list: [Dep("host_prov", true)])
+        pkgmgr.register(p)
+        pkgmgr.register(c)
+        p.install_impl(Ver("1.0.0"))
+        p.install_impl(Ver("2.0.0"))
+
+        dirs = c.deps_build_env.include_dirs
+        assert_match(%r{/1\.0\.0/include\z}, dirs.first)
+      end
+    end
+  end
+
+  def test_pin_on_a_target_dep_is_rejected
+    with_fake_tc do
+      e = assert_raises(RuntimeError) {
+        TestHelper::FakePackage.new(
+          "consumer", dep_list: [Dep("other", false, ver: Ver("1.0.0"))])
+      }
+      assert_match(/only host packages can be pinned/, e.message)
+    end
+  end
+
+  def test_pin_on_a_host_dep_is_accepted
+    with_fake_tc do
+      pkg = TestHelper::FakePackage.new(
+        "consumer", dep_list: [Dep("host_other", true, ver: Ver("1.0.0"))])
+      assert_equal Ver("1.0.0"), pkg.dep_list.first.ver
+    end
+  end
+
+  def test_dep_list_for_defaults_to_the_declared_list
+    with_fake_tc do
+      pkg = TestHelper::FakePackage.new(
+        "consumer", dep_list: [Dep("host_other", true)])
+      assert_equal pkg.dep_list, pkg.dep_list_for(Ver("1.0.0"))
+      assert_equal pkg.dep_list, pkg.dep_list_for(nil)
+    end
+  end
+
   def test_uninstalled_provider_dep_raises_instead_of_degrading
     with_fake_tc do
       with_stubbed_externals do
