@@ -272,8 +272,8 @@ end
 Tracked to zero before this is considered done.
 
   * [x] `host_binutils` package
-  * [ ] `host_linux_headers` package
-  * [ ] `host_glibc` package
+  * [x] `host_linux_headers` package
+  * [x] `host_glibc` package
   * [ ] `host_gcc` package, majors 11 through 16
   * [x] tier 4 (`host_tier: :hermetic`) in the package manager
   * [ ] composed sysroot + recomposition on resolution change
