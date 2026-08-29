@@ -6,6 +6,7 @@ require_relative 'version'
 require_relative 'term'
 require_relative 'source_ref'
 require_relative 'package_manager'
+require_relative 'build_env'
 
 PackageDep = Struct.new(
 
@@ -239,10 +240,6 @@ class Package
   # Applies common patches (*.diff in the version directory) first, then
   # arch-specific patches from a <arch>/ subdirectory, all in sorted order.
   # Called from install_impl after extraction, with cwd = source directory.
-  # Apply patch files from scripts/patches/<pkg>/<ver>/.
-  # Applies common patches (*.diff in the version directory) first, then
-  # arch-specific patches from a <arch>/ subdirectory, all in sorted order.
-  # Called from install_impl after extraction, with cwd = source directory.
   #
   # Returns true on success (including "no patches to apply"), false on
   # failure. Never returns nil.
@@ -451,14 +448,39 @@ class Package
     return true
   end
 
+  # The InstallInfo for `ver` built with this package's default compiler
+  # for its default arch, or nil when that exact install is missing or
+  # incomplete. Single source of truth for "which install do we mean":
+  # never scan get_install_list() for "the first one that isn't broken",
+  # as that picks whichever version the filesystem happens to list first.
+  def find_install(ver)
+    return get_install_list().find { |x|
+      x.ver == ver and x.compiler == default_cc and
+      x.arch == default_arch and !x.broken
+    }
+  end
+
   # A package is only "installed" if the install tree is complete (not
   # broken). Otherwise a failed earlier install (e.g. a crash after the
   # ver dir was created but before all expected files were produced)
   # would prevent `install_impl` from ever retrying on its own.
-  def installed?(ver) = get_install_list().any? { |x|
-    x.ver == ver and x.compiler == default_cc and
-    x.arch == default_arch and !x.broken
-  }
+  def installed?(ver) = !find_install(ver).nil?
+
+  # Absolute path of the install tree for `ver`. Raises when that
+  # version isn't installed: dependency resolution guarantees it is, so
+  # a miss is a bug to report rather than a cue to fall back on whatever
+  # the host system happens to provide.
+  def install_prefix(ver)
+
+    info = find_install(ver)
+
+    if !info
+      raise "#{name} version #{ver} is not installed. " \
+            "To fix: ./scripts/build_toolchain -s #{name}"
+    end
+
+    return info.path
+  end
 
   # Does this package have an older version installed but not the
   # current one (from pkg_versions)? If so, it needs upgrading.
@@ -487,38 +509,26 @@ class Package
     File.write(path, lines.join("\n") + "\n")
   end
 
-  # Locate the installed host_ncurses tree and return the make vars
-  # and environment needed to link kconfig's host tools (mconf, nconf)
-  # against it. Used by `-C` flows on packages that invoke `make
-  # menuconfig`.
+  # What this package offers to packages that depend on it, at `ver`:
+  # include dirs, lib dirs, pkg-config dirs, extra environment. The base
+  # class publishes nothing; a package that others link against overrides
+  # this and may vary what it returns by version.
   #
-  # Returns [make_vars, env]. If host_ncurses is not installed, returns
-  # [[], {}] and emits a warning — the menuconfig invocation falls back
-  # to system ncurses (fine on Linux/FreeBSD hosts with libncurses-dev,
-  # broken on macOS where the system ncurses is ancient).
-  def host_ncurses_build_flags
-    pkg = pkgmgr.get("host_ncurses")
-    info = pkg&.get_install_list&.find { |x| !x.broken }
-    if !info
-      warning "host_ncurses is not installed; " \
-              "menuconfig will fall back to system ncurses"
-      warning "To fix: ./scripts/build_toolchain -s host_ncurses"
-      return [[], {}]
-    end
-    prefix = info.path / "install"
-    # With --enable-widec, ncurses installs headers under
-    # include/ncursesw/ (curses.h, term.h, etc.). The top-level
-    # include/ path covers consumers that include via
-    # `<ncursesw/curses.h>`. Consumers using pkg-config get the right
-    # flags from ncursesw.pc regardless.
-    make_vars = [
-      "HOSTCFLAGS=-I#{prefix}/include -I#{prefix}/include/ncursesw",
-      "HOSTLDFLAGS=-L#{prefix}/lib",
-    ]
-    env = {
-      "PKG_CONFIG_PATH" => "#{prefix}/lib/pkgconfig:#{ENV['PKG_CONFIG_PATH']}"
+  # Only the package itself knows where its headers and libraries land,
+  # so this is the only place that knowledge belongs.
+  def build_env(ver) = BuildEnv.empty
+
+  # The merged build interface published by this package's dependencies,
+  # each at the version bound for it, nearest dependency first.
+  #
+  # Consumers call this instead of naming any dependency: adding a new
+  # host library to dep_list is enough for its flags to appear here.
+  def deps_build_env
+
+    return pkgmgr.dep_closure(name).reduce(BuildEnv.empty) { |acc, dep_name|
+      dep = pkgmgr.get(dep_name)
+      dep ? acc.merge(dep.build_env(dep.default_ver)) : acc
     }
-    [make_vars, env]
   end
 
   # Interactive reconfiguration (e.g. `make menuconfig`). Only packages

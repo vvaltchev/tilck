@@ -54,9 +54,9 @@ class UbootPackage < Package
   def configurable? = true
 
   def config_impl
-    nc_vars, nc_env = host_ncurses_build_flags
+    be = deps_build_env
 
-    ok = system(nc_env, "make", *nc_vars, "menuconfig")
+    ok = system(be.env, "make", *be.kconfig_make_vars, "menuconfig")
     return false if !ok
 
     fix_config_file

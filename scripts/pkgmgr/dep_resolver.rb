@@ -72,6 +72,38 @@ module DepResolver
     validate_no_cycles(graph)
   end
 
+  # Transitive dependency closure of `name`, nearest first: direct
+  # dependencies before their own dependencies, breadth-first.
+  #
+  # This is deliberately NOT the topological order computed by resolve():
+  # install order needs dependencies built first, while a consumer
+  # collecting build flags wants its direct dependencies' include paths
+  # ahead of the transitive ones. Reversing a topological sort does not
+  # give that when the graph branches.
+  #
+  # `name` itself is not included. Raises MissingDepError if `name` is
+  # not in the graph.
+  def dep_closure(name, graph)
+
+    if !graph.key?(name)
+      raise MissingDepError, "Unknown package: #{name}"
+    end
+
+    seen = Set.new([name])
+    out = []
+    queue = graph[name].dup
+
+    while !queue.empty?
+      n = queue.shift
+      next if seen.include?(n)
+      seen.add(n)
+      out << n
+      queue.concat(graph[n] || [])
+    end
+
+    return out
+  end
+
   # Compute the install order for a set of requested packages.
   #
   # 1. BFS from `requested` to collect the transitive closure of deps.
