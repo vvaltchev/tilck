@@ -398,7 +398,8 @@ class TestMainIntegration < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         gcc_ver = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0")
+        old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+        FileUtils.mkdir_p(old_dir)
 
         pkgmgr.register(FakePackage.new("foo"))
 
@@ -447,9 +448,8 @@ class TestMainIntegration < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         gcc_ver = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(
-          tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
-        )
+        old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+        FileUtils.mkdir_p(old_dir)
         pkgmgr.register(FakePackage.new("foo"))
 
         result = Main.main(["--upgrade"])
@@ -621,9 +621,8 @@ class TestMainDryRunInstall < Minitest::Test
         # Seed an older install on disk to make the package
         # upgradable.
         gcc_ver = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(
-          tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
-        )
+        old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+        FileUtils.mkdir_p(old_dir)
         pkgmgr.register(FakePackage.new("foo"))
 
         result = nil

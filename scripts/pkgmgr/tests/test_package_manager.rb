@@ -286,7 +286,8 @@ class TestPackageManagerUpgrade < Minitest::Test
 
   def test_upgradable_when_old_version
     with_fake_tc do |tc|
-      # Simulate an old version on disk
+      # Simulate an old version on disk, installed as the default
+      # (no origin file, like any pre-existing installation)
       gcc_ver = ARCH.gcc_ver.to_s
       old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)

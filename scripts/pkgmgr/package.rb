@@ -21,10 +21,45 @@ def Dep(name, host, ver = nil)
   return PackageDep.new(name, host, ver)
 end
 
+#
+# How an installation's version was chosen, recorded in a hidden file
+# inside its version directory at install time.
+#
+# Nothing else can tell the two cases apart: on disk a default install
+# and one the user named are both just <pkg>/<ver>/, and the version
+# alone cannot say whether it was asked for or merely current at the
+# time. --upgrade needs the difference — a version somebody pinned must
+# not be replaced behind their back.
+#
+# Installations made before this file existed carry none, and are read
+# as :default. That is what they were: naming a version at install time
+# is newer than they are, so nothing pinned can predate the file, and
+# reading them any other way would quietly stop --upgrade from ever
+# touching an existing toolchain.
+#
+module InstallOrigin
+
+  FILE    = ".install_origin"
+  DEFAULT = "default"
+  PINNED  = "pinned"
+
+  module_function
+
+  def write(dir, default_install)
+    File.write(dir / FILE, (default_install ? DEFAULT : PINNED) + "\n")
+  end
+
+  def default_install?(dir)
+    path = dir / FILE
+    return true if !path.file?
+    return path.read.strip != PINNED
+  end
+end
+
 class InstallInfo
 
   attr_reader :pkgname, :compiler, :on_host, :arch, :ver, :path
-  attr_reader :pkg, :broken, :target_arch, :libc
+  attr_reader :pkg, :broken, :target_arch, :libc, :default_install
 
   def initialize(
     pkgname,  # package name (string)
@@ -36,7 +71,8 @@ class InstallInfo
     pkg = nil,# Package object or nil.
     broken      = nil, # is the package broken?
     target_arch = nil, # target architecture [only for compilers]
-    libc        = nil  # libc (e.g. "musl") [only for compilers]
+    libc        = nil, # libc (e.g. "musl") [only for compilers]
+    default_install: false # installed as the default version?
   )
     @pkgname = pkgname         # package name
     @compiler = compiler       # "syscc" or compiler version or nil (= noarch)
@@ -48,6 +84,7 @@ class InstallInfo
     @broken = broken           # broken attribute
     @target_arch = target_arch
     @libc = libc
+    @default_install = default_install
     assert { arch.nil? or arch.is_a? Architecture }
     freeze
   end
@@ -485,13 +522,18 @@ class Package
     return info.path
   end
 
-  # Does this package have an older version installed but not the
-  # current one (from pkg_versions)? If so, it needs upgrading.
+  # Was this package installed as its default version, and has that
+  # default since been bumped in the version file? Only then does it
+  # need upgrading.
+  #
+  # A version the user asked for by name is deliberate and is left
+  # alone, however old it is — which is why the two cases have to be
+  # distinguishable on disk at all (see InstallOrigin).
   def needs_upgrade?
     list = get_install_list.select { |x|
       x.compiler == default_cc && x.arch == default_arch && !x.broken
     }
-    !list.empty? && !list.any? { |x| x.ver == default_ver }
+    list.any? { |x| x.default_install && x.ver != default_ver }
   end
 
   # Methods not implemented in the base class
@@ -573,7 +615,8 @@ class Package
           ver,                              # package version
           dir / d,                          # install path
           self,                             # package object
-          !check_install_dir(dir / d, ver)  # broken?
+          !check_install_dir(dir / d, ver), # broken?
+          default_install: InstallOrigin.default_install?(dir / d)
         )
       end
     end
@@ -608,7 +651,8 @@ class Package
             ver,                              # package version
             dir / d,                          # install path
             self,                             # package object
-            !check_install_dir(dir / d, ver)  # broken?
+            !check_install_dir(dir / d, ver), # broken?
+            default_install: InstallOrigin.default_install?(dir / d)
           )
         end # for ver_dir
       end # for arch
@@ -632,7 +676,8 @@ class Package
           ver,                              # version
           dir / d,                          # install path
           self,                             # package object
-          !check_install_dir(dir / d, ver)  # broken?
+          !check_install_dir(dir / d, ver), # broken?
+          default_install: InstallOrigin.default_install?(dir / d)
         )
       end
     end

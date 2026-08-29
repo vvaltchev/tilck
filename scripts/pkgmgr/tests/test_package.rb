@@ -272,8 +272,9 @@ class TestPackageNeedsUpgrade < Minitest::Test
 
   def test_old_version_installed
     with_fake_tc do |tc|
-      # Manually create an old version directory to simulate a
-      # previous install at a different version.
+      # Simulate a previous default install at an older version.
+      # It carries no origin file, like every install made before
+      # that file existed, and so reads as a default install.
       gcc_ver = ARCH.gcc_ver.to_s
       old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
@@ -281,6 +282,100 @@ class TestPackageNeedsUpgrade < Minitest::Test
       pkg = FakePackage.new("foo")
       pkgmgr.register(pkg)
       assert pkg.needs_upgrade?
+    end
+  end
+
+  #
+  # The distinction the marker exists for. On disk a default install
+  # and an explicitly-requested one are both just <pkg>/<ver>/; only
+  # the marker says which is which, and --upgrade must not replace a
+  # version somebody asked for by name.
+  #
+  def test_default_install_is_marked
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")               # no version named
+
+        inst = pkg.find_install(Ver("1.0.0"))
+        assert_equal "default",
+                     (inst.path / InstallOrigin::FILE).read.strip
+        assert inst.default_install
+      end
+    end
+  end
+
+  def test_explicit_version_install_is_not_marked
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo", Ver("1.0.0"))  # version named explicitly
+
+        inst = pkg.find_install(Ver("1.0.0"))
+        assert_equal "pinned",
+                     (inst.path / InstallOrigin::FILE).read.strip
+        refute inst.default_install
+      end
+    end
+  end
+
+  def test_pinned_old_version_is_left_alone
+    with_fake_tc do |tc|
+      # Same old version on disk as test_old_version_installed, but
+      # recorded as pinned: somebody asked for 0.9.0 by name, so a
+      # later default bump must not drag them off it.
+      gcc_ver = ARCH.gcc_ver.to_s
+      old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+      FileUtils.mkdir_p(old_dir)
+      InstallOrigin.write(old_dir, false)
+
+      pkg = FakePackage.new("foo")
+      pkgmgr.register(pkg)
+      refute pkg.needs_upgrade?
+    end
+  end
+
+  # An installation predating the origin file reads as a default one,
+  # so --upgrade keeps working on a toolchain built before it existed.
+  def test_install_without_origin_file_reads_as_default
+    with_fake_tc do |tc|
+      gcc_ver = ARCH.gcc_ver.to_s
+      old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+      FileUtils.mkdir_p(old_dir)
+      refute (old_dir / InstallOrigin::FILE).exist?
+
+      pkg = FakePackage.new("foo")
+      pkgmgr.register(pkg)
+      assert pkg.find_install(Ver("0.9.0")).default_install
+      assert pkg.needs_upgrade?
+    end
+  end
+
+  def test_current_default_install_needs_no_upgrade
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+        refute pkg.needs_upgrade?
+      end
+    end
+  end
+
+  # A pinned old version sitting next to a marked current one must not
+  # make the package look upgradable.
+  def test_pinned_old_beside_marked_current
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo", Ver("0.9.0"))  # pinned
+        pkgmgr.install("foo")                # default (1.0.0), marked
+
+        refute pkg.needs_upgrade?
+      end
     end
   end
 end
