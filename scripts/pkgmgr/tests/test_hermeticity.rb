@@ -205,3 +205,35 @@ class TestHermeticityLoaderOutput < Minitest::Test
     assert_match(/libz\.so\.1/, v.first.detail)
   end
 end
+
+#
+# The hostile-environment check. Resolving correctly in a CLEAN
+# environment proves very little: our loader has the sysroot compiled
+# in as its default search path, so a binary carrying no RPATH resolves
+# correctly when nothing competes and silently loads system libraries
+# when something does. The audit therefore asks the hostile question.
+#
+class TestHermeticityHostileCheck < Minitest::Test
+
+  def test_system_libdirs_are_declared
+    refute_empty Hermeticity::SYSTEM_LIBDIRS
+    assert_includes Hermeticity::SYSTEM_LIBDIRS, "/usr/lib"
+  end
+
+  # What the audit missed before: a binary with no RPATH that resolves
+  # correctly only because nothing was competing.
+  def test_a_binary_relying_on_loader_defaults_is_caught
+    clean = { "libc.so.6" => "/tc/lib/libc.so.6" }
+    hostile = { "libc.so.6" => "/usr/lib/libc.so.6" }
+
+    assert_empty Hermeticity.check_refs("/tc/bin/x", interp: "/tc/lib/ld.so",
+                                        rpaths: [], resolved: clean,
+                                        allowed: ["/tc"])
+
+    v = Hermeticity.check_refs("/tc/bin/x", interp: "/tc/lib/ld.so",
+                               rpaths: [], resolved: hostile,
+                               allowed: ["/tc"])
+    assert_equal 1, v.length
+    assert_equal "resolved outside", v.first.kind
+  end
+end

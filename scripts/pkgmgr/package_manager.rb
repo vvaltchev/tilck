@@ -557,8 +557,15 @@ class PackageManager
               "checking where its libraries resolve"
     end
 
+    hostile = pkg.hermeticity_hostile_check?
+    if !hostile
+      info "#{pkg.name}: auditing without a hostile LD_LIBRARY_PATH " \
+           "(see Package#hermeticity_hostile_check?)"
+    end
+
     violations = Hermeticity.audit(
-      inst.path, allowed: [TC], readelf: readelf, loader: loader
+      inst.path, allowed: [TC], readelf: readelf, loader: loader,
+      hostile: hostile
     )
 
     return true if violations.empty?
