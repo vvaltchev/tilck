@@ -427,6 +427,15 @@ class PackageManager
     end
   end
 
+  # Names of installations found on disk that no registered package
+  # claims — what a package rename or removal leaves behind. `-l`
+  # reports these as "found", so `-u` has to be able to name them:
+  # uninstall() already handles them via @found_installed, but the
+  # CLI's name resolution only knows registered packages.
+  def orphan_names
+    return (@found_installed || []).map { |x| x.pkgname }.uniq
+  end
+
   # Transitive dependency closure of `name`, nearest dependency first.
   # Used by Package#deps_build_env to collect the build interfaces a
   # package's dependencies publish.
@@ -526,6 +535,19 @@ class PackageManager
       install_list  = all_pkgs ? @known_installed + @found_installed
                                : @found_installed
       warning "Not recognized package name: #{name}" unless all_pkgs
+
+      if !all_pkgs
+        # A single unrecognized name matches only orphans, and there is
+        # no package object to ask which compiler and arch they were
+        # built for — that is what makes them orphans. The defaults
+        # above describe the current target, which a host-side orphan
+        # never matches, so without this the selection below silently
+        # removes nothing. Unless the user narrowed it explicitly,
+        # match every installation of that name. ALL keeps its own
+        # semantics: default compiler and arch unless asked otherwise.
+        all_cc    = true if compiler.nil?
+        all_arch  = true if arch.nil?
+      end
     end
 
     # Check if the default compiler for this package is "syscc", meaning this

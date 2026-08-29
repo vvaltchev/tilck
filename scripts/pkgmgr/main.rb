@@ -965,6 +965,11 @@ module Main
         # "ALL" is a literal keyword for uninstall mode; don't resolve it.
         if raw == "ALL"
           name = raw
+        elsif pkgmgr.orphan_names.include?(raw)
+          # An install on disk that no registered package claims, e.g.
+          # left behind by a package rename. `-l` lists it as "found",
+          # so it must be removable by that same name.
+          name = raw
         else
           name = resolve_pkg_name(raw)
           return 1 if !name
