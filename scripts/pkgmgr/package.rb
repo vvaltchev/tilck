@@ -230,7 +230,10 @@ class Package
             "hermetic package would install to the same broken path"
     end
 
-    return HOST_DIR_HERMETIC_BASE / ver.to_s
+    # "gcc-<ver>", not a bare version: the compiler is named because it
+    # might not always be gcc, and it matches the target-side
+    # gcc-<ver>/ directories at the root of the toolchain.
+    return HOST_DIR_HERMETIC_BASE / "gcc-#{ver}"
   end
 
   # The composed sysroot everything hermetic is built against: our

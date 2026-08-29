@@ -27,7 +27,7 @@ class TestHermeticTier < Minitest::Test
       gcc_ver = pkgmgr.get_config_ver("gcc", host: true).to_s
 
       root = pkg.host_install_root.to_s
-      assert_match(%r{/hermetic/#{Regexp.escape(gcc_ver)}\z}, root)
+      assert_match(%r{/hermetic/gcc-#{Regexp.escape(gcc_ver)}\z}, root)
       refute_match(/#{Regexp.escape(HOST_DISTRO)}/, root)
       refute_match(/#{Regexp.escape(HOST_CC)}/, root)
     end

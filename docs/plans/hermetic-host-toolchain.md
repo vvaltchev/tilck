@@ -136,14 +136,50 @@ never replace" property the rest of the package manager has.
 
 ## Package decomposition
 
-GCC and glibc depend on each other. Per Tilck's rule that dependency
-cycles are a hard error resolved by merging the cyclic packages into
-one, they are a single package:
+An earlier draft of this document had GCC and glibc as one package, on
+the grounds that they depend on each other and Tilck resolves a
+dependency cycle by merging the cyclic packages.
 
-| Package | Contains | Rationale |
+**That was wrong**, and the same-triple decision is why. A cross
+toolchain has a cycle because it has no compiler for its target until
+it builds one. Building for the host's own triple means the system
+compiler is already valid for the target, so glibc is built by it
+directly and nothing in the chain needs our GCC:
+
+```
+binutils (system cc) -> linux headers (no cc) -> glibc (system cc)
+                     -> gcc (system cc, against that glibc)
+```
+
+Linear, so the packages stay separate.
+
+The tier each lands in describes what that package's **own binaries**
+depend on:
+
+| Package | Tier | Contains |
 |---|---|---|
-| `host_binutils` | binutils | No cycle: glibc and gcc both need it |
-| `host_gcc` | kernel headers, glibc, gcc | The cyclic knot, one package |
+| `host_binutils` | `:distro` | as/ld/ar — build tools, system-linked |
+| `host_linux_headers` | `:hermetic` | sysroot headers |
+| `host_glibc` | `:hermetic` | sysroot libc |
+| `host_gcc` | `:distro` | the compiler, system-linked |
+
+binutils and GCC are built by the system compiler and link the system
+libc, so they are ordinary `:distro` packages. That is not a
+compromise: they are build tools running on the host, and what they
+link against never reaches what they produce. GCC's *target* runtime
+(libgcc, libstdc++) is a different matter — it is built against our
+glibc and belongs to the sysroot, which the symlink farm composes from
+GCC's install directory.
+
+One binutils serves every hermetic stack. A GCC needing a particular
+one pins it with `Dep('host_binutils', true, ver: ...)`.
+
+### Supported GCC versions
+
+Majors 11 through 16, at the latest point release of each, per
+ftp.gnu.org: 11.5.0, 12.5.0, 13.4.0, 14.4.0, 15.3.0, 16.2.0. The
+default is 14.4.0. Each installs beside the others and gets its own
+`hermetic/gcc-<ver>/` stack.
 
 `host_gcc`'s own version is the GCC version. The versions of the pieces
 it builds are separate entries it reads, so they stay visible and
@@ -236,7 +272,9 @@ end
 Tracked to zero before this is considered done.
 
   * [x] `host_binutils` package
-  * [ ] `host_gcc` package (headers + glibc + gcc)
+  * [ ] `host_linux_headers` package
+  * [ ] `host_glibc` package
+  * [ ] `host_gcc` package, majors 11 through 16
   * [x] tier 4 (`host_tier: :hermetic`) in the package manager
   * [ ] composed sysroot + recomposition on resolution change
   * [ ] hermeticity audit
