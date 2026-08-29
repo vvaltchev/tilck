@@ -17,7 +17,9 @@ class PackageManager
 
   def initialize
     @packages = {}
-    @config_versions = read_config_versions()
+    @config_versions = read_config_versions("pkg_versions", "VER_")
+    @host_config_versions =
+      read_config_versions("host_pkg_versions", "HOST_VER_")
     @known_pkgs_paths = nil
     @known_installed = nil
     @found_installed = nil
@@ -116,8 +118,16 @@ class PackageManager
     return get("gcc-#{arch}-musl")
   end
 
-  def get_config_ver(name)
-    return @config_versions[name._.upcase.sub("HOST_", "")]
+  # The default version of a package, from one of the two version
+  # files. `host` selects which: host tool versions
+  # (other/host_pkg_versions) and target versions (other/pkg_versions)
+  # are completely unrelated, so a package that exists on both sides
+  # must say which one it means. A few packages legitimately read
+  # across: gcc-<arch>-musl is a host package, but the musl version
+  # baked into its tarball name is a target one.
+  def get_config_ver(name, host:)
+    table = host ? @host_config_versions : @config_versions
+    return table[name._.upcase]
   end
 
   def get_smart(pkg_or_name)
@@ -663,24 +673,31 @@ class PackageManager
     return list
   end
 
-  def read_config_versions
+  # Read one of the two version files into { "BUSYBOX" => Version }.
+  # `prefix` is the key prefix that file uses (VER_ or HOST_VER_); it is
+  # required on every entry and stripped from the resulting keys, so the
+  # two tables are looked up by bare package name.
+  def read_config_versions(fname, prefix)
+
     result = {}
-    data = File.read(MAIN_DIR / "other" / "pkg_versions")
+    data = File.read(MAIN_DIR / "other" / fname)
 
     for line in data.split("\n")
-      if !line.start_with? "VER_"
-        raise "Invalid line in pkg_versions: #{line}"
+      next if line.blank? || line.start_with?("#")
+
+      if !line.start_with? prefix
+        raise "Invalid line in #{fname}: #{line}"
       end
 
-      line = line.sub("VER_", "")
+      line = line.sub(prefix, "")
       key, value = line.split("=")
 
       if key.blank? || value.blank?
-        raise "Invalid line in pkg_versions: #{line}"
+        raise "Invalid line in #{fname}: #{line}"
       end
 
       if result[key]
-        raise "Duplicate key in pkg_versions: #{key}"
+        raise "Duplicate key in #{fname}: #{key}"
       end
 
       result[key] = Ver(value)

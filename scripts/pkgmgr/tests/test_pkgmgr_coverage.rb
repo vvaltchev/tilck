@@ -369,7 +369,7 @@ class TestReadConfigVersionsErrors < Minitest::Test
         with_context(MAIN_DIR: Pathname.new(fake_main)) do
           pm = PackageManager.instance
           assert_raises(RuntimeError) {
-            pm.send(:read_config_versions)
+            pm.send(:read_config_versions, "pkg_versions", "VER_")
           }
         end
       end
@@ -386,8 +386,59 @@ class TestReadConfigVersionsErrors < Minitest::Test
         with_context(MAIN_DIR: Pathname.new(fake_main)) do
           pm = PackageManager.instance
           assert_raises(RuntimeError) {
-            pm.send(:read_config_versions)
+            pm.send(:read_config_versions, "pkg_versions", "VER_")
           }
+        end
+      end
+    end
+  end
+
+  def test_host_file_requires_the_host_prefix
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "host_pkg_versions"),
+                   "VER_FOO=1.0\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          e = assert_raises(RuntimeError) {
+            pm.send(:read_config_versions, "host_pkg_versions", "HOST_VER_")
+          }
+          assert_match(/host_pkg_versions/, e.message)
+        end
+      end
+    end
+  end
+
+  def test_host_prefix_is_stripped_from_the_keys
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "host_pkg_versions"),
+                   "HOST_VER_FOO=1.2.3\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          got = pm.send(:read_config_versions,
+                        "host_pkg_versions", "HOST_VER_")
+          assert_equal Ver("1.2.3"), got["FOO"]
+        end
+      end
+    end
+  end
+
+  def test_comments_and_blank_lines_are_skipped
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "pkg_versions"),
+                   "#\n# a header comment\n#\n\nVER_FOO=1.0\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          got = pm.send(:read_config_versions, "pkg_versions", "VER_")
+          assert_equal({ "FOO" => Ver("1.0") }, got)
         end
       end
     end
@@ -403,7 +454,7 @@ class TestReadConfigVersionsErrors < Minitest::Test
         with_context(MAIN_DIR: Pathname.new(fake_main)) do
           pm = PackageManager.instance
           assert_raises(RuntimeError) {
-            pm.send(:read_config_versions)
+            pm.send(:read_config_versions, "pkg_versions", "VER_")
           }
         end
       end

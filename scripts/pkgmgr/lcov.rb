@@ -36,6 +36,11 @@ class LcovPackage < Package
 
   def default_arch = nil
   def default_cc = nil
+
+  # lcov runs on the build host: it is a noarch package (nothing to
+  # compile) rather than a target one, so its version comes from the
+  # host table even though on_host is false.
+  def default_ver = pkgmgr.get_config_ver("lcov", host: true)
 end
 
 pkgmgr.register(LcovPackage.new())

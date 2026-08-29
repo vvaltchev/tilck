@@ -51,7 +51,7 @@ class HostMenuconfigPackage < Package
   # BUSYBOX_SOURCE's pkg_versions entry is VER_BUSYBOX, not
   # VER_MENUCONFIG (which doesn't exist). Override default_ver so the
   # shared tarball is located correctly in the cache.
-  def default_ver = pkgmgr.get_config_ver("busybox")
+  def default_ver = pkgmgr.get_config_ver("busybox", host: false)
 
   def expected_files(ver = nil) = [
     ["install/bin/mconf", false],

@@ -44,7 +44,6 @@ class GtestPackage < Package
   end
 
   def pkg_dirname = "gtest"
-  def default_ver = pkgmgr.get_config_ver("gtest")
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
 

@@ -11,6 +11,7 @@ on:
       - 'scripts/bash_includes/**'
       - 'scripts/pkgmgr/**'
       - 'other/pkg_versions'
+      - 'other/host_pkg_versions'
       - '!README.md'
       - '!**/*.md'
   workflow_dispatch:

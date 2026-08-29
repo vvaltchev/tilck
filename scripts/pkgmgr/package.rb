@@ -232,7 +232,7 @@ class Package
   # is active). Host and noarch packages override both.
   def default_arch = pkgmgr.target_arch
   def default_cc = pkgmgr.target_arch.gcc_ver
-  def default_ver = pkgmgr.get_config_ver(@name.sub("host_", ""))
+  def default_ver = pkgmgr.get_config_ver(pkg_dirname, host: on_host)
   def pkg_dirname = name.sub("host_", "")
   def ver_dirname(ver) = ver.to_s()
 

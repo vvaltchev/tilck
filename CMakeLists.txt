@@ -294,35 +294,50 @@ endif()
 
 
 #
-# Read all the VER_<PACKAGE>=<VALUE> pairs from pkg_versions
+# Read the <KEY>=<VALUE> pairs from the two version files:
+#
+#   other/pkg_versions       VER_<PKG>       target side (in Tilck)
+#   other/host_pkg_versions  HOST_VER_<PKG>  build-host tools
+#
+# The two are unrelated (ncurses appears in both). Their keys carry
+# different prefixes, so both files can be read into this scope without
+# one overwriting the other.
 #
 
-# Re-run CMake automatically when pkg_versions changes (e.g. version bump)
-# so that the upgrade check below fires and VER_* variables are refreshed.
-set_property(DIRECTORY APPEND PROPERTY
-   CMAKE_CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/other/pkg_versions)
+# Re-run CMake automatically when either file changes (e.g. version
+# bump) so that the upgrade check below fires and the variables are
+# refreshed.
+macro(tilck_read_pkg_versions FILE_PATH)
 
-file(STRINGS ${CMAKE_SOURCE_DIR}/other/pkg_versions PKG_VERSIONS)
+   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      ${FILE_PATH})
 
-foreach(LINE ${PKG_VERSIONS})
-   if(NOT "${LINE}" STREQUAL "" AND NOT "${LINE}" MATCHES "^#")
+   file(STRINGS ${FILE_PATH} PKG_VERSIONS)
 
-      string(FIND "${LINE}" "=" EQUAL_POS)
+   foreach(LINE ${PKG_VERSIONS})
+      if(NOT "${LINE}" STREQUAL "" AND NOT "${LINE}" MATCHES "^#")
 
-      if (EQUAL_POS EQUAL -1)
-         message(FATAL_ERROR "Broken key/value syntax in pkg_versions")
+         string(FIND "${LINE}" "=" EQUAL_POS)
+
+         if (EQUAL_POS EQUAL -1)
+            message(FATAL_ERROR "Broken key/value syntax in ${FILE_PATH}")
+         endif()
+
+         string(SUBSTRING "${LINE}" 0 ${EQUAL_POS} KEY)
+         math(EXPR VALUE_START_POS "${EQUAL_POS} + 1")
+         string(SUBSTRING "${LINE}" ${VALUE_START_POS} -1 VALUE)
+
+         set(${KEY} "${VALUE}")
+         list(APPEND PKG_VERSION_VARS ${KEY})
+         message(STATUS "${KEY} = '${VALUE}'")
+
       endif()
+   endforeach()
 
-      string(SUBSTRING "${LINE}" 0 ${EQUAL_POS} KEY)
-      math(EXPR VALUE_START_POS "${EQUAL_POS} + 1")
-      string(SUBSTRING "${LINE}" ${VALUE_START_POS} -1 VALUE)
+endmacro()
 
-      set(${KEY} "${VALUE}")
-      list(APPEND PKG_VERSION_VARS ${KEY})
-      message(STATUS "${KEY} = '${VALUE}'")
-
-   endif()
-endforeach()
+tilck_read_pkg_versions(${CMAKE_SOURCE_DIR}/other/pkg_versions)
+tilck_read_pkg_versions(${CMAKE_SOURCE_DIR}/other/host_pkg_versions)
 
 unset(EQUAL_POS)
 unset(KEY)
@@ -341,7 +356,7 @@ unset(VALUE_START_POS)
 #
 set(PKGMGR_RUBY "")
 set(_tc_ruby
-   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/ruby/${VER_RUBY}/bin/ruby)
+   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/ruby/${HOST_VER_RUBY}/bin/ruby)
 
 if (EXISTS ${_tc_ruby})
    set(PKGMGR_RUBY ${_tc_ruby})
@@ -925,7 +940,7 @@ set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
 set(ZLIB_DIR                  ${TCROOT_ARCH_DIR}/zlib/${VER_ZLIB})
 set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnuefi/${VER_GNUEFI})
 set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
-set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${VER_LCOV})
+set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${HOST_VER_LCOV})
 
 set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
 
@@ -1741,7 +1756,7 @@ add_custom_target(
       ${IMG_FILE}
 )
 
-set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${VER_GTEST}/install)
+set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${HOST_VER_GTEST}/install)
 set(GTEST_BTC_COMMAND "host_gtest")
 
 add_custom_command(

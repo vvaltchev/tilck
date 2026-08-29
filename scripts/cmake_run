@@ -13,6 +13,7 @@ MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
 source $MAIN_DIR/other/pkg_versions
+source $MAIN_DIR/other/host_pkg_versions
 
 
 set_host_arch_variable   # set $HOST_ARCH
@@ -210,8 +211,8 @@ fi
 export CC
 export CXX
 
-if [ -f $HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE/bin/cmake ]; then
-   export CMAKE="$HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE/bin/cmake"
+if [ -f $HOST_ARCH_DIR_SYS/cmake/$HOST_VER_CMAKE/bin/cmake ]; then
+   export CMAKE="$HOST_ARCH_DIR_SYS/cmake/$HOST_VER_CMAKE/bin/cmake"
 else
    export CMAKE="cmake"
 fi

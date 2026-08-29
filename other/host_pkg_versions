@@ -1,0 +1,21 @@
+#
+# Versions of the packages built for and run on the BUILD HOST.
+#
+# Completely unrelated to other/pkg_versions, which holds the versions
+# of the packages that end up in Tilck itself. A package that exists on
+# both sides (ncurses) has one entry in each file and the two may differ
+# freely: the host tool and the target library have nothing to do with
+# each other.
+#
+# Keys are prefixed HOST_VER_ so that this file and pkg_versions can
+# both be sourced into the same shell (or read into the same CMake
+# scope) without one silently overwriting the other.
+#
+HOST_VER_CMAKE=3.22.6
+HOST_VER_RUBY=3.4.7
+HOST_VER_MUSL_CROSS_MAKE=3635262e452
+HOST_VER_GTEST=1.17.0
+HOST_VER_MTOOLS=4.0.49
+HOST_VER_NCURSES=6.5
+HOST_VER_SOPHGO_TOOLS=1.6
+HOST_VER_LCOV=v1.15
