@@ -373,9 +373,22 @@ bare minimum.
 ./scripts/build_toolchain --clean-all     # remove everything except cache
 ```
 
-Versions in `other/pkg_versions`. Bump version + `--upgrade` installs
-alongside old. CMake detects stale at configure (it's a
+Versions live in two unrelated files: `other/pkg_versions`
+(`VER_<PKG>`, target side, what ends up in Tilck) and
+`other/host_pkg_versions` (`HOST_VER_<PKG>`, build-host tools). A
+package on both sides — ncurses — has an entry in each and they may
+differ freely; `get_config_ver(name, host:)` takes the side
+explicitly. Bump a version + `--upgrade` installs alongside the old
+one, but only for installs that used the default version: one asked
+for by name (`-s pkg:ver`, recorded in `.install_origin`) is left
+alone. CMake detects stale at configure (both files are
 `CMAKE_CONFIGURE_DEPENDS`).
+
+`-s`, `-u` and `-C` all take `PKG[:VER]`. A `dep_list` entry can pin
+an exact version — `Dep('host_x', true, ver: Ver('1.2'))` — for host
+packages only; the target side is one version per package. An
+explicit pin beats a default (reported at info level); two pins that
+disagree are an error naming both paths.
 
 Layout:
 ```
