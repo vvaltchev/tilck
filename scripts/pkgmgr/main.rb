@@ -729,6 +729,13 @@ module Main
       return 1
     end
 
+    begin
+      pkgmgr.validate_versions
+    rescue PackageManager::MissingVersionError => e
+      error "Version table error: #{e.message}"
+      return 1
+    end
+
     if options[:list]
       pkgmgr.show_status_all(
         options[:group_by],

@@ -12,6 +12,8 @@ require 'set'
 
 class PackageManager
 
+  class MissingVersionError < StandardError; end
+
   include Singleton
   attr_reader :packages
 
@@ -397,6 +399,32 @@ class PackageManager
   # Called once after all packages are registered and before any install.
   def validate_deps
     DepResolver.validate(build_dep_graph)
+  end
+
+  # Every registered package must resolve to a version.
+  #
+  # get_config_ver is a plain hash lookup, so a package whose entry is
+  # missing from its version file — a typo, or a new package nobody
+  # added a version for — silently gets nil and only surfaces much
+  # later, as an empty component in a download URL or an install path.
+  # Check it up front and name every offender at once.
+  #
+  # Raises MissingVersionError listing the packages and the file each
+  # one was looked up in.
+  def validate_versions
+
+    missing = []
+
+    for pkg in @packages.values
+      next if !pkg.default_ver.nil?
+      fname = pkg.on_host ? "host_pkg_versions" : "pkg_versions"
+      missing << "#{pkg.name} (expected in other/#{fname})"
+    end
+
+    if !missing.empty?
+      raise MissingVersionError,
+            "Packages with no version: #{missing.join(', ')}"
+    end
   end
 
   # Transitive dependency closure of `name`, nearest dependency first.
