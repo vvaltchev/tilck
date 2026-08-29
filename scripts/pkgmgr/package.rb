@@ -14,10 +14,15 @@ PackageDep = Struct.new(
 
   :name,        # package name (string)
   :host,        # bool: runs on host or on the target?
-  :ver          # Version: can be nil, meaning "default"
+  :ver          # Version: nil means "whatever the default is"
 )
 
-def Dep(name, host, ver = nil)
+# Declare a dependency. `ver` pins it to an exact version; leaving it
+# nil — the normal case — means "the default version", so a coherent
+# build set can live in the version files instead of being repeated at
+# every edge. Only host packages can be pinned: Tilck itself is built
+# from exactly one version of each package.
+def Dep(name, host, ver: nil)
   return PackageDep.new(name, host, ver)
 end
 
@@ -150,6 +155,7 @@ class Package
       !!on_host == !!(name.start_with?("host_") || is_compiler)
     }
     assert { source.nil? or source.is_a?(SourceRef) }
+    check_dep_pins(dep_list)
   end
 
   # Can this package run / be built on the current host?
@@ -236,6 +242,31 @@ class Package
     end
 
     return FileUtils.chdir(d, &block)
+  end
+
+  # The dependencies this package has when built at `ver`. A package
+  # whose non-default versions need different dependency versions
+  # overrides this and returns a list with those pinned; everything
+  # else has one list for every version.
+  #
+  # Only the differences need pinning: anything left unpinned resolves
+  # to its default, so a non-default build does not have to restate the
+  # whole set.
+  def dep_list_for(ver = nil) = dep_list
+
+  # A pin on a target dependency is meaningless — the target side is
+  # one version per package by construction — so reject it rather than
+  # ignore it.
+  def check_dep_pins(list)
+
+    for d in list
+      next if d.ver.nil? || d.host
+      raise "#{name}: dependency '#{d.name}' is pinned to #{d.ver}, but " \
+            "only host packages can be pinned: Tilck is built from " \
+            "exactly one version of each package"
+    end
+
+    return list
   end
 
   # Default implementations
@@ -570,9 +601,12 @@ class Package
   # host library to dep_list is enough for its flags to appear here.
   def deps_build_env
 
+    versions = pkgmgr.resolved_versions(name)
+
     return pkgmgr.dep_closure(name).reduce(BuildEnv.empty) { |acc, dep_name|
       dep = pkgmgr.get(dep_name)
-      dep ? acc.merge(dep.build_env(dep.default_ver)) : acc
+      next acc if !dep
+      acc.merge(dep.build_env(versions[dep_name] || dep.default_ver))
     }
   end
 

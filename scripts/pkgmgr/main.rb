@@ -923,7 +923,13 @@ module Main
 
           # Resolve the full install plan: transitive deps, minus
           # already-installed, in topological order.
-          plan = pkgmgr.resolve_install_plan(requested)
+          begin
+            plan = pkgmgr.resolve_install_plan(requested)
+          rescue VersionSolver::ConflictError,
+                 VersionSolver::UnstableError => e
+            error "Version conflict: #{e.message}"
+            return 1
+          end
 
           if plan.empty?
             info "All requested packages are already installed"

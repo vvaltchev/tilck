@@ -81,6 +81,93 @@ class TestPackageManagerDepGraph < Minitest::Test
     assert_raises(DepResolver::MissingDepError) { pkgmgr.validate_deps }
   end
 
+  # A pinned dependency reaches the install plan carrying its version,
+  # so it installs at the pin. An unpinned one carries nil, which is
+  # what makes install() record it as a default install rather than a
+  # pinned one.
+  def test_install_plan_carries_a_pin_and_leaves_defaults_nil
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new(
+        "host_a", on_host: true, arch_list: ALL_HOST_ARCHS.values,
+        dep_list: [Dep("host_pinned", true, ver: Ver("0.5.0")),
+                   Dep("host_plain", true)]))
+      pkgmgr.register(FakePackage.new(
+        "host_pinned", on_host: true, arch_list: ALL_HOST_ARCHS.values))
+      pkgmgr.register(FakePackage.new(
+        "host_plain", on_host: true, arch_list: ALL_HOST_ARCHS.values))
+
+      plan = pkgmgr.resolve_install_plan([["host_a", nil]]).to_h
+      assert_equal Ver("0.5.0"), plan["host_pinned"]
+      assert_nil plan["host_plain"]
+      assert_nil plan["host_a"]
+    end
+  end
+
+  # Two requested packages pinning the same dependency to different
+  # versions is a conflict. Resolving each root separately and merging
+  # would have let whichever came last win, silently.
+  def test_install_plan_rejects_pins_that_disagree_across_roots
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new(
+        "host_a", on_host: true, arch_list: ALL_HOST_ARCHS.values,
+        dep_list: [Dep("host_shared", true, ver: Ver("1.0.0"))]))
+      pkgmgr.register(FakePackage.new(
+        "host_b", on_host: true, arch_list: ALL_HOST_ARCHS.values,
+        dep_list: [Dep("host_shared", true, ver: Ver("2.0.0"))]))
+      pkgmgr.register(FakePackage.new(
+        "host_shared", on_host: true, arch_list: ALL_HOST_ARCHS.values))
+
+      e = assert_raises(VersionSolver::ConflictError) {
+        pkgmgr.resolve_install_plan([["host_a", nil], ["host_b", nil]])
+      }
+      assert_match(/host_shared/, e.message)
+      assert_match(/host_a -> host_shared/, e.message)
+      assert_match(/host_b -> host_shared/, e.message)
+    end
+  end
+
+  def test_install_plan_accepts_agreeing_pins_across_roots
+    with_fake_tc do
+      for n in ["host_a", "host_b"]
+        pkgmgr.register(FakePackage.new(
+          n, on_host: true, arch_list: ALL_HOST_ARCHS.values,
+          dep_list: [Dep("host_shared", true, ver: Ver("0.5.0"))]))
+      end
+      pkgmgr.register(FakePackage.new(
+        "host_shared", on_host: true, arch_list: ALL_HOST_ARCHS.values))
+
+      plan = pkgmgr.resolve_install_plan(
+        [["host_a", nil], ["host_b", nil]]).to_h
+      assert_equal Ver("0.5.0"), plan["host_shared"]
+    end
+  end
+
+  # A pin that names the default version asks for nothing the default
+  # would not already give, so it stays a default install — and stays
+  # eligible for --upgrade.
+  def test_pin_equal_to_the_default_is_still_a_default_install
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new(
+        "host_a", on_host: true, arch_list: ALL_HOST_ARCHS.values,
+        dep_list: [Dep("host_shared", true, ver: Ver("1.0.0"))]))
+      pkgmgr.register(FakePackage.new(
+        "host_shared", on_host: true, arch_list: ALL_HOST_ARCHS.values))
+
+      plan = pkgmgr.resolve_install_plan([["host_a", nil]]).to_h
+      assert_nil plan["host_shared"]
+    end
+  end
+
+  def test_install_plan_keeps_an_explicitly_requested_version
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new(
+        "host_a", on_host: true, arch_list: ALL_HOST_ARCHS.values))
+
+      plan = pkgmgr.resolve_install_plan([["host_a", Ver("3.0.0")]]).to_h
+      assert_equal Ver("3.0.0"), plan["host_a"]
+    end
+  end
+
   # A validator that cannot fail is worthless, so these cover the
   # negative cases as well as the clean one.
   def test_validate_versions_clean
