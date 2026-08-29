@@ -291,4 +291,45 @@ class TestConfigureCoverage < Minitest::Test
       end
     end
   end
+
+  # `-C pkg:ver` reaches configure(ver): with several versions on disk
+  # the requested one is the one entered, and asking for an
+  # uninstalled version fails rather than silently picking another.
+  def test_configure_enters_the_requested_version
+    with_fake_tc do
+      with_stubbed_externals do
+        seen = []
+        pkg = FakePackage.new("foo")
+        pkg.define_singleton_method(:configurable?) { true }
+        pkg.define_singleton_method(:config_impl) {
+          seen << Dir.pwd
+          true
+        }
+        pkgmgr.register(pkg)
+        pkg.install_impl(Ver("1.0.0"))
+        pkg.install_impl(Ver("2.0.0"))
+
+        assert_equal true, pkg.configure(Ver("2.0.0"))
+        assert_equal 1, seen.length
+        assert_match(%r{/foo/2\.0\.0\z}, seen.first)
+
+        assert_equal true, pkg.configure(Ver("1.0.0"))
+        assert_match(%r{/foo/1\.0\.0\z}, seen.last)
+      end
+    end
+  end
+
+  def test_configure_rejects_an_uninstalled_version
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkg.define_singleton_method(:configurable?) { true }
+        pkg.define_singleton_method(:config_impl) { true }
+        pkgmgr.register(pkg)
+        pkg.install_impl(Ver("1.0.0"))
+
+        assert_equal false, pkg.configure(Ver("9.9.9"))
+      end
+    end
+  end
 end
