@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# ghci -- thin helper around the GitHub Actions REST API (via `gh`) for
+# inspecting Tilck CI runs: dispatch, status, per-job results, and failed
+# step logs. Dev-only tool for Claude's CI iteration.
+#
+# The CI workflows carry `branches-ignore: [readme*, temp-*, exp-*]`, so a
+# push to a topic branch triggers nothing: runs on exp-* must be dispatched
+# explicitly. That is intentional, and it is why `dispatch` exists.
+#
+# Sub-commands:
+#   workflows              list the dispatchable workflows
+#   dispatch <branch>      trigger every CI workflow on a branch
+#   status <branch>        compact table of the runs started most recently
+#   wait <branch> [secs]   poll until every run of the latest batch is done
+#   jobs <runId>           per-job state/result for one run
+#   fails <branch>         failed jobs across the latest batch
+#   log <runId>            failed-step log for one run
+#
+set -euo pipefail
+
+# Every workflow that validates a change. "Build CI containers" is excluded:
+# it only ever runs on master and rebuilds images rather than testing code.
+WORKFLOWS=(
+   "Tilck i386"
+   "Tilck riscv64"
+   "Tilck x86_64"
+   "Toolchain arch i386"
+   "Toolchain arch riscv64"
+   "Toolchain debian i386"
+   "Toolchain debian riscv64"
+   "Toolchain fedora i386"
+   "Toolchain fedora riscv64"
+)
+
+# The runs of the most recent dispatch batch, newest first, as JSON.
+# `count` defaults to the number of CI workflows, which is exactly one
+# batch.
+batch_json() {
+   local branch="$1"
+   local count="${2:-${#WORKFLOWS[@]}}"
+   gh run list --branch "$branch" --limit "$count" \
+      --json databaseId,name,status,conclusion,createdAt,url
+}
+
+cmd_workflows() {
+   printf '%s\n' "${WORKFLOWS[@]}"
+}
+
+cmd_dispatch() {
+   local branch="${1:?usage: ghci dispatch <branch>}"
+   local w
+   for w in "${WORKFLOWS[@]}"; do
+      printf '%-28s ' "$w"
+      if gh workflow run "$w" --ref "$branch" >/dev/null 2>&1; then
+         echo "dispatched"
+      else
+         echo "DISPATCH FAILED"
+      fi
+   done
+}
+
+cmd_status() {
+   local branch="${1:?usage: ghci status <branch>}"
+   batch_json "$branch" "${2:-}" | python3 -c '
+import json, sys
+rows = json.load(sys.stdin)
+done = sum(1 for r in rows if r["status"] == "completed")
+# A run that has not concluded reports "" or null, not a failure.
+bad  = [r for r in rows if r["conclusion"] and r["conclusion"] != "success"]
+for r in rows:
+    print("  %-28s %-12s %s" % (r["name"], r["status"], r["conclusion"] or ""))
+print("  ---- %d/%d completed, %d not successful ----" % (done, len(rows), len(bad)))
+sys.exit(1 if (done == len(rows) and bad) else 0)
+'
+}
+
+cmd_wait() {
+   local branch="${1:?usage: ghci wait <branch> [interval]}"
+   local interval="${2:-60}"
+   local n=${#WORKFLOWS[@]}
+   while :; do
+      local pending
+      pending=$(batch_json "$branch" "$n" |
+                python3 -c 'import json,sys; print(sum(1 for r in json.load(sys.stdin) if r["status"] != "completed"))')
+      if [ "$pending" -eq 0 ]; then
+         echo "All $n runs completed."
+         cmd_status "$branch" || true
+         return 0
+      fi
+      echo "$(date -u +%H:%M:%S)  $pending/$n still running..."
+      sleep "$interval"
+   done
+}
+
+cmd_jobs() {
+   local run="${1:?usage: ghci jobs <runId>}"
+   gh run view "$run" --json jobs \
+      --jq '.jobs[] | "  \(.name)\t\(.status)\t\(.conclusion // "")"' |
+      column -t -s $'\t'
+}
+
+cmd_fails() {
+   local branch="${1:?usage: ghci fails <branch>}"
+   local ids
+   ids=$(batch_json "$branch" "${#WORKFLOWS[@]}" |
+         python3 -c '
+import json, sys
+for r in json.load(sys.stdin):
+    if r["conclusion"] and r["conclusion"] != "success":
+        print(r["databaseId"], r["name"].replace(" ", "_"), r["conclusion"])
+')
+   if [ -z "$ids" ]; then
+      echo "No failed runs in the latest batch."
+      return 0
+   fi
+   local id name concl
+   while read -r id name concl; do
+      echo "=== $id  ${name//_/ }  [$concl] ==="
+      gh run view "$id" --json jobs \
+         --jq '.jobs[] | select(.conclusion != "success" and .conclusion != null) | "  job: \(.name) -> \(.conclusion)"' \
+         2>/dev/null || true
+   done <<< "$ids"
+}
+
+cmd_log() {
+   local run="${1:?usage: ghci log <runId>}"
+   gh run view "$run" --log-failed 2>/dev/null || {
+      echo "No failed-step log (run may still be in progress)."
+      return 1
+   }
+}
+
+case "${1:-}" in
+   workflows) shift; cmd_workflows "$@" ;;
+   dispatch)  shift; cmd_dispatch  "$@" ;;
+   status)    shift; cmd_status    "$@" ;;
+   wait)      shift; cmd_wait      "$@" ;;
+   jobs)      shift; cmd_jobs      "$@" ;;
+   fails)     shift; cmd_fails     "$@" ;;
+   log)       shift; cmd_log       "$@" ;;
+   *)
+      sed -n '3,25p' "$0"
+      exit 1
+      ;;
+esac
