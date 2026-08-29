@@ -80,6 +80,60 @@ class TestPackageManagerDepGraph < Minitest::Test
     pkgmgr.register(FakePackage.new("a", dep_list: [Dep("missing", false)]))
     assert_raises(DepResolver::MissingDepError) { pkgmgr.validate_deps }
   end
+
+  # A validator that cannot fail is worthless, so these cover the
+  # negative cases as well as the clean one.
+  def test_validate_versions_clean
+    pkgmgr.register(FakePackage.new("a"))
+    pkgmgr.register(FakePackage.new("host_b", on_host: true,
+                                    arch_list: ALL_HOST_ARCHS.values))
+    pkgmgr.validate_versions
+  end
+
+  def test_validate_versions_missing_target_entry
+    pkg = FakePackage.new("a")
+    pkg.define_singleton_method(:default_ver) { nil }
+    pkgmgr.register(pkg)
+
+    e = assert_raises(PackageManager::MissingVersionError) {
+      pkgmgr.validate_versions
+    }
+    assert_match(/\ba\b/, e.message)
+    assert_match(%r{other/pkg_versions}, e.message)
+  end
+
+  # The message must point at the file the package is actually looked
+  # up in: a host package missing from host_pkg_versions should not
+  # send the reader to the target file.
+  def test_validate_versions_missing_host_entry_names_the_host_file
+    pkg = FakePackage.new("host_a", on_host: true,
+                          arch_list: ALL_HOST_ARCHS.values)
+    pkg.define_singleton_method(:default_ver) { nil }
+    pkgmgr.register(pkg)
+
+    e = assert_raises(PackageManager::MissingVersionError) {
+      pkgmgr.validate_versions
+    }
+    assert_match(/host_a/, e.message)
+    assert_match(%r{other/host_pkg_versions}, e.message)
+  end
+
+  def test_validate_versions_reports_every_offender
+    for n in ["a", "b", "c"]
+      pkg = FakePackage.new(n)
+      pkg.define_singleton_method(:default_ver) { nil }
+      pkgmgr.register(pkg)
+    end
+    pkgmgr.register(FakePackage.new("fine"))
+
+    e = assert_raises(PackageManager::MissingVersionError) {
+      pkgmgr.validate_versions
+    }
+    for n in ["a", "b", "c"]
+      assert_match(/\b#{n}\b/, e.message)
+    end
+    refute_match(/fine/, e.message)
+  end
 end
 
 class TestPackageManagerInstall < Minitest::Test
