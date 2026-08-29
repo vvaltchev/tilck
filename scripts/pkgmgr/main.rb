@@ -487,8 +487,9 @@ module Main
     }
 
     p.on(
-      '-C', '--config PKG',
-      'Reconfigure a package interactively (e.g. make menuconfig) [MODE]'
+      '-C', '--config PKG[:VER]',
+      'Reconfigure the given version (optional) of a package',
+      'interactively (e.g. make menuconfig) [MODE]'
     ) { |pkg| opts[:config] = pkg }
 
     p.on(
@@ -836,14 +837,15 @@ module Main
     end
 
     if options[:config]
-      name = resolve_pkg_name(options[:config])
+      raw, v = options[:config].split(":")
+      name = resolve_pkg_name(raw)
       return 1 if !name
       pkg = pkgmgr.get(name)
       if !pkg.configurable?
         error "Package #{pkg.name} does not support reconfiguration"
         return 1
       end
-      return pkg.configure() ? 0 : 1
+      return pkg.configure(Ver(v)) ? 0 : 1
     end
 
     if !options[:install].blank?
