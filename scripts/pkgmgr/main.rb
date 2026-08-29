@@ -35,7 +35,7 @@ require_relative 'zlib'
 require_relative 'acpica'
 require_relative 'mtools'
 require_relative 'busybox'
-require_relative 'menuconfig'
+require_relative 'mconf'
 require_relative 'gnuefi'
 require_relative 'gtest'
 require_relative 'ncurses'
@@ -68,11 +68,11 @@ module Main
   # Packages added on top of the normal default set when the user
   # passes --contrib to `build_toolchain`. Intended for contributors
   # — tools that aren't required to build or run Tilck, but make dev
-  # work smoother (e.g. host_menuconfig, which powers run_config).
-  # host_menuconfig transitively depends on host_ncurses via the
-  # package's dep_list, so the latter is pulled in automatically by
-  # the dep resolver.
-  CONTRIB_EXTRA_PACKAGES = %w[host_menuconfig].freeze
+  # work smoother (e.g. host_mconf, which powers run_config).
+  # host_mconf transitively depends on host_ncurses via the package's
+  # dep_list, so the latter is pulled in automatically by the dep
+  # resolver.
+  CONTRIB_EXTRA_PACKAGES = %w[host_mconf].freeze
 
   def read_gcc_ver_defaults
     conf = MAIN_DIR / "other" / "gcc_tc_conf"
@@ -606,7 +606,7 @@ module Main
     p.on(
       '--contrib',
       'When combined with the default install (no mode flag), also',
-      'install packages useful for contributors: host_menuconfig',
+      'install packages useful for contributors: host_mconf',
       '(plus its host_ncurses dep). Intended to be run once, like:',
       './scripts/build_toolchain --contrib. Packages listed in',
       'CONTRIB_EXTRA_PACKAGES are appended to the normal default',
@@ -992,7 +992,7 @@ module Main
     upgrades = pkgmgr.get_upgradable_packages
     all = (defaults + upgrades).uniq(&:name)
 
-    # --contrib: append the contributor-only extras (host_menuconfig)
+    # --contrib: append the contributor-only extras (host_mconf)
     # on top of the default set. Silently skip any that aren't
     # registered — the list is under our control.
     if options[:contrib]

@@ -1886,7 +1886,7 @@ set(KCFG_DIR     "${CMAKE_BINARY_DIR}/kconfig")
 set(GEN_KCONFIG  "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/gen_kconfig.py")
 set(APPLY_CONFIG "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/apply_config.py")
 set(CMAKE_RUN    "${CMAKE_SOURCE_DIR}/scripts/cmake_run")
-set(MCONF_ROOT   "${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/menuconfig")
+set(MCONF_ROOT   "${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/mconf")
 configure_file(
    "${CMAKE_SOURCE_DIR}/scripts/templates/run_config.in"
    "${CMAKE_BINARY_DIR}/run_config"
