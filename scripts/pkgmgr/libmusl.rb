@@ -48,7 +48,7 @@ class LibmuslPackage < Package
   # this package agree on a single source of truth for the version.
   def default_ver = pkgmgr.get_config_ver("musl")
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["Makefile", false],
     ["include", true],
     ["src", true],

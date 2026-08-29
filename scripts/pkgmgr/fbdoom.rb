@@ -47,7 +47,7 @@ class FbDoomPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["fbdoom.gz", false],
   ]
 

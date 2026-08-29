@@ -90,7 +90,7 @@ class NcursesPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["install/lib/libncurses.a", false]
   ]
 
@@ -195,7 +195,7 @@ class NcursesHostPackage < Package
   # term.h, etc.). Consumers that use pkg-config get the right -I flag
   # automatically from ncursesw.pc; others need the explicit include
   # paths published by build_env below.
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["install/lib/libncursesw.a", false],
     ["install/lib/libtinfo.a", false],
     ["install/include/ncursesw/curses.h", false],

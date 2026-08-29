@@ -211,7 +211,7 @@ module TestHelper
       )
     end
 
-    def expected_files = []
+    def expected_files(ver = nil) = []
     def default_ver = Ver("1.0.0")
 
     # Match the pattern of real packages: host → syscc/HOST_ARCH,

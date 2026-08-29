@@ -36,7 +36,7 @@ class UbootPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["u-boot.bin", false],
     ["tools/mkimage", false],
   ]

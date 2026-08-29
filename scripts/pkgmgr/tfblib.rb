@@ -30,7 +30,7 @@ class TfblibPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["include", true],
     ["src",     true],
   ]

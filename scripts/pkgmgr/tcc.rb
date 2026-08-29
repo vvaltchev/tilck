@@ -59,7 +59,7 @@ class TccPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["tcc",               false],
     ["libtcc1.a",         false],
     ["include",           true],

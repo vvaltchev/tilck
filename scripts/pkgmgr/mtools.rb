@@ -34,7 +34,7 @@ class MtoolsPackage < Package
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     "mtools"
   ]
 

@@ -59,7 +59,7 @@ class LicheervNanoBootPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["build/cvisetup.sh", false],
     ["install/soc_#{CODENAME}/fip.bin", false],
   ]

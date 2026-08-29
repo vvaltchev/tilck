@@ -29,7 +29,7 @@ class ZlibPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["install/lib/libz.a", false]
   ]
 

@@ -82,7 +82,7 @@ class TestShowStatus < Minitest::Test
       # Register a package that expects a file
       pkg = FakePackage.new("brkpkg")
       # Override expected_files to require something that doesn't exist
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["nonexistent_binary", false]]
       }
       pkgmgr.register(pkg)

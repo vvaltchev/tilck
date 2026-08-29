@@ -53,7 +53,7 @@ class FreedoomPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["freedoom1.wad.gz", false],
   ]
 
@@ -124,7 +124,7 @@ class FreedoomPackage < Package
     FileUtils.rmdir(staging_pkg) if staging_pkg.directory? &&
                                     Dir.empty?(staging_pkg)
 
-    return check_install_dir(final_ver_dir, true)
+    return check_install_dir(final_ver_dir, ver, true)
   end
 
   # Unused but required to satisfy the Package contract.

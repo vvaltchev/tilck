@@ -28,7 +28,7 @@ class MicropythonPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["ports/unix/build-standard/micropython", false],
   ]
 
