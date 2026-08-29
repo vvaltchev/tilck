@@ -145,3 +145,85 @@ class TestSysrootCompose < Minitest::Test
     end
   end
 end
+
+#
+# Grafted fragments: a package whose own layout is not sysroot-shaped
+# contributing part of itself anyway. GCC keeps libstdc++ and libgcc_s
+# in lib64/ and is not a hermetic package, but that runtime is built
+# against our glibc and has to be in the sysroot or every C++ binary it
+# produces dies at startup.
+#
+class TestSysrootGraftedFragments < Minitest::Test
+
+  def frag(root, name, files)
+    d = File.join(root, name)
+    files.each do |rel, content|
+      path = File.join(d, rel)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, content)
+    end
+    return d
+  end
+
+  def test_a_pair_grafts_at_the_given_subpath
+    Dir.mktmpdir do |dir|
+      lib64 = frag(dir, "gcc/lib64", { "libstdc++.so.6" => "cxx" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [[lib64, "usr/lib"]])
+
+      assert_equal "cxx",
+                   File.read(File.join(target, "usr/lib/libstdc++.so.6"))
+    end
+  end
+
+  def test_grafted_and_plain_fragments_merge
+    Dir.mktmpdir do |dir|
+      libc = frag(dir, "glibc", { "usr/lib/libc.so.6" => "libc" })
+      lib64 = frag(dir, "gcc/lib64", { "libstdc++.so.6" => "cxx" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [libc, [lib64, "usr/lib"]])
+
+      assert_equal "libc", File.read(File.join(target, "usr/lib/libc.so.6"))
+      assert_equal "cxx",
+                   File.read(File.join(target, "usr/lib/libstdc++.so.6"))
+    end
+  end
+
+  # Ownership is keyed by the path in the SYSROOT, not in the fragment,
+  # or two fragments grafted to the same place would collide unnoticed.
+  def test_a_graft_colliding_with_a_plain_fragment_is_an_error
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/libfoo.so" => "a" })
+      b = frag(dir, "b/lib64", { "libfoo.so" => "b" })
+      target = File.join(dir, "sysroot")
+
+      assert_raises(Sysroot::ConflictError) {
+        Sysroot.compose(target, [a, [b, "usr/lib"]])
+      }
+    end
+  end
+
+  def test_two_grafts_to_different_places_do_not_collide
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "libfoo.so" => "a" })
+      b = frag(dir, "b", { "libfoo.so" => "b" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [[a, "usr/lib"], [b, "usr/lib32"]])
+      assert_equal "a", File.read(File.join(target, "usr/lib/libfoo.so"))
+      assert_equal "b", File.read(File.join(target, "usr/lib32/libfoo.so"))
+    end
+  end
+
+  def test_a_missing_graft_source_is_skipped
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/liba.so" => "a" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a, [File.join(dir, "nope"), "usr/lib"]])
+      assert File.exist?(File.join(target, "usr/lib/liba.so"))
+    end
+  end
+end

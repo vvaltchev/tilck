@@ -258,9 +258,15 @@ module Cache
     local_file ||= remote_file
     local_path = TC_CACHE / local_file
 
-    # Both params must be file *names* not paths.
-    assert { !remote_file.include? "/" }
+    # The local name becomes a path under the cache and must stay a
+    # bare filename. The remote one may carry a relative subpath,
+    # because some projects publish each release in its own directory
+    # (GCC: gnu/gcc/gcc-<ver>/gcc-<ver>.tar.xz); that is a detail of
+    # the remote layout and never reaches the cache, which is why such
+    # a source must give an explicit local name.
     assert { !local_file.include? "/" }
+    assert { !remote_file.start_with?("/") }
+    assert { !remote_file.include?("..") }
 
     if file? local_path
       if local_file == remote_file

@@ -8,6 +8,7 @@ require_relative 'package'
 require_relative 'dep_resolver'
 require_relative 'version_solver'
 require_relative 'sysroot'
+require_relative 'hermeticity'
 
 require 'singleton'
 require 'set'
@@ -388,7 +389,18 @@ class PackageManager
 
       # The sysroot is a view over what is installed, so it is stale
       # the moment that changes.
-      compose_hermetic_sysroot if pkg.host_tier == :hermetic
+      # Recompose whenever the package contributes to the sysroot, which
+      # is not the same as being a hermetic package: host_gcc is
+      # :distro and still contributes its target runtime.
+      if !pkg.sysroot_fragments.empty?
+        compose_hermetic_sysroot
+
+        # Audit after composing, not before: a package whose paths name
+        # the sysroot cannot be inspected until the sysroot is real.
+        # Only hermetic packages are audited — binutils and gcc link
+        # the system libc by design.
+        ok = audit_hermetic_install(pkg, ver) if pkg.host_tier == :hermetic
+      end
 
       info "Installed package #{pkg.name} at version #{ver}"
       # Refresh cached install lists so with_cc() can find a
@@ -509,6 +521,59 @@ class PackageManager
 
   def hermetic_sysroot = hermetic_root / "sysroot"
 
+  # readelf and the dynamic loader the audit uses. Ours when we have
+  # them — we build binutils, so readelf is a tool we own — falling
+  # back to the system readelf, which reads the same ELF either way.
+  # Without our loader there is no resolution check, and the audit
+  # reports that rather than passing silently.
+  def audit_tools
+
+    bu = get("host_binutils")
+    bu_inst = bu&.find_install(bu.default_ver)
+    readelf = bu_inst ? bu_inst.path / "install/bin/readelf" : "readelf"
+
+    libc = get("host_glibc")
+    libc_inst = libc&.find_install(libc.default_ver)
+    loader = libc_inst ?
+      libc_inst.path / "install/usr/lib/ld-linux-x86-64.so.2" : nil
+
+    return [readelf, loader]
+  end
+
+  # Check that an installed hermetic package references nothing outside
+  # the toolchain. Returns true when clean.
+  #
+  # Only hermetic packages are audited. binutils and gcc are :distro
+  # and link the system libc by design: they are build tools, and what
+  # they link against never reaches what they produce.
+  def audit_hermetic_install(pkg, ver)
+
+    inst = pkg.find_install(ver)
+    return true if inst.nil?
+
+    readelf, loader = audit_tools
+    if loader.nil?
+      warning "No hermetic loader yet: auditing #{pkg.name} without " \
+              "checking where its libraries resolve"
+    end
+
+    violations = Hermeticity.audit(
+      inst.path, allowed: [TC], readelf: readelf, loader: loader
+    )
+
+    return true if violations.empty?
+
+    error "#{pkg.name} #{ver} is not hermetic:"
+    for v in violations.first(20)
+      error "  #{v}"
+    end
+    if violations.length > 20
+      error "  ... and #{violations.length - 20} more"
+    end
+
+    return false
+  end
+
   # Rebuild the sysroot from every installed hermetic package, each at
   # the version currently selected for it.
   #
@@ -519,12 +584,7 @@ class PackageManager
   # does not exist yet.
   def compose_hermetic_sysroot
 
-    fragments = @packages.values.select { |p|
-      p.host_tier == :hermetic
-    }.map { |p|
-      inst = p.find_install(p.default_ver)
-      inst ? inst.path / "install" : nil
-    }.compact
+    fragments = @packages.values.flat_map { |p| p.sysroot_fragments }
 
     n = Sysroot.compose(hermetic_sysroot, fragments)
     info "Hermetic sysroot: #{n} entries from #{fragments.length} packages"
@@ -787,8 +847,25 @@ class PackageManager
         # Tier 1: portable (shared across distros and host compilers).
         scan_pkg_dir_tree(os_dir / "portable", "syscc", true, HOST_ARCH, list)
 
+        # Tier 4: hermetic/<compiler>-<ver>/pkgs/<pkg>/<ver>/. Scanned
+        # explicitly rather than falling through the distro loop
+        # below, whose <distro>/<host-cc>/ shape it does not share:
+        # read that way, "pkgs" looks like a package name and the
+        # package names look like versions. The sysroot beside pkgs/
+        # is a composed view, not an installation, and is not scanned
+        # at all.
+        hermetic_dir = os_dir / "hermetic"
+        if hermetic_dir.directory?
+          for stack in Dir.children(hermetic_dir)
+            scan_pkg_dir_tree(
+              hermetic_dir / stack / "pkgs", "syscc", true, HOST_ARCH, list
+            )
+          end
+        end
+
         for sub in Dir.children(os_dir)
           next if sub == "portable"
+          next if sub == "hermetic"
           distro_dir = os_dir / sub
           next if !distro_dir.directory?
 

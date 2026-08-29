@@ -274,10 +274,10 @@ Tracked to zero before this is considered done.
   * [x] `host_binutils` package
   * [x] `host_linux_headers` package
   * [x] `host_glibc` package
-  * [ ] `host_gcc` package, majors 11 through 16
+  * [x] `host_gcc` package (majors 11-16 declared; 14.4.0 built)
   * [x] tier 4 (`host_tier: :hermetic`) in the package manager
   * [x] composed sysroot + recomposition on resolution change
-  * [ ] hermeticity audit
+  * [x] hermeticity audit
   * [x] opt-in gating (`TILCK_HERMETIC=1`)
   * [ ] measured QEMU dependency closure, enumerated in this document
   * [ ] the closure, package by package

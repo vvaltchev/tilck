@@ -27,17 +27,22 @@ class TestHermeticTier < Minitest::Test
       gcc_ver = pkgmgr.get_config_ver("gcc", host: true).to_s
 
       root = pkg.host_install_root.to_s
-      assert_match(%r{/hermetic/gcc-#{Regexp.escape(gcc_ver)}\z}, root)
+      assert_match(%r{/hermetic/gcc-#{Regexp.escape(gcc_ver)}/pkgs\z}, root)
       refute_match(/#{Regexp.escape(HOST_DISTRO)}/, root)
       refute_match(/#{Regexp.escape(HOST_CC)}/, root)
     end
   end
 
-  def test_sysroot_sits_beside_the_packages
+  # The sysroot is a composed view, not an installation, so it sits
+  # BESIDE the package area rather than inside it: the install
+  # scanners treat every child of the package root as a package.
+  def test_sysroot_sits_beside_the_packages_not_inside
     with_fake_tc do
       pkg = hermetic_pkg
       assert_equal (pkg.hermetic_root / "sysroot").to_s,
                    pkg.hermetic_sysroot.to_s
+      refute pkg.hermetic_sysroot.to_s.start_with?(
+               pkg.host_install_root.to_s + "/")
     end
   end
 
