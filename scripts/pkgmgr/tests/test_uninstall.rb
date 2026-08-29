@@ -100,6 +100,93 @@ class TestUninstallSingle < Minitest::Test
   end
 end
 
+#
+# Orphans: installations on disk that no registered package claims,
+# e.g. what a package rename leaves behind. `-l` reports them as
+# "found", so `-u <name>` has to be able to remove them.
+#
+class TestUninstallOrphans < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # Install a host package, then unregister it so its tree on disk
+  # becomes unclaimed — exactly the state a rename produces. Note the
+  # orphan is known by its DIRECTORY name, which is pkg_dirname (the
+  # "host_" prefix stripped), not the package name.
+  def make_host_orphan(tc)
+    pkg = FakePackage.new("host_gone", on_host: true, host_tier: :distro)
+    pkgmgr.register(pkg)
+    pkgmgr.install("host_gone")
+    reset_pkgmgr!
+    pkgmgr.refresh()
+    return HOST_DIR_DISTRO / "gone" / "1.0.0"
+  end
+
+  def test_orphan_is_discovered
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        ver_dir = make_host_orphan(tc)
+        assert ver_dir.directory?
+        assert_includes pkgmgr.orphan_names, "gone"
+      end
+    end
+  end
+
+  def test_orphan_names_excludes_claimed_installs
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        pkgmgr.install("foo")
+        pkgmgr.refresh()
+        refute_includes pkgmgr.orphan_names, "foo"
+      end
+    end
+  end
+
+  # The regression: a host-side orphan has compiler "syscc" and the
+  # host arch, while the fallback defaults describe the current TARGET.
+  # Selecting on those defaults matched nothing and removed nothing,
+  # silently, with exit status 0.
+  def test_uninstall_removes_a_host_orphan
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        ver_dir = make_host_orphan(tc)
+
+        pkgmgr.uninstall("gone", false, false)
+        refute ver_dir.exist?
+      end
+    end
+  end
+
+  def test_uninstall_orphan_dry_run_keeps_it
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        ver_dir = make_host_orphan(tc)
+
+        pkgmgr.uninstall("gone", true, false)
+        assert ver_dir.directory?
+      end
+    end
+  end
+
+  # An explicit filter still narrows the selection: a target arch that
+  # the host-side orphan does not have must not match it.
+  def test_uninstall_orphan_respects_an_explicit_arch_filter
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        ver_dir = make_host_orphan(tc)
+
+        pkgmgr.uninstall("gone", false, false, nil, nil, "riscv64")
+        assert ver_dir.directory?
+      end
+    end
+  end
+end
+
 class TestUninstallALL < Minitest::Test
   include TestHelper
 
