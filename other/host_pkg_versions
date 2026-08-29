@@ -11,6 +11,8 @@
 # both be sourced into the same shell (or read into the same CMake
 # scope) without one silently overwriting the other.
 #
+HOST_VER_BINUTILS=2.43
+HOST_VER_GCC=14.2.0
 HOST_VER_CMAKE=3.22.6
 HOST_VER_RUBY=3.4.7
 HOST_VER_MUSL_CROSS_MAKE=3635262e452

@@ -347,6 +347,12 @@ class PackageManager
       return false
     end
 
+    if !pkg.enabled?
+      error "Package #{pkg.name} is not enabled in this configuration"
+      error "The hermetic toolchain is opt-in: set TILCK_HERMETIC=1"
+      return false
+    end
+
     # Enforce arch_list for regular target packages. Host packages and noarch
     # packages (arch_list == nil) are exempt. We check pkg.default_arch (not
     # ARCH directly) so the filter stays consistent with the InstallInfo
