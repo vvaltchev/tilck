@@ -23,6 +23,37 @@ Tilck-native name and a from-scratch implementation; don't mirror their
 identifiers (`__ex_table`, `fixup_exception`, `pcb_onfault`, ...). If unsure
 whether something crosses from idea into copying, stop and ask.
 
+## No hacks: use the proper abstraction
+
+Tilck is a top-quality software project. **Never add a hack, a shortcut,
+or a "temporary" special case.** Every problem gets the abstraction it
+actually needs, in every language in the tree (C, Ruby, Python, CMake).
+
+The most common failure mode is *sharing code by putting concrete
+knowledge in a generic place*. When two consumers need the same thing,
+do not add a provider-specific helper to their common base class: that
+teaches the base class about one concrete subject, and every other user
+of that base class inherits knowledge it must not have.
+
+Real example from this repo (`scripts/pkgmgr/package.rb`, commit
+bf0e54e33): `Package#host_ncurses_build_flags` was added to the abstract
+`Package` class, hardcoding `pkgmgr.get("host_ncurses")` and returning
+ncurses-specific `HOSTCFLAGS`/`HOSTLDFLAGS`, because busybox and u-boot
+both needed it. Every package in the tree — including packages that
+will never touch ncurses — inherited a method naming one specific
+dependency, and the version it picked was whichever install the
+filesystem happened to list first.
+
+The correct shape: an abstract `build_env(ver)` on `Package` that each
+package implements for itself (ncurses owns its own flags and may vary
+them by version), plus a generic `deps_build_env` that merges the
+published interfaces of a package's resolved dependencies. Consumers
+name no dependency; the base class knows no package.
+
+Ask before writing any helper: **which object owns this knowledge?** If
+the helper names a specific package, module or subsystem and lives
+somewhere generic, it belongs in the owner instead.
+
 ## Boot time and runtime latency are non-negotiable
 
 Target: embedded systems with hard-realtime ambitions. Evaluate
