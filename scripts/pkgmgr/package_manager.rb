@@ -362,9 +362,22 @@ class PackageManager
     end
 
     ver = nil if ver.blank?
+
+    # Whether the caller named a version is the only moment this is
+    # knowable: from here on, `ver` is a version either way. Deps that
+    # the resolver pulled in arrive with ver = nil, which is right —
+    # nobody pinned them.
+    default_install = ver.nil?
+
     ver ||= pkg.default_ver()
     ok = pkg.install_impl(ver)
     if ok
+      # Record how this version was chosen, so --upgrade can leave
+      # pinned versions alone. Written after the install rather than
+      # inside it, so all three install_impl overrides get it for free.
+      inst = pkg.find_install(ver)
+      InstallOrigin.write(inst.path, default_install) if inst
+
       info "Installed package #{pkg.name} at version #{ver}"
       # Refresh cached install lists so with_cc() can find a
       # just-installed compiler when subsequent packages need it.
