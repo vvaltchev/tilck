@@ -19,6 +19,23 @@ class TestHermeticTier < Minitest::Test
                            arch_list: ALL_HOST_ARCHS.values)
   end
 
+  # The regression this guards is not subtle: the sysroot is REBUILT
+  # from scratch whenever what it views changes, so composing it starts
+  # by deleting it. A test whose hermetic paths escape the fake
+  # toolchain therefore destroys the developer's real one — which is
+  # what happened before with_fake_tc overrode HOST_DIR_HERMETIC_BASE.
+  def test_hermetic_paths_stay_inside_the_fake_toolchain
+    with_fake_tc do |tc|
+      pkg = hermetic_pkg
+
+      for path in [pkg.hermetic_root, pkg.hermetic_sysroot,
+                   pkg.host_install_root]
+        assert path.to_s.start_with?(tc.to_s + "/"),
+               "#{path} escapes the fake toolchain at #{tc}"
+      end
+    end
+  end
+
   # The stack is keyed by OUR compiler's version, not the distro or the
   # system compiler: neither takes part in the build.
   def test_install_root_is_keyed_by_our_gcc_version

@@ -313,6 +313,56 @@ class Package
   # whole set.
   def dep_list_for(ver = nil) = dep_list
 
+  # The environment a hermetic package builds in.
+  #
+  # Everything above the toolchain has to be compiled by OUR compiler,
+  # or it is not hermetic regardless of what the sysroot contains: the
+  # system gcc would link the system libc, bake the system interpreter
+  # and emit no RPATH.
+  #
+  # CC and CXX are set explicitly rather than left to PATH order, since
+  # a build that hardcodes "gcc" would otherwise pick up the system one
+  # while everything looked correctly configured.
+  #
+  # PKG_CONFIG_LIBDIR, not PKG_CONFIG_PATH: the former REPLACES
+  # pkg-config's default search path, the latter only prepends to it.
+  # Prepending leaves /usr/lib/pkgconfig reachable, so a library
+  # missing from our sysroot would be silently satisfied by the
+  # system's .pc file and the build would look like it worked.
+  #
+  # Yields with the environment applied and restores it afterwards.
+  def with_hermetic_toolchain(&block)
+
+    gcc = pkgmgr.get("host_gcc")
+    gcc_inst = gcc&.find_install(gcc.default_ver)
+
+    bu = pkgmgr.get("host_binutils")
+    bu_inst = bu&.find_install(bu.default_ver)
+
+    if gcc_inst.nil? || bu_inst.nil?
+      raise "#{name}: the hermetic toolchain is not installed; " \
+            "host_gcc and host_binutils must be built first"
+    end
+
+    gcc_bin = gcc_inst.path / "install" / "bin"
+    bu_bin = bu_inst.path / "install" / "bin"
+
+    vars = {
+      "CC"                => "#{gcc_bin}/gcc",
+      "CXX"               => "#{gcc_bin}/g++",
+      "AR"                => "#{bu_bin}/ar",
+      "RANLIB"            => "#{bu_bin}/ranlib",
+      "STRIP"             => "#{bu_bin}/strip",
+      "PATH"              => "#{gcc_bin}:#{bu_bin}:#{ENV["PATH"]}",
+      "PKG_CONFIG_LIBDIR" => "#{hermetic_sysroot}/usr/lib/pkgconfig",
+    }
+
+    return with_saved_env(vars.keys) do
+      vars.each { |k, v| ENV[k] = v }
+      block.call
+    end
+  end
+
   # A check the package runs AFTER the sysroot has been composed.
   #
   # Some things cannot be verified at install time because they depend

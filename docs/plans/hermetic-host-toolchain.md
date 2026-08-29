@@ -302,6 +302,8 @@ Tracked to zero before this is considered done.
   * [x] hermeticity audit
   * [x] opt-in gating (`TILCK_HERMETIC=1`)
   * [ ] measured QEMU dependency closure, enumerated in this document
+  * [x] first library through the tier (host_zlib), establishing the
+    pattern the rest follows
   * [ ] the closure, package by package
   * [ ] QEMU, newest major
   * [ ] full GTK UI verified working
