@@ -7,6 +7,7 @@ require_relative 'term'
 require_relative 'package'
 require_relative 'dep_resolver'
 require_relative 'version_solver'
+require_relative 'sysroot'
 
 require 'singleton'
 require 'set'
@@ -385,6 +386,10 @@ class PackageManager
       inst = pkg.find_install(ver)
       InstallOrigin.write(inst.path, default_install) if inst
 
+      # The sysroot is a view over what is installed, so it is stale
+      # the moment that changes.
+      compose_hermetic_sysroot if pkg.host_tier == :hermetic
+
       info "Installed package #{pkg.name} at version #{ver}"
       # Refresh cached install lists so with_cc() can find a
       # just-installed compiler when subsequent packages need it.
@@ -484,6 +489,46 @@ class PackageManager
              "(pinned via #{path.join(' -> ')})"
       },
     )
+  end
+
+  # The hermetic stack's root, and the sysroot inside it. Defined here
+  # rather than on Package because several packages, the sysroot
+  # composition and the audit all need the same answer.
+  def hermetic_root
+
+    ver = get_config_ver("gcc", host: true)
+
+    if ver.nil?
+      raise "HOST_VER_GCC is missing from other/host_pkg_versions: it " \
+            "names the hermetic stack's directory, so without it every " \
+            "hermetic package would install to the same broken path"
+    end
+
+    return HOST_DIR_HERMETIC_BASE / "gcc-#{ver}"
+  end
+
+  def hermetic_sysroot = hermetic_root / "sysroot"
+
+  # Rebuild the sysroot from every installed hermetic package, each at
+  # the version currently selected for it.
+  #
+  # Run after any hermetic install, because a package that bakes an
+  # absolute --prefix naming the sysroot is broken until the sysroot
+  # makes that path real: glibc's own libc.so.6 will not exec before
+  # this has run, its ELF interpreter pointing into a directory that
+  # does not exist yet.
+  def compose_hermetic_sysroot
+
+    fragments = @packages.values.select { |p|
+      p.host_tier == :hermetic
+    }.map { |p|
+      inst = p.find_install(p.default_ver)
+      inst ? inst.path / "install" : nil
+    }.compact
+
+    n = Sysroot.compose(hermetic_sysroot, fragments)
+    info "Hermetic sysroot: #{n} entries from #{fragments.length} packages"
+    return n
   end
 
   # Transitive dependency closure of `name`, nearest dependency first.
