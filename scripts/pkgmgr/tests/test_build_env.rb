@@ -279,3 +279,50 @@ class TestBuildEnvRendering < Minitest::Test
     assert_equal "/a/lib/pkgconfig:/b/lib/pkgconfig", got["PKG_CONFIG_PATH"]
   end
 end
+
+#
+# bin_dirs: a dependency that ships a tool the build INVOKES.
+#
+# meson looks for ninja on PATH and cannot be told about it any other
+# way, so publishing the directory has to be a property of the
+# dependency rather than something each consumer arranges for itself.
+#
+class TestBuildEnvBinDirs < Minitest::Test
+
+  def test_bin_dirs_reach_path
+    be = BuildEnv.new(bin_dirs: ["/tools/bin"])
+    assert_equal "/tools/bin:/usr/bin", be.env({ "PATH" => "/usr/bin" })["PATH"]
+  end
+
+  def test_bin_dirs_come_first
+    be = BuildEnv.new(bin_dirs: ["/ours"])
+    assert be.env({ "PATH" => "/usr/bin" })["PATH"].start_with?("/ours:")
+  end
+
+  def test_no_bin_dirs_leaves_path_alone
+    refute BuildEnv.new(include_dirs: ["/a"]).env({ "PATH" => "/usr/bin" })
+                   .key?("PATH")
+  end
+
+  def test_bin_dirs_without_an_inherited_path
+    be = BuildEnv.new(bin_dirs: ["/ours"])
+    assert_equal "/ours", be.env({})["PATH"]
+  end
+
+  def test_two_providers_contribute_both_directories
+    a = BuildEnv.new(bin_dirs: ["/a/bin"])
+    b = BuildEnv.new(bin_dirs: ["/b/bin"])
+    assert_equal "/a/bin:/b/bin:/usr/bin",
+                 a.merge(b).env({ "PATH" => "/usr/bin" })["PATH"]
+  end
+
+  def test_bin_dirs_count_towards_emptiness
+    refute BuildEnv.new(bin_dirs: ["/a"]).empty?
+    assert BuildEnv.empty.bin_dirs.empty?
+  end
+
+  def test_bin_dirs_dedup_like_the_others
+    be = BuildEnv.new(bin_dirs: ["/a", "/b", "/a"])
+    assert_equal ["/a", "/b"], be.bin_dirs
+  end
+end

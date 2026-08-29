@@ -347,15 +347,23 @@ class Package
     gcc_bin = gcc_inst.path / "install" / "bin"
     bu_bin = bu_inst.path / "install" / "bin"
 
-    vars = {
+    # What the dependencies publish comes first, so a build tool a
+    # dependency ships is reachable by name: meson looks for ninja on
+    # PATH and will not be told about it any other way.
+    deps = deps_build_env.env
+
+    vars = deps.merge({
       "CC"                => "#{gcc_bin}/gcc",
       "CXX"               => "#{gcc_bin}/g++",
       "AR"                => "#{bu_bin}/ar",
       "RANLIB"            => "#{bu_bin}/ranlib",
       "STRIP"             => "#{bu_bin}/strip",
-      "PATH"              => "#{gcc_bin}:#{bu_bin}:#{ENV["PATH"]}",
       "PKG_CONFIG_LIBDIR" => "#{hermetic_sysroot}/usr/lib/pkgconfig",
-    }
+    })
+
+    # Our compiler ahead of everything, including any bin dir a
+    # dependency contributed: nothing may shadow it.
+    vars["PATH"] = [gcc_bin, bu_bin, deps["PATH"] || ENV["PATH"]].join(":")
 
     return with_saved_env(vars.keys) do
       vars.each { |k, v| ENV[k] = v }
