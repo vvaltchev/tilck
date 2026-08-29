@@ -16,3 +16,4 @@ tcci_*
 .vscode/.ropeproject
 __pycache__
 .gcc_tc_ver
+coverage_html/
