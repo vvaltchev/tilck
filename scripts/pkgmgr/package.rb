@@ -313,6 +313,17 @@ class Package
   # whole set.
   def dep_list_for(ver = nil) = dep_list
 
+  # A check the package runs AFTER the sysroot has been composed.
+  #
+  # Some things cannot be verified at install time because they depend
+  # on the sysroot including this package's own contribution, which by
+  # definition has not been composed yet: gcc can prove it produces a
+  # hermetic C binary before composition, but not a C++ one, since
+  # libstdc++ reaches the sysroot only through the graft that follows.
+  #
+  # Returns true when there is nothing to check.
+  def post_sysroot_check = true
+
   # Should the hermeticity audit ask its question with a hostile
   # LD_LIBRARY_PATH?
   #
