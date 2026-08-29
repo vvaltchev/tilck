@@ -1,6 +1,6 @@
 Title this mconf "Tilck Configuration" instead of "BusyBox ...".
 
-host_menuconfig is Tilck's own configurator: run_config drives it
+host_mconf is Tilck's own configurator: run_config drives it
 over a generated Kconfig (gen_kconfig.py) whose first line is
 `mainmenu "Tilck Configuration"`. Busybox 1.36.1's kconfig, though,
 ignores the `mainmenu` directive: conf_parse() unconditionally sets

@@ -381,7 +381,7 @@ fi
 # --contrib is handled on BOTH layers: here (bash) to trigger the
 # install of system packages that contributors need (e.g. clang,
 # extra dev libs), AND on the Ruby side, where it adds extra
-# toolchain packages (host_menuconfig, ...) to the default install
+# toolchain packages (host_mconf, ...) to the default install
 # set. It must therefore be forwarded to the Ruby pkgmgr after being
 # observed here.
 #

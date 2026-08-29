@@ -9,14 +9,18 @@ require_relative 'package_manager'
 require_relative 'busybox'  # for BUSYBOX_SOURCE
 
 #
-# host_menuconfig: the Linux-kernel-style `mconf` and `conf` binaries,
-# used by Tilck's new menuconfig-style configurator.
+# host_mconf: the Linux-kernel-style `mconf`, `conf` and `lxdialog`
+# binaries, used by Tilck's menuconfig-style configurator.
 #
-# The source IS Busybox. Busybox ships a standalone-buildable copy of
+# Named after what it contains, not after where the source comes from.
+# The source IS Busybox: it ships a standalone-buildable copy of
 # Linux's scripts/kconfig/ in its tarball — the same source that
 # busybox's own `-C busybox` menuconfig flow compiles. We share
-# BUSYBOX_SOURCE so the tarball is fetched once and extracted twice
-# (Linux kernel's SourceRef pattern from gnuefi).
+# BUSYBOX_SOURCE so one tarball can serve both packages, but the two
+# versions are independent: this package's is HOST_VER_MCONF in
+# other/host_pkg_versions, spelled as the busybox release the tools
+# are cut from, and the target busybox has its own VER_BUSYBOX. When
+# they happen to coincide, the cache holds a single tarball.
 #
 # Busybox 1.36.1 does NOT ship nconf.c; scope for this first PR is
 # mconf (the classic dialog-based UI) and conf (non-interactive,
@@ -27,14 +31,14 @@ require_relative 'busybox'  # for BUSYBOX_SOURCE
 # host_ncurses provides libncursesw.a + libtinfo.a through the build
 # interface it publishes (see NcursesHostPackage#build_env).
 #
-class HostMenuconfigPackage < Package
+class HostMconfPackage < Package
 
   include FileShortcuts
   include FileUtilsShortcuts
 
   def initialize
     super(
-      name: 'host_menuconfig',
+      name: 'host_mconf',
       source: BUSYBOX_SOURCE,
       on_host: true,
       is_compiler: false,
@@ -47,11 +51,6 @@ class HostMenuconfigPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-
-  # BUSYBOX_SOURCE's pkg_versions entry is VER_BUSYBOX, not
-  # VER_MENUCONFIG (which doesn't exist). Override default_ver so the
-  # shared tarball is located correctly in the cache.
-  def default_ver = pkgmgr.get_config_ver("busybox", host: false)
 
   def expected_files(ver = nil) = [
     ["install/bin/mconf", false],
@@ -130,8 +129,17 @@ class HostMenuconfigPackage < Package
     # it lives in scripts/kconfig/lxdialog/ and must be on PATH
     # (or next to mconf) when mconf runs.
     FileUtils.cp("scripts/kconfig/lxdialog/lxdialog", "#{bin_dir}/")
+
+    # The deliverable is those three binaries: ~600 KB against ~22 MB
+    # of busybox source we no longer need. Discard everything but the
+    # install prefix so the tree matches expected_files and nothing
+    # else.
+    Dir.children(".").each { |e|
+      next if e == "install"
+      rm_rf(e)
+    }
     return true
   end
 end
 
-pkgmgr.register(HostMenuconfigPackage.new())
+pkgmgr.register(HostMconfPackage.new())
