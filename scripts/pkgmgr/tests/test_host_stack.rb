@@ -379,3 +379,52 @@ class TestPortableToolchainEnv < Minitest::Test
     end
   end
 end
+
+
+#
+# Telling a compiler SLOT from a package whose name merely starts like
+# one. portable/ holds both: gcc-14.4.0/ is a level containing
+# packages, while gcc-riscv64-musl/ IS a package. Getting this wrong
+# walks one level too deep and reads bin/, share/ and include/ as
+# version numbers -- which is exactly what happened, and was caught
+# only because the scanner reports what it cannot parse instead of
+# skipping it silently.
+#
+class TestCompilerSlotDetection < Minitest::Test
+
+  include TestHelper
+
+  def slot?(name) = pkgmgr.send(:compiler_slot?, name)
+
+  def test_a_versioned_compiler_dir_is_a_slot
+    assert slot?("gcc-14.4.0")
+    assert slot?("gcc-11.5.0")
+    assert slot?("clang-14.0.0")
+  end
+
+  # The musl cross-compilers, which live in portable/ beside the stack.
+  def test_the_musl_cross_compilers_are_packages_not_slots
+    refute slot?("gcc-i386-musl")
+    refute slot?("gcc-x86_64-musl")
+    refute slot?("gcc-riscv64-musl")
+  end
+
+  def test_ordinary_packages_are_not_slots
+    refute slot?("glib2")
+    refute slot?("gtk3")
+    refute slot?("mtools")
+    refute slot?("gcc")
+  end
+
+  # And the same distinction as the stack list sees it.
+  def test_the_stack_list_excludes_cross_compiler_packages
+    with_fake_tc do
+      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-riscv64-musl" / "13.3.0")
+      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-14.4.0" / "glib2")
+
+      stacks = pkgmgr.host_stacks
+      assert_includes stacks, "14.4.0"
+      refute_includes stacks, "riscv64-musl"
+    end
+  end
+end

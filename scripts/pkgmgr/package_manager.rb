@@ -578,8 +578,11 @@ class PackageManager
 
     return [] if !HOST_DIR_PORTABLE.directory?
 
+    # compiler_slot? rather than a bare prefix test: portable/ also
+    # holds the musl cross-compilers, whose package names start the
+    # same way (gcc-riscv64-musl) and are not stacks.
     return Dir.children(HOST_DIR_PORTABLE)
-              .select { |d| d.start_with?("gcc-") }
+              .select { |d| compiler_slot?(d) }
               .map { |d| d.sub("gcc-", "") }
   end
 
@@ -878,12 +881,25 @@ class PackageManager
   # Walk <root>/<pkg>/<ver>/ and emit an InstallInfo per (pkg, ver) whose
   # path is NOT already claimed by a registered package. Used by
   # scan_toolchain() to discover orphan installations.
-  # A directory level naming a compiler rather than a package. No
-  # package is called gcc-* or clang-*, and this is what keeps a
-  # compiler slot from being read as a package in every tier that has
-  # one below it.
+  # A directory level naming a compiler rather than a package.
+  #
+  # The prefix alone is NOT enough, and portable/ is where that bites:
+  # the musl cross-compilers are packages called gcc-i386-musl,
+  # gcc-x86_64-musl and gcc-riscv64-musl. Reading those as compiler
+  # slots descends one level too far and takes their bin/, share/ and
+  # include/ directories for version numbers.
+  #
+  # A slot is the prefix followed by a VERSION -- gcc-14.4.0,
+  # clang-14.0.0 -- which no package name is, since a package's
+  # version lives in the directory below it rather than in its name.
   def compiler_slot?(name)
-    return name.start_with?("gcc-") || name.start_with?("clang-")
+
+    for prefix in ["gcc-", "clang-"] do
+      next if !name.start_with?(prefix)
+      return !SafeVer(name.delete_prefix(prefix)).nil?
+    end
+
+    return false
   end
 
   # Scan one <pkg>/ directory, whose children are version directories.
