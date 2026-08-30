@@ -37,8 +37,15 @@ module Sysroot
 
   module_function
 
-  # Build `target` as a symlink farm over `fragments`, each of which is
-  # a sysroot-shaped directory (usr/include/..., usr/lib/...).
+  # Build `target` as a symlink farm over `fragments`.
+  #
+  # A fragment is either a directory that is already sysroot-shaped
+  # (usr/include/..., usr/lib/...), or a [dir, subpath] pair grafting
+  # dir at <target>/<subpath>. The pair form exists for packages whose
+  # own layout is not sysroot-shaped but part of which belongs in the
+  # sysroot anyway: GCC keeps libstdc++ and libgcc_s in lib64/, and
+  # they are built against our glibc even though GCC itself is not a
+  # hermetic package.
   #
   # Directories are recreated as real directories so two fragments can
   # contribute to the same one; files become symlinks to the fragment
@@ -55,17 +62,21 @@ module Sysroot
     links = 0
 
     for frag in fragments
-      frag = Pathname.new(frag.to_s)
-      next if !frag.directory?
+      dir, sub = frag.is_a?(Array) ? frag : [frag, nil]
+      dir = Pathname.new(dir.to_s)
+      next if !dir.directory?
 
-      links += link_tree(frag, target, owner)
+      dest = sub ? target / sub : target
+      FileUtils.mkdir_p(dest.to_s)
+
+      links += link_tree(dir, dest, owner, sub)
     end
 
     return links
   end
 
   # Walk one fragment, mirroring its directories and linking its files.
-  def link_tree(frag, target, owner)
+  def link_tree(frag, target, owner, prefix = nil)
 
     links = 0
 
@@ -83,12 +94,14 @@ module Sysroot
         next
       end
 
-      if owner.key?(rel)
+      key = prefix ? File.join(prefix.to_s, rel) : rel
+
+      if owner.key?(key)
         raise ConflictError,
-              "#{rel} is provided by both #{owner[rel]} and #{frag}"
+              "#{key} is provided by both #{owner[key]} and #{frag}"
       end
 
-      owner[rel] = frag
+      owner[key] = frag
       FileUtils.mkdir_p(dst.dirname.to_s)
       FileUtils.ln_s(src.to_s, dst.to_s)
       links += 1

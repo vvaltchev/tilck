@@ -207,7 +207,12 @@ class Package
       when :portable then HOST_DIR_PORTABLE
       when :distro   then HOST_DIR_DISTRO
       when :compiler then HOST_DIR
-      when :hermetic then hermetic_root
+      # Packages go in a subdirectory of their own: the install
+      # scanners treat every child of this root as a package name, and
+      # the composed sysroot lives beside it. Without the split, the
+      # sysroot is scanned as a package called "sysroot" whose version
+      # is "usr".
+      when :hermetic then hermetic_root / "pkgs"
     end
   end
 
@@ -307,6 +312,21 @@ class Package
   # to its default, so a non-default build does not have to restate the
   # whole set.
   def dep_list_for(ver = nil) = dep_list
+
+  # What this package contributes to the composed sysroot.
+  #
+  # A hermetic package contributes its whole install tree, which is
+  # sysroot-shaped by convention. Everything else contributes nothing
+  # unless it overrides: host_gcc is a :distro package, but its TARGET
+  # runtime — libstdc++, libgcc_s — is compiled against our glibc and
+  # has to be in the sysroot for anything it builds to run.
+  def sysroot_fragments
+
+    return [] if host_tier != :hermetic
+
+    inst = find_install(default_ver)
+    return inst ? [inst.path / "install"] : []
+  end
 
   # A pin on a target dependency is meaningless — the target side is
   # one version per package by construction — so reject it rather than
