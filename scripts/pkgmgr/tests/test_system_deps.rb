@@ -823,19 +823,30 @@ class TestSystemDepsMisc < Minitest::Test
     end
   end
 
-  # The glycin switch drives the meson option AND the Rust
-  # requirement. With it off, no Rust is demanded of anybody.
-  def test_gdk_pixbuf_declares_rust_only_when_glycin_is_on
+  # One switch drives the meson option AND the Rust requirement, so
+  # the flag cannot be flipped without the check following it. Tested
+  # in both directions rather than against whatever it is set to
+  # today: the coupling is the invariant, the value is a decision.
+  def test_gdk_pixbuf_rust_requirement_follows_the_glycin_switch
     pkg = HostGdkPixbufPackage.new
-
-    assert_equal false, HostGdkPixbufPackage::WITH_GLYCIN
-    assert_empty pkg.system_deps
 
     HostGdkPixbufPackage.stub_const_with_glycin(true) do
       deps = pkg.system_deps
       assert_equal [:rustc, :cargo], deps.map(&:key)
       assert deps.all? { |d| d.installer == SystemDeps::RUSTUP }
     end
+
+    HostGdkPixbufPackage.stub_const_with_glycin(false) do
+      assert_empty pkg.system_deps
+    end
+  end
+
+  # And the decision itself, stated once so that turning glycin off
+  # is a deliberate edit to a test rather than a silent drift.
+  def test_glycin_is_currently_enabled_so_rust_is_required
+    assert_equal true, HostGdkPixbufPackage::WITH_GLYCIN
+    assert_equal [:rustc, :cargo],
+                 HostGdkPixbufPackage.new.system_deps.map(&:key)
   end
 end
 

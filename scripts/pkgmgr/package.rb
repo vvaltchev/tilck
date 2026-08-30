@@ -372,7 +372,14 @@ class Package
   # found" while xproto.pc sat in the sysroot's share directory.
   #
   # Yields with the environment applied and restores it afterwards.
-  def with_hermetic_toolchain(&block)
+  # Where our compiler and binutils live, as [gcc_bin, binutils_bin].
+  #
+  # Separate from with_hermetic_toolchain because a package whose build
+  # system is not autotools or meson has to name the compiler itself:
+  # cargo takes its linker from CARGO_TARGET_<triple>_LINKER and would
+  # otherwise use the system cc, producing a library that links the
+  # system libc no matter what the rest of the environment says.
+  def hermetic_toolchain_bins
 
     gcc = pkgmgr.get("host_gcc")
     gcc_inst = gcc&.find_install(gcc.default_ver)
@@ -385,8 +392,13 @@ class Package
             "host_gcc and host_binutils must be built first"
     end
 
-    gcc_bin = gcc_inst.path / "install" / "bin"
-    bu_bin = bu_inst.path / "install" / "bin"
+    return [gcc_inst.path / "install" / "bin",
+            bu_inst.path / "install" / "bin"]
+  end
+
+  def with_hermetic_toolchain(&block)
+
+    gcc_bin, bu_bin = hermetic_toolchain_bins
 
     # What the dependencies publish comes first, so a build tool a
     # dependency ships is reachable by name: meson looks for ninja on
