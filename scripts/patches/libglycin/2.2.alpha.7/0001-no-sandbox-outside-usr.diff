@@ -1,0 +1,60 @@
+--- a/libglycin/src/loader.rs	2026-08-30 19:43:49.170533202 -0700
++++ b/libglycin/src/loader.rs	2026-08-30 19:43:49.199457130 -0700
+@@ -17,11 +17,34 @@
+ 
+ pub type GlyLoader = <gobject::loader::imp::GlyLoader as ObjectSubclass>::Instance;
+ 
++/// The sandbox every loader created through this library starts with.
++///
++/// Upstream's default is SandboxSelector::Auto, which outside a Flatpak
++/// means bwrap. That cannot work when glycin is installed anywhere but
++/// /usr: the sandbox binds /usr, /dev and the loader BINARY, but never
++/// the libraries the loader was linked against. A loader carrying its
++/// own glibc therefore cannot even exec -- the kernel fails to find its
++/// ELF interpreter and reports a misleading ENOENT for a file that is
++/// plainly there. Upstream already noticed the class of problem and
++/// hardcoded "--ro-bind-try /nix/store" for Nix; there is no general
++/// mechanism, and the loader .conf format has no key for it.
++///
++/// Making the sandbox work here would mean binding the whole toolchain
++/// -- our sysroot is a symlink farm pointing into ~40 package
++/// directories, so binding the sysroot alone leaves dangling symlinks
++/// -- which is a considerably weaker sandbox than the /usr-only one it
++/// replaces. Given that, and that what gets decoded here is the local
++/// icon theme rather than untrusted input, the sandbox is turned off
++/// rather than pretended at.
++const TILCK_SANDBOX: GlySandboxSelector = GlySandboxSelector::NotSandboxed;
++
+ #[unsafe(no_mangle)]
+ pub unsafe extern "C" fn gly_loader_new(file: *mut gio::ffi::GFile) -> *mut GlyLoader {
+     unsafe {
+         let file = gio::File::from_glib_ptr_borrow(&file);
+-        gobject::GlyLoader::new(file.clone()).into_glib_ptr()
++        let loader = gobject::GlyLoader::new(file.clone());
++        loader.set_sandbox_selector(TILCK_SANDBOX);
++        loader.into_glib_ptr()
+     }
+ }
+ 
+@@ -31,7 +54,9 @@
+ ) -> *mut GlyLoader {
+     unsafe {
+         let stream = gio::InputStream::from_glib_ptr_borrow(&stream);
+-        gobject::GlyLoader::for_stream(stream).into_glib_ptr()
++        let loader = gobject::GlyLoader::for_stream(stream);
++        loader.set_sandbox_selector(TILCK_SANDBOX);
++        loader.into_glib_ptr()
+     }
+ }
+ 
+@@ -39,7 +64,9 @@
+ pub unsafe extern "C" fn gly_loader_new_for_bytes(bytes: *mut GBytes) -> *mut GlyLoader {
+     unsafe {
+         let bytes = glib::Bytes::from_glib_ptr_borrow(&bytes);
+-        gobject::GlyLoader::for_bytes(bytes).into_glib_ptr()
++        let loader = gobject::GlyLoader::for_bytes(bytes);
++        loader.set_sandbox_selector(TILCK_SANDBOX);
++        loader.into_glib_ptr()
+     }
+ }
+ 
