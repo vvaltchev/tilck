@@ -145,8 +145,7 @@ class HostGccPackage < Package
         next
       end
 
-      loader = "#{pkgmgr.hermetic_sysroot(gcc_ver)}" \
-               "/usr/lib/ld-linux-x86-64.so.2"
+      loader = stack_loader(gcc_ver)
       refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
       resolved = Hermeticity.resolve_libs(bin, loader: loader)
 
@@ -174,6 +173,39 @@ class HostGccPackage < Package
     super(dir)
   end
 
+  # The three decisions below were each wrong once, in the same way:
+  # they asked about default_ver instead of the version being
+  # installed. They live here, as functions of an explicit version,
+  # so a unit test can ask them directly — buried inside a sixty-line
+  # install method they were only reachable by building a compiler.
+
+  # Is this a version we know how to build?
+  def supported_version?(ver) = SUPPORTED.include?(ver)
+
+  # The dynamic loader belonging to a given stack.
+  #
+  # A method rather than an expression repeated at each site: the copy
+  # in post_sysroot_check referred to `sysroot`, a local of
+  # install_impl_internal, and raised NameError instead of returning
+  # false — aborting five unrelated builds.
+  def stack_loader(gcc_ver)
+    return "#{pkgmgr.hermetic_sysroot(gcc_ver)}/usr/lib/ld-linux-x86-64.so.2"
+  end
+
+  # Configure flags that depend on which version is being built.
+  #
+  # glibc removed libcrypt and crypt.h in 2.39; it lives in the
+  # separate libxcrypt project now. GCC below 14 includes <crypt.h>
+  # unconditionally from libsanitizer and cannot be built against a
+  # glibc that new. The boundary is measured, not assumed: against
+  # glibc 2.41, 11.5.0/12.5.0/13.4.0 fail and 14.4.0 builds.
+  def version_conf_args(ver)
+
+    args = []
+    args << "--disable-libsanitizer" if ver < Ver("14.0.0")
+    return args
+  end
+
   def install_impl_internal(install_dir)
 
     # The version being INSTALLED, which is not default_ver when the
@@ -182,7 +214,7 @@ class HostGccPackage < Package
     ver = installing_ver(install_dir)
     sysroot = pkgmgr.hermetic_sysroot(ver)
 
-    if !SUPPORTED.include?(ver)
+    if !supported_version?(ver)
       error "gcc #{ver} is not one of the supported versions: " +
             SUPPORTED.map(&:to_s).join(", ")
       return false
@@ -257,9 +289,7 @@ class HostGccPackage < Package
     # So the sanitizer runtimes are dropped for those versions only.
     # Nothing in the QEMU stack uses them, and the alternative is not
     # supporting those compilers at all.
-    if ver < Ver("14.0.0")
-      conf << "--disable-libsanitizer"
-    end
+    conf.concat(version_conf_args(ver))
 
     ok = false
     chdir("build") do
@@ -277,10 +307,9 @@ class HostGccPackage < Package
 
     FileUtils.mv("#{destdir}#{prefix}", "#{install_dir}/install")
 
-    return false if !install_hermetic_specs("#{install_dir}/install",
-                                            sysroot)
+    return false if !install_hermetic_specs("#{install_dir}/install", ver)
     return false if !verify_produces_hermetic_binaries(
-                       "#{install_dir}/install", sysroot)
+                       "#{install_dir}/install", ver)
 
     # A GCC build tree is several GB; the compiler is a few hundred MB.
     prune_build_tree
@@ -307,10 +336,10 @@ class HostGccPackage < Package
   # leaving every consumer to remember -Wl,--dynamic-linker=. A
   # compiler that emits non-hermetic output unless invoked just so is a
   # trap, and the whole stack passes through this one place.
-  def install_hermetic_specs(install, sysroot)
+  def install_hermetic_specs(install, gcc_ver)
 
     gcc = "#{install}/bin/gcc"
-    loader = "#{sysroot}/usr/lib/ld-linux-x86-64.so.2"
+    loader = stack_loader(gcc_ver)
 
     if !File.exist?(loader)
       error "no hermetic loader at #{loader}: this stack has no glibc, " \
@@ -343,7 +372,8 @@ class HostGccPackage < Package
 
     specs = specs.gsub(SYSTEM_LOADER, loader)
 
-    specs = add_link_rpath(specs, "#{sysroot}/usr/lib")
+    specs = add_link_rpath(specs,
+                           "#{pkgmgr.hermetic_sysroot(gcc_ver)}/usr/lib")
     if specs.nil?
       error "gcc -dumpspecs has no *link: section to add an rpath to"
       return false
@@ -397,7 +427,7 @@ class HostGccPackage < Package
   # configured; this is the only step that observes what it actually
   # produces. It is cheap, and a toolchain quietly emitting
   # system-linked binaries would poison every package built after it.
-  def verify_produces_hermetic_binaries(install, sysroot)
+  def verify_produces_hermetic_binaries(install, gcc_ver)
 
     ok = false
 
@@ -412,7 +442,7 @@ class HostGccPackage < Package
         next
       end
 
-      loader = "#{sysroot}/usr/lib/ld-linux-x86-64.so.2"
+      loader = stack_loader(gcc_ver)
       refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
       resolved = Hermeticity.resolve_libs(bin, loader: loader)
 
