@@ -391,19 +391,25 @@ class PackageManager
       # the moment that changes.
       # Recompose whenever the package contributes to the sysroot, which
       # is not the same as being a hermetic package: host_gcc is
-      # :distro and still contributes its target runtime.
+      # :distro and still contributes its target runtime, while a
+      # hermetic APPLICATION contributes nothing at all because nothing
+      # is built against it.
       if !pkg.sysroot_fragments.empty?
         compose_hermetic_sysroot
-
-        # Audit after composing, not before: a package whose paths name
-        # the sysroot cannot be inspected until the sysroot is real.
-        # Only hermetic packages are audited — binutils and gcc link
-        # the system libc by design.
-        ok = audit_hermetic_install(pkg, ver) if pkg.host_tier == :hermetic
 
         # Now that the sysroot includes this package, let it check
         # whatever it could not check before.
         ok = false if !pkg.post_sysroot_check
+      end
+
+      # Audited on being hermetic, not on contributing to the sysroot:
+      # an application is exactly the thing whose linkage matters most,
+      # and it contributes nothing. Runs after any composition, since a
+      # package whose paths name the sysroot cannot be inspected until
+      # the sysroot is real. binutils and gcc are :distro and link the
+      # system libc by design, so they are not audited.
+      if pkg.host_tier == :hermetic
+        ok = false if !audit_hermetic_install(pkg, ver)
       end
 
       info "Installed package #{pkg.name} at version #{ver}"

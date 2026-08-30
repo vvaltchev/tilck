@@ -304,8 +304,10 @@ Tracked to zero before this is considered done.
   * [ ] measured QEMU dependency closure, enumerated in this document
   * [x] first library through the tier (host_zlib), establishing the
     pattern the rest follows
-  * [ ] the closure, package by package
-  * [ ] QEMU, newest major
+  * [x] glib2 and its dependencies (libffi, pcre2, zlib), pixman
+  * [x] headless QEMU 6.2 booting Tilck
+  * [ ] the GTK closure, package by package
+  * [ ] QEMU, newest major (6.2 done; 11.x still to do)
   * [ ] full GTK UI verified working
   * [ ] every Tilck target present in the built QEMU
   * [ ] older QEMU majors via per-version pins
