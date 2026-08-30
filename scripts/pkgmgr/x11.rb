@@ -149,9 +149,7 @@ class X11Package < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-
-    return autotools_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "--disable-static",
       "--libdir=#{stack_sysroot}/usr/lib",
 
@@ -159,7 +157,11 @@ class X11Package < Package
       # sibling headers under the prefix; without this they find the
       # host's copies in /usr/share and mix the two.
       "--datarootdir=#{stack_sysroot}/usr/share",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+
+    return autotools_stack_build(install_dir)
   end
 end
 

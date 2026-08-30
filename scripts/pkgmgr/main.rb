@@ -755,12 +755,18 @@ module Main
 
     if options[:check_for_updates]
       pkgmgr.refresh()
-      upgrades = pkgmgr.get_upgradable_packages
-      if upgrades.empty?
-        return 0
-      end
-      names = upgrades.map(&:name).sort
-      puts "NEEDS_UPGRADE #{names.join(' ')}"
+
+      upgrades = pkgmgr.get_upgradable_packages.map(&:name).sort
+      stale = pkgmgr.get_stale_packages.map(&:name).sort - upgrades
+
+      return 0 if upgrades.empty? && stale.empty?
+
+      # Two different problems with two different remedies, so they
+      # are reported separately: a bumped version needs --upgrade, a
+      # package built from sources that have since changed needs a
+      # rebuild.
+      puts "NEEDS_UPGRADE #{upgrades.join(' ')}" if !upgrades.empty?
+      puts "NEEDS_REBUILD #{stale.join(' ')}" if !stale.empty?
       return 2
     end
 

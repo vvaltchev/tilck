@@ -8,6 +8,8 @@ require_relative 'source_ref'
 require_relative 'package_manager'
 require_relative 'build_env'
 require_relative 'coords'
+require_relative 'source_digest'
+require_relative 'build_inputs'
 
 PackageDep = Struct.new(
 
@@ -117,6 +119,7 @@ class Package
   FOUND_STR     = Term.makeBlue("found".center(STATUS_LEN))
   SKIPPED_STR   = Term.makeYellow("skipped".center(STATUS_LEN))
   BROKEN_STR    = Term.makeRed("broken".center(STATUS_LEN))
+  STALE_STR     = Term.makeYellow("stale".center(STATUS_LEN))
   EMPTY_STR     = "".center(STATUS_LEN)
 
   public
@@ -367,6 +370,97 @@ class Package
   # whole set.
   def dep_list_for(ver = nil) = dep_list
 
+  #
+  # THE BUILD RECIPE: what determines the artifact, beyond its name,
+  # version and coordinates.
+  #
+  # build_flags is the package's own arguments to whichever build
+  # system it uses. The helpers ASK for it rather than accepting it,
+  # so a flag that is not declared cannot be passed -- which is the
+  # point: an undeclared flag would be an input nothing recorded, and
+  # the install would claim to be current when it was not.
+  #
+  def build_flags(ver = nil) = []
+
+  #
+  # Input FILES whose content decides the artifact.
+  #
+  # The patch set by default, because the base class is what applies
+  # patches and therefore already owns that knowledge. A package with
+  # other inputs -- busybox's .config, u-boot's -- adds them.
+  #
+  def build_files(ver = nil)
+
+    v = (ver || default_ver).to_s
+    base = MAIN_DIR / "scripts" / "patches" / pkg_dirname / v
+    return [] if !base.directory?
+
+    return Pathname.glob(base / "**" / "*.diff").sort
+  end
+
+  # Base-class helpers whose own source is part of a package's recipe
+  # when it calls them. Changing --wrap-mode in meson_stack_build
+  # altered dependency resolution for 22 packages at once and rebuilt
+  # none of them; listing the helpers here is what catches that,
+  # without making every package depend on all of package.rb.
+  BUILD_HELPERS = [
+    :meson_stack_build, :autotools_stack_build, :stack_install,
+  ].freeze
+
+  #
+  # One digest standing for "how this package is built".
+  #
+  # Declared flags, plus the source of the methods the package itself
+  # defines, plus any shared build helper it calls. The code is in
+  # here because a third of the tree does something no flag list can
+  # express, and hashing it is the only way to notice a change --
+  # comments excluded, so that rewriting a comment in a 109-line
+  # install method does not cost a rebuild.
+  #
+  def build_recipe_digest(ver = nil)
+
+    own = SourceDigest.class_source(self.class)
+    file = SourceDigest.source_file_of(self.class)
+
+    helpers = BUILD_HELPERS.filter_map { |h|
+      next if !own.include?(h.to_s)
+      SourceDigest.method_source(__FILE__, h)
+    }
+
+    return "sha256:" + SourceDigest.digest(
+      build_flags(ver).join(" "), own, *helpers
+    )[0, 32]
+  end
+
+  # Record what this install was built from, beside what was built.
+  def write_build_inputs(dir, ver, argv = nil)
+    BuildInputs.write(dir,
+                      recipe: build_recipe_digest(ver),
+                      files: build_files(ver),
+                      argv: argv)
+  end
+
+  #
+  # Is an installed version stale -- present, but built from
+  # something other than the current sources?
+  #
+  # An install with no record is NOT stale: it predates the mechanism
+  # or was made by hand, and rebuilding the world on that basis would
+  # be worse than the gap. New installs all carry one.
+  #
+  def build_inputs_changed?(ver)
+
+    inst = find_install(ver)
+    return false if inst.nil?
+
+    recorded = BuildInputs.comparable(inst.path)
+    return false if recorded.nil?
+
+    current = BuildInputs.render(recipe: build_recipe_digest(ver),
+                                 files: build_files(ver))
+    return recorded != current.chomp
+  end
+
   # What this package needs from the HOST -- things pkgmgr does not
   # build and cannot install as packages of its own: a Rust toolchain,
   # a -dev library, a code generator.
@@ -518,11 +612,11 @@ class Package
 
   # ./configure && make && make install, the shape most of the X11 and
   # freetype side of the QEMU closure uses.
-  def autotools_stack_build(install_dir, args: [])
+  def autotools_stack_build(install_dir)
 
     return stack_install(install_dir) do |prefix, destdir|
       run_command("configure.log",
-                  ["./configure", "--prefix=#{prefix}", *args]) &&
+                  ["./configure", "--prefix=#{prefix}", *build_flags]) &&
       run_command("build.log", ["make", "-j#{BUILD_PAR}"]) &&
       run_command("install.log", ["make", "install", "DESTDIR=#{destdir}"])
     end
@@ -548,14 +642,14 @@ class Package
   # have gone straight through. With nofallback the same situation is
   # a hard error naming the dependency and the version it wanted,
   # which is then a package we add deliberately.
-  def meson_stack_build(install_dir, args: [])
+  def meson_stack_build(install_dir)
 
     return stack_install(install_dir) do |prefix, destdir|
       run_command("configure.log",
                   ["meson", "setup", "build",
                    "--prefix=#{prefix}", "--libdir=lib",
                    "--buildtype=release",
-                   "--wrap-mode=nofallback", *args]) &&
+                   "--wrap-mode=nofallback", *build_flags]) &&
       run_command("build.log", ["ninja", "-C", "build"]) &&
       run_command("install.log",
                   ["meson", "install", "-C", "build",

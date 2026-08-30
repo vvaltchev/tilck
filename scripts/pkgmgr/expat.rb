@@ -66,13 +66,15 @@ class HostExpatPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return autotools_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "--disable-static",
       "--without-examples",
       "--without-tests",
       "--libdir=#{stack_sysroot}/usr/lib",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return autotools_stack_build(install_dir)
   end
 end
 

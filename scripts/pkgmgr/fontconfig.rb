@@ -83,13 +83,15 @@ class HostFontconfigPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Ddoc=disabled",
       "-Dtests=disabled",
       "-Dtools=enabled",       # fc-cache, which gtk wants at runtime
       "-Dnls=disabled",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

@@ -117,23 +117,28 @@ class GlycinPackage < Package
   # cargo only under meson.is_cross_build(), so the cross file is not
   # optional here -- see CargoBuild#with_cargo_env for why --target
   # decides whether the proc-macros survive.
-  def build_halves(install_dir, args)
+  # The flags both halves share; each subclass adds which half to
+  # build. Declared rather than passed, so the record of what was
+  # built cannot omit them -- the cross file included, since which
+  # cross file was used decides whether the proc-macros linked
+  # against our glibc.
+  def build_flags(ver = nil) = [
+    "--cross-file=#{cargo_cross_file_path}",
+    "-Dlibglycin-gtk4=false",
+    "-Dglycin-thumbnailer=false",
+    "-Dintrospection=false",
+    "-Dvapi=false",
+    "-Dtests=false",
+    "-Dpython_tests=false",
+    *half_flags,
+  ]
+
+  def build_halves(install_dir)
 
     ensure_po_dir
-    cross = write_cargo_cross_file
+    write_cargo_cross_file
 
-    with_cargo_env do
-      meson_stack_build(install_dir, args: [
-        "--cross-file=#{cross}",
-        "-Dlibglycin-gtk4=false",
-        "-Dglycin-thumbnailer=false",
-        "-Dintrospection=false",
-        "-Dvapi=false",
-        "-Dtests=false",
-        "-Dpython_tests=false",
-        *args,
-      ])
-    end
+    with_cargo_env { meson_stack_build(install_dir) }
   end
 end
 
@@ -170,11 +175,13 @@ class HostLibglycinPackage < GlycinPackage
     ["install/usr/lib/pkgconfig/glycin-2.pc", false],
   ]
 
+  def half_flags = [
+    "-Dlibglycin=true",
+    "-Dglycin-loaders=false",
+  ]
+
   def install_impl_internal(install_dir)
-    return build_halves(install_dir, [
-      "-Dlibglycin=true",
-      "-Dglycin-loaders=false",
-    ])
+    return build_halves(install_dir)
   end
 end
 
@@ -227,12 +234,14 @@ class HostGlycinLoadersPackage < GlycinPackage
     ["install/usr/libexec/glycin-loaders/2+/glycin-svg", false],
   ]
 
+  def half_flags = [
+    "-Dlibglycin=false",
+    "-Dglycin-loaders=true",
+    "-Dloaders=#{LOADERS.join(",")}",
+  ]
+
   def install_impl_internal(install_dir)
-    return build_halves(install_dir, [
-      "-Dlibglycin=false",
-      "-Dglycin-loaders=true",
-      "-Dloaders=#{LOADERS.join(",")}",
-    ])
+    return build_halves(install_dir)
   end
 end
 

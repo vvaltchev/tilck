@@ -60,17 +60,19 @@ class HostLibffiPackage < Package
     super(dir)
   end
 
+  def build_flags(ver = nil) = [
+      "--disable-static",       # the sysroot ships shared libraries
+      "--libdir=#{stack_sysroot}/usr/lib",
+      "--disable-multi-os-directory",  # keeps it out of lib64
+  ]
+
   def install_impl_internal(install_dir)
 
     # The git tarball has no configure script; autogen builds one.
     ok = run_command("autogen.log", ["./autogen.sh"])
     return false if !ok
 
-    return autotools_stack_build(install_dir, args: [
-      "--disable-static",       # the sysroot ships shared libraries
-      "--libdir=#{stack_sysroot}/usr/lib",
-      "--disable-multi-os-directory",  # keeps it out of lib64
-    ])
+    return autotools_stack_build(install_dir)
   end
 end
 

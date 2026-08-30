@@ -73,8 +73,7 @@ class HostCairoPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dxlib=enabled",
       "-Dfreetype=enabled",
       "-Dfontconfig=enabled",
@@ -86,7 +85,10 @@ class HostCairoPackage < Package
       # earlier version of this disabled glib on the assumption
       # that it only affected cairo's own tests; it does not.
       "-Dglib=enabled",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

@@ -62,11 +62,13 @@ class HostFribidiPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Ddocs=false",
       "-Dbin=false",     # the CLI tool is not wanted, only the library
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

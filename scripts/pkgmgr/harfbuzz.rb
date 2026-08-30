@@ -70,8 +70,7 @@ class HostHarfbuzzPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dfreetype=enabled",
       "-Dglib=enabled",
       "-Dtests=disabled",
@@ -79,7 +78,10 @@ class HostHarfbuzzPackage < Package
       "-Dutilities=disabled",
       "-Dcairo=disabled",      # cairo comes later and does not need it
       "-Dicu=disabled",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

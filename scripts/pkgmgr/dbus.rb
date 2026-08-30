@@ -71,8 +71,7 @@ class HostDbusPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Ddoxygen_docs=disabled",
       "-Dducktype_docs=disabled",
       "-Dxml_docs=disabled",
@@ -80,7 +79,10 @@ class HostDbusPackage < Package
       "-Dselinux=disabled",
       "-Dapparmor=disabled",
       "-Dmodular_tests=disabled",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

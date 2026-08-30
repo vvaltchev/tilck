@@ -105,11 +105,16 @@ module CargoBuild
   # "cross" target is this very machine and meson may run what it
   # builds.
   #
-  def write_cargo_cross_file(path = "tilck-cross.ini")
+  # Where the cross file goes. Separate from writing it so that
+  # build_flags can name it without side effects: the flags are asked
+  # for during staleness checks too, when no build is running.
+  def cargo_cross_file_path = File.expand_path("tilck-cross.ini")
+
+  def write_cargo_cross_file
 
     _, rustc = rust_tools
     gcc_bin, bu_bin = stack_toolchain_bins
-    full = File.expand_path(path)
+    full = cargo_cross_file_path
 
     File.write(full, <<~CROSS)
       [binaries]
