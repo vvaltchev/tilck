@@ -145,7 +145,8 @@ class HostGccPackage < Package
         next
       end
 
-      loader = "#{sysroot}/usr/lib/ld-linux-x86-64.so.2"
+      loader = "#{pkgmgr.hermetic_sysroot(gcc_ver)}" \
+               "/usr/lib/ld-linux-x86-64.so.2"
       refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
       resolved = Hermeticity.resolve_libs(bin, loader: loader)
 
@@ -175,14 +176,17 @@ class HostGccPackage < Package
 
   def install_impl_internal(install_dir)
 
-    if !SUPPORTED.include?(default_ver)
-      error "gcc #{default_ver} is not one of the supported versions: " +
+    # The version being INSTALLED, which is not default_ver when the
+    # user named another one. Getting this wrong is silent: the checks
+    # below would answer about a compiler nobody asked for.
+    ver = installing_ver(install_dir)
+    sysroot = pkgmgr.hermetic_sysroot(ver)
+
+    if !SUPPORTED.include?(ver)
+      error "gcc #{ver} is not one of the supported versions: " +
             SUPPORTED.map(&:to_s).join(", ")
       return false
     end
-
-    ver = installing_ver(install_dir)
-    sysroot = pkgmgr.hermetic_sysroot(ver)
 
     prefix = final_install_prefix(install_dir)
     destdir = "#{install_dir}/destdir"
@@ -253,7 +257,7 @@ class HostGccPackage < Package
     # So the sanitizer runtimes are dropped for those versions only.
     # Nothing in the QEMU stack uses them, and the alternative is not
     # supporting those compilers at all.
-    if default_ver < Ver("14.0.0")
+    if ver < Ver("14.0.0")
       conf << "--disable-libsanitizer"
     end
 
@@ -418,7 +422,7 @@ class HostGccPackage < Package
       )
 
       if !violations.empty?
-        error "gcc #{default_ver} produces non-hermetic binaries:"
+        error "gcc #{gcc_ver} produces non-hermetic binaries:"
         violations.each { |v| error "  #{v.kind}: #{v.detail}" }
         next
       end
