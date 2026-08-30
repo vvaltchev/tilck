@@ -77,44 +77,12 @@ class HostPixmanPackage < Package
 
   def install_impl_internal(install_dir)
 
-    sysroot_usr = "#{hermetic_sysroot}/usr"
-    destdir = "#{install_dir}/destdir"
-
-    ok = false
-
-    # meson and ninja are on PATH because they publish their bin dirs
-    # and with_hermetic_toolchain applies what the dependencies say.
-    # Nothing here names those packages or guesses where they live.
-    with_hermetic_toolchain do
-      ok = run_command("configure.log", [
-        "meson", "setup", "build",
-        "--prefix=#{sysroot_usr}",
-        "--libdir=lib",              # not lib64: the sysroot has one libdir
-        "--buildtype=release",
-        "-Dtests=disabled",          # nothing here consumes them
-        "-Ddemos=disabled",
-      ])
-      next if !ok
-
-      ok = run_command("build.log", ["ninja", "-C", "build"])
-      next if !ok
-
-      ok = run_command("install.log",
-                       ["meson", "install", "-C", "build",
-                        "--destdir=#{destdir}"])
-    end
-
-    return false if !ok
-
-    FileUtils.mkdir_p("#{install_dir}/install")
-    FileUtils.mv("#{destdir}#{sysroot_usr}", "#{install_dir}/install/usr")
-
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
-    return true
+    return meson_hermetic_build(install_dir, args: [
+      "-Dtests=disabled",          # nothing here consumes them
+      "-Ddemos=disabled",
+    ])
   end
+
 end
 
 pkgmgr.register(HostPixmanPackage.new())
