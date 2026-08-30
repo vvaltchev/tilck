@@ -77,6 +77,14 @@ class HostGlibcPackage < Package
   def default_cc = "syscc"
   def enabled? = HERMETIC_ENABLED
 
+  # The one package that cannot carry an RPATH to its own libc: the
+  # libc in question is this package. Without this, its utilities
+  # (getconf, gencat, ...) and its gconv modules report ~290
+  # violations, all of them "libc.so.6 resolved to the system libc"
+  # under an LD_LIBRARY_PATH no real invocation sets.
+  # See Package#hermeticity_hostile_check?
+  def hermeticity_hostile_check? = false
+
   def expected_files(ver = nil) = [
     ["install/usr/lib/libc.so.6", false],
     ["install/usr/lib/ld-linux-x86-64.so.2", false],

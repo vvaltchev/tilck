@@ -32,11 +32,33 @@ package manager rather than beside it.
 Every binary we produce is dynamically linked, but exclusively against
 our own libraries:
 
-  * the ELF interpreter is **our** loader
-    (`-Wl,--dynamic-linker=<sysroot>/lib/ld-linux-x86-64.so.2`);
-  * `RPATH` points into our lib directories, `$ORIGIN`-relative where
-    possible;
+  * the ELF interpreter is **our** loader;
+  * `DT_RPATH` points into our lib directories;
   * `/usr/include` and `/usr/lib` never appear on any search path.
+
+Both of the first two are required, and it is worth being precise about
+why the second is not optional. Our `ld.so` has the sysroot compiled in
+as its default search path, so a binary carrying **no** RPATH resolves
+correctly whenever nothing competes — and silently loads system
+libraries the moment something does:
+
+```
+$ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu our-loader --list prog
+        libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+        libc.so.6      => /usr/lib/x86_64-linux-gnu/libc.so.6
+```
+
+Hermeticity has to be a property of the binary, not of the environment
+it happens to run in.
+
+`DT_RPATH` specifically, not `DT_RUNPATH`: RPATH is searched *before*
+`LD_LIBRARY_PATH` and RUNPATH *after* it, so only the former is immune.
+That means `--disable-new-dtags`, passed explicitly rather than relying
+on binutils' build-time default.
+
+The audit therefore asks its question with a hostile `LD_LIBRARY_PATH`.
+A clean-environment check would pass a binary that is only accidentally
+hermetic, which is exactly what it did before this was noticed.
 
 Fully static was considered and rejected: GTK loads pixbuf loaders,
 input methods and themes as shared modules at runtime, so a fully

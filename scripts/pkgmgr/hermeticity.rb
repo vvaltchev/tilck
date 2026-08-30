@@ -121,17 +121,36 @@ module Hermeticity
     return { interp: interp, rpaths: rpaths }
   end
 
+  # Library directories a hostile environment would point at. Used to
+  # make the resolution check independent of the environment: see
+  # resolve_libs.
+  SYSTEM_LIBDIRS = [
+    "/usr/lib/x86_64-linux-gnu", "/lib/x86_64-linux-gnu",
+    "/usr/lib64", "/lib64", "/usr/lib", "/lib",
+  ].freeze
+
   # Where each shared library actually resolves, asked of the loader
   # itself rather than reimplemented. This is the ground truth: RPATH
   # and interpreter can both look right while a library still comes
   # from the system.
   #
+  # Asked with LD_LIBRARY_PATH pointing at the system's library
+  # directories, deliberately. Resolving correctly in a clean
+  # environment proves very little: our loader has the sysroot compiled
+  # in as its default search path, so a binary carrying no RPATH at all
+  # resolves correctly when nothing competes and silently loads system
+  # libraries when something does. Asking the hostile question instead
+  # tests the property actually wanted — that the binary itself says
+  # where its libraries live — and a binary that passes this passes the
+  # clean case too, since DT_RPATH outranks LD_LIBRARY_PATH.
+  #
   # Returns nil when the file cannot be inspected this way (a static
   # binary, or a loader that refuses it), which the caller treats as
   # "nothing to check" rather than as a pass.
-  def resolve_libs(path, loader:)
+  def resolve_libs(path, loader:, hostile: true)
 
-    out = `#{loader.to_s.shellescape} --list #{path.to_s.shellescape} 2>/dev/null`
+    env = hostile ? "LD_LIBRARY_PATH=#{SYSTEM_LIBDIRS.join(":")} " : ""
+    out = `#{env}#{loader.to_s.shellescape} --list #{path.to_s.shellescape} 2>/dev/null`
     return nil if out.strip.empty?
 
     resolved = {}
@@ -155,7 +174,8 @@ module Hermeticity
 
   # Audit every ELF file under `root`. Returns a list of Violations,
   # empty when the tree is clean.
-  def audit(root, allowed:, readelf: "readelf", loader: nil)
+  def audit(root, allowed:, readelf: "readelf", loader: nil,
+            hostile: true)
 
     out = []
 
@@ -164,7 +184,8 @@ module Hermeticity
       next if !elf?(path)
 
       refs = read_refs(path, readelf: readelf)
-      resolved = loader ? resolve_libs(path, loader: loader) : nil
+      resolved = loader ?
+        resolve_libs(path, loader: loader, hostile: hostile) : nil
 
       out.concat(
         check_refs(path,

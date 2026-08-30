@@ -313,6 +313,18 @@ class Package
   # whole set.
   def dep_list_for(ver = nil) = dep_list
 
+  # Should the hermeticity audit ask its question with a hostile
+  # LD_LIBRARY_PATH?
+  #
+  # Yes for everything built with our toolchain: those binaries carry
+  # an RPATH and must resolve correctly no matter what the environment
+  # says. glibc is the exception, and the only one expected — the
+  # library its own utilities need IS glibc, upstream does not rpath
+  # them, and there is nothing for an RPATH to point at but the
+  # loader's own home. Such a package is still audited, just without
+  # the environment competing.
+  def hermeticity_hostile_check? = true
+
   # What this package contributes to the composed sysroot.
   #
   # A hermetic package contributes its whole install tree, which is

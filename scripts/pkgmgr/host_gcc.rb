@@ -239,10 +239,54 @@ class HostGccPackage < Package
       return false
     end
 
+    specs = specs.gsub(SYSTEM_LOADER, loader)
+
+    specs = add_link_rpath(specs, "#{hermetic_sysroot}/usr/lib")
+    if specs.nil?
+      error "gcc -dumpspecs has no *link: section to add an rpath to"
+      return false
+    end
+
     FileUtils.mkdir_p(File.dirname(specs_path))
-    File.write(specs_path, specs.gsub(SYSTEM_LOADER, loader))
+    File.write(specs_path, specs)
     info "Hermetic specs installed: interpreter -> #{loader}"
     return true
+  end
+
+  # Record the library search path in the binaries themselves.
+  #
+  # Without this, hermeticity is an accident of which loader happens to
+  # run: our ld.so has the sysroot compiled in as its default search
+  # path, so it finds our libraries, and the SYSTEM ld.so finds the
+  # system's. The binary says nothing either way. That is not a
+  # theoretical difference —
+  #
+  #   $ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu our-loader --list prog
+  #     libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+  #     libc.so.6      => /usr/lib/x86_64-linux-gnu/libc.so.6
+  #
+  # — one environment variable and our own loader loads the system's
+  # libraries.
+  #
+  # DT_RPATH rather than DT_RUNPATH, because RPATH is searched BEFORE
+  # LD_LIBRARY_PATH and RUNPATH after it; only the former is immune.
+  # --disable-new-dtags is our binutils' default today, but that is a
+  # build-time default of binutils rather than a promise, and silently
+  # getting RUNPATH would silently restore the hole.
+  def add_link_rpath(specs, libdir)
+
+    marker = "*link:\n"
+    i = specs.index(marker)
+    return nil if i.nil?
+
+    body_start = i + marker.length
+    body_end = specs.index("\n", body_start)
+    return nil if body_end.nil?
+
+    body = specs[body_start...body_end]
+    added = " %{!static:-rpath #{libdir} --disable-new-dtags}"
+
+    return specs[0...body_start] + body + added + specs[body_end..]
   end
 
   # Make the compiler prove itself before the install is accepted.
