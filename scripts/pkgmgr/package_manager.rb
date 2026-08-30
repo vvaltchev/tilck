@@ -30,6 +30,7 @@ class PackageManager
     @found_installed = nil
     @installable = nil
     @target_arch = nil    # nil = fall back to the global ARCH
+    @hermetic_stack = nil # nil = fall back to HOST_VER_GCC
   end
 
   # Current target architecture: the arch the install/uninstall flow
@@ -60,6 +61,34 @@ class PackageManager
     ensure
       @target_arch = prev
     end
+  end
+
+  # The hermetic stack this invocation is building into.
+  #
+  # Scoped, the same way with_target_arch scopes the target
+  # architecture. `-s host_gcc:13.4.0` builds the 13.4.0 stack — its
+  # kernel headers, its glibc, then the compiler — because asking for a
+  # version is a request to BUILD that version.
+  #
+  # HOST_VER_GCC is a convenience only: it supplies a version when none
+  # is named, so `-s host_gcc` works. It never limits which versions
+  # can be built or coexist.
+  def with_hermetic_stack(gcc_ver, &block)
+
+    prev = @hermetic_stack
+    @hermetic_stack = gcc_ver
+
+    begin
+      return block.call
+    ensure
+      @hermetic_stack = prev
+    end
+  end
+
+  # The stack in effect: what this invocation asked for, else the
+  # default.
+  def current_hermetic_stack
+    return @hermetic_stack || default_hermetic_gcc_ver
   end
 
   def refresh

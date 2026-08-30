@@ -227,13 +227,13 @@ class Package
   # scanners expect.
   # Which hermetic stack an install of `ver` belongs to.
   #
-  # For everything except the compiler this is the stack the world is
-  # currently being built for: choosing a different compiler means
-  # changing HOST_VER_GCC and rebuilding, which is coherent. host_gcc
-  # overrides it, because a compiler must belong to ITS OWN stack —
-  # binding one to another compiler's stack is how a gcc ends up
-  # configured against a sysroot it has no business in.
-  def stack_gcc_ver(ver = nil) = pkgmgr.default_hermetic_gcc_ver
+  # It is the stack this invocation is building into, which
+  # `-s host_gcc:13.4.0` sets to 13.4.0 for every package in the plan,
+  # so that stack's kernel headers and glibc are built alongside the
+  # compiler. host_gcc overrides it, because a compiler must belong to
+  # ITS OWN stack — binding one to another compiler's stack is how a
+  # gcc ends up configured against a sysroot it has no business in.
+  def stack_gcc_ver(ver = nil) = pkgmgr.current_hermetic_stack
 
   # "gcc-<ver>", not a bare version: the compiler is named because it
   # might not always be gcc, and it matches the target-side gcc-<ver>/
