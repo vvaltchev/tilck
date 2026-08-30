@@ -675,34 +675,18 @@ class TestRustupInstaller < Minitest::Test
   def rust_plan = [["p", nil]]
   def rust_pm = FakeSysPm.new("p" => FakeSysPkg.new("p", [rustc_dep]))
 
-  # Downloading and running a script off the network is not something
-  # an unattended run gets to decide on its own.
-  def test_non_interactive_refuses_without_opt_in
-    env = FakeSysEnv.new(interactive: false, ci: true)
-    out = capture_out { SystemDeps.check_plan(rust_plan, env: env,
-                                              pm: rust_pm) }
-
-    assert_equal false, out[:result]
-    assert_empty env.ran
-
-    # It must refuse OUTRIGHT, not fall through to a prompt that
-    # happens to default to no: with nobody there to answer, "asked
-    # and defaulted" and "refused on principle" produce the same
-    # return value and completely different behaviour the day the
-    # default changes.
-    assert_empty env.asked
-
-    # And it has to say how to allow it, or the refusal is a dead end.
-    assert_includes out[:text], "TILCK_INSTALL_RUSTUP"
-  end
-
-  def test_non_interactive_proceeds_with_explicit_opt_in
-    env = FakeSysEnv.new(interactive: false, ci: true,
-                         flags: { "TILCK_INSTALL_RUSTUP" => true })
-    env.on_run = ->(argv, e) {
-      # The rustup script "installs" a current toolchain.
+  def installed_rust
+    return ->(argv, e) {
       e.tools["rustc"] = { path: "/h/.cargo/bin/rustc", ver: "1.97.1" }
     }
+  end
+
+  # Same policy the host package manager gets: CI proceeds. Splitting
+  # the two -- letting CI install packages but not a toolchain -- only
+  # produces CI that cannot build what it was asked to build.
+  def test_ci_installs_rustup_without_asking
+    env = FakeSysEnv.new(interactive: false, ci: true)
+    env.on_run = installed_rust
 
     ok = SystemDeps.check_plan(rust_plan, env: env, pm: rust_pm)
 
@@ -714,17 +698,35 @@ class TestRustupInstaller < Minitest::Test
     assert_empty env.asked
   end
 
-  # Not a default-yes question: it runs a remote script.
-  def test_prompt_defaults_to_no
+  # No terminal and no declaration of being unattended: refuse rather
+  # than act on somebody's machine with nobody watching.
+  def test_no_tty_and_no_ci_refuses
+    env = FakeSysEnv.new(interactive: false, ci: false)
+    out = capture_out { SystemDeps.check_plan(rust_plan, env: env,
+                                              pm: rust_pm) }
+
+    assert_equal false, out[:result]
+    assert_empty env.ran
+    assert_empty env.asked
+    assert_includes out[:text], "Install rustc >= 1.85 yourself"
+  end
+
+  # Installing what the build needs is the expected answer, exactly as
+  # it is for apt.
+  def test_prompt_defaults_to_yes
     env = FakeSysEnv.new(interactive: true)
-    got_default = nil
+    env.on_run = installed_rust
+    seen = []
     env.define_singleton_method(:ask) do |q, default: true|
-      got_default = default
-      false
+      seen << [q, default]
+      default
     end
 
-    SystemDeps.check_plan(rust_plan, env: env, pm: rust_pm)
-    assert_equal false, got_default
+    ok = SystemDeps.check_plan(rust_plan, env: env, pm: rust_pm)
+
+    assert_equal true, ok
+    assert_equal true, seen[0][1]
+    assert_includes seen[0][0], "Install"
   end
 
   def test_declining_rustup_fails_the_run
@@ -735,32 +737,68 @@ class TestRustupInstaller < Minitest::Test
   end
 
   def test_download_failure_is_reported
-    env = FakeSysEnv.new(interactive: true, answers: [true],
+    env = FakeSysEnv.new(interactive: true, answers: [true, false],
                          run_result: false)
     ok = SystemDeps.check_plan(rust_plan, env: env, pm: rust_pm)
     assert_equal false, ok
     assert_equal 1, env.ran.length   # stopped after the failed download
   end
 
-  # --no-modify-path: editing somebody's shell profile is not ours to
-  # do without asking.
-  def test_rustup_does_not_modify_the_users_profile
-    env = FakeSysEnv.new(interactive: true, answers: [true])
-    env.on_run = ->(argv, e) {
-      e.tools["rustc"] = { path: "/h/.cargo/bin/rustc", ver: "1.97.1" }
-    }
+  #
+  # The PATH question. Somebody installing Rust probably wants it
+  # outside this build too, so it is asked rather than decided.
+  #
+
+  def test_accepting_the_path_question_lets_rustup_update_the_profile
+    env = FakeSysEnv.new(interactive: true, answers: [true, true])
+    env.on_run = installed_rust
+
+    SystemDeps.check_plan(rust_plan, env: env, pm: rust_pm)
+
+    sh = env.ran.find { |a| a[0] == "sh" }
+    assert_includes sh, "-y"
+    refute_includes sh, "--no-modify-path"
+    assert_equal 2, env.asked.length
+    assert_includes env.asked[1], "PATH"
+  end
+
+  def test_declining_the_path_question_leaves_the_profile_alone
+    env = FakeSysEnv.new(interactive: true, answers: [true, false])
+    env.on_run = installed_rust
+
+    out = capture_out { SystemDeps.check_plan(rust_plan, env: env,
+                                              pm: rust_pm) }
+
+    sh = env.ran.find { |a| a[0] == "sh" }
+    assert_includes sh, "--no-modify-path"
+
+    # ...and says how to do it by hand instead.
+    assert_includes out[:text], "export PATH="
+  end
+
+  # Nobody to ask means nobody consented: an unattended run must not
+  # edit a shell profile.
+  def test_unattended_never_touches_the_profile
+    env = FakeSysEnv.new(interactive: false, ci: true)
+    env.on_run = installed_rust
 
     SystemDeps.check_plan(rust_plan, env: env, pm: rust_pm)
 
     sh = env.ran.find { |a| a[0] == "sh" }
     assert_includes sh, "--no-modify-path"
-    assert_includes sh, "-y"
   end
 
   def test_installer_metadata
     assert_equal :rustup, SystemDeps::RUSTUP.id
-    assert_equal "TILCK_INSTALL_RUSTUP", SystemDeps::RUSTUP.env_opt_in
     assert_includes SystemDeps::RUSTUP.bin_dir, ".cargo"
+    refute_respond_to SystemDeps::RUSTUP, :env_opt_in
+  end
+
+  # The floor is set by what we build, and the coupling is easy to
+  # lose: gdk-pixbuf 2.44.8 wants glycin-2 >= 2.2.alpha.7, whose
+  # Cargo.toml declares rust-version = "1.93".
+  def test_min_rust_matches_what_glycin_requires
+    assert_equal Ver("1.93"), SystemDeps::MIN_RUST
   end
 end
 
@@ -943,16 +981,6 @@ class TestRealEnvironmentGlue < Minitest::Test
     got = env.probe_version("/bin/echo", "--version",
                             /\Ano-such-version\z/)
     assert_nil got
-  end
-
-  def test_env_flag
-    env = SystemDeps::Env.new
-    with_env("TILCK_TEST_FLAG" => nil) do
-      assert_equal false, env.env_flag("TILCK_TEST_FLAG")
-    end
-    with_env("TILCK_TEST_FLAG" => "1") do
-      assert_equal true, env.env_flag("TILCK_TEST_FLAG")
-    end
   end
 
   # The abstract Backend refuses to guess.
