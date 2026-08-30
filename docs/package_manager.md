@@ -10,6 +10,7 @@
     - [Host tool tiers](#host-tool-tiers)
     - [Package lifecycle](#package-lifecycle)
   * [Dependency resolution](#dependency-resolution)
+  * [System dependencies](#system-dependencies)
   * [Default packages and upgrades](#default-packages-and-upgrades)
   * [Atomic installs and signal safety](#atomic-installs-and-signal-safety)
   * [Resumable downloads](#resumable-downloads)
@@ -220,6 +221,96 @@ current `ARCH` (injected by `build_dep_graph`).
 The dependency graph is validated at startup for cycles and missing references.
 If a cycle is detected, `build_toolchain` fails with a clear error before any
 install attempt.
+
+## System dependencies
+
+Some packages need things the package manager does **not** build: a Rust
+toolchain, a `-dev` library, a code generator. A package declares those by
+overriding `system_deps`, and the install path checks the union of the
+declarations across the whole resolved closure **before building anything** —
+so a missing toolchain stops the run in the first second, instead of forty
+minutes in when a `configure` script finally goes looking for it.
+
+The generic half lives in `scripts/pkgmgr/system_pkgs.rb`: one `Backend` per
+host package manager (apt, dnf, pacman, FreeBSD `pkg`, Homebrew), each knowing
+how to query what is installed and how to install more. It has no dependency on
+`Package` or `PackageManager`, so anything else that needs to check for a host
+tool can use it as-is. `scripts/pkgmgr/system_deps.rb` builds the declarations
+and the check flow on top.
+
+This is the Ruby counterpart of `scripts/bash_includes/install_pkgs`, which
+still does the bootstrap — it runs before Ruby exists, so it cannot be replaced
+outright. But that list is installed **unconditionally on every machine**,
+whether or not a given package is ever built, which is why it must stay small.
+Anything needed by only some builds belongs here instead, and over time
+requirements can move out of `install_pkgs` and into the packages that actually
+want them.
+
+### Two shapes of requirement
+
+A **package** — `libssl-dev` — is named per backend and only the host package
+manager can answer for it:
+
+```ruby
+SysDep.new(key: :ssl, what: "OpenSSL headers",
+           pkgs: { apt: "libssl-dev", dnf: "openssl-devel" })
+```
+
+A **command** — `rustc` — is checked by *running* it, and may carry a minimum
+version:
+
+```ruby
+SysDep.new(key: :rustc, what: "the Rust compiler", command: "rustc",
+           min_ver: Ver("1.85"), installer: SystemDeps::RUSTUP)
+```
+
+The distinction is not cosmetic. A command can arrive from somewhere the
+package manager has never heard of — rustup, Homebrew, a hand-built tree on
+`PATH`. On the machine this was written on, `dpkg-query` reports `rustc` as not
+installed while a perfectly good rustup toolchain sits in `~/.cargo/bin`;
+asking the package manager would send you installing a *worse* rustc than the
+one already there. So commands are looked for on `PATH` plus the prefixes those
+installers use, and their `--version` is parsed and compared — the same thing
+`version_check.rb` does to the Ruby it is running under.
+
+A version floor requires `command`: it is not portably expressible across five
+package managers, and a constraint that cannot be checked would read as
+satisfied everywhere.
+
+### Outcomes
+
+| State | Meaning |
+|---|---|
+| `ok` | present, and new enough if a floor was declared |
+| `missing` | not found at all |
+| `too_old` | found, but below `min_ver` |
+| `broken` | on disk, but would not run or report a version |
+| `unknown` | no backend for this distro, or no package name for it there |
+
+`unknown` is reported rather than guessed at: on an unsupported distro,
+claiming a dependency is satisfied would be a lie, and claiming it is missing
+would send people installing something already present under another name. It
+warns and lets the build proceed.
+
+`too_old` is deliberately **not** routed to the host package manager —
+reinstalling what is already there fixes nothing.
+
+### Installing
+
+Missing packages are batched into a single command, shown, and installed after
+a prompt (`-y` is added only when nobody is there to answer). Non-interactive
+runs outside CI refuse and print the exact command to run. After any install,
+every requirement is checked **again from scratch**: an install command exiting
+0 is not evidence the requirement is met — a package manager will happily
+install a `rustc` that is still too old.
+
+Some dependencies are better served by their own installer than by the distro.
+Rust is the case in point: Ubuntu 22.04 ships 1.66 and cannot be updated to
+what modern crates need, so `SystemDeps::RUSTUP` offers rustup instead. It
+downloads and runs a script from the network, so it is never invoked without
+consent — an unattended run refuses unless `TILCK_INSTALL_RUSTUP=1` says
+otherwise, and it runs with `--no-modify-path` rather than editing anyone's
+shell profile.
 
 ## Default packages and upgrades
 
