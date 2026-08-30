@@ -4,6 +4,7 @@ require_relative 'test_helper'
 require_relative '../system_pkgs'
 require_relative '../system_deps'
 require_relative '../gdk_pixbuf'
+require_relative '../librsvg'
 
 #
 # Test doubles for the outside world.
@@ -1026,5 +1027,109 @@ class TestRealEnvironmentGlue < Minitest::Test
     yield
   ensure
     saved.each { |k, v| ENV[k] = v }
+  end
+end
+
+
+#
+# `cargo install <crate>`, the third way a dependency can arrive.
+#
+# Rust's build tools ship as crates, not distro packages, so neither
+# the host package manager nor rustup installs them: cargo does. The
+# case that forced it is cargo-c, which librsvg's meson.build requires
+# by binary name.
+#
+class TestCargoInstaller < Minitest::Test
+
+  include TestHelper
+  include SysDepCapture
+
+  def cargo_c_plan = [["p", nil]]
+
+  def cargo_c_pm
+    return FakeSysPm.new("p" => FakeSysPkg.new("p", [SystemDeps::CARGO_C]))
+  end
+
+  def with_cargo(env)
+    env.tools["cargo"] = { path: "/h/.cargo/bin/cargo", ver: "1.97.1" }
+    return env
+  end
+
+  def test_it_is_checked_by_running_the_binary_meson_looks_for
+    assert_equal "cargo-cbuild", SystemDeps::CARGO_C.command
+  end
+
+  # No version floor: nothing in the tree needs a particular cargo-c,
+  # and a constraint nobody needs is one more way to reject a working
+  # machine.
+  def test_no_version_floor
+    assert_nil SystemDeps::CARGO_C.min_ver
+  end
+
+  def test_present_is_satisfied
+    env = FakeSysEnv.new(
+      tools: { "cargo-cbuild" => { path: "/h/.cargo/bin/cargo-cbuild",
+                                   ver: "0.10.14" } }
+    )
+    assert_equal :ok, SystemDeps::CARGO_C.check(env).state
+  end
+
+  def test_missing_is_installed_with_cargo_install
+    env = with_cargo(FakeSysEnv.new(interactive: true))
+    env.on_run = ->(argv, e) {
+      e.tools["cargo-cbuild"] = { path: "/h/.cargo/bin/cargo-cbuild",
+                                  ver: "0.10.14" }
+    }
+
+    ok = SystemDeps.check_plan(cargo_c_plan, env: env, pm: cargo_c_pm)
+
+    assert_equal true, ok
+    assert_equal 1, env.ran.length
+    assert_equal ["/h/.cargo/bin/cargo", "install", "cargo-c"], env.ran[0]
+  end
+
+  # Needs no root: cargo installs into the user's own ~/.cargo/bin.
+  def test_it_does_not_escalate
+    env = with_cargo(FakeSysEnv.new(interactive: true))
+    env.on_run = ->(argv, e) {
+      e.tools["cargo-cbuild"] = { path: "/h/.cargo/bin/cargo-cbuild",
+                                  ver: "0.10.14" }
+    }
+
+    SystemDeps.check_plan(cargo_c_plan, env: env, pm: cargo_c_pm)
+
+    refute_includes env.ran[0], "sudo"
+    refute_includes env.ran[0], "su"
+  end
+
+  # Installing a cargo crate without cargo is not a thing to attempt.
+  def test_without_cargo_it_reports_rather_than_running_anything
+    env = FakeSysEnv.new(interactive: true)   # no cargo in tools
+    out = capture_out { SystemDeps.check_plan(cargo_c_plan, env: env,
+                                              pm: cargo_c_pm) }
+
+    assert_equal false, out[:result]
+    assert_empty env.ran
+    assert_includes out[:text], "cargo"
+  end
+
+  def test_declining_fails_the_run
+    env = with_cargo(FakeSysEnv.new(interactive: true, answers: [false]))
+    ok = SystemDeps.check_plan(cargo_c_plan, env: env, pm: cargo_c_pm)
+    assert_equal false, ok
+    assert_empty env.ran
+  end
+
+  # The install ran but produced nothing usable: caught by the recheck,
+  # not assumed from the exit code.
+  def test_an_install_that_does_not_help_is_caught
+    env = with_cargo(FakeSysEnv.new(interactive: true))
+    ok = SystemDeps.check_plan(cargo_c_plan, env: env, pm: cargo_c_pm)
+    assert_equal false, ok
+  end
+
+  def test_librsvg_declares_rust_and_cargo_c
+    keys = HostLibrsvgPackage.new.system_deps.map(&:key)
+    assert_equal [:rustc, :cargo, :cargo_c], keys
   end
 end

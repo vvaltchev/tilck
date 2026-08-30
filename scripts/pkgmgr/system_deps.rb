@@ -148,6 +148,58 @@ module SystemDeps
   RUSTUP = RustupInstaller.new
 
   #
+  # `cargo install <crate>`.
+  #
+  # Rust's build tools are distributed as crates rather than as distro
+  # packages, so the thing that installs them is cargo. No distro
+  # names cargo-c, and building it ourselves would mean vendoring a
+  # crate tree to produce a tool that only runs at build time -- so it
+  # is a host dependency like rustc, installed the way upstream
+  # installs it.
+  #
+  # Needs no root: cargo installs into ~/.cargo/bin, which is already
+  # searched (see extra_bin_dirs).
+  #
+  class CargoInstaller < Installer
+
+    attr_reader :crate
+
+    def initialize(crate:, what:, why: nil)
+      @crate = crate
+      super(id: :"cargo_install_#{crate}",
+            what: what,
+            url: "https://crates.io/crates/#{crate}",
+            bin_dir: File.join(Dir.home, ".cargo", "bin"),
+            why: why)
+    end
+
+    def run(env)
+      cargo = env.which("cargo")
+
+      if cargo.nil?
+        error "cargo is needed to install #{@crate}, and is not present"
+        return false
+      end
+
+      if !env.run([cargo, "install", @crate])
+        error "`cargo install #{@crate}` failed"
+        return false
+      end
+
+      prepend_to_global_path(Pathname.new(bin_dir)) if File.directory?(bin_dir)
+      info "#{@crate} installed in #{bin_dir}"
+      return true
+    end
+  end
+
+  CARGO_C_INSTALLER = CargoInstaller.new(
+    crate: "cargo-c",
+    what: "cargo-c (cargo install cargo-c)",
+    why: "no distro packages it, and it is a build-time tool rather " \
+         "than a library",
+  )
+
+  #
   # One declared system-level requirement.
   #
   # `pkgs` names the package per backend -- { apt: "libssl-dev", dnf:
@@ -273,6 +325,14 @@ module SystemDeps
   CARGO = SysDep.new(key: :cargo, what: "Cargo, Rust's build tool",
                      command: "cargo", min_ver: MIN_RUST,
                      installer: RUSTUP)
+
+  # Builds a C ABI -- shared library, header and .pc file -- out of a
+  # Rust crate. librsvg's meson.build asks for the `cargo-cbuild`
+  # binary by name and will not configure without it.
+  CARGO_C = SysDep.new(key: :cargo_c,
+                       what: "cargo-c, which gives a Rust crate a C ABI",
+                       command: "cargo-cbuild",
+                       installer: CARGO_C_INSTALLER)
 
   #
   # Everything that touches the world outside this process, in one
