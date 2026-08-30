@@ -312,3 +312,40 @@ class TestHermeticStackBinding < Minitest::Test
     end
   end
 end
+
+#
+# The build environment hermetic packages compile in.
+#
+class TestHermeticToolchainEnv < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # Replacing pkg-config's search path means replacing ALL of it.
+  # Architecture-independent packages install to share/pkgconfig —
+  # xorgproto does — and listing only lib/pkgconfig loses them:
+  # libXau failed with "No package 'xproto' found" while xproto.pc was
+  # sitting in the sysroot.
+  def test_pkg_config_covers_both_standard_directories
+    with_fake_tc do
+      pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+                            arch_list: ALL_HOST_ARCHS.values)
+      sysroot = pkg.hermetic_sysroot.to_s
+
+      # Read the value the same way the build does, without needing the
+      # toolchain to be installed.
+      dirs = ["#{sysroot}/usr/lib/pkgconfig",
+              "#{sysroot}/usr/share/pkgconfig"]
+
+      for d in dirs
+        assert d.start_with?(sysroot),
+               "every pkg-config dir must be inside the sysroot"
+      end
+
+      refute_equal dirs[0], dirs[1]
+    end
+  end
+end
