@@ -235,12 +235,12 @@ end
 
 Tracked to zero before this is considered done.
 
-  * [ ] `host_binutils` package
+  * [x] `host_binutils` package
   * [ ] `host_gcc` package (headers + glibc + gcc)
-  * [ ] tier 4 (`host_tier: :hermetic`) in the package manager
+  * [x] tier 4 (`host_tier: :hermetic`) in the package manager
   * [ ] composed sysroot + recomposition on resolution change
   * [ ] hermeticity audit
-  * [ ] opt-in gating (flag / environment variable)
+  * [x] opt-in gating (`TILCK_HERMETIC=1`)
   * [ ] measured QEMU dependency closure, enumerated in this document
   * [ ] the closure, package by package
   * [ ] QEMU, newest major

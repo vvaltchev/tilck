@@ -181,6 +181,21 @@ class Package
     return @arch_list.include?(pkgmgr.target_arch)
   end
 
+  # Is this package available at all in the current invocation?
+  #
+  # A package that is not enabled is not offered — it is absent from
+  # `-l` and refused by `-s` — as opposed to one that merely isn't in
+  # the default set. Used by the hermetic stack, which costs tens of
+  # minutes to build and so must be asked for rather than stumbled
+  # into.
+  #
+  # This gates what is OFFERED, not what exists: an installation that
+  # is already on disk still shows up in `-l` whether or not the
+  # package is currently enabled. Hiding it would make it unremovable
+  # by name and turn a deliberate install into invisible state, which
+  # is the worse failure of the two.
+  def enabled? = true
+
   # Should this package be auto-installed for the current config?
   # Subclasses (e.g. GccCompiler) can override for richer logic.
   def default?
@@ -192,8 +207,35 @@ class Package
       when :portable then HOST_DIR_PORTABLE
       when :distro   then HOST_DIR_DISTRO
       when :compiler then HOST_DIR
+      when :hermetic then hermetic_root
     end
   end
+
+  # The hermetic stack lives under the version of OUR compiler, not the
+  # system one: a GCC bump can change the C++ ABI, so everything built
+  # with it is rebuilt beside the old stack rather than in place. Same
+  # reasoning as the tier-3 <host-cc> directory, with our compiler.
+  #
+  # host_gcc itself lands in here too, at
+  # hermetic/<gcc-ver>/gcc/<gcc-ver>/ — redundant-looking, but it keeps
+  # every package on the uniform <root>/<pkg>/<ver>/ layout the install
+  # scanners expect.
+  def hermetic_root
+
+    ver = pkgmgr.get_config_ver("gcc", host: true)
+
+    if ver.nil?
+      raise "HOST_VER_GCC is missing from other/host_pkg_versions: it " \
+            "names the hermetic stack's directory, so without it every " \
+            "hermetic package would install to the same broken path"
+    end
+
+    return HOST_DIR_HERMETIC_BASE / ver.to_s
+  end
+
+  # The composed sysroot everything hermetic is built against: our
+  # glibc, our headers, and a symlink farm of the resolved libraries.
+  def hermetic_sysroot = hermetic_root / "sysroot"
 
   # The root directory for the final install (where mv moves to).
   # For target packages, uses default_arch (which for the base class
@@ -212,6 +254,25 @@ class Package
   # Staging path for this package version.
   def staging_dir(ver)
     TC_STAGING / pkg_dirname / ver_dirname(ver)
+  end
+
+  # Where this package's install/ directory will be AFTER the atomic
+  # move out of staging.
+  #
+  # Most packages never need this: they are consumed through explicit
+  # -I/-L, so nothing cares which path was current at build time. A
+  # package that bakes an absolute --prefix into what it produces does
+  # care — binutils records its ldscripts and library search paths, GCC
+  # its spec files and libexec — and baking the staging path leaves it
+  # pointing at a directory that ceases to exist the moment the install
+  # completes.
+  #
+  # The version is taken from the staging directory's own name, which
+  # is `ver_dirname(ver)`: staging and final share the <pkg>/<ver>/
+  # tail, so this stays correct for a pinned install too.
+  def final_install_prefix(staging_path)
+    ver_dir = File.basename(staging_path.to_s)
+    return final_install_root / pkg_dirname / ver_dir / "install"
   end
 
   # Clean build artifacts from a staging directory, keeping the
@@ -283,6 +344,7 @@ class Package
   end
 
   def get_installable_list
+    return [] if !enabled?
     return [] if !host_supported? || !board_supported?
     if on_host
       syscc_package_get_installable_list()

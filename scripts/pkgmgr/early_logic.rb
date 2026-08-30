@@ -318,6 +318,19 @@ HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 #                       built by a specific host compiler. Because C++ has
 #                       no stable ABI, the host-compiler version matters
 #                       even for C tools that may depend on C++ host libs.
+#
+#   HOST_DIR_HERMETIC_BASE
+#                       For the hermetic stack: tools and libraries that
+#                       link against OUR glibc and nothing from the system
+#                       at all. Neither the distro nor the system compiler
+#                       is part of the path, because neither is part of
+#                       the build. Instead each hermetic package lives
+#                       under the version of OUR compiler that built it,
+#                       for the same reason HOST_DIR carries the host
+#                       compiler: a GCC bump can change the C++ ABI, so
+#                       the whole stack is rebuilt beside the old one
+#                       rather than in place.
+#                       See docs/plans/hermetic-host-toolchain.md.
 HOST_OS      = InitOnly.get_host_os()
 HOST_DISTRO  = InitOnly.get_host_distro(HOST_OS)
 HOST_CC      = InitOnly.get_host_cc()
@@ -327,10 +340,20 @@ HOST_DIR_PORTABLE = TC / "host" / HOST_OS_ARCH / "portable"
 HOST_DIR_DISTRO   = TC / "host" / HOST_OS_ARCH / HOST_DISTRO
 HOST_DIR          = TC / "host" / HOST_OS_ARCH / HOST_DISTRO / HOST_CC
 
+# The per-compiler-version directory is appended by Package#hermetic_root,
+# which needs the version file and so cannot run this early.
+HOST_DIR_HERMETIC_BASE = TC / "host" / HOST_OS_ARCH / "hermetic"
+
 DEFAULT_BOARD = ARCH.default_board
 BOARD = ENV["BOARD"] || DEFAULT_BOARD
 BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD : nil
 BUILD_PAR = ENV["BUILD_PAR"] or ""
+
+# Opt-in for the hermetic host toolchain, which builds binutils, glibc
+# and GCC from source before anything else. That is tens of minutes of
+# build time, so the packages are invisible to `-l` and refused by `-s`
+# unless this is set: nobody should trip over it by accident.
+HERMETIC_ENABLED = !ENV["TILCK_HERMETIC"].to_s.strip.empty?
 
 def get_human_arch_name(arch)
   return "noarch" if arch.nil?
