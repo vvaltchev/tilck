@@ -197,6 +197,62 @@ class TestHermeticStackBinding < Minitest::Test
     end
   end
 
+  # Asking for a version is a request to BUILD that version. The
+  # default exists only so that a version can be omitted; it never
+  # limits what can be built or what can coexist.
+  def test_the_scope_decides_the_stack_not_the_default
+    with_fake_tc do
+      pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+                            arch_list: ALL_HOST_ARCHS.values)
+
+      default = pkgmgr.default_hermetic_gcc_ver
+      assert_equal default, pkg.stack_gcc_ver
+
+      pkgmgr.with_hermetic_stack(Ver("13.4.0")) do
+        assert_equal Ver("13.4.0"), pkg.stack_gcc_ver
+        assert pkg.hermetic_root.to_s.end_with?("/gcc-13.4.0")
+        assert pkg.host_install_root.to_s.end_with?("/gcc-13.4.0/pkgs")
+      end
+
+      # ...and the scope is scoped.
+      assert_equal default, pkg.stack_gcc_ver
+    end
+  end
+
+  # The point of the whole thing: a package installed in one stack is
+  # NOT installed as far as another stack is concerned, so requesting a
+  # different compiler pulls its own glibc and headers into the plan
+  # rather than borrowing the ones next door.
+  def test_an_install_in_one_stack_is_absent_from_another
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkg.install_impl(Ver("1.0.0"))
+
+        assert pkg.installed?(Ver("1.0.0"))
+
+        pkgmgr.with_hermetic_stack(Ver("13.4.0")) do
+          refute pkg.installed?(Ver("1.0.0"))
+        end
+      end
+    end
+  end
+
+  def test_nested_scopes_restore
+    with_fake_tc do
+      pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+                            arch_list: ALL_HOST_ARCHS.values)
+      pkgmgr.with_hermetic_stack(Ver("11.5.0")) do
+        pkgmgr.with_hermetic_stack(Ver("16.2.0")) do
+          assert_equal Ver("16.2.0"), pkg.stack_gcc_ver
+        end
+        assert_equal Ver("11.5.0"), pkg.stack_gcc_ver
+      end
+    end
+  end
+
   # The compiler belongs to its own.
   def test_a_compiler_uses_its_own_version
     with_fake_tc do

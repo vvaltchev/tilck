@@ -100,7 +100,7 @@ class HostGccPackage < Package
   # mutable, so switching HOST_VER_GCC afterwards left the compiler
   # pointing at a stack it no longer belonged to, with nothing
   # detecting the disagreement.
-  def stack_gcc_ver(ver = nil) = ver || default_ver
+  def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_hermetic_stack
 
   # The stack's compiler runtime comes from the gcc that NAMES the
   # stack, so composing gcc-11.5.0 grafts 11.5.0's libstdc++ even when
@@ -309,12 +309,8 @@ class HostGccPackage < Package
     loader = "#{sysroot}/usr/lib/ld-linux-x86-64.so.2"
 
     if !File.exist?(loader)
-      error "no hermetic loader at #{loader}"
-      error "gcc #{default_ver} belongs to the gcc-#{default_ver} stack, " \
-            "which has no glibc yet. A compiler is built against its OWN " \
-            "stack, so that stack has to exist first: set " \
-            "HOST_VER_GCC=#{default_ver} in other/host_pkg_versions and " \
-            "build host_glibc, which pulls in the kernel headers."
+      error "no hermetic loader at #{loader}: this stack has no glibc, " \
+            "which should have been built as a dependency"
       return false
     end
 

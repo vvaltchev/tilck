@@ -933,46 +933,87 @@ module Main
             end
           end
 
-          # Resolve the full install plan: transitive deps, minus
-          # already-installed, in topological order.
+          # Which hermetic stack this invocation builds into: the
+          # host_gcc version the request resolves to. `-s
+          # host_gcc:13.4.0` therefore builds the 13.4.0 stack — that
+          # stack's kernel headers and glibc included — rather than
+          # borrowing another compiler's sysroot. HOST_VER_GCC only
+          # supplies a version when none was named.
           begin
-            plan = pkgmgr.resolve_install_plan(requested)
+            stack = pkgmgr.resolved_versions_for(requested)["host_gcc"]
           rescue VersionSolver::ConflictError,
                  VersionSolver::UnstableError => e
             error "Version conflict: #{e.message}"
             return 1
           end
 
-          if plan.empty?
-            info "All requested packages are already installed"
-            next
-          end
+          failed = nil
 
-          # Show the install plan as a dependency tree.
-          graph = pkgmgr.build_dep_graph
-          installed = Set.new
-          pkgmgr.all_packages.each { |p|
-            installed.add(p.name) if p.installed?(p.default_ver)
-          }
-          req_names = requested.map(&:first)
-          info "Install plan:"
-          lines = render_dep_trees(req_names, graph,
-                                   installed: installed,
-                                   show_installed: false,
-                                   ascii: options[:ascii])
-          lines.each { |l| puts l }
-          puts if !options[:ascii]
+          # Everything from here on runs inside the stack scope: what
+          # counts as already-installed, what the plan contains, what
+          # the tree shows and what actually gets built all have to
+          # agree on which stack this is. Computing any of them outside
+          # the scope silently answers about a different one — the tree
+          # did exactly that, hiding the dependencies it thought were
+          # present because they were, in the OTHER stack.
+          plan = nil
+          conflict = nil
+          done = false
 
-          if options[:dry_run]
-            info "Dry run (-d): nothing installed"
-            next
-          end
-
-          for name, ver in plan do
-            if !pkgmgr.install(name, ver)
-              error "Could not install: #{name}"
-              return 1
+          pkgmgr.with_hermetic_stack(stack) do
+            begin
+              plan = pkgmgr.resolve_install_plan(requested)
+            rescue VersionSolver::ConflictError,
+                   VersionSolver::UnstableError => e
+              conflict = e.message
+              next
             end
+
+            if plan.empty?
+              info "All requested packages are already installed"
+              done = true
+              next
+            end
+
+            # Show the install plan as a dependency tree.
+            graph = pkgmgr.build_dep_graph
+            installed = Set.new
+            pkgmgr.all_packages.each { |p|
+              installed.add(p.name) if p.installed?(p.default_ver)
+            }
+            req_names = requested.map(&:first)
+            info "Install plan:"
+            lines = render_dep_trees(req_names, graph,
+                                     installed: installed,
+                                     show_installed: false,
+                                     ascii: options[:ascii])
+            lines.each { |l| puts l }
+            puts if !options[:ascii]
+
+            if options[:dry_run]
+              info "Dry run (-d): nothing installed"
+              done = true
+              next
+            end
+
+            for name, ver in plan do
+              if !pkgmgr.install(name, ver)
+                failed = name
+                break
+              end
+            end
+          end
+
+          if conflict
+            error "Version conflict: #{conflict}"
+            return 1
+          end
+
+          next if done
+
+          if failed
+            error "Could not install: #{failed}"
+            return 1
           end
         end
       end
