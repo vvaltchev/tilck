@@ -47,21 +47,18 @@ class HostGccPackage < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
-  # Latest point release of each major we intend to support, per
-  # ftp.gnu.org. INTEND is the operative word: this list is what the
-  # package will attempt, not a claim that each one works.
+  # Latest point release of each supported major, per ftp.gnu.org.
   #
-  # What has actually been built against glibc 2.41:
+  # All six have been built from source against glibc 2.41, each into
+  # its own hermetic stack, and each verified to report its own sysroot
+  # and to produce binaries resolving nothing outside the toolchain:
   #
-  #   11.5.0   not yet — needs --disable-libsanitizer, untested since
-  #   12.5.0   not yet — likewise
-  #   13.4.0   not yet — likewise
-  #   14.4.0   BUILT and verified hermetic
-  #   15.3.0   not attempted
-  #   16.2.0   not attempted
+  #   11.5.0  12.5.0  13.4.0   --disable-libsanitizer (no crypt.h)
+  #   14.4.0  15.3.0  16.2.0   full build
   #
-  # Anything unverified is a claim waiting to be disproved: every one
-  # of the three failures above was found by building, not by reading.
+  # This list used to claim six versions on the strength of having
+  # built one, and three of them turned out to be broken. Adding a
+  # version means building it.
   SUPPORTED = [
     Ver("11.5.0"), Ver("12.5.0"), Ver("13.4.0"),
     Ver("14.4.0"), Ver("15.3.0"), Ver("16.2.0"),
