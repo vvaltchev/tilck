@@ -298,19 +298,36 @@ reinstalling what is already there fixes nothing.
 ### Installing
 
 Missing packages are batched into a single command, shown, and installed after
-a prompt (`-y` is added only when nobody is there to answer). Non-interactive
-runs outside CI refuse and print the exact command to run. After any install,
-every requirement is checked **again from scratch**: an install command exiting
-0 is not evidence the requirement is met — a package manager will happily
-install a `rustc` that is still too old.
+a prompt. After any install, every requirement is checked **again from
+scratch**: an install command exiting 0 is not evidence the requirement is met
+— a package manager will happily install a `rustc` that is still too old.
 
 Some dependencies are better served by their own installer than by the distro.
 Rust is the case in point: Ubuntu 22.04 ships 1.66 and cannot be updated to
-what modern crates need, so `SystemDeps::RUSTUP` offers rustup instead. It
-downloads and runs a script from the network, so it is never invoked without
-consent — an unattended run refuses unless `TILCK_INSTALL_RUSTUP=1` says
-otherwise, and it runs with `--no-modify-path` rather than editing anyone's
-shell profile.
+what modern crates need, so `SystemDeps::RUSTUP` offers rustup instead.
+
+Both routes follow the **same** policy, decided by two predicates in
+`system_pkgs.rb`: `interactive?` is `STDIN.tty? && STDOUT.tty?` (both, because
+a prompt written to a redirected stdout is invisible), and `in_ci?` is a
+non-empty `RUNNING_IN_CI` or `CI`.
+
+| | host package manager | rustup |
+|---|---|---|
+| a terminal | prompt, default **yes** | prompt, default **yes** |
+| no tty, `CI=1` | install with `-y` | install |
+| no tty, no `CI` | refuse, print the command | refuse, say what to install |
+
+Setting `CI=1` by hand is therefore the way to get an unattended auto-yes run.
+`-y` is passed to the package manager only in that case; the command *shown* to
+a human never carries it, because somebody typing it wants to see what their
+package manager proposes first.
+
+When rustup runs interactively it also asks whether to add `~/.cargo/bin` to
+`PATH` permanently. This build does not need that — the directory is prepended
+to the pkgmgr process's own `PATH` either way — but somebody installing Rust
+usually wants it for other things too, so it is asked rather than decided. An
+unattended run passes `--no-modify-path`: nobody was there to consent to a
+shell profile being edited.
 
 ## Default packages and upgrades
 

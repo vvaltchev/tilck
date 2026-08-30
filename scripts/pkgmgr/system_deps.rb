@@ -46,15 +46,13 @@ module SystemDeps
   # never invoked without consent.
   class Installer
 
-    attr_reader :id, :what, :url, :bin_dir, :env_opt_in, :why
+    attr_reader :id, :what, :url, :bin_dir, :why
 
-    def initialize(id:, what:, url:, bin_dir: nil, env_opt_in: nil,
-                   why: nil)
+    def initialize(id:, what:, url:, bin_dir: nil, why: nil)
       @id = id
       @what = what
       @url = url
       @bin_dir = bin_dir
-      @env_opt_in = env_opt_in
       @why = why
     end
 
@@ -86,7 +84,6 @@ module SystemDeps
         what: "rustup (the official Rust toolchain installer)",
         url: RUSTUP_URL,
         bin_dir: File.join(Dir.home, ".cargo", "bin"),
-        env_opt_in: "TILCK_INSTALL_RUSTUP",
         why: "the distro's rustc is often too old to build modern " \
              "crates, and on some distros cannot be updated at all",
       )
@@ -110,21 +107,40 @@ module SystemDeps
         return false
       end
 
-      # --no-modify-path: editing somebody's shell profile is not ours
-      # to do. We put the directory on PATH for this process and say
-      # what to add for the next one.
-      ok = env.run(["sh", script, "-y", "--no-modify-path"])
+      # Whether rustup may put cargo and rustc on PATH for good.
+      #
+      # This build does not need it -- we prepend bin_dir to our own
+      # PATH below either way -- but somebody installing Rust probably
+      # wants to use it outside this build too, so it is worth asking
+      # rather than deciding for them in either direction. Editing a
+      # shell profile is not something to do to an unattended machine,
+      # so a run with nobody to ask does not.
+      modify_path = env.interactive? &&
+                    env.ask("Add #{bin_dir} to your PATH as well " \
+                            "(updates your shell profile)?")
+
+      argv = ["sh", script, "-y"]
+      argv << "--no-modify-path" if !modify_path
+      ok = env.run(argv)
 
       if !ok
         error "rustup installation failed"
         return false
       end
 
+      # Ours regardless: the profile edit, if any, only affects future
+      # shells, and this build needs the toolchain now.
       prepend_to_global_path(Pathname.new(bin_dir)) if File.directory?(bin_dir)
 
       info "Rust installed in #{bin_dir}"
-      info "Add it to your PATH to use it outside this build:"
-      info "  export PATH=\"#{bin_dir}:$PATH\""
+
+      if modify_path
+        info "Your shell profile was updated; new shells will find it."
+      else
+        info "To use it outside this build:"
+        info "  export PATH=\"#{bin_dir}:$PATH\""
+      end
+
       return true
     end
   end
@@ -240,11 +256,15 @@ module SystemDeps
   # The requirements themselves.
   #
 
-  # glycin 2.0's Cargo.toml declares rust-version = "1.85"; later
-  # releases raise it (2.1 wants 1.92). Pinned to the oldest that can
-  # build what we would build, so that a usable toolchain is not
-  # rejected for being merely recent rather than newest.
-  MIN_RUST = Ver("1.85")
+  # Fixed by what we actually build, not by the newest Rust there is.
+  #
+  # gdk-pixbuf 2.44.8's meson.build asks for `glycin-2 >= 2.2.alpha.7`,
+  # and glycin 2.2.alpha.7's Cargo.toml declares rust-version = "1.93".
+  # Older glycin would do with less (2.0 wanted 1.85) but gdk-pixbuf
+  # will not accept it. Raise this only when something in the closure
+  # actually demands it: every bump here is a machine that stops
+  # being able to build Tilck's toolchain.
+  MIN_RUST = Ver("1.93")
 
   RUSTC = SysDep.new(key: :rustc, what: "the Rust compiler",
                      command: "rustc", min_ver: MIN_RUST,
@@ -278,7 +298,6 @@ module SystemDeps
     def ask(q, default: true) = Term.ask_yes_no(q, default: default)
     def interactive? = SystemPkgs.interactive?
     def in_ci? = SystemPkgs.in_ci?
-    def env_flag(name) = !ENV[name].to_s.strip.empty?
   end
 
   module_function
@@ -436,9 +455,12 @@ module SystemDeps
 
   # Run the non-distro installers (rustup) for what they cover.
   #
-  # These download and execute code from the network, so consent is
-  # required in a way that `apt install` is not: an unattended run
-  # will not do it unless the named environment variable says so.
+  # Exactly the policy the host package manager gets, and for the same
+  # reason: a terminal is asked, an unattended run that has said it is
+  # unattended (CI) proceeds, and a run that is neither refuses rather
+  # than acting on somebody's machine with nobody watching. Splitting
+  # the two -- letting CI install packages but not a toolchain -- only
+  # produces CI that cannot build what it was asked to build.
   def run_installers(entries, env)
     groups = entries.group_by { |r, _| r.dep.installer }
 
@@ -450,18 +472,14 @@ module SystemDeps
       info "Reason: #{installer.why}" if installer.why
       info "It downloads and runs #{installer.url}"
 
-      opted_in = installer.env_opt_in && env.env_flag(installer.env_opt_in)
-
-      if !env.interactive? && !opted_in
+      if !env.interactive? && !env.in_ci?
         error "Not running interactively: refusing to download and run " \
               "an installer."
-        error "Set #{installer.env_opt_in}=1 to allow it, or install " \
-              "#{labels} yourself."
+        error "Install #{labels} yourself, or re-run this in a terminal."
         return false
       end
 
-      if !opted_in && !env.ask("Install #{installer.what} now?",
-                               default: false)
+      if env.interactive? && !env.ask("Install #{installer.what} now?")
         error "Declined. #{labels} is still required."
         return false
       end
