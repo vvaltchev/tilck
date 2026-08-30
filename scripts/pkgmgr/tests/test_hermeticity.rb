@@ -99,11 +99,24 @@ end
 
 class TestHermeticityElfDetection < Minitest::Test
 
-  def test_elf_magic_is_recognised
+  # elf? means "an ELF this host could execute", so the magic alone is
+  # not enough: it also has to be 64-bit little-endian x86-64. See
+  # TestHermeticityForeignElf for why.
+  def test_a_native_elf_header_is_recognised
     Dir.mktmpdir do |dir|
       f = File.join(dir, "bin")
-      File.binwrite(f, "\x7fELF\x02\x01\x01\x00")
+      hdr = "\x7fELF".b + [2, 1, 1].pack("C3") + ("\0" * 9) +
+            [2].pack("v") + [62].pack("v") + ("\0" * 44)
+      File.binwrite(f, hdr)
       assert Hermeticity.elf?(f)
+    end
+  end
+
+  def test_the_magic_alone_is_not_enough
+    Dir.mktmpdir do |dir|
+      f = File.join(dir, "stub")
+      File.binwrite(f, "\x7fELF\x02\x01\x01\x00")
+      refute Hermeticity.elf?(f)
     end
   end
 
@@ -235,5 +248,63 @@ class TestHermeticityHostileCheck < Minitest::Test
                                allowed: ["/tc"])
     assert_equal 1, v.length
     assert_equal "resolved outside", v.first.kind
+  end
+end
+
+#
+# Foreign-architecture ELF. QEMU ships guest firmware for other
+# machines as ELF data — s390-ccw.img, s390-netboot.img — whose
+# interpreters name paths that will never exist on this host
+# (/lib/ld64.so.1). The audit asks whether a file would load system
+# libraries HERE, which is not a question about them.
+#
+class TestHermeticityForeignElf < Minitest::Test
+
+  # Minimal 64-bit little-endian ELF header with the given e_machine.
+  def elf_header(machine)
+    h = "\x7fELF".b + [2, 1, 1].pack("C3") + ("\0" * 9)
+    h += [2].pack("v")            # e_type: ET_EXEC
+    h += [machine].pack("v")      # e_machine
+    return h + ("\0" * 44)
+  end
+
+  def write(dir, name, bytes)
+    p = File.join(dir, name)
+    File.binwrite(p, bytes)
+    return p
+  end
+
+  def test_native_x86_64_is_audited
+    Dir.mktmpdir do |d|
+      assert Hermeticity.elf?(write(d, "native", elf_header(62)))
+    end
+  end
+
+  def test_s390x_firmware_is_skipped
+    Dir.mktmpdir do |d|
+      # EM_S390 is 22 — the machine of the .img files QEMU installs.
+      refute Hermeticity.elf?(write(d, "s390-ccw.img", elf_header(22)))
+    end
+  end
+
+  def test_aarch64_and_riscv_are_skipped_too
+    Dir.mktmpdir do |d|
+      refute Hermeticity.elf?(write(d, "arm64", elf_header(183)))
+      refute Hermeticity.elf?(write(d, "riscv", elf_header(243)))
+    end
+  end
+
+  def test_a_truncated_file_is_not_elf
+    Dir.mktmpdir do |d|
+      refute Hermeticity.elf?(write(d, "short", "\x7fELF".b + "\0\0\0"))
+    end
+  end
+
+  def test_big_endian_is_not_treated_as_native
+    Dir.mktmpdir do |d|
+      h = elf_header(62).dup
+      h[5] = "\x02"    # EI_DATA: MSB
+      refute Hermeticity.elf?(write(d, "be", h))
+    end
   end
 end

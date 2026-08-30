@@ -87,11 +87,38 @@ module Hermeticity
     return out
   end
 
-  # Is this an ELF file? Read the magic rather than shelling out, so a
-  # tree of thousands of files costs one open() each.
+  # e_machine for x86-64. The audit asks whether a file would load
+  # system libraries ON THIS HOST, which is a question only about
+  # binaries this host can execute.
+  #
+  # QEMU makes that concrete: it ships guest firmware — s390-ccw.img,
+  # s390-netboot.img — as ELF binaries for other architectures, whose
+  # interpreters name paths that will never exist here (/lib/ld64.so.1)
+  # and never be resolved by anything. Auditing them reports
+  # violations that no amount of correctness on our part could fix.
+  #
+  # When a second host architecture is supported this has to become a
+  # property of the host rather than a constant.
+  EM_X86_64 = 62
+
+  # Is this an ELF file this host could execute?
+  #
+  # The magic is read rather than shelling out, so a tree of thousands
+  # of files costs one open() each.
   def elf?(path)
+
     return false if !File.file?(path) || File.symlink?(path)
-    File.open(path, "rb") { |f| f.read(4) == "\x7fELF".b }
+
+    hdr = File.open(path, "rb") { |f| f.read(20) }
+    return false if hdr.nil? || hdr.length < 20
+    return false if hdr[0, 4] != "\x7fELF".b
+
+    # Little-endian 64-bit only, which is what EM_X86_64 implies
+    # anyway; a big-endian header would need the other byte order.
+    return false if hdr[5].ord != 1
+
+    return hdr[18, 2].unpack1("v") == EM_X86_64
+
   rescue SystemCallError
     false
   end
