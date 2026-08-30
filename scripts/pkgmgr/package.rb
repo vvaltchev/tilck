@@ -486,13 +486,27 @@ class Package
   # meson and ninja are invoked by name: they are on PATH because they
   # publish their bin dirs and with_hermetic_toolchain applies what the
   # dependencies say.
+  #
+  # --wrap-mode=nofallback is not a detail. Meson's default is to
+  # satisfy a dependency it cannot find by building the project's
+  # bundled wrap of it, and that is exactly the failure this stack
+  # exists to prevent: the build succeeds, nothing warns, and a second
+  # copy of a library appears at whatever version the wrap happens to
+  # name -- outside the version files, unlisted as a package, and
+  # impossible to upgrade. pango did this with fontconfig, and was
+  # caught only because both installed usr/bin/fc-cache and the
+  # sysroot refused the collision; anything not installed twice would
+  # have gone straight through. With nofallback the same situation is
+  # a hard error naming the dependency and the version it wanted,
+  # which is then a package we add deliberately.
   def meson_hermetic_build(install_dir, args: [])
 
     return hermetic_install(install_dir) do |prefix, destdir|
       run_command("configure.log",
                   ["meson", "setup", "build",
                    "--prefix=#{prefix}", "--libdir=lib",
-                   "--buildtype=release", *args]) &&
+                   "--buildtype=release",
+                   "--wrap-mode=nofallback", *args]) &&
       run_command("build.log", ["ninja", "-C", "build"]) &&
       run_command("install.log",
                   ["meson", "install", "-C", "build",

@@ -7,10 +7,20 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+# Upstream stopped publishing to
+# freedesktop.org/software/fontconfig/release after 2.16.x; releases
+# from 2.17 on are only in the GitLab generic package registry. 890 is
+# the fontconfig project id there -- opaque, but it is what the API
+# takes, and the human-readable path serves git archives rather than
+# the release tarballs.
+FONTCONFIG_GITLAB = "https://gitlab.freedesktop.org/api/v4/" \
+                    "projects/890/packages/generic/fontconfig"
+
 FONTCONFIG_SOURCE = SourceRef.new(
   name: 'fontconfig',
-  url:  'https://www.freedesktop.org/software/fontconfig/release',
+  url:  FONTCONFIG_GITLAB,
   tarname: ->(ver) { "fontconfig-#{ver}.tar.xz" },
+  remote_tarname: ->(ver) { "#{ver}/fontconfig-#{ver}.tar.xz" },
   fetch_via_git: false,
 )
 
