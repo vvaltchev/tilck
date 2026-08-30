@@ -347,6 +347,12 @@ class Package
   # missing from our sysroot would be silently satisfied by the
   # system's .pc file and the build would look like it worked.
   #
+  # BOTH standard directories, because replacing the search path means
+  # replacing all of it. Architecture-independent packages put their
+  # .pc files in share/pkgconfig — xorgproto does — and listing only
+  # lib/pkgconfig loses them: libXau failed with "No package 'xproto'
+  # found" while xproto.pc sat in the sysroot's share directory.
+  #
   # Yields with the environment applied and restores it afterwards.
   def with_hermetic_toolchain(&block)
 
@@ -375,7 +381,8 @@ class Package
       "AR"                => "#{bu_bin}/ar",
       "RANLIB"            => "#{bu_bin}/ranlib",
       "STRIP"             => "#{bu_bin}/strip",
-      "PKG_CONFIG_LIBDIR" => "#{hermetic_sysroot}/usr/lib/pkgconfig",
+      "PKG_CONFIG_LIBDIR" => "#{hermetic_sysroot}/usr/lib/pkgconfig:" \
+                             "#{hermetic_sysroot}/usr/share/pkgconfig",
     })
 
     # Our compiler ahead of everything, including any bin dir a
