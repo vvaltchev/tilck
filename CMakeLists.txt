@@ -96,12 +96,14 @@ endif()
 #   HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
 #   HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
 #
-# These values are used to construct the toolchain4 host tool paths
-# (HOST_DIR_PORTABLE / HOST_DIR below). They MUST stay in sync with the
-# Ruby pkgmgr implementation in scripts/pkgmgr/early_logic.rb (InitOnly
-# module: get_host_os, get_host_distro, get_host_cc), otherwise CMake
-# will look for host tools in a different subtree than where the
-# package manager installed them.
+# CMake no longer builds host tool paths from these -- it asks the
+# package manager, further down. They are still derived here because
+# the answer is CHECKED against them: the package manager computes the
+# same three independently (scripts/pkgmgr/early_logic.rb, InitOnly:
+# get_host_os, get_host_distro, get_host_cc), and a disagreement means
+# one of the two is looking in a subtree the other never wrote to. That
+# used to be a comment asking these to stay in sync by hand, which they
+# did not.
 if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 
    set(HOST_OS "linux")
@@ -1056,7 +1058,8 @@ set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
 # BEGIN [ARCH-dependent paths]
 
    # Musl toolchains live under HOST_DIR_PORTABLE because they are 100%
-   # statically-linked and libc-independent. toolchain4 layout:
+   # statically-linked and libc-independent -- <machine>/any/any, an
+   # artifact that needs nothing from the machine it runs on:
    #
    #     ${HOST_DIR_PORTABLE}/gcc-${ARCH}-musl/${GCC_TC_VER}/
    #
