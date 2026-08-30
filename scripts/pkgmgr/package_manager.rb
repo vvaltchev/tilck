@@ -438,11 +438,18 @@ class PackageManager
 
       if inst
         InstallOrigin.write(inst.path, default_install)
+      end
 
-        # ...and what it was built FROM, in the same place and for the
-        # same reason: nothing else on disk can answer it, and without
-        # it "installed" means only that a directory exists.
-        pkg.write_build_inputs(inst.path, ver)
+      # ...and what it was built FROM, in the same place and for the
+      # same reason: nothing else on disk can answer it, and without
+      # it "installed" means only that a directory exists.
+      #
+      # Every install of this version, not just the first: gnuefi
+      # builds for i386, x86_64 AND noarch from one call, and
+      # recording only what find_install happened to return left two
+      # thirds of it unverifiable.
+      for i in pkg.get_install_list.select { |x| x.ver == ver && x.path }
+        pkg.write_build_inputs(i.path, ver)
       end
 
       # The sysroot is a view over what is installed, so it is stale

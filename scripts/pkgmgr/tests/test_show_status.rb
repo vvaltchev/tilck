@@ -129,11 +129,17 @@ class TestShowStatus < Minitest::Test
 
   def test_show_status_noarch_package
     with_fake_tc do |tc|
-      # Create a noarch install
-      FileUtils.mkdir_p(noarch_pkgs / "noarch_foo" / "1.0.0")
+      dir = noarch_pkgs / "noarch_foo" / "1.0.0"
+      FileUtils.mkdir_p(dir)
 
       pkg = FakePackage.new("noarch_foo", arch_list: nil)
       pkgmgr.register(pkg)
+
+      # A directory alone is not an install: without a record of what
+      # it was built from, pkgmgr cannot say it matches the sources.
+      # This test is about the noarch LABEL, so give it one.
+      BuildInputs.write(dir, recipe: pkg.build_recipe_digest(Ver("1.0.0")),
+                        files: pkg.build_files(Ver("1.0.0")))
       pkgmgr.refresh()
 
       list = pkg.get_install_list
@@ -142,6 +148,22 @@ class TestShowStatus < Minitest::Test
       }
       assert_match(/installed/, output)
       assert_match(/noarch/, output)
+    end
+  end
+
+  # ...and without one, it says so rather than claiming the install is
+  # good. A directory somebody created by hand is exactly the case.
+  def test_an_install_with_no_record_shows_stale
+    with_fake_tc do |tc|
+      FileUtils.mkdir_p(noarch_pkgs / "handmade" / "1.0.0")
+      pkg = FakePackage.new("handmade", arch_list: nil)
+      pkgmgr.register(pkg)
+      pkgmgr.refresh()
+
+      output = capture_stdout {
+        pkgmgr.show_status("handmade", nil, pkg.get_install_list)
+      }
+      assert_match(/stale/, output)
     end
   end
 

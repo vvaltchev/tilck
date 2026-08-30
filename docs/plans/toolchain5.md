@@ -278,6 +278,32 @@ busybox and u-boot adding their config files. Note that busybox
 already writes `.last_build_config` on every build and nothing has
 ever read it; this is that idea, finished and made general.
 
+### Three states, and why the third is reported
+
+An install's record reads as one of:
+
+| state | meaning |
+|---|---|
+| `ok` | built from the sources we have |
+| `changed` | built from something else |
+| `unknown` | no record at all |
+
+`unknown` is REPORTED rather than assumed benign. toolchain5 starts
+empty, so every install is made by this mechanism and a record that is
+absent means something went wrong. Two real cases were invisible while
+a missing record counted as fine: expat's record write raised midway
+through the first rebuild, and gnuefi wrote a record for one of the
+three architectures it installs. Both had the same remedy as
+`changed`, which is why they report the same way.
+
+An install directory created by hand therefore reads as stale rather
+than installed. That is the intended answer: nothing says what it was
+built from.
+
+A package that installs into several places is recorded in ALL of
+them, not just whichever `find_install` returns first -- gnuefi builds
+for i386, x86_64 and noarch from one call.
+
 ### Where it is checked
 
 `--check-for-updates` reports a stale package exactly as it reports a
@@ -386,7 +412,8 @@ need its own concept if it is ever wanted.
    it is deleted.
 4. Starting empty means there are no installs without `.build_inputs`,
    so build identity applies from the first package with no legacy
-   case to tolerate.
+   case to tolerate -- which is why a missing record is reported as
+   `unknown` rather than waved through.
 5. The 30 packages still on the code fingerprint rather than a
    declared recipe -- see "Deferred: the builds that are not command
    sequences" above. To be done AFTER the rebuild, each verified by
