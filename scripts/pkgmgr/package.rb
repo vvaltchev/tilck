@@ -68,6 +68,7 @@ class InstallInfo
 
   attr_reader :pkgname, :compiler, :on_host, :arch, :ver, :path
   attr_reader :pkg, :broken, :target_arch, :libc, :default_install
+  attr_reader :coords
 
   def initialize(
     pkgname,  # package name (string)
@@ -80,7 +81,8 @@ class InstallInfo
     broken      = nil, # is the package broken?
     target_arch = nil, # target architecture [only for compilers]
     libc        = nil, # libc (e.g. "musl") [only for compilers]
-    default_install: false # installed as the default version?
+    default_install: false, # installed as the default version?
+    coords: nil             # Coords: where this installation lives
   )
     @pkgname = pkgname         # package name
     @compiler = compiler       # "syscc" or compiler version or nil (= noarch)
@@ -93,7 +95,15 @@ class InstallInfo
     @target_arch = target_arch
     @libc = libc
     @default_install = default_install
+    @coords = coords           # the three coordinates of the install
     assert { arch.nil? or arch.is_a? Architecture }
+
+    # An actual installation always knows where it lives. A candidate
+    # from get_installable_list does not: it has no path yet, and for a
+    # target package its stack coordinate names a cross-compiler version
+    # that is only known once one is installed. nil there is the honest
+    # answer, so require the coordinates exactly where they exist.
+    assert { path.nil? || coords.is_a?(Coords) }
     freeze
   end
 
@@ -1056,15 +1066,24 @@ class Package
     return true
   end
 
-  # The InstallInfo for `ver` built with this package's default compiler
-  # for its default arch, or nil when that exact install is missing or
-  # incomplete. Single source of truth for "which install do we mean":
-  # never scan get_install_list() for "the first one that isn't broken",
-  # as that picks whichever version the filesystem happens to list first.
+  # The InstallInfo for `ver` at THIS package's coordinates, or nil when
+  # that exact install is missing or incomplete. Single source of truth
+  # for "which install do we mean": never scan get_install_list() for
+  # "the first one that isn't broken", as that picks whichever version
+  # the filesystem happens to list first.
+  #
+  # Matching on the Coords rather than on (compiler, arch) is what keeps
+  # this honest. Those two are a *subset* of the coordinates -- they say
+  # nothing about the board -- so an install built for one board used to
+  # answer for every other: with BOARD=licheerv-nano, zlib built for
+  # qemu-virt reported as installed and `-s ALL` skipped it, leaving the
+  # board with no zlib at all. Anything that identifies an installation
+  # by re-deriving part of its path will rot the same way the next time
+  # a coordinate is added, so ask Coords, which owns that knowledge.
   def find_install(ver)
+    want = coords(ver)
     return get_install_list().find { |x|
-      x.ver == ver and x.compiler == default_cc and
-      x.arch == default_arch and !x.broken
+      x.ver == ver and x.coords == want and !x.broken
     }
   end
 
@@ -1098,9 +1117,8 @@ class Package
   # alone, however old it is — which is why the two cases have to be
   # distinguishable on disk at all (see InstallOrigin).
   def needs_upgrade?
-    list = get_install_list.select { |x|
-      x.compiler == default_cc && x.arch == default_arch && !x.broken
-    }
+    want = coords()
+    list = get_install_list.select { |x| x.coords == want && !x.broken }
     list.any? { |x| x.default_install && x.ver != default_ver }
   end
 
@@ -1193,7 +1211,8 @@ class Package
           dir / d,                          # install path
           self,                             # package object
           !check_install_dir(dir / d, ver), # broken?
-          default_install: InstallOrigin.default_install?(dir / d)
+          default_install: InstallOrigin.default_install?(dir / d),
+          coords: coords                    # where it lives
         )
       end
     end
@@ -1238,7 +1257,8 @@ class Package
               dir / d,                          # install path
               self,                             # package object
               !check_install_dir(dir / d, ver), # broken?
-              default_install: InstallOrigin.default_install?(dir / d)
+              default_install: InstallOrigin.default_install?(dir / d),
+              coords: coords                    # this arch+board+stack
             )
           end # for ver_dir
         end # for stack
@@ -1264,7 +1284,8 @@ class Package
           dir / d,                          # install path
           self,                             # package object
           !check_install_dir(dir / d, ver), # broken?
-          default_install: InstallOrigin.default_install?(dir / d)
+          default_install: InstallOrigin.default_install?(dir / d),
+          coords: coords                    # noarch/any/any
         )
       end
     end

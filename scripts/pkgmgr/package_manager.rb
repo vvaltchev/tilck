@@ -939,7 +939,7 @@ class PackageManager
   # clang-14.0.0 -- which no package name is, since a package's
   # version lives in the directory below it rather than in its name.
   # Scan one <pkg>/ directory, whose children are version directories.
-  def scan_one_pkg_dir(pkg_path, pkg_name, arch_obj, on_host, list)
+  def scan_one_pkg_dir(pkg_path, pkg_name, arch_obj, on_host, coords, list)
 
     return if !pkg_path.directory?
 
@@ -954,7 +954,8 @@ class PackageManager
       end
 
       list << InstallInfo.new(
-        pkg_name, "syscc", on_host, arch_obj, ver, full_path
+        pkg_name, "syscc", on_host, arch_obj, ver, full_path,
+        coords: coords
       )
     end
   end
@@ -990,9 +991,11 @@ class PackageManager
           pkgs = e_dir / stack / "pkgs"
           next if !pkgs.directory?
 
+          c = Coords.new(machine, env, stack)
+
           for pkg_name in Dir.children(pkgs).sort
             scan_one_pkg_dir(
-              pkgs / pkg_name, pkg_name, arch_obj, on_host, list
+              pkgs / pkg_name, pkg_name, arch_obj, on_host, c, list
             )
           end
         end

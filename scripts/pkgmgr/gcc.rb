@@ -68,7 +68,9 @@ class GccCompiler < Package
       InstallInfo.new(
         info.pkgname, info.compiler, info.on_host, info.arch,
         info.ver, info.path, info.pkg, info.broken,
-        @target_arch, @libc
+        @target_arch, @libc,
+        default_install: info.default_install,
+        coords: info.coords
       )
     }
   end

@@ -98,7 +98,8 @@ class TestInstallInfo < Minitest::Test
   def test_to_s
     info = InstallInfo.new(
       "test_pkg", Ver("13.3.0"), false, ALL_ARCHS["i386"],
-      Ver("1.0.0"), Pathname.new("/fake/path"), nil, false
+      Ver("1.0.0"), Pathname.new("/fake/path"), nil, false,
+      coords: Coords.new("tilck-i386", "pc", "gcc-13.3.0")
     )
     s = info.to_s
     assert_match(/test_pkg/, s)
@@ -110,7 +111,8 @@ class TestInstallInfo < Minitest::Test
     # Regular package — not a compiler
     info = InstallInfo.new(
       "foo", Ver("13.3.0"), false, ALL_ARCHS["i386"],
-      Ver("1.0.0"), Pathname.new("/fake"), nil, false
+      Ver("1.0.0"), Pathname.new("/fake"), nil, false,
+      coords: Coords.new("tilck-i386", "pc", "gcc-13.3.0")
     )
     refute info.compiler?
 
@@ -118,7 +120,8 @@ class TestInstallInfo < Minitest::Test
     info = InstallInfo.new(
       "gcc-i386-musl", "syscc", true, HOST_ARCH,
       Ver("13.3.0"), Pathname.new("/fake"), nil, false,
-      ALL_ARCHS["i386"], "musl"
+      ALL_ARCHS["i386"], "musl",
+      coords: Coords.new(HOST_OS_ARCH, nil, nil)
     )
     assert info.compiler?
   end
