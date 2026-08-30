@@ -99,6 +99,51 @@ class HostGccPackage < Package
     return lib64.directory? ? [[lib64, "usr/lib"]] : []
   end
 
+  # The C++ half of the proof, which can only run once the sysroot has
+  # been composed: libstdc++ and libgcc_s reach it through this
+  # package's own graft, so at install time they are not there yet.
+  # Without this a broken graft passes the install and fails later, at
+  # runtime, in whatever package first links C++.
+  def post_sysroot_check
+
+    inst = find_install(default_ver)
+    return true if inst.nil?
+
+    ok = false
+
+    Dir.mktmpdir("gcc-cxx-check-") do |d|
+      src = File.join(d, "t.cpp")
+      bin = File.join(d, "t")
+      File.write(src, "#include <string>\nint main(){std::string s;return s.size();}\n")
+
+      if !system("#{inst.path}/install/bin/g++", "-O0", "-o", bin, src,
+                 out: File::NULL, err: File::NULL)
+        error "the installed g++ cannot compile a trivial C++ program"
+        next
+      end
+
+      loader = "#{hermetic_sysroot}/usr/lib/ld-linux-x86-64.so.2"
+      refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
+      resolved = Hermeticity.resolve_libs(bin, loader: loader)
+
+      violations = Hermeticity.check_refs(
+        bin, interp: refs[:interp], rpaths: refs[:rpaths],
+        resolved: resolved || {}, allowed: [TC]
+      )
+
+      if !violations.empty?
+        error "g++ produces non-hermetic binaries:"
+        violations.each { |v| error "  #{v.kind}: #{v.detail}" }
+        next
+      end
+
+      info "Verified: g++ produces hermetic binaries (libstdc++ included)"
+      ok = true
+    end
+
+    return ok
+  end
+
   def clean_build(dir)
     FileUtils.rm_rf(dir / "install")
     FileUtils.rm_rf(dir / "build")

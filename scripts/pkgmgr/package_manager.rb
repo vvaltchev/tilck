@@ -400,6 +400,10 @@ class PackageManager
         # Only hermetic packages are audited — binutils and gcc link
         # the system libc by design.
         ok = audit_hermetic_install(pkg, ver) if pkg.host_tier == :hermetic
+
+        # Now that the sysroot includes this package, let it check
+        # whatever it could not check before.
+        ok = false if !pkg.post_sysroot_check
       end
 
       info "Installed package #{pkg.name} at version #{ver}"
@@ -775,6 +779,8 @@ class PackageManager
     end
 
     p = "[DRY RUN] " if dry
+    removed = 0
+
     for info in to_remove do
       puts "#{p}Remove pkg '#{info.pkgname}' install at #{info.path}"
       if !dry
@@ -788,7 +794,19 @@ class PackageManager
           FileUtils.rmdir(parent)
           parent = parent.parent
         end
+
+        removed += 1
       end
+    end
+
+    # The sysroot is a view over what is installed, so removing
+    # something invalidates it exactly as installing something does.
+    # Without this it keeps symlinks pointing at packages that are no
+    # longer there, and the next thing to build against it fails in a
+    # way that looks nothing like the cause.
+    if removed > 0 && hermetic_sysroot.directory?
+      refresh()
+      compose_hermetic_sysroot
     end
   end
 
