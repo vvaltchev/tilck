@@ -35,7 +35,7 @@ class HostDbusPackage < Package
       source: DBUS_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [
         Dep('host_gcc', true),
@@ -48,7 +48,7 @@ class HostDbusPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
   def pkg_dirname = "dbus"
 
   def expected_files(ver = nil) = [
@@ -72,7 +72,7 @@ class HostDbusPackage < Package
   end
 
   def install_impl_internal(install_dir)
-    return meson_hermetic_build(install_dir, args: [
+    return meson_stack_build(install_dir, args: [
       "-Ddoxygen_docs=disabled",
       "-Dducktype_docs=disabled",
       "-Dxml_docs=disabled",

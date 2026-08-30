@@ -1,17 +1,31 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 #
-# The hermeticity audit: proof that what we built references nothing
-# outside the toolchain.
+# The portability audit: the enforcement half of a package's declared
+# tier.
 #
-# "Hermetic" rots silently. One configure script slipping
-# -I/usr/include or -L/usr/lib through is enough, nothing fails at the
-# time, and the breakage surfaces months later on a machine with a
-# different distro. The whole approach — building for the host's own
-# triple rather than a distinct one, which is what keeps configure
-# scripts able to run their test programs — trades exactly this risk
-# for that convenience. It is only a good trade if the risk is
-# detected, so this is a deliverable rather than a debugging aid.
+# A host package's directory says where it can run, and it says so
+# UPFRONT: --prefix and RPATH are baked in at configure time, so the
+# tier is declared (Package#host_tier) before anything is built and
+# can never be an outcome of the build. This is what makes the
+# declaration true. A package that says portable and then references
+# something outside the toolchain fails its install; one that says
+# distro is making no such promise and is not asked to keep it.
+#
+# The property being enforced is not purity. Nothing here cares that
+# the system GCC bootstrapped ours, or that cargo fetched crates over
+# the network. It cares about ONE thing: can another machine sharing
+# this toolchain consume this package as it stands, or must it rebuild
+# it? A reference to a system library means the version is the
+# distro's to choose, not ours, and the answer is "rebuild".
+#
+# It has to be checked rather than reasoned about, because it rots
+# silently: one configure script slipping -I/usr/include or -L/usr/lib
+# through is enough, nothing fails at the time, and the breakage
+# surfaces months later on a different distro. Building for the host's
+# own triple — which is what keeps configure scripts able to run their
+# test programs — trades exactly this risk for that convenience, and
+# is only a good trade if the risk is detected.
 #
 # Three things are checked per ELF file:
 #
@@ -29,7 +43,7 @@
 require 'pathname'
 require 'shellwords'
 
-module Hermeticity
+module Portability
 
   Violation = Struct.new(:path, :kind, :detail) do
     def to_s = "#{path}: #{kind}: #{detail}"
@@ -81,7 +95,8 @@ module Hermeticity
       end
 
       next if allowed_ref?(target, allowed)
-      out << Violation.new(path, "resolved outside", "#{soname} => #{target}")
+      out << Violation.new(path, "non-portable reference",
+                            "#{soname} => #{target}")
     end
 
     return out

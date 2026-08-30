@@ -305,32 +305,37 @@ HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 # HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
 # HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
 #
-# The host toolchain layout is split into two halves:
+# A host package's directory answers exactly one question: WHERE CAN
+# THIS RUN? Another machine sharing this toolchain reads the answer off
+# the path and knows whether to consume the package or rebuild it.
 #
-#   HOST_DIR_PORTABLE   For 100% statically-linked host tools (e.g. the
-#                       cross-compilers) that do not depend on the host
-#                       distro or system libraries. Shared across distros
-#                       and host compilers.
+#   HOST_DIR_PORTABLE   Runs on any host of this OS and architecture.
+#                       Either statically linked (the cross-compilers)
+#                       or carrying our own glibc and loader, which
+#                       amounts to the same promise: nothing at all is
+#                       needed from the distro.
 #
-#   HOST_DIR            For dynamically-linked host tools (e.g. host_mtools,
-#                       host_gtest) whose binaries or libraries depend on
-#                       glibc/libstdc++ from a specific distro and were
-#                       built by a specific host compiler. Because C++ has
-#                       no stable ABI, the host-compiler version matters
-#                       even for C tools that may depend on C++ host libs.
+#                       Packages built by OUR compiler live one level
+#                       down, under gcc-<ver>, for the same reason
+#                       HOST_DIR carries the host compiler: a GCC bump
+#                       can change the C++ ABI, so the whole set is
+#                       rebuilt beside the old one rather than in place.
+#                       They are still portable; the compiler is a
+#                       variant key, not a restriction on where they run.
 #
-#   HOST_DIR_HERMETIC_BASE
-#                       For the hermetic stack: tools and libraries that
-#                       link against OUR glibc and nothing from the system
-#                       at all. Neither the distro nor the system compiler
-#                       is part of the path, because neither is part of
-#                       the build. Instead each hermetic package lives
-#                       under the version of OUR compiler that built it,
-#                       for the same reason HOST_DIR carries the host
-#                       compiler: a GCC bump can change the C++ ABI, so
-#                       the whole stack is rebuilt beside the old one
-#                       rather than in place.
-#                       See docs/plans/hermetic-host-toolchain.md.
+#   HOST_DIR_DISTRO     Runs on this distro only, because it links the
+#                       distro's libraries. Our own gcc and binutils
+#                       live here: the system compiler built them.
+#
+#   HOST_DIR            The same, plus a dependency on the host C++
+#                       ABI, so also only under this host compiler.
+#
+# The tier is DECLARED per package (Package#host_tier), never inferred
+# from a build's outcome: --prefix and RPATH are baked in at configure
+# time, so the directory has to be known before anything is built. The
+# portability audit ENFORCES the declaration -- a package that says
+# portable and links something outside the toolchain fails its install.
+# See docs/plans/portable-host-stack.md.
 HOST_OS      = InitOnly.get_host_os()
 HOST_DISTRO  = InitOnly.get_host_distro(HOST_OS)
 HOST_CC      = InitOnly.get_host_cc()
@@ -340,20 +345,22 @@ HOST_DIR_PORTABLE = TC / "host" / HOST_OS_ARCH / "portable"
 HOST_DIR_DISTRO   = TC / "host" / HOST_OS_ARCH / HOST_DISTRO
 HOST_DIR          = TC / "host" / HOST_OS_ARCH / HOST_DISTRO / HOST_CC
 
-# The per-compiler-version directory is appended by Package#hermetic_root,
-# which needs the version file and so cannot run this early.
-HOST_DIR_HERMETIC_BASE = TC / "host" / HOST_OS_ARCH / "hermetic"
+# Composed sysroots. Kept out of the package tree because a sysroot is
+# a VIEW over installed packages, not an installation: living beside
+# them, it had to be fenced off from every scanner that walks the tree
+# looking for <pkg>/<ver>.
+TC_SYSROOTS = TC / "sysroots" / HOST_OS_ARCH
 
 DEFAULT_BOARD = ARCH.default_board
 BOARD = ENV["BOARD"] || DEFAULT_BOARD
 BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD : nil
 BUILD_PAR = ENV["BUILD_PAR"] or ""
 
-# Opt-in for the hermetic host toolchain, which builds binutils, glibc
+# Opt-in for the portable host toolchain, which builds binutils, glibc
 # and GCC from source before anything else. That is tens of minutes of
 # build time, so the packages are invisible to `-l` and refused by `-s`
 # unless this is set: nobody should trip over it by accident.
-HERMETIC_ENABLED = !ENV["TILCK_HERMETIC"].to_s.strip.empty?
+HOST_STACK_ENABLED = !ENV["TILCK_HOST_STACK"].to_s.strip.empty?
 
 def get_human_arch_name(arch)
   return "noarch" if arch.nil?

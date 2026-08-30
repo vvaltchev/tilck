@@ -15,7 +15,7 @@ LINUX_HEADERS_SOURCE = SourceRef.new(
 
 #
 # host_linux_headers: the kernel's userspace API headers, the bottom of
-# the hermetic sysroot.
+# the composed sysroot.
 #
 # glibc is compiled against these, and everything above it inherits
 # them. No compiler is involved: `make headers_install` sanitises and
@@ -23,7 +23,7 @@ LINUX_HEADERS_SOURCE = SourceRef.new(
 # host_glibc in the build order.
 #
 # Installs a sysroot-shaped fragment (install/usr/include/...), the
-# convention every hermetic package follows so the symlink farm can
+# convention every stack package follows so the symlink farm can
 # merge them all without special cases.
 #
 # An LTS kernel rather than the newest: these headers define the syscall
@@ -32,7 +32,7 @@ LINUX_HEADERS_SOURCE = SourceRef.new(
 # OLDEST kernel our binaries will run on — that floor is set separately
 # by glibc's --enable-kernel.
 #
-# See docs/plans/hermetic-host-toolchain.md.
+# See docs/plans/portable-host-stack.md.
 #
 class HostLinuxHeadersPackage < Package
 
@@ -45,7 +45,7 @@ class HostLinuxHeadersPackage < Package
       source: LINUX_HEADERS_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [],
       default: false,
@@ -54,7 +54,7 @@ class HostLinuxHeadersPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/include/linux/unistd.h", false],

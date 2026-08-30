@@ -15,15 +15,15 @@ PIXMAN_SOURCE = SourceRef.new(
 
 #
 # host_pixman: QEMU's pixel manipulation library, and the first
-# meson-built package of the hermetic stack.
+# meson-built package of the host stack.
 #
 # zlib established the pattern for a hand-written configure; this
 # establishes it for meson, which most of the GTK closure uses. The
-# hermetic parts are identical either way — our compiler via
-# with_hermetic_toolchain, --prefix naming the sysroot, DESTDIR
+# portable parts are identical either way — our compiler via
+# with_stack_toolchain, --prefix naming the sysroot, DESTDIR
 # staging, a sysroot-shaped fragment — and only the invocation differs.
 #
-# meson picks the compiler up from CC/CXX, which with_hermetic_toolchain
+# meson picks the compiler up from CC/CXX, which with_stack_toolchain
 # sets, and finds dependencies through PKG_CONFIG_LIBDIR, which it
 # points at the sysroot alone.
 #
@@ -38,7 +38,7 @@ class HostPixmanPackage < Package
       source: PIXMAN_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [
         Dep('host_gcc', true),
@@ -50,7 +50,7 @@ class HostPixmanPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libpixman-1.so", false],
@@ -77,7 +77,7 @@ class HostPixmanPackage < Package
 
   def install_impl_internal(install_dir)
 
-    return meson_hermetic_build(install_dir, args: [
+    return meson_stack_build(install_dir, args: [
       "-Dtests=disabled",          # nothing here consumes them
       "-Ddemos=disabled",
     ])

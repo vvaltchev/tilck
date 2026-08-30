@@ -8,7 +8,7 @@ require_relative 'package'
 require_relative 'dep_resolver'
 require_relative 'version_solver'
 require_relative 'sysroot'
-require_relative 'hermeticity'
+require_relative 'portability'
 
 require 'singleton'
 require 'set'
@@ -30,7 +30,7 @@ class PackageManager
     @found_installed = nil
     @installable = nil
     @target_arch = nil    # nil = fall back to the global ARCH
-    @hermetic_stack = nil # nil = fall back to HOST_VER_GCC
+    @portable_stack = nil # nil = fall back to HOST_VER_GCC
   end
 
   # Current target architecture: the arch the install/uninstall flow
@@ -63,7 +63,7 @@ class PackageManager
     end
   end
 
-  # The hermetic stack this invocation is building into.
+  # The host stack this invocation is building into.
   #
   # Scoped, the same way with_target_arch scopes the target
   # architecture. `-s host_gcc:13.4.0` builds the 13.4.0 stack — its
@@ -73,22 +73,22 @@ class PackageManager
   # HOST_VER_GCC is a convenience only: it supplies a version when none
   # is named, so `-s host_gcc` works. It never limits which versions
   # can be built or coexist.
-  def with_hermetic_stack(gcc_ver, &block)
+  def with_host_stack(gcc_ver, &block)
 
-    prev = @hermetic_stack
-    @hermetic_stack = gcc_ver
+    prev = @portable_stack
+    @portable_stack = gcc_ver
 
     begin
       return block.call
     ensure
-      @hermetic_stack = prev
+      @portable_stack = prev
     end
   end
 
   # The stack in effect: what this invocation asked for, else the
   # default.
-  def current_hermetic_stack
-    return @hermetic_stack || default_hermetic_gcc_ver
+  def current_host_stack
+    return @portable_stack || default_stack_cc_ver
   end
 
   def refresh
@@ -380,7 +380,7 @@ class PackageManager
 
     if !pkg.enabled?
       error "Package #{pkg.name} is not enabled in this configuration"
-      error "The hermetic toolchain is opt-in: set TILCK_HERMETIC=1"
+      error "The host toolchain is opt-in: set TILCK_HOST_STACK=1"
       return false
     end
 
@@ -419,30 +419,30 @@ class PackageManager
       # The sysroot is a view over what is installed, so it is stale
       # the moment that changes.
       # Recompose whenever the package contributes to the sysroot, which
-      # is not the same as being a hermetic package: host_gcc is
+      # is not the same as being a stack package: host_gcc is
       # :distro and still contributes its target runtime, while a
-      # hermetic APPLICATION contributes nothing at all because nothing
+      # portable APPLICATION contributes nothing at all because nothing
       # is built against it.
       # The stack this install belongs to, which for host_gcc is its
       # OWN version rather than the current default.
       stack = pkg.stack_gcc_ver(ver)
 
       if !pkg.sysroot_fragments(stack).empty?
-        compose_hermetic_sysroot(stack)
+        compose_stack_sysroot(stack)
 
         # Now that the sysroot includes this package, let it check
         # whatever it could not check before.
         ok = false if !pkg.post_sysroot_check(stack)
       end
 
-      # Audited on being hermetic, not on contributing to the sysroot:
+      # Audited on being portable, not on contributing to the sysroot:
       # an application is exactly the thing whose linkage matters most,
       # and it contributes nothing. Runs after any composition, since a
       # package whose paths name the sysroot cannot be inspected until
       # the sysroot is real. binutils and gcc are :distro and link the
       # system libc by design, so they are not audited.
-      if pkg.host_tier == :hermetic
-        ok = false if !audit_hermetic_install(pkg, ver)
+      if pkg.host_tier == :stack
+        ok = false if !audit_portability(pkg, ver)
       end
 
       info "Installed package #{pkg.name} at version #{ver}"
@@ -546,37 +546,39 @@ class PackageManager
     )
   end
 
-  # The hermetic stack's root, and the sysroot inside it. Defined here
+  # The host stack's root, and the sysroot inside it. Defined here
   # rather than on Package because several packages, the sysroot
   # composition and the audit all need the same answer.
-  def hermetic_root(gcc_ver = nil)
+  def stack_root(gcc_ver = nil)
 
-    gcc_ver ||= default_hermetic_gcc_ver
+    gcc_ver ||= default_stack_cc_ver
 
     if gcc_ver.nil?
       raise "HOST_VER_GCC is missing from other/host_pkg_versions: it " \
-            "names the hermetic stack's directory, so without it every " \
-            "hermetic package would install to the same broken path"
+            "names the host stack's directory, so without it every " \
+            "stack package would install to the same broken path"
     end
 
-    return HOST_DIR_HERMETIC_BASE / "gcc-#{gcc_ver}"
+    return HOST_DIR_PORTABLE / "gcc-#{gcc_ver}"
   end
 
-  def hermetic_sysroot(gcc_ver = nil) = hermetic_root(gcc_ver) / "sysroot"
+  def stack_sysroot(gcc_ver = nil)
+    return TC_SYSROOTS / "gcc-#{gcc_ver || default_stack_cc_ver}"
+  end
 
   # Which stack the world is currently being built for. Everything
   # except host_gcc belongs to this one: choosing a different compiler
   # means changing HOST_VER_GCC and rebuilding, which is a coherent
   # operation. host_gcc is the exception, because a compiler has to
   # belong to ITS OWN stack — see HostGccPackage#stack_gcc_ver.
-  def default_hermetic_gcc_ver = get_config_ver("gcc", host: true)
+  def default_stack_cc_ver = get_config_ver("gcc", host: true)
 
-  # Every hermetic stack that exists on disk.
-  def hermetic_stacks
+  # Every host stack that exists on disk.
+  def host_stacks
 
-    return [] if !HOST_DIR_HERMETIC_BASE.directory?
+    return [] if !HOST_DIR_PORTABLE.directory?
 
-    return Dir.children(HOST_DIR_HERMETIC_BASE)
+    return Dir.children(HOST_DIR_PORTABLE)
               .select { |d| d.start_with?("gcc-") }
               .map { |d| d.sub("gcc-", "") }
   end
@@ -594,43 +596,43 @@ class PackageManager
 
     # The loader of the stack being audited, not of whichever stack
     # happens to be the default.
-    loader = hermetic_sysroot(gcc_ver) / "usr/lib/ld-linux-x86-64.so.2"
+    loader = stack_sysroot(gcc_ver) / "usr/lib/ld-linux-x86-64.so.2"
     loader = nil if !File.exist?(loader)
 
     return [readelf, loader]
   end
 
-  # Check that an installed hermetic package references nothing outside
+  # Check that an installed stack package references nothing outside
   # the toolchain. Returns true when clean.
   #
-  # Only hermetic packages are audited. binutils and gcc are :distro
+  # Only stack packages are audited. binutils and gcc are :distro
   # and link the system libc by design: they are build tools, and what
   # they link against never reaches what they produce.
-  def audit_hermetic_install(pkg, ver)
+  def audit_portability(pkg, ver)
 
     inst = pkg.find_install(ver)
     return true if inst.nil?
 
     readelf, loader = audit_tools(pkg.stack_gcc_ver(ver))
     if loader.nil?
-      warning "No hermetic loader yet: auditing #{pkg.name} without " \
+      warning "No stack loader yet: auditing #{pkg.name} without " \
               "checking where its libraries resolve"
     end
 
-    hostile = pkg.hermeticity_hostile_check?
+    hostile = pkg.portability_hostile_check?
     if !hostile
       info "#{pkg.name}: auditing without a hostile LD_LIBRARY_PATH " \
-           "(see Package#hermeticity_hostile_check?)"
+           "(see Package#portability_hostile_check?)"
     end
 
-    violations = Hermeticity.audit(
+    violations = Portability.audit(
       inst.path, allowed: [TC], readelf: readelf, loader: loader,
       hostile: hostile
     )
 
     return true if violations.empty?
 
-    error "#{pkg.name} #{ver} is not hermetic:"
+    error "#{pkg.name} #{ver} is not portable:"
     for v in violations.first(20)
       error "  #{v}"
     end
@@ -641,21 +643,21 @@ class PackageManager
     return false
   end
 
-  # Rebuild the sysroot from every installed hermetic package, each at
+  # Rebuild the sysroot from every installed stack package, each at
   # the version currently selected for it.
   #
-  # Run after any hermetic install, because a package that bakes an
+  # Run after any portable install, because a package that bakes an
   # absolute --prefix naming the sysroot is broken until the sysroot
   # makes that path real: glibc's own libc.so.6 will not exec before
   # this has run, its ELF interpreter pointing into a directory that
   # does not exist yet.
-  def compose_hermetic_sysroot(gcc_ver = nil)
+  def compose_stack_sysroot(gcc_ver = nil)
 
-    gcc_ver ||= default_hermetic_gcc_ver
+    gcc_ver ||= default_stack_cc_ver
     fragments = @packages.values.flat_map { |p| p.sysroot_fragments(gcc_ver) }
 
-    n = Sysroot.compose(hermetic_sysroot(gcc_ver), fragments)
-    info "Hermetic sysroot gcc-#{gcc_ver}: #{n} entries from " \
+    n = Sysroot.compose(stack_sysroot(gcc_ver), fragments)
+    info "Composed sysroot gcc-#{gcc_ver}: #{n} entries from " \
          "#{fragments.length} packages"
     return n
   end
@@ -862,12 +864,12 @@ class PackageManager
     # Without this it keeps symlinks pointing at packages that are no
     # longer there, and the next thing to build against it fails in a
     # way that looks nothing like the cause.
-    if removed > 0 && !hermetic_stacks.empty?
+    if removed > 0 && !host_stacks.empty?
       refresh()
       # Every stack, not just the default: an uninstall can invalidate
       # any of them, and a stale symlink is the failure mode hardest to
       # notice.
-      hermetic_stacks.each { |v| compose_hermetic_sysroot(Ver(v)) }
+      host_stacks.each { |v| compose_stack_sysroot(Ver(v)) }
     end
   end
 
@@ -876,23 +878,44 @@ class PackageManager
   # Walk <root>/<pkg>/<ver>/ and emit an InstallInfo per (pkg, ver) whose
   # path is NOT already claimed by a registered package. Used by
   # scan_toolchain() to discover orphan installations.
-  def scan_pkg_dir_tree(root, compiler, on_host, arch_obj, list)
-    return if !root.directory?
-    for pkg_name in Dir.children(root)
-      pkg_path = root / pkg_name
-      next if !pkg_path.directory?
-      for ver_str in Dir.children(pkg_path)
-        full_path = pkg_path / ver_str
-        next if @known_pkgs_paths.include? full_path
-        ver = SafeVer(ver_str)
-        if ver.nil?
-          warning "Invalid package version: #{full_path}"
-          next
-        end
-        list << InstallInfo.new(
-          pkg_name, compiler, on_host, arch_obj, ver, full_path
-        )
+  # A directory level naming a compiler rather than a package. No
+  # package is called gcc-* or clang-*, and this is what keeps a
+  # compiler slot from being read as a package in every tier that has
+  # one below it.
+  def compiler_slot?(name)
+    return name.start_with?("gcc-") || name.start_with?("clang-")
+  end
+
+  # Scan one <pkg>/ directory, whose children are version directories.
+  def scan_one_pkg_dir(pkg_path, pkg_name, compiler, on_host, arch_obj, list)
+
+    return if !pkg_path.directory?
+
+    for ver_str in Dir.children(pkg_path)
+      full_path = pkg_path / ver_str
+      next if @known_pkgs_paths.include? full_path
+      ver = SafeVer(ver_str)
+
+      if ver.nil?
+        warning "Invalid package version: #{full_path}"
+        next
       end
+
+      list << InstallInfo.new(
+        pkg_name, compiler, on_host, arch_obj, ver, full_path
+      )
+    end
+  end
+
+  # Scan a whole <root>/<pkg>/<ver>/ tree.
+  def scan_pkg_dir_tree(root, compiler, on_host, arch_obj, list)
+
+    return if !root.directory?
+
+    for pkg_name in Dir.children(root)
+      scan_one_pkg_dir(
+        root / pkg_name, pkg_name, compiler, on_host, arch_obj, list
+      )
     end
   end
 
@@ -930,28 +953,32 @@ class PackageManager
         os_dir = host_root / os_arch
         next if !os_dir.directory?
 
-        # Tier 1: portable (shared across distros and host compilers).
-        scan_pkg_dir_tree(os_dir / "portable", "syscc", true, HOST_ARCH, list)
+        # Tier 1: portable/<pkg>/<ver>/ -- runs anywhere, built by the
+        # system compiler. Children named like a compiler are the
+        # stack slots scanned just below, not packages: exactly the
+        # convention tier 2 and tier 3 already share under <distro>/.
+        portable_dir = os_dir / "portable"
+        if portable_dir.directory?
+          for pkg_name in Dir.children(portable_dir)
+            next if compiler_slot?(pkg_name)
+            scan_one_pkg_dir(
+              portable_dir / pkg_name, pkg_name, "syscc", true,
+              HOST_ARCH, list
+            )
+          end
 
-        # Tier 4: hermetic/<compiler>-<ver>/pkgs/<pkg>/<ver>/. Scanned
-        # explicitly rather than falling through the distro loop
-        # below, whose <distro>/<host-cc>/ shape it does not share:
-        # read that way, "pkgs" looks like a package name and the
-        # package names look like versions. The sysroot beside pkgs/
-        # is a composed view, not an installation, and is not scanned
-        # at all.
-        hermetic_dir = os_dir / "hermetic"
-        if hermetic_dir.directory?
-          for stack in Dir.children(hermetic_dir)
+          # Portable, built by OUR compiler:
+          # portable/<our-cc>/<pkg>/<ver>/.
+          for cc in Dir.children(portable_dir)
+            next if !compiler_slot?(cc)
             scan_pkg_dir_tree(
-              hermetic_dir / stack / "pkgs", "syscc", true, HOST_ARCH, list
+              portable_dir / cc, "syscc", true, HOST_ARCH, list
             )
           end
         end
 
         for sub in Dir.children(os_dir)
           next if sub == "portable"
-          next if sub == "hermetic"
           distro_dir = os_dir / sub
           next if !distro_dir.directory?
 
@@ -959,29 +986,17 @@ class PackageManager
           # directly under <distro>/<pkg>/<ver>/. Scan each child that
           # isn't a host-cc slot or the ruby bootstrap.
           for pkg_name in Dir.children(distro_dir)
-            next if pkg_name.start_with?("gcc-") ||
-                    pkg_name.start_with?("clang-")
+            next if compiler_slot?(pkg_name)
             next if pkg_name == "ruby"
-            pkg_path = distro_dir / pkg_name
-            next if !pkg_path.directory?
-            for ver_str in Dir.children(pkg_path)
-              full_path = pkg_path / ver_str
-              next if @known_pkgs_paths.include? full_path
-              ver = SafeVer(ver_str)
-              if ver.nil?
-                warning "Invalid package version: #{full_path}"
-                next
-              end
-              list << InstallInfo.new(
-                pkg_name, "syscc", true, HOST_ARCH, ver, full_path
-              )
-            end
+            scan_one_pkg_dir(
+              distro_dir / pkg_name, pkg_name, "syscc", true,
+              HOST_ARCH, list
+            )
           end
 
           # Tier 3: compiler-bound packages under <distro>/<host-cc>/.
           for host_cc in Dir.children(distro_dir)
-            next if !(host_cc.start_with?("gcc-") ||
-                      host_cc.start_with?("clang-"))
+            next if !compiler_slot?(host_cc)
             scan_pkg_dir_tree(
               distro_dir / host_cc, "syscc", true, HOST_ARCH, list
             )

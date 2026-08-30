@@ -14,7 +14,7 @@ QEMU_SOURCE = SourceRef.new(
 )
 
 #
-# host_qemu: the point of the whole hermetic stack.
+# host_qemu: the point of the whole host stack.
 #
 # An APPLICATION rather than a library, which makes it the first
 # package of its shape and changes two things:
@@ -63,7 +63,7 @@ class HostQemuPackage < Package
       source: QEMU_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [
         Dep('host_gcc', true),
@@ -79,7 +79,7 @@ class HostQemuPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   # Nothing is built against QEMU.
   def sysroot_fragments(gcc_ver = nil) = []
@@ -104,7 +104,7 @@ class HostQemuPackage < Package
 
     FileUtils.mkdir_p("build")
 
-    with_hermetic_toolchain do
+    with_stack_toolchain do
       chdir("build") do
         ok = run_command("configure.log", [
           "../configure",

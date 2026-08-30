@@ -38,7 +38,7 @@ class HostLibseccompPackage < Package
       source: LIBSECCOMP_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [Dep('host_gcc', true)],
       default: false,
@@ -47,7 +47,7 @@ class HostLibseccompPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
   def pkg_dirname = "libseccomp"
 
   def expected_files(ver = nil) = [
@@ -66,9 +66,9 @@ class HostLibseccompPackage < Package
   end
 
   def install_impl_internal(install_dir)
-    return autotools_hermetic_build(install_dir, args: [
+    return autotools_stack_build(install_dir, args: [
       "--disable-static",
-      "--libdir=#{hermetic_sysroot}/usr/lib",
+      "--libdir=#{stack_sysroot}/usr/lib",
       "--disable-python",   # the bindings are not wanted, only the C lib
     ])
   end

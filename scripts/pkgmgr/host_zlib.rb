@@ -9,13 +9,13 @@ require_relative 'package_manager'
 require_relative 'zlib'   # for ZLIB_SOURCE
 
 #
-# host_zlib: the first ordinary library of the hermetic stack, and the
+# host_zlib: the first ordinary library of the host stack, and the
 # template the rest of the QEMU closure follows.
 #
 # The pattern, which is what this package exists to establish:
 #
-#   * built with OUR compiler, via with_hermetic_toolchain. This is the
-#     part that makes it hermetic; the sysroot alone would not, since
+#   * built with OUR compiler, via with_stack_toolchain. This is the
+#     part that makes it portable; the sysroot alone would not, since
 #     the system gcc would happily link the system libc against it;
 #   * --prefix names the SYSROOT, not this package's directory, so
 #     every absolute path baked into the result is the path the symlink
@@ -31,7 +31,7 @@ require_relative 'zlib'   # for ZLIB_SOURCE
 # One tarball per version in the cache, and neither side constrains the
 # other — which is the whole point of the two version files.
 #
-# See docs/plans/hermetic-host-toolchain.md.
+# See docs/plans/portable-host-stack.md.
 #
 class HostZlibPackage < Package
 
@@ -44,7 +44,7 @@ class HostZlibPackage < Package
       source: ZLIB_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [Dep('host_gcc', true)],
       default: false,
@@ -53,7 +53,7 @@ class HostZlibPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libz.so", false],
@@ -82,13 +82,13 @@ class HostZlibPackage < Package
 
   def install_impl_internal(install_dir)
 
-    sysroot_usr = "#{hermetic_sysroot}/usr"
+    sysroot_usr = "#{stack_sysroot}/usr"
     destdir = "#{install_dir}/destdir"
     ok = false
 
-    with_hermetic_toolchain do
+    with_stack_toolchain do
       # zlib's configure is hand-written rather than autotools and
-      # takes its compiler from $CC, which with_hermetic_toolchain has
+      # takes its compiler from $CC, which with_stack_toolchain has
       # just pointed at ours.
       ok = run_command("configure.log", [
         "./configure", "--prefix=#{sysroot_usr}",

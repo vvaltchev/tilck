@@ -14,29 +14,29 @@ BINUTILS_SOURCE = SourceRef.new(
 )
 
 #
-# host_binutils: the assembler, linker and object tools the hermetic
+# host_binutils: the assembler, linker and object tools the portable
 # toolchain is built with and builds through.
 #
-# A :distro package, not a hermetic one. Its binaries are built by the
+# A :distro package, not a portable one. Its binaries are built by the
 # system compiler and link against the system libc, and the tier
 # describes what a package's own binaries depend on. That is fine:
 # these are build tools running on the host, and what they are linked
-# against does not reach anything they produce. Hermeticity belongs to
+# against does not reach anything they produce. Portability belongs to
 # the sysroot they target.
 #
-# One binutils therefore serves every hermetic stack rather than being
+# One binutils therefore serves every host stack rather than being
 # rebuilt per compiler version. A GCC needing a particular binutils
 # pins it: Dep('host_binutils', true, ver: ...).
 #
 # --with-sysroot is not optional even though the value is only a
 # default: GNU ld rejects the runtime --sysroot flag unless it was
 # configured with --with-sysroot, and that runtime flag is how GCC
-# points ld at the right stack. The default names the hermetic base,
+# points ld at the right stack. The default names the portable base,
 # which exists but holds no usr/lib, so a bare `ld` invoked outside GCC
 # fails to find libraries rather than silently falling back to
 # /usr/lib. Failing closed is the point.
 #
-# See docs/plans/hermetic-host-toolchain.md.
+# See docs/plans/portable-host-stack.md.
 #
 class HostBinutilsPackage < Package
 
@@ -58,7 +58,7 @@ class HostBinutilsPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/bin/ld", false],
@@ -90,7 +90,7 @@ class HostBinutilsPackage < Package
     conf = [
       "../configure",
       "--prefix=#{prefix}",
-      "--with-sysroot=#{HOST_DIR_HERMETIC_BASE}",
+      "--with-sysroot=#{HOST_DIR_PORTABLE}",
 
       # No translations: they would pull in the host's gettext, and
       # nothing here is user-facing enough to want them.

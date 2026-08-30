@@ -6,7 +6,7 @@ require_relative 'version'
 require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
-require_relative 'hermeticity'
+require_relative 'portability'
 require 'tmpdir'
 
 HOST_GCC_SOURCE = SourceRef.new(
@@ -20,7 +20,7 @@ HOST_GCC_SOURCE = SourceRef.new(
 )
 
 #
-# host_gcc: the compiler the hermetic stack is built with.
+# host_gcc: the compiler the host stack is built with.
 #
 # Built by the SYSTEM compiler, once. There is no bootstrap stage and
 # no second pass, because we build for the host's own triple: the
@@ -31,16 +31,16 @@ HOST_GCC_SOURCE = SourceRef.new(
 #
 # A :distro package, like binutils: these binaries are built by the
 # system compiler and link the system libc, and the tier describes what
-# a package's own binaries depend on. What matters for hermeticity is
+# a package's own binaries depend on. What matters for portability is
 # the TARGET runtime this produces — libgcc, libstdc++ — which is
 # compiled against our glibc and lands in the sysroot.
 #
 # Supported majors are 11 through 16 at the latest point release of
 # each. Installing more than one is expected: each gets its own
-# hermetic/gcc-<ver>/ stack, and HOST_VER_GCC selects which one the
+# portable/gcc-<ver>/ stack, and HOST_VER_GCC selects which one the
 # stack is built with.
 #
-# See docs/plans/hermetic-host-toolchain.md.
+# See docs/plans/portable-host-stack.md.
 #
 class HostGccPackage < Package
 
@@ -50,7 +50,7 @@ class HostGccPackage < Package
   # Latest point release of each supported major, per ftp.gnu.org.
   #
   # All six have been built from source against glibc 2.41, each into
-  # its own hermetic stack, and each verified to report its own sysroot
+  # its own host stack, and each verified to report its own sysroot
   # and to produce binaries resolving nothing outside the toolchain:
   #
   #   11.5.0  12.5.0  13.4.0   --disable-libsanitizer (no crypt.h)
@@ -82,7 +82,7 @@ class HostGccPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
   def pkg_dirname = "gcc"
 
   # A compiler belongs to ITS OWN stack, not to whichever one
@@ -97,7 +97,7 @@ class HostGccPackage < Package
   # mutable, so switching HOST_VER_GCC afterwards left the compiler
   # pointing at a stack it no longer belonged to, with nothing
   # detecting the disagreement.
-  def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_hermetic_stack
+  def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_host_stack
 
   # The stack's compiler runtime comes from the gcc that NAMES the
   # stack, so composing gcc-11.5.0 grafts 11.5.0's libstdc++ even when
@@ -143,21 +143,21 @@ class HostGccPackage < Package
       end
 
       loader = stack_loader(gcc_ver)
-      refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
-      resolved = Hermeticity.resolve_libs(bin, loader: loader)
+      refs = Portability.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
+      resolved = Portability.resolve_libs(bin, loader: loader)
 
-      violations = Hermeticity.check_refs(
+      violations = Portability.check_refs(
         bin, interp: refs[:interp], rpaths: refs[:rpaths],
         resolved: resolved || {}, allowed: [TC]
       )
 
       if !violations.empty?
-        error "g++ produces non-hermetic binaries:"
+        error "g++ produces non-portable binaries:"
         violations.each { |v| error "  #{v.kind}: #{v.detail}" }
         next
       end
 
-      info "Verified: g++ produces hermetic binaries (libstdc++ included)"
+      info "Verified: g++ produces portable binaries (libstdc++ included)"
       ok = true
     end
 
@@ -186,7 +186,7 @@ class HostGccPackage < Package
   # install_impl_internal, and raised NameError instead of returning
   # false — aborting five unrelated builds.
   def stack_loader(gcc_ver)
-    return "#{pkgmgr.hermetic_sysroot(gcc_ver)}/usr/lib/ld-linux-x86-64.so.2"
+    return "#{pkgmgr.stack_sysroot(gcc_ver)}/usr/lib/ld-linux-x86-64.so.2"
   end
 
   # Configure flags that depend on which version is being built.
@@ -209,7 +209,7 @@ class HostGccPackage < Package
     # user named another one. Getting this wrong is silent: the checks
     # below would answer about a compiler nobody asked for.
     ver = installing_ver(install_dir)
-    sysroot = pkgmgr.hermetic_sysroot(ver)
+    sysroot = pkgmgr.stack_sysroot(ver)
 
     if !supported_version?(ver)
       error "gcc #{ver} is not one of the supported versions: " +
@@ -304,8 +304,8 @@ class HostGccPackage < Package
 
     FileUtils.mv("#{destdir}#{prefix}", "#{install_dir}/install")
 
-    return false if !install_hermetic_specs("#{install_dir}/install", ver)
-    return false if !verify_produces_hermetic_binaries(
+    return false if !install_portability_specs("#{install_dir}/install", ver)
+    return false if !verify_produces_portable_binaries(
                        "#{install_dir}/install", ver)
 
     # A GCC build tree is several GB; the compiler is a few hundred MB.
@@ -331,15 +331,15 @@ class HostGccPackage < Package
   #
   # Rewriting the driver's specs makes the default correct rather than
   # leaving every consumer to remember -Wl,--dynamic-linker=. A
-  # compiler that emits non-hermetic output unless invoked just so is a
+  # compiler that emits non-portable output unless invoked just so is a
   # trap, and the whole stack passes through this one place.
-  def install_hermetic_specs(install, gcc_ver)
+  def install_portability_specs(install, gcc_ver)
 
     gcc = "#{install}/bin/gcc"
     loader = stack_loader(gcc_ver)
 
     if !File.exist?(loader)
-      error "no hermetic loader at #{loader}: this stack has no glibc, " \
+      error "no stack loader at #{loader}: this stack has no glibc, " \
             "which should have been built as a dependency"
       return false
     end
@@ -370,7 +370,7 @@ class HostGccPackage < Package
     specs = specs.gsub(SYSTEM_LOADER, loader)
 
     specs = add_link_rpath(specs,
-                           "#{pkgmgr.hermetic_sysroot(gcc_ver)}/usr/lib")
+                           "#{pkgmgr.stack_sysroot(gcc_ver)}/usr/lib")
     if specs.nil?
       error "gcc -dumpspecs has no *link: section to add an rpath to"
       return false
@@ -378,13 +378,13 @@ class HostGccPackage < Package
 
     FileUtils.mkdir_p(File.dirname(specs_path))
     File.write(specs_path, specs)
-    info "Hermetic specs installed: interpreter -> #{loader}"
+    info "Portability specs installed: interpreter -> #{loader}"
     return true
   end
 
   # Record the library search path in the binaries themselves.
   #
-  # Without this, hermeticity is an accident of which loader happens to
+  # Without this, portability is an accident of which loader happens to
   # run: our ld.so has the sysroot compiled in as its default search
   # path, so it finds our libraries, and the SYSTEM ld.so finds the
   # system's. The binary says nothing either way. That is not a
@@ -424,11 +424,11 @@ class HostGccPackage < Package
   # configured; this is the only step that observes what it actually
   # produces. It is cheap, and a toolchain quietly emitting
   # system-linked binaries would poison every package built after it.
-  def verify_produces_hermetic_binaries(install, gcc_ver)
+  def verify_produces_portable_binaries(install, gcc_ver)
 
     ok = false
 
-    Dir.mktmpdir("gcc-hermetic-check-") do |d|
+    Dir.mktmpdir("gcc-portable-check-") do |d|
       src = File.join(d, "t.c")
       bin = File.join(d, "t")
       File.write(src, "int main(void){return 0;}\n")
@@ -440,21 +440,21 @@ class HostGccPackage < Package
       end
 
       loader = stack_loader(gcc_ver)
-      refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
-      resolved = Hermeticity.resolve_libs(bin, loader: loader)
+      refs = Portability.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
+      resolved = Portability.resolve_libs(bin, loader: loader)
 
-      violations = Hermeticity.check_refs(
+      violations = Portability.check_refs(
         bin, interp: refs[:interp], rpaths: refs[:rpaths],
         resolved: resolved || {}, allowed: [TC]
       )
 
       if !violations.empty?
-        error "gcc #{gcc_ver} produces non-hermetic binaries:"
+        error "gcc #{gcc_ver} produces non-portable binaries:"
         violations.each { |v| error "  #{v.kind}: #{v.detail}" }
         next
       end
 
-      info "Verified: gcc produces hermetic binaries by default"
+      info "Verified: gcc produces portable binaries by default"
       ok = true
     end
 

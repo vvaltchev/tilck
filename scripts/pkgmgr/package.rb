@@ -185,7 +185,7 @@ class Package
   #
   # A package that is not enabled is not offered — it is absent from
   # `-l` and refused by `-s` — as opposed to one that merely isn't in
-  # the default set. Used by the hermetic stack, which costs tens of
+  # the default set. Used by the host stack, which costs tens of
   # minutes to build and so must be asked for rather than stumbled
   # into.
   #
@@ -207,25 +207,27 @@ class Package
       when :portable then HOST_DIR_PORTABLE
       when :distro   then HOST_DIR_DISTRO
       when :compiler then HOST_DIR
-      # Packages go in a subdirectory of their own: the install
-      # scanners treat every child of this root as a package name, and
-      # the composed sysroot lives beside it. Without the split, the
-      # sysroot is scanned as a package called "sysroot" whose version
-      # is "usr".
-      when :hermetic then hermetic_root / "pkgs"
+
+      # Portable, but built by our own compiler, so keyed by its
+      # version one level under portable/ -- the same shape tier 3
+      # uses for the HOST compiler. The composed sysroot used to sit
+      # beside these and had to be fenced off from the scanners; it
+      # now lives outside the package tree entirely (TC_SYSROOTS),
+      # which is where a view of installed packages belongs.
+      when :stack then stack_root
     end
   end
 
-  # The hermetic stack lives under the version of OUR compiler, not the
+  # The host stack lives under the version of OUR compiler, not the
   # system one: a GCC bump can change the C++ ABI, so everything built
   # with it is rebuilt beside the old stack rather than in place. Same
   # reasoning as the tier-3 <host-cc> directory, with our compiler.
   #
   # host_gcc itself lands in here too, at
-  # hermetic/<gcc-ver>/gcc/<gcc-ver>/ — redundant-looking, but it keeps
+  # portable/<gcc-ver>/gcc/<gcc-ver>/ — redundant-looking, but it keeps
   # every package on the uniform <root>/<pkg>/<ver>/ layout the install
   # scanners expect.
-  # Which hermetic stack an install of `ver` belongs to.
+  # Which host stack an install of `ver` belongs to.
   #
   # It is the stack this invocation is building into, which
   # `-s host_gcc:13.4.0` sets to 13.4.0 for every package in the plan,
@@ -233,17 +235,17 @@ class Package
   # compiler. host_gcc overrides it, because a compiler must belong to
   # ITS OWN stack — binding one to another compiler's stack is how a
   # gcc ends up configured against a sysroot it has no business in.
-  def stack_gcc_ver(ver = nil) = pkgmgr.current_hermetic_stack
+  def stack_gcc_ver(ver = nil) = pkgmgr.current_host_stack
 
   # "gcc-<ver>", not a bare version: the compiler is named because it
   # might not always be gcc, and it matches the target-side gcc-<ver>/
   # directories at the root of the toolchain. Both live on the package
   # manager so there is a single definition.
-  def hermetic_root = pkgmgr.hermetic_root(stack_gcc_ver)
+  def stack_root = pkgmgr.stack_root(stack_gcc_ver)
 
-  # The composed sysroot everything hermetic is built against: our
+  # The composed sysroot everything portable is built against: our
   # glibc, our headers, and a symlink farm of the resolved libraries.
-  def hermetic_sysroot = pkgmgr.hermetic_sysroot(stack_gcc_ver)
+  def stack_sysroot = pkgmgr.stack_sysroot(stack_gcc_ver)
 
   # The root directory for the final install (where mv moves to).
   # For target packages, uses default_arch (which for the base class
@@ -348,10 +350,10 @@ class Package
   # Returns an array of SystemDeps::SysDep. See system_deps.rb.
   def system_deps(ver = nil) = []
 
-  # The environment a hermetic package builds in.
+  # The environment a stack package builds in.
   #
   # Everything above the toolchain has to be compiled by OUR compiler,
-  # or it is not hermetic regardless of what the sysroot contains: the
+  # or it is not portable regardless of what the sysroot contains: the
   # system gcc would link the system libc, bake the system interpreter
   # and emit no RPATH.
   #
@@ -374,12 +376,12 @@ class Package
   # Yields with the environment applied and restores it afterwards.
   # Where our compiler and binutils live, as [gcc_bin, binutils_bin].
   #
-  # Separate from with_hermetic_toolchain because a package whose build
+  # Separate from with_stack_toolchain because a package whose build
   # system is not autotools or meson has to name the compiler itself:
   # cargo takes its linker from CARGO_TARGET_<triple>_LINKER and would
   # otherwise use the system cc, producing a library that links the
   # system libc no matter what the rest of the environment says.
-  def hermetic_toolchain_bins
+  def stack_toolchain_bins
 
     gcc = pkgmgr.get("host_gcc")
     gcc_inst = gcc&.find_install(gcc.default_ver)
@@ -388,7 +390,7 @@ class Package
     bu_inst = bu&.find_install(bu.default_ver)
 
     if gcc_inst.nil? || bu_inst.nil?
-      raise "#{name}: the hermetic toolchain is not installed; " \
+      raise "#{name}: the host toolchain is not installed; " \
             "host_gcc and host_binutils must be built first"
     end
 
@@ -396,9 +398,9 @@ class Package
             bu_inst.path / "install" / "bin"]
   end
 
-  def with_hermetic_toolchain(&block)
+  def with_stack_toolchain(&block)
 
-    gcc_bin, bu_bin = hermetic_toolchain_bins
+    gcc_bin, bu_bin = stack_toolchain_bins
 
     # What the dependencies publish comes first, so a build tool a
     # dependency ships is reachable by name: meson looks for ninja on
@@ -411,8 +413,8 @@ class Package
       "AR"                => "#{bu_bin}/ar",
       "RANLIB"            => "#{bu_bin}/ranlib",
       "STRIP"             => "#{bu_bin}/strip",
-      "PKG_CONFIG_LIBDIR" => "#{hermetic_sysroot}/usr/lib/pkgconfig:" \
-                             "#{hermetic_sysroot}/usr/share/pkgconfig",
+      "PKG_CONFIG_LIBDIR" => "#{stack_sysroot}/usr/lib/pkgconfig:" \
+                             "#{stack_sysroot}/usr/share/pkgconfig",
     })
 
     # Our compiler ahead of everything, including any bin dir a
@@ -452,7 +454,7 @@ class Package
     }
   end
 
-  # The shape every hermetic library build has.
+  # The shape every portable library build has.
   #
   # Our compiler; --prefix naming the SYSROOT rather than the package's
   # own directory, so the absolute paths baked into the result are the
@@ -463,13 +465,13 @@ class Package
   # Only the configure invocation differs between build systems, which
   # is what the two wrappers below supply. `block` is called with the
   # prefix and the destdir and returns true on success.
-  def hermetic_install(install_dir, &block)
+  def stack_install(install_dir, &block)
 
-    sysroot_usr = "#{hermetic_sysroot}/usr"
+    sysroot_usr = "#{stack_sysroot}/usr"
     destdir = "#{install_dir}/destdir"
     ok = false
 
-    with_hermetic_toolchain { ok = block.call(sysroot_usr, destdir) }
+    with_stack_toolchain { ok = block.call(sysroot_usr, destdir) }
     return false if !ok
 
     FileUtils.mkdir_p("#{install_dir}/install")
@@ -481,9 +483,9 @@ class Package
 
   # ./configure && make && make install, the shape most of the X11 and
   # freetype side of the QEMU closure uses.
-  def autotools_hermetic_build(install_dir, args: [])
+  def autotools_stack_build(install_dir, args: [])
 
-    return hermetic_install(install_dir) do |prefix, destdir|
+    return stack_install(install_dir) do |prefix, destdir|
       run_command("configure.log",
                   ["./configure", "--prefix=#{prefix}", *args]) &&
       run_command("build.log", ["make", "-j#{BUILD_PAR}"]) &&
@@ -496,7 +498,7 @@ class Package
   # --libdir=lib because the sysroot has exactly one library directory;
   # meson would otherwise pick lib64 on this host and split it.
   # meson and ninja are invoked by name: they are on PATH because they
-  # publish their bin dirs and with_hermetic_toolchain applies what the
+  # publish their bin dirs and with_stack_toolchain applies what the
   # dependencies say.
   #
   # --wrap-mode=nofallback is not a detail. Meson's default is to
@@ -511,9 +513,9 @@ class Package
   # have gone straight through. With nofallback the same situation is
   # a hard error naming the dependency and the version it wanted,
   # which is then a package we add deliberately.
-  def meson_hermetic_build(install_dir, args: [])
+  def meson_stack_build(install_dir, args: [])
 
-    return hermetic_install(install_dir) do |prefix, destdir|
+    return stack_install(install_dir) do |prefix, destdir|
       run_command("configure.log",
                   ["meson", "setup", "build",
                    "--prefix=#{prefix}", "--libdir=lib",
@@ -531,13 +533,13 @@ class Package
   # Some things cannot be verified at install time because they depend
   # on the sysroot including this package's own contribution, which by
   # definition has not been composed yet: gcc can prove it produces a
-  # hermetic C binary before composition, but not a C++ one, since
+  # portable C binary before composition, but not a C++ one, since
   # libstdc++ reaches the sysroot only through the graft that follows.
   #
   # Returns true when there is nothing to check.
   def post_sysroot_check(gcc_ver = nil) = true
 
-  # Should the hermeticity audit ask its question with a hostile
+  # Should the portability audit ask its question with a hostile
   # LD_LIBRARY_PATH?
   #
   # Yes for everything built with our toolchain: those binaries carry
@@ -547,18 +549,18 @@ class Package
   # them, and there is nothing for an RPATH to point at but the
   # loader's own home. Such a package is still audited, just without
   # the environment competing.
-  def hermeticity_hostile_check? = true
+  def portability_hostile_check? = true
 
   # What this package contributes to the composed sysroot.
   #
-  # A hermetic package contributes its whole install tree, which is
+  # A stack package contributes its whole install tree, which is
   # sysroot-shaped by convention. Everything else contributes nothing
   # unless it overrides: host_gcc is a :distro package, but its TARGET
   # runtime — libstdc++, libgcc_s — is compiled against our glibc and
   # has to be in the sysroot for anything it builds to run.
   def sysroot_fragments(gcc_ver = nil)
 
-    return [] if host_tier != :hermetic
+    return [] if host_tier != :stack
 
     inst = find_install(default_ver)
     return [] if inst.nil?
@@ -566,7 +568,7 @@ class Package
     # Only if this install actually lives in the stack being composed.
     # Without the check, composing stack A would link in packages
     # installed under stack B.
-    root = pkgmgr.hermetic_root(gcc_ver).to_s
+    root = pkgmgr.stack_root(gcc_ver).to_s
     return [] if !inst.path.to_s.start_with?(root + "/")
 
     return [inst.path / "install"]

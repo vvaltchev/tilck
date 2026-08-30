@@ -14,7 +14,7 @@ LIBFFI_SOURCE = SourceRef.new(
 
 #
 # host_libffi: glib's foreign-function interface, and the first
-# autotools package of the hermetic stack.
+# autotools package of the host stack.
 #
 class HostLibffiPackage < Package
 
@@ -27,7 +27,7 @@ class HostLibffiPackage < Package
       source: LIBFFI_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [Dep('host_gcc', true)],
       default: false,
@@ -36,7 +36,7 @@ class HostLibffiPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libffi.so", false],
@@ -66,9 +66,9 @@ class HostLibffiPackage < Package
     ok = run_command("autogen.log", ["./autogen.sh"])
     return false if !ok
 
-    return autotools_hermetic_build(install_dir, args: [
+    return autotools_stack_build(install_dir, args: [
       "--disable-static",       # the sysroot ships shared libraries
-      "--libdir=#{hermetic_sysroot}/usr/lib",
+      "--libdir=#{stack_sysroot}/usr/lib",
       "--disable-multi-os-directory",  # keeps it out of lib64
     ])
   end

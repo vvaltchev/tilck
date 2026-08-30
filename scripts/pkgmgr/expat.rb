@@ -35,7 +35,7 @@ class HostExpatPackage < Package
       source: EXPAT_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [Dep('host_gcc', true)],
       default: false,
@@ -44,7 +44,7 @@ class HostExpatPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libexpat.so", false],
@@ -67,11 +67,11 @@ class HostExpatPackage < Package
   end
 
   def install_impl_internal(install_dir)
-    return autotools_hermetic_build(install_dir, args: [
+    return autotools_stack_build(install_dir, args: [
       "--disable-static",
       "--without-examples",
       "--without-tests",
-      "--libdir=#{hermetic_sysroot}/usr/lib",
+      "--libdir=#{stack_sysroot}/usr/lib",
     ])
   end
 end

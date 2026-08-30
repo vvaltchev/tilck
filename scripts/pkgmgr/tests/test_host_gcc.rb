@@ -78,15 +78,15 @@ class TestHostGccVersionDecisions < Minitest::Test
       b = @pkg.stack_loader(Ver("14.4.0"))
 
       refute_equal a, b
-      assert a.include?("/hermetic/gcc-11.5.0/sysroot/")
-      assert b.include?("/hermetic/gcc-14.4.0/sysroot/")
+      assert a.include?("/sysroots/#{HOST_OS}-#{HOST_ARCH.name}/gcc-11.5.0/")
+      assert b.include?("/sysroots/#{HOST_OS}-#{HOST_ARCH.name}/gcc-14.4.0/")
       assert a.end_with?("/usr/lib/ld-linux-x86-64.so.2")
     end
   end
 
   def test_the_loader_does_not_follow_the_default_either
     with_fake_tc do
-      pkgmgr.with_hermetic_stack(Ver("16.2.0")) do
+      pkgmgr.with_host_stack(Ver("16.2.0")) do
         assert @pkg.stack_loader(Ver("11.5.0"))
                    .include?("gcc-11.5.0"),
                "stack_loader must answer about its argument"

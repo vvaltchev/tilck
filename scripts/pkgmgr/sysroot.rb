@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 #
-# The composed hermetic sysroot: one directory tree that every hermetic
+# The composed composed sysroot: one directory tree that every portable
 # package's headers and libraries appear in, built as a symlink farm
 # over the packages' own install directories.
 #
@@ -60,7 +60,7 @@ module Sysroot
   # own layout is not sysroot-shaped but part of which belongs in the
   # sysroot anyway: GCC keeps libstdc++ and libgcc_s in lib64/, and
   # they are built against our glibc even though GCC itself is not a
-  # hermetic package.
+  # stack package.
   #
   # Directories are recreated as real directories so two fragments can
   # contribute to the same one; files become symlinks to the fragment

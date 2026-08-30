@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
-# The real hermetic package definitions: tiers, dependencies, gating
+# The real stack package definitions: tiers, dependencies, gating
 # and the build-order invariants that keep the bootstrap possible.
 #
 
@@ -9,7 +9,7 @@ require_relative '../binutils'
 require_relative '../linux_headers'
 require_relative '../glibc'
 
-class TestHermeticPackageDefs < Minitest::Test
+class TestPortablePackageDefs < Minitest::Test
   include TestHelper
 
   # Register fresh instances rather than relying on the ones created at
@@ -33,14 +33,14 @@ class TestHermeticPackageDefs < Minitest::Test
   # The tier describes what a package's OWN binaries depend on.
   # binutils is built by the system compiler against the system libc,
   # so it is an ordinary distro package; the headers and libc it helps
-  # produce are what belong to the hermetic sysroot.
+  # produce are what belong to the composed sysroot.
   def test_binutils_is_a_distro_package
     assert_equal :distro, pkg("host_binutils").host_tier
   end
 
-  def test_sysroot_contents_are_hermetic
-    assert_equal :hermetic, pkg("host_linux_headers").host_tier
-    assert_equal :hermetic, pkg("host_glibc").host_tier
+  def test_sysroot_contents_are_portable
+    assert_equal :stack, pkg("host_linux_headers").host_tier
+    assert_equal :stack, pkg("host_glibc").host_tier
   end
 
   # All of it is opt-in: building a libc is not something to stumble
@@ -53,7 +53,7 @@ class TestHermeticPackageDefs < Minitest::Test
 
   def test_gating_follows_the_environment_switch
     for n in ["host_binutils", "host_linux_headers", "host_glibc"]
-      assert_equal HERMETIC_ENABLED, pkg(n).enabled?, n
+      assert_equal HOST_STACK_ENABLED, pkg(n).enabled?, n
     end
   end
 

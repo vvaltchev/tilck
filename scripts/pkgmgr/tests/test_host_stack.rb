@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
-# The hermetic host tier: packages that link against our own glibc and
-# nothing from the system. See docs/plans/hermetic-host-toolchain.md.
+# The portable host tier: packages that link against our own glibc and
+# nothing from the system. See docs/plans/portable-host-stack.md.
 #
 
 require_relative 'test_helper'
 
-class TestHermeticTier < Minitest::Test
+class TestPortableTier < Minitest::Test
   include TestHelper
 
   def setup
@@ -14,21 +14,21 @@ class TestHermeticTier < Minitest::Test
     FakePackage.clear_log!
   end
 
-  def hermetic_pkg(name = "host_h")
-    return FakePackage.new(name, on_host: true, host_tier: :hermetic,
+  def portable_pkg(name = "host_h")
+    return FakePackage.new(name, on_host: true, host_tier: :stack,
                            arch_list: ALL_HOST_ARCHS.values)
   end
 
   # The regression this guards is not subtle: the sysroot is REBUILT
   # from scratch whenever what it views changes, so composing it starts
-  # by deleting it. A test whose hermetic paths escape the fake
+  # by deleting it. A test whose portable paths escape the fake
   # toolchain therefore destroys the developer's real one — which is
-  # what happened before with_fake_tc overrode HOST_DIR_HERMETIC_BASE.
-  def test_hermetic_paths_stay_inside_the_fake_toolchain
+  # what happened before with_fake_tc overrode HOST_DIR_PORTABLE.
+  def test_host_stack_paths_stay_inside_the_fake_toolchain
     with_fake_tc do |tc|
-      pkg = hermetic_pkg
+      pkg = portable_pkg
 
-      for path in [pkg.hermetic_root, pkg.hermetic_sysroot,
+      for path in [pkg.stack_root, pkg.stack_sysroot,
                    pkg.host_install_root]
         assert path.to_s.start_with?(tc.to_s + "/"),
                "#{path} escapes the fake toolchain at #{tc}"
@@ -40,41 +40,56 @@ class TestHermeticTier < Minitest::Test
   # system compiler: neither takes part in the build.
   def test_install_root_is_keyed_by_our_gcc_version
     with_fake_tc do
-      pkg = hermetic_pkg
+      pkg = portable_pkg
       gcc_ver = pkgmgr.get_config_ver("gcc", host: true).to_s
 
       root = pkg.host_install_root.to_s
-      assert_match(%r{/hermetic/gcc-#{Regexp.escape(gcc_ver)}/pkgs\z}, root)
+      assert_match(%r{/portable/gcc-#{Regexp.escape(gcc_ver)}\z}, root)
+
+      # Neither the distro nor the system compiler appears: neither
+      # takes part in the build, and the result runs without them.
       refute_match(/#{Regexp.escape(HOST_DISTRO)}/, root)
       refute_match(/#{Regexp.escape(HOST_CC)}/, root)
     end
   end
 
-  # The sysroot is a composed view, not an installation, so it sits
-  # BESIDE the package area rather than inside it: the install
-  # scanners treat every child of the package root as a package.
-  def test_sysroot_sits_beside_the_packages_not_inside
+  # A package declared portable lands under portable/, which is the
+  # promise that it runs on any host of this OS and architecture.
+  def test_a_stack_package_lands_in_the_portable_tree
     with_fake_tc do
-      pkg = hermetic_pkg
-      assert_equal (pkg.hermetic_root / "sysroot").to_s,
-                   pkg.hermetic_sysroot.to_s
-      refute pkg.hermetic_sysroot.to_s.start_with?(
-               pkg.host_install_root.to_s + "/")
+      root = portable_pkg.host_install_root.to_s
+      assert_includes root, "/portable/"
+
+      # Not under the distro either: that is the whole distinction.
+      refute_includes root, HOST_DISTRO
     end
   end
 
-  # Without HOST_VER_GCC every hermetic package would install to the
+  # The sysroot is a composed view, not an installation, so it lives
+  # outside the package tree altogether -- every scanner that walks
+  # <pkg>/<ver>/ would otherwise have to be taught to skip it, and one
+  # of them was not.
+  def test_sysroot_is_outside_the_package_tree
+    with_fake_tc do
+      pkg = portable_pkg
+      refute pkg.stack_sysroot.to_s.start_with?(
+               pkg.host_install_root.to_s + "/")
+      assert_includes pkg.stack_sysroot.to_s, "/sysroots/"
+    end
+  end
+
+  # Without HOST_VER_GCC every stack package would install to the
   # same truncated path, so this must fail loudly rather than build one.
   def test_missing_host_gcc_version_raises
     with_fake_tc do
-      pkg = hermetic_pkg
+      pkg = portable_pkg
       pm = PackageManager.instance
       orig = pm.method(:get_config_ver)
       begin
         pm.define_singleton_method(:get_config_ver) { |name, host:|
           name == "gcc" && host ? nil : orig.call(name, host: host)
         }
-        e = assert_raises(RuntimeError) { pkg.hermetic_root }
+        e = assert_raises(RuntimeError) { pkg.stack_root }
         assert_match(/HOST_VER_GCC/, e.message)
       ensure
         pm.define_singleton_method(:get_config_ver, orig)
@@ -83,7 +98,7 @@ class TestHermeticTier < Minitest::Test
   end
 end
 
-class TestHermeticGating < Minitest::Test
+class TestPortableGating < Minitest::Test
   include TestHelper
 
   def setup
@@ -178,7 +193,7 @@ end
 # this: a compiler installed as 11.5.0 but configured
 # --with-sysroot=.../gcc-14.4.0/ with 14.4.0's loader in its specs.
 #
-class TestHermeticStackBinding < Minitest::Test
+class TestPortableStackBinding < Minitest::Test
   include TestHelper
 
   def setup
@@ -190,10 +205,10 @@ class TestHermeticStackBinding < Minitest::Test
   # currently being built for.
   def test_an_ordinary_package_uses_the_default_stack
     with_fake_tc do
-      pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+      pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
-      assert_equal pkgmgr.default_hermetic_gcc_ver, pkg.stack_gcc_ver
-      assert_equal pkgmgr.hermetic_root.to_s, pkg.hermetic_root.to_s
+      assert_equal pkgmgr.default_stack_cc_ver, pkg.stack_gcc_ver
+      assert_equal pkgmgr.stack_root.to_s, pkg.stack_root.to_s
     end
   end
 
@@ -202,16 +217,16 @@ class TestHermeticStackBinding < Minitest::Test
   # limits what can be built or what can coexist.
   def test_the_scope_decides_the_stack_not_the_default
     with_fake_tc do
-      pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+      pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
 
-      default = pkgmgr.default_hermetic_gcc_ver
+      default = pkgmgr.default_stack_cc_ver
       assert_equal default, pkg.stack_gcc_ver
 
-      pkgmgr.with_hermetic_stack(Ver("13.4.0")) do
+      pkgmgr.with_host_stack(Ver("13.4.0")) do
         assert_equal Ver("13.4.0"), pkg.stack_gcc_ver
-        assert pkg.hermetic_root.to_s.end_with?("/gcc-13.4.0")
-        assert pkg.host_install_root.to_s.end_with?("/gcc-13.4.0/pkgs")
+        assert pkg.stack_root.to_s.end_with?("/portable/gcc-13.4.0")
+        assert pkg.host_install_root.to_s.end_with?("/portable/gcc-13.4.0")
       end
 
       # ...and the scope is scoped.
@@ -226,14 +241,14 @@ class TestHermeticStackBinding < Minitest::Test
   def test_an_install_in_one_stack_is_absent_from_another
     with_fake_tc do
       with_stubbed_externals do
-        pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+        pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                               arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
         pkg.install_impl(Ver("1.0.0"))
 
         assert pkg.installed?(Ver("1.0.0"))
 
-        pkgmgr.with_hermetic_stack(Ver("13.4.0")) do
+        pkgmgr.with_host_stack(Ver("13.4.0")) do
           refute pkg.installed?(Ver("1.0.0"))
         end
       end
@@ -242,10 +257,10 @@ class TestHermeticStackBinding < Minitest::Test
 
   def test_nested_scopes_restore
     with_fake_tc do
-      pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+      pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
-      pkgmgr.with_hermetic_stack(Ver("11.5.0")) do
-        pkgmgr.with_hermetic_stack(Ver("16.2.0")) do
+      pkgmgr.with_host_stack(Ver("11.5.0")) do
+        pkgmgr.with_host_stack(Ver("16.2.0")) do
           assert_equal Ver("16.2.0"), pkg.stack_gcc_ver
         end
         assert_equal Ver("11.5.0"), pkg.stack_gcc_ver
@@ -267,21 +282,36 @@ class TestHermeticStackBinding < Minitest::Test
 
   def test_the_root_follows_the_version_asked_for
     with_fake_tc do
-      a = pkgmgr.hermetic_root(Ver("11.5.0")).to_s
-      b = pkgmgr.hermetic_root(Ver("14.4.0")).to_s
+      a = pkgmgr.stack_root(Ver("11.5.0")).to_s
+      b = pkgmgr.stack_root(Ver("14.4.0")).to_s
 
       refute_equal a, b
-      assert a.end_with?("/hermetic/gcc-11.5.0")
-      assert b.end_with?("/hermetic/gcc-14.4.0")
+      assert a.end_with?("/portable/gcc-11.5.0")
+      assert b.end_with?("/portable/gcc-14.4.0")
     end
   end
 
   def test_each_stack_has_its_own_sysroot
     with_fake_tc do
-      a = pkgmgr.hermetic_sysroot(Ver("11.5.0")).to_s
-      b = pkgmgr.hermetic_sysroot(Ver("14.4.0")).to_s
+      a = pkgmgr.stack_sysroot(Ver("11.5.0")).to_s
+      b = pkgmgr.stack_sysroot(Ver("14.4.0")).to_s
       refute_equal a, b
-      assert a.end_with?("/gcc-11.5.0/sysroot")
+      assert a.end_with?("/sysroots/#{HOST_OS}-#{HOST_ARCH.name}/gcc-11.5.0")
+    end
+  end
+
+  # A sysroot is a VIEW over installed packages, not an installation,
+  # so it lives outside the package tree entirely. Inside it, every
+  # scanner that walks <pkg>/<ver>/ had to be taught to skip it -- and
+  # one of them was not, which is how the sysroot once got listed as a
+  # package called "sysroot" at version "usr".
+  def test_the_sysroot_is_not_inside_the_package_tree
+    with_fake_tc do
+      pkgs = pkgmgr.stack_root(Ver("14.4.0")).to_s
+      sysroot = pkgmgr.stack_sysroot(Ver("14.4.0")).to_s
+
+      refute sysroot.start_with?(pkgs),
+             "#{sysroot} must not sit under #{pkgs}"
     end
   end
 
@@ -290,12 +320,12 @@ class TestHermeticStackBinding < Minitest::Test
   def test_a_package_is_only_a_fragment_of_its_own_stack
     with_fake_tc do
       with_stubbed_externals do
-        pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+        pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                               arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
         pkg.install_impl(Ver("1.0.0"))
 
-        own = pkgmgr.default_hermetic_gcc_ver
+        own = pkgmgr.default_stack_cc_ver
         refute_empty pkg.sysroot_fragments(own)
         assert_empty pkg.sysroot_fragments(Ver("9.9.9"))
       end
@@ -304,19 +334,19 @@ class TestHermeticStackBinding < Minitest::Test
 
   def test_stacks_on_disk_are_discoverable
     with_fake_tc do
-      FileUtils.mkdir_p(HOST_DIR_HERMETIC_BASE / "gcc-11.5.0")
-      FileUtils.mkdir_p(HOST_DIR_HERMETIC_BASE / "gcc-14.4.0")
-      FileUtils.mkdir_p(HOST_DIR_HERMETIC_BASE / "not-a-stack")
+      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-11.5.0")
+      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-14.4.0")
+      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "not-a-stack")
 
-      assert_equal ["11.5.0", "14.4.0"], pkgmgr.hermetic_stacks.sort
+      assert_equal ["11.5.0", "14.4.0"], pkgmgr.host_stacks.sort
     end
   end
 end
 
 #
-# The build environment hermetic packages compile in.
+# The build environment stack packages compile in.
 #
-class TestHermeticToolchainEnv < Minitest::Test
+class TestPortableToolchainEnv < Minitest::Test
   include TestHelper
 
   def setup
@@ -331,9 +361,9 @@ class TestHermeticToolchainEnv < Minitest::Test
   # sitting in the sysroot.
   def test_pkg_config_covers_both_standard_directories
     with_fake_tc do
-      pkg = FakePackage.new("host_h", on_host: true, host_tier: :hermetic,
+      pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
-      sysroot = pkg.hermetic_sysroot.to_s
+      sysroot = pkg.stack_sysroot.to_s
 
       # Read the value the same way the build does, without needing the
       # toolchain to be installed.

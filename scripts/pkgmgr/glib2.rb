@@ -53,7 +53,7 @@ class HostGlib2Package < Package
       source: GLIB2_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [
         Dep('host_gcc', true),
@@ -68,7 +68,7 @@ class HostGlib2Package < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libglib-2.0.so", false],
@@ -103,7 +103,7 @@ class HostGlib2Package < Package
 
   def install_impl_internal(install_dir)
 
-    return meson_hermetic_build(install_dir, args: [
+    return meson_stack_build(install_dir, args: [
       "-Dnls=disabled",
       "-Dlibmount=disabled",
       "-Dselinux=disabled",
