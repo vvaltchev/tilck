@@ -9,23 +9,41 @@
 # push to a topic branch triggers nothing: runs on exp-* must be dispatched
 # explicitly. That is intentional, and it is why `dispatch` exists.
 #
+# Usage: ghci [-g GROUP] <sub-command> [args]
+#
+# GROUP selects which workflows every sub-command acts on:
+#   all      (default) everything that validates a change
+#   tc       the six toolchain workflows (distro x arch)
+#   kernel   the three "Tilck <arch>" build+test workflows
+#
+# The group matters beyond dispatch: a "batch" is the newest run of each
+# workflow IN THE GROUP, so `-g tc status` reports on the toolchain runs
+# even when a kernel batch was dispatched after them.
+#
 # Sub-commands:
-#   workflows              list the dispatchable workflows
-#   dispatch <branch>      trigger every CI workflow on a branch
-#   status <branch>        compact table of the runs started most recently
-#   wait <branch> [secs]   poll until every run of the latest batch is done
+#   workflows              list the workflows in the selected group
+#   dispatch <branch>      trigger the selected workflows on a branch
+#   status <branch>        compact table of the selected workflows' runs
+#   wait <branch> [secs]   poll until every run in the batch is done
 #   jobs <runId>           per-job state/result for one run
-#   fails <branch>         failed jobs across the latest batch
+#   fails <branch>         failed jobs across the batch
 #   log <runId>            failed-step log for one run
 #
 set -euo pipefail
 
-# Every workflow that validates a change. "Build CI containers" is excluded:
-# it only ever runs on master and rebuilds images rather than testing code.
-WORKFLOWS=(
+# Build+test workflows: these boot Tilck in a container image that has to
+# carry a matching toolchain, so they are the ones to leave alone while
+# the images are stale.
+WORKFLOWS_KERNEL=(
    "Tilck i386"
    "Tilck riscv64"
    "Tilck x86_64"
+)
+
+# Toolchain workflows: each builds the toolchain from scratch on a stock
+# distro image, so they validate pkgmgr without depending on a prebuilt
+# Tilck image.
+WORKFLOWS_TC=(
    "Toolchain arch i386"
    "Toolchain arch riscv64"
    "Toolchain debian i386"
@@ -34,14 +52,45 @@ WORKFLOWS=(
    "Toolchain fedora riscv64"
 )
 
-# The runs of the most recent dispatch batch, newest first, as JSON.
-# `count` defaults to the number of CI workflows, which is exactly one
-# batch.
+# "Build CI containers" is in neither group: it only ever runs on master
+# and rebuilds images rather than testing a change.
+WORKFLOWS=( "${WORKFLOWS_KERNEL[@]}" "${WORKFLOWS_TC[@]}" )
+
+select_group() {
+   case "$1" in
+      all)    WORKFLOWS=( "${WORKFLOWS_KERNEL[@]}" "${WORKFLOWS_TC[@]}" ) ;;
+      tc)     WORKFLOWS=( "${WORKFLOWS_TC[@]}" ) ;;
+      kernel) WORKFLOWS=( "${WORKFLOWS_KERNEL[@]}" ) ;;
+      *)
+         echo "ghci: unknown group '$1' (want: all, tc, kernel)" >&2
+         exit 1
+         ;;
+   esac
+}
+
+# The batch = the most recent run of each workflow in the group, newest
+# first. Selecting by name rather than by "the last N runs on the branch"
+# keeps a later dispatch of another group from shifting this one out of
+# view, and makes a workflow that was never dispatched visible as missing
+# instead of silently shortening the batch.
 batch_json() {
    local branch="$1"
-   local count="${2:-${#WORKFLOWS[@]}}"
-   gh run list --branch "$branch" --limit "$count" \
-      --json databaseId,name,status,conclusion,createdAt,url
+   local names
+   names=$(printf '%s\n' "${WORKFLOWS[@]}" |
+           python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split("\n")[:-1]))')
+
+   gh run list --branch "$branch" --limit 100 \
+      --json databaseId,name,status,conclusion,createdAt,url |
+   WANTED="$names" python3 -c '
+import json, os, sys
+wanted = json.loads(os.environ["WANTED"])
+seen, out = set(), []
+for r in json.load(sys.stdin):        # gh lists newest first
+    if r["name"] in wanted and r["name"] not in seen:
+        seen.add(r["name"])
+        out.append(r)
+json.dump(out, sys.stdout)
+'
 }
 
 cmd_workflows() {
@@ -49,7 +98,7 @@ cmd_workflows() {
 }
 
 cmd_dispatch() {
-   local branch="${1:?usage: ghci dispatch <branch>}"
+   local branch="${1:?usage: ghci [-g GROUP] dispatch <branch>}"
    local w
    for w in "${WORKFLOWS[@]}"; do
       printf '%-28s ' "$w"
@@ -62,28 +111,38 @@ cmd_dispatch() {
 }
 
 cmd_status() {
-   local branch="${1:?usage: ghci status <branch>}"
-   batch_json "$branch" "${2:-}" | python3 -c '
-import json, sys
+   local branch="${1:?usage: ghci [-g GROUP] status <branch>}"
+   batch_json "$branch" | EXPECTED="${#WORKFLOWS[@]}" python3 -c '
+import json, os, sys
 rows = json.load(sys.stdin)
+expected = int(os.environ["EXPECTED"])
 done = sum(1 for r in rows if r["status"] == "completed")
 # A run that has not concluded reports "" or null, not a failure.
 bad  = [r for r in rows if r["conclusion"] and r["conclusion"] != "success"]
 for r in rows:
     print("  %-28s %-12s %s" % (r["name"], r["status"], r["conclusion"] or ""))
-print("  ---- %d/%d completed, %d not successful ----" % (done, len(rows), len(bad)))
-sys.exit(1 if (done == len(rows) and bad) else 0)
+if len(rows) < expected:
+    print("  (%d of %d workflows have no run on this branch)"
+          % (expected - len(rows), expected))
+print("  ---- %d/%d completed, %d not successful ----"
+      % (done, expected, len(bad)))
+sys.exit(1 if (done == expected and bad) else 0)
 '
 }
 
 cmd_wait() {
-   local branch="${1:?usage: ghci wait <branch> [interval]}"
+   local branch="${1:?usage: ghci [-g GROUP] wait <branch> [interval]}"
    local interval="${2:-60}"
    local n=${#WORKFLOWS[@]}
+   local pending
    while :; do
-      local pending
-      pending=$(batch_json "$branch" "$n" |
-                python3 -c 'import json,sys; print(sum(1 for r in json.load(sys.stdin) if r["status"] != "completed"))')
+      pending=$(batch_json "$branch" | EXPECTED="$n" python3 -c '
+import json, os, sys
+rows = json.load(sys.stdin)
+expected = int(os.environ["EXPECTED"])
+running = sum(1 for r in rows if r["status"] != "completed")
+print(running + (expected - len(rows)))   # a missing run is not done
+')
       if [ "$pending" -eq 0 ]; then
          echo "All $n runs completed."
          cmd_status "$branch" || true
@@ -102,17 +161,16 @@ cmd_jobs() {
 }
 
 cmd_fails() {
-   local branch="${1:?usage: ghci fails <branch>}"
+   local branch="${1:?usage: ghci [-g GROUP] fails <branch>}"
    local ids
-   ids=$(batch_json "$branch" "${#WORKFLOWS[@]}" |
-         python3 -c '
+   ids=$(batch_json "$branch" | python3 -c '
 import json, sys
 for r in json.load(sys.stdin):
     if r["conclusion"] and r["conclusion"] != "success":
         print(r["databaseId"], r["name"].replace(" ", "_"), r["conclusion"])
 ')
    if [ -z "$ids" ]; then
-      echo "No failed runs in the latest batch."
+      echo "No failed runs in the batch."
       return 0
    fi
    local id name concl
@@ -132,6 +190,11 @@ cmd_log() {
    }
 }
 
+if [ "${1:-}" = "-g" ]; then
+   select_group "${2:?usage: ghci -g GROUP <sub-command> [args]}"
+   shift 2
+fi
+
 case "${1:-}" in
    workflows) shift; cmd_workflows "$@" ;;
    dispatch)  shift; cmd_dispatch  "$@" ;;
@@ -141,7 +204,7 @@ case "${1:-}" in
    fails)     shift; cmd_fails     "$@" ;;
    log)       shift; cmd_log       "$@" ;;
    *)
-      sed -n '3,25p' "$0"
+      sed -n '3,30p' "$0"
       exit 1
       ;;
 esac
