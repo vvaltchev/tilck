@@ -7,35 +7,36 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
-ATK_SOURCE = SourceRef.new(
-  name: 'atk',
-  url:  'https://download.gnome.org/sources/atk',
-  tarname: ->(ver) { "atk-#{ver}.tar.xz" },
+LIBXML2_SOURCE = SourceRef.new(
+  name: 'libxml2',
+  url:  'https://download.gnome.org/sources/libxml2',
+  tarname: ->(ver) { "libxml2-#{ver}.tar.xz" },
   remote_tarname: ->(ver) {
     series = ver.to_s.split(".")[0, 2].join(".")
-    "#{series}/atk-#{ver}.tar.xz"
+    "#{series}/libxml2-#{ver}.tar.xz"
   },
   fetch_via_git: false,
 )
 
 #
-# host_atk: the accessibility interfaces GTK 3 exposes its widgets
-# through. A hard dependency of GTK 3 whether or not a screen reader is
-# ever attached — the toolkit implements AtkObject throughout.
+# host_libxml2: XML parsing, pulled in by at-spi2-core, which reads
+# the accessibility bus's configuration with it.
 #
-# Only the interface library is built. The bridge that carries those
-# interfaces onto the accessibility bus (at-spi2-atk) is a separate
-# project and is not needed to link or run GTK.
+# Built as a bare parser. The Python bindings and ICU need
+# dependencies we do not have, and the HTTP client is network code
+# compiled into a library that is here only to read a local config
+# file. 2.15 has no lzma option at all — the compression support it
+# does have comes through zlib.
 #
-class HostAtkPackage < Package
+class HostLibxml2Package < Package
 
   include FileShortcuts
   include FileUtilsShortcuts
 
   def initialize
     super(
-      name: 'host_atk',
-      source: ATK_SOURCE,
+      name: 'host_libxml2',
+      source: LIBXML2_SOURCE,
       on_host: true,
       is_compiler: false,
       host_tier: :hermetic,
@@ -43,7 +44,7 @@ class HostAtkPackage < Package
       dep_list: [
         Dep('host_gcc', true),
         Dep('host_meson', true),
-        Dep('host_glib2', true),
+        Dep('host_zlib', true),
       ],
       default: false,
     )
@@ -52,16 +53,17 @@ class HostAtkPackage < Package
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
   def enabled? = HERMETIC_ENABLED
+  def pkg_dirname = "libxml2"
 
   def expected_files(ver = nil) = [
-    ["install/usr/lib/libatk-1.0.so", false],
-    ["install/usr/lib/pkgconfig/atk.pc", false],
+    ["install/usr/lib/libxml2.so", false],
+    ["install/usr/lib/pkgconfig/libxml-2.0.pc", false],
   ]
 
   def build_env(ver)
     prefix = install_prefix(ver) / "install" / "usr"
     return BuildEnv.new(
-      include_dirs:    [prefix / "include" / "atk-1.0"],
+      include_dirs:    [prefix / "include" / "libxml2"],
       lib_dirs:        [prefix / "lib"],
       pkg_config_dirs: [prefix / "lib" / "pkgconfig"],
     )
@@ -75,10 +77,12 @@ class HostAtkPackage < Package
 
   def install_impl_internal(install_dir)
     return meson_hermetic_build(install_dir, args: [
-      "-Dintrospection=false",
-      "-Ddocs=false",
+      "-Dpython=disabled",
+      "-Dhttp=disabled",
+      "-Ddocs=disabled",
+      "-Dicu=disabled",
     ])
   end
 end
 
-pkgmgr.register(HostAtkPackage.new())
+pkgmgr.register(HostLibxml2Package.new())

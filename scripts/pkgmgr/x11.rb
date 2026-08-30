@@ -85,6 +85,12 @@ X11_LIBS = [
   { name: "libxcomposite", upstream: "libXcomposite", dir: "lib",
     check: "usr/lib/libXcomposite.so",
     deps: ["host_libxfixes", "host_libxext"] },
+
+  # For at-spi2-core's registry daemon: XTest is how an assistive
+  # technology synthesises input events.
+  { name: "libxtst", upstream: "libXtst", dir: "lib",
+    check: "usr/lib/libXtst.so",
+    deps: ["host_libx11", "host_libxext", "host_libxi"] },
 ].freeze
 
 class X11Package < Package
