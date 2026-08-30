@@ -39,31 +39,30 @@ class LuaPackage < Package
            out: "/dev/null", err: "/dev/null")
   end
 
-  def install_impl_internal(install_dir)
+  # The two edits this build used to make in place -- dropping
+  # `-Wl,-E` from src/Makefile and pinning PLAT to linux -- are
+  # patches now. Both are what the base class already applies and
+  # already fingerprints, and patch(1) fails loudly where a gsub that
+  # matches nothing succeeds silently.
+  #
+  # The toolchain is named from the arch rather than read out of CC,
+  # AR and RANLIB, because build_steps is asked for during a staleness
+  # check too, when no build is running and the environment holds
+  # nothing. It is the same value: with_cc sets CC to exactly this.
+  def build_steps
 
-    # Drop the linker's `-Wl,-E` (export-dynamic) from src/Makefile —
-    # we link statically against musl, so the export table is meaningless
-    # and binutils-ld for the cross targets refuses the option.
-    src_mk = File.read("src/Makefile")
-    src_mk.gsub!("-Wl,-E", "")
-    File.write("src/Makefile", src_mk)
+    arch = default_arch().gcc_tc
 
-    # Force the platform to "linux" instead of relying on the host's
-    # `make guess` (which would pick up the build host's OS — wrong on
-    # macOS/FreeBSD when cross-compiling for Tilck).
-    top_mk = File.read("Makefile")
-    top_mk.gsub!("PLAT= guess", "PLAT= linux")
-    File.write("Makefile", top_mk)
-
-    ok = run_command("build.log", [
-      "make",
-      "-j#{BUILD_PAR}",
-      "CC=#{ENV["CC"]}",
-      "MYCFLAGS=-std=gnu99",
-      "AR=#{ENV["AR"]} rcu",
-      "RANLIB=#{ENV["RANLIB"]}",
-    ])
-    return ok
+    return [
+      Step("build.log", [
+        "make",
+        "-j$PAR",
+        "CC=#{arch}-linux-gcc",
+        "MYCFLAGS=-std=gnu99",
+        "AR=#{arch}-linux-ar rcu",
+        "RANLIB=#{arch}-linux-ranlib",
+      ]),
+    ]
   end
 end
 

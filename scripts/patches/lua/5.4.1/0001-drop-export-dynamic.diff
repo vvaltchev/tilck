@@ -1,0 +1,42 @@
+Drop -Wl,-E (--export-dynamic) from every link line.
+
+Tilck links Lua statically against musl, so there is no dynamic symbol
+table for the option to populate, and the cross binutils ld rejects it
+outright rather than ignoring it.
+
+The empty string it leaves behind is deliberate: this replaced an
+in-place gsub of the same text, and keeping the result byte-identical
+is what lets the rebuilt artifact be compared against the old one.
+
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -102,7 +102,7 @@
+ 	$(MAKE) $(ALL) CC="xlc" CFLAGS="-O2 -DLUA_USE_POSIX -DLUA_USE_DLOPEN" SYSLIBS="-ldl" SYSLDFLAGS="-brtl -bexpall"
+ 
+ bsd:
+-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_POSIX -DLUA_USE_DLOPEN" SYSLIBS="-Wl,-E"
++	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_POSIX -DLUA_USE_DLOPEN" SYSLIBS=""
+ 
+ c89:
+ 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_C89" CC="gcc -std=c89"
+@@ -111,17 +111,17 @@
+ 	@echo ''
+ 
+ FreeBSD NetBSD OpenBSD freebsd:
+-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX -DLUA_USE_READLINE -I/usr/include/edit" SYSLIBS="-Wl,-E -ledit" CC="cc"
++	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX -DLUA_USE_READLINE -I/usr/include/edit" SYSLIBS=" -ledit" CC="cc"
+ 
+ generic: $(ALL)
+ 
+ Linux linux:	linux-noreadline
+ 
+ linux-noreadline:
+-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl"
++	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS=" -ldl"
+ 
+ linux-readline:
+-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX -DLUA_USE_READLINE" SYSLIBS="-Wl,-E -ldl -lreadline"
++	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX -DLUA_USE_READLINE" SYSLIBS=" -ldl -lreadline"
+ 
+ Darwin macos macosx:
+ 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -DLUA_USE_READLINE" SYSLIBS="-lreadline"
