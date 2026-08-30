@@ -1,9 +1,9 @@
-# toolchain5: a layout with two explicit axes
+# toolchain5: three coordinates, and why they should last
 
 ## Why toolchain4's layout stopped working
 
-`gcc-*` currently means four unrelated things, depending only on where
-it appears:
+`gcc-*` came to mean four unrelated things, decided only by where it
+appears:
 
 ```
 toolchain4/gcc-13.3.0/i386/busybox/1.36.1/         a cross-compiler VERSION
@@ -13,137 +13,198 @@ toolchain4/host/…/ubuntu-22.04/gcc-11.4.0/gtest/…  the host C++ ABI slot
 toolchain4/host/…/ubuntu-22.04/gcc/14.4.0/         a PACKAGE (our host_gcc)
 ```
 
-The third of those is new and is the mistake. `host/` had one meaning —
-*built with the host compiler* — and putting packages built with **our**
-compiler inside it broke that, at a level where the directory name is
-indistinguishable from a package name. `PackageManager#compiler_slot?`
-exists solely to guess which is which:
-
-```ruby
-# a slot is "gcc-" followed by something that parses as a version;
-# gcc-i386-musl is a package, gcc-14.4.0 is a directory of packages
-```
-
-A predicate that has to disambiguate two meanings of one name is the
+The third is the mistake. `host/` meant *built with the host compiler*,
+and putting packages built with **our** compiler under it broke that at
+a level where a directory name is indistinguishable from a package
+name. `PackageManager#compiler_slot?` exists only to guess which is
+which — a predicate that disambiguates two meanings of one name is the
 symptom, not the fix.
 
-## The two axes
-
-Every installed artifact answers exactly two questions, and today the
-tree encodes them inconsistently — the target side puts the toolchain
-first and the environment second, the host side names only the
-environment and assumes the toolchain.
-
-**RUNS-ON** — what a machine must provide to execute this artifact.
-This is what decides *consume or rebuild* for someone sharing the
-toolchain, and it is a chain of increasing specificity:
-
-| runs-on | means |
-|---|---|
-| `linux-x86_64` | any machine of this OS and arch |
-| `linux-x86_64+ubuntu-22.04` | …that also runs this distro |
-| `linux-x86_64+ubuntu-22.04+gcc-11.4.0` | …and provides this C++ ABI |
-| `tilck-i386` | a Tilck i386 system |
-| `noarch` | nothing; data |
-
-**BUILT-BY** — the toolchain that produced it.
-
-| built-by | means |
-|---|---|
-| `host-cc` | the host's own compiler, whatever it is |
-| `gcc-14.4.0` | a compiler we built, running on the host |
-| `gcc-13.3.0` | a cross compiler we built |
-| `none` | no compiler was involved |
-
-They are independent. The C++ ABI appears under RUNS-ON rather than
-BUILT-BY because it is a *runtime* requirement: gtest built by the host
-compiler needs that ABI at link time in its consumers, which is a
-property of where it can be used, not of who made it.
-
-## The layout
+## The schema
 
 ```
-toolchain5/<runs-on>/<built-by>/<pkg>/<ver>/
+toolchain5/<machine>/<env>/<stack>/{ sysroot/, pkgs/<pkg>/<ver>/ }
 ```
 
-Four levels, always, with a fixed meaning each. Level 1 is always an
-environment, level 2 always a toolchain, level 3 always a package,
-level 4 always a version.
+Three coordinates, always, each with a fixed meaning. A package name
+can appear only under `pkgs/`, so it can never be mistaken for
+structure.
+
+| coordinate | answers | example values |
+|---|---|---|
+| `<machine>` | where does it RUN? | `linux-x86_64`, `tilck-i386`, `noarch` |
+| `<env>` | which environment does it belong to? | `any`, `ubuntu-22.04`, `pc`, `qemu-virt` |
+| `<stack>` | which build environment made it? | `any`, `gcc-14.4.0`, `gcc-13.3.0` |
+
+`<env>` is *what the machine must already provide*: `any` means the
+artifact is self-contained. For a Tilck target it names the board or
+system variant instead — the same question ("which environment does
+this belong to"), asked of a system we configure rather than one we
+find. `pc` is the board for i386 and x86_64.
+
+`<stack>` is deliberately NOT called "the compiler". It is the
+identity of a build environment, which today is always a compiler but
+must be free to become `gcc-13.3.0-musl` or `gcc-14.4.0-lto` without a
+schema change. `any` means no particular build environment matters —
+a statically linked binary, or a prebuilt blob.
+
+`sysroot/` exists exactly when we built the environment, i.e. when
+`<env>` is `any` and `<stack>` is ours.
+
+## Today's toolchain4, mapped
+
+81 installed packages, 7 stacks, computed from the tree rather than
+imagined:
 
 ```
 toolchain5/
-  cache/                                             tarballs (not installs)
-  staging/                                           in-progress builds
-  sysroots/<runs-on>/<built-by>/                     composed views
-
-  noarch/none/acpica/20240927/
-  linux-x86_64/host-cc/gcc-i386-musl/13.3.0/
-  linux-x86_64/host-cc/gcc-riscv64-musl/13.3.0/
-  linux-x86_64/gcc-14.4.0/glib2/2.88.3/
-  linux-x86_64/gcc-14.4.0/gtk3/3.24.52/
-  linux-x86_64/gcc-11.5.0/glib2/2.88.3/             a second stack, side by side
-  linux-x86_64+ubuntu-22.04/host-cc/mtools/4.0.49/
-  linux-x86_64+ubuntu-22.04/host-cc/gcc/14.4.0/     our gcc; system cc built it
-  linux-x86_64+ubuntu-22.04+gcc-11.4.0/host-cc/gtest/1.17.0/
-  tilck-i386/gcc-13.3.0/busybox/1.36.1/
-  tilck-riscv64/gcc-13.3.0/busybox/1.36.1/
+├── cache/                                   downloaded tarballs
+├── staging/                                 build trees, always
+│
+├── linux-x86_64/any/any/                    [4]  static, stack-agnostic
+│   └── pkgs/ gcc-i386-musl/  gcc-x86_64-musl/
+│             gcc-riscv64-musl/  gcc-aarch64-musl/
+│
+├── linux-x86_64/any/gcc-14.4.0/             [44] our stack
+│   ├── sysroot/
+│   └── pkgs/ glibc/2.41/  glib2/2.88.3/  gtk3/3.24.52/  qemu/6.2.0/
+│             librsvg/  libglycin/  glycin-loaders/  + 37 more
+│
+├── linux-x86_64/ubuntu-22.04/any/           [15] needs this distro
+│   └── pkgs/ ruby/3.4.7/  binutils/  mtools/  ninja/  meson/  mconf/
+│             ncurses/  gcc/11.5.0/ … gcc/16.2.0/
+│
+├── linux-x86_64/ubuntu-22.04/gcc-11.4.0/    [1]  + needs that C++ ABI
+│   └── pkgs/ gtest/1.17.0/
+│
+├── noarch/any/any/                          [5]
+│   └── pkgs/ acpica/  gnuefi/  lcov/  libmusl/  tfblib/
+│
+├── tilck-riscv64/qemu-virt/gcc-13.3.0/      [9]
+│   └── pkgs/ busybox/  dtc/  lua/  micropython/  ncurses/  tcc/
+│             treecmd/  uboot/  zlib/
+│
+└── tilck-x86_64/pc/gcc-13.3.0/              [3]
+    └── pkgs/ busybox/  gnuefi/  zlib/
 ```
 
-The fixed depth is what removes the ambiguity. A package name can only
-ever appear at level 3, so `gcc-i386-musl` is unmistakably a package
-and `gcc-14.4.0` at level 2 is unmistakably a toolchain.
-`compiler_slot?` is deleted rather than refined.
+The four musl cross-compilers land under `pkgs/`, where `gcc-i386-musl`
+cannot be confused with anything. `gcc-11.4.0` appears once, as a
+coordinate beside gtest, where it correctly reads "needs ubuntu-22.04
+and this C++ ABI". Six `gcc/<ver>` coexist in one stack. Five of our
+own stacks would be siblings of `gcc-14.4.0` — multiple stacks need no
+new level.
 
-## What this fixes
+## Board in `<env>` from day one
 
-**The tier rule survives intact, and generalises.** RUNS-ON *is* the
-tier, readable straight off level 1: no `+` means it runs anywhere,
-`+distro` means rebuild elsewhere, `+distro+cc` means rebuild elsewhere
-and under that ABI. The portability audit keeps enforcing the
-declaration; it just now has a name to enforce it against. Target
-packages get the same treatment for free, where before they had a
-different shape.
+`BOARD` currently gates whether a package installs
+(`Package#board_supported?`) but never appears in any install path:
 
-**Multiple stacks are ordinary rather than special.** Two stacks are
-two BUILT-BY values under the same RUNS-ON, needing no new level and no
-new concept:
-
-```
-linux-x86_64/gcc-14.4.0/glib2/2.88.3/
-linux-x86_64/gcc-11.5.0/glib2/2.88.3/
-sysroots/linux-x86_64/gcc-14.4.0/
-sysroots/linux-x86_64/gcc-11.5.0/
+```ruby
+def final_install_root
+  … TC / "gcc-#{a.gcc_ver}" / a.name      # no board
 ```
 
-**`host/` stops lying** by ceasing to exist: there is no directory
-claiming "built with the host compiler", because BUILT-BY says so
-explicitly at every path.
+That is safe today only because board-specific packages happen to have
+distinct names (`uboot` for qemu-virt, `licheerv_nano_boot` for
+licheerv-nano). Two boards needing the same package built differently
+would overwrite each other silently. Putting the board in `<env>` now,
+while every x86 value is just `pc`, closes it before it bites.
 
-**The sysroot gets a home.** It belongs to exactly one (runs-on,
-built-by) pair, which is what a stack *is*, so it is addressed by the
-same two coordinates as the packages it views.
+## Ruby
 
-## Cost
+Two acquisition paths, one destination:
 
-Every path changes, so every RPATH and ELF interpreter changes, so it
-is a full rebuild of everything — which is the reason for a new
-`toolchain5/` root rather than a migration. toolchain4 keeps working
-until it is deleted.
+```
+cache/ruby-3.4.7-ubuntu22.04-x86_64.tar.bz2    prebuilt, per-distro
+cache/ruby-3.4.7.tar.gz                        generic source
+   ↓ both ↓
+linux-x86_64/ubuntu-22.04/any/pkgs/ruby/3.4.7/
+```
 
-## Open questions
+The tarballs differ; the result does not. The binary was built against
+ubuntu 22.04's libraries and a source build links this machine's
+libssl/libyaml/libffi, so either way the result needs this distro.
+Which tarball to fetch is provenance — `SourceRef`'s job — not layout.
 
-1. **Separator.** `+` reads well and is shell-safe unquoted. `%` and
-   `~` are alternatives. Nested directories were rejected because they
-   make the depth vary (2, 3 or 4 segments), which is exactly the
-   ambiguity being removed.
+The build tree moves to `staging/` like every other package's, which
+also removes the `ruby-3.4.7/` and `source/` directories currently
+sitting beside the install and making Ruby look like a package with
+three versions.
 
-2. **`host-cc` as a literal.** It says "whatever compiler this host
-   has", which is honest for BUILT-BY but records nothing. The actual
-   version could be recorded in install metadata instead, so a change
-   of system compiler is *detectable* without being part of the path
-   (it is not part of RUNS-ON unless C++ is involved).
+Ruby cannot be portable: it would have to be built inside our stack,
+but the stack is built by pkgmgr, which needs Ruby. It is distro-bound
+by necessity, not by choice. Bash still performs the first install —
+it is what runs pkgmgr — but writes to the canonical path, and pkgmgr
+registers a `host_ruby` package pointing at it, so it is visible to
+`-l` and `--upgrade` rather than being invisible state.
 
-3. **`noarch/none/`.** Uniform, but reads oddly for a source tarball
-   that no compiler touched. The alternative is a special two-level
-   case for noarch, at the cost of the invariant that every install
-   path has exactly four levels.
+## The rule that has to hold for ten years
+
+> **New axes become VALUES, never LEVELS.**
+
+Checked against the cases that would otherwise force toolchain6:
+
+| case | absorbed as |
+|---|---|
+| libc variants | `<stack>` = `gcc-13.3.0-musl` |
+| debug / LTO / sanitizers | `<stack>` = `gcc-14.4.0-lto` |
+| board variants | `<env>` = `qemu-virt` |
+| macOS, FreeBSD hosts | `<machine>` and `<env>` values |
+| Homebrew-dependent packages | `<env>` = `macos-14-brew` |
+| Canadian cross | nothing: placement is by runs-on and by |
+|                | built-by, and the build machine is neither |
+| same package host and target | different `<machine>` |
+| a whole Linux distro on the host | more packages in a stack: the |
+|                | sysroot already IS a filesystem root |
+
+### The escape hatch, pre-approved
+
+If something genuinely needs a fourth coordinate, do not add a level.
+Collapse `<stack>` to an opaque id with a manifest inside it:
+
+```
+linux-x86_64/any/own-14/{ stack.conf, sysroot/, pkgs/ }
+    stack.conf:  cc=gcc-14.4.0  libc=glibc-2.41  opts=lto
+```
+
+That is a rename plus writing manifests, not a restructure, and it can
+absorb any number of future axes.
+
+## Non-goals, decided
+
+**Content addressing.** An install is identified by (machine, env,
+stack, name, version) and NOT by its inputs, so two builds of one
+version from different inputs occupy the same path. Demonstrated:
+
+```
+$ ls scripts/patches/libglycin/2.2.alpha.7/
+0001-no-sandbox-outside-usr.diff
+$ ./scripts/build_toolchain -s host_libglycin
+INFO: All requested packages are already installed
+```
+
+— the patch changed the artifact's behaviour completely, and pkgmgr
+still considered the unpatched build current. Nix solves this by
+hashing every input into the path; that makes paths opaque, which
+destroys the property this whole schema exists for.
+
+**Mitigation instead**: record the inputs *inside* the install — patch
+names and hashes, configure arguments, resolved dependency versions —
+and compare on the next install, so pkgmgr reports "installed, but
+built from different inputs" rather than "already installed".
+Detection without content-addressed paths.
+
+**A bootable system.** The schema covers a package set. A system also
+needs state — `/etc`, `/var`, users — which is not packages and needs
+its own concept if it is ever wanted.
+
+## Open items
+
+1. `noarch/any/any/pkgs/` — three segments, none of which vary. Kept
+   for uniformity; the only place the schema costs readability.
+2. `any` becomes a reserved word: no distro, board or stack may be
+   called it.
+3. Migration is a full rebuild, since every path change moves every
+   RPATH and ELF interpreter. Hence a new `toolchain5/` root rather
+   than an in-place migration; toolchain4 keeps working until deleted.
