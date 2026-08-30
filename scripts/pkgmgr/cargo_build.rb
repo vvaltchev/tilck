@@ -108,7 +108,24 @@ module CargoBuild
   # Where the cross file goes. Separate from writing it so that
   # build_flags can name it without side effects: the flags are asked
   # for during staleness checks too, when no build is running.
-  def cargo_cross_file_path = File.expand_path("tilck-cross.ini")
+  #
+  # The flags name it RELATIVELY, and must. A flag list is hashed into
+  # the package's recipe digest, so an absolute path here would be the
+  # current working directory baked into the recipe -- and since a
+  # staleness check runs wherever the caller happens to stand, the same
+  # tree then answers differently depending on where it was asked. It
+  # did: CMake, configuring from a build directory, reported the glycin
+  # packages as needing a rebuild that the very same check run from the
+  # repository root said were fine.
+  #
+  # The "./" is load-bearing. Meson treats the value as a path only
+  # when it contains a separator, and looks the name up in its own
+  # cross-file directories otherwise.
+  CROSS_FILE = "./tilck-cross.ini"
+
+  # Resolved against the build directory, which is where meson will
+  # look for it and where write_cargo_cross_file runs.
+  def cargo_cross_file_path = File.expand_path(CROSS_FILE)
 
   def write_cargo_cross_file
 

@@ -123,7 +123,7 @@ class GlycinPackage < Package
   # cross file was used decides whether the proc-macros linked
   # against our glibc.
   def build_flags(ver = nil) = [
-    "--cross-file=#{cargo_cross_file_path}",
+    "--cross-file=#{CROSS_FILE}",
     "-Dlibglycin-gtk4=false",
     "-Dglycin-thumbnailer=false",
     "-Dintrospection=false",
