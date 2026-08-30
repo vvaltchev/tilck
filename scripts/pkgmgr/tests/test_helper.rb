@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 require 'minitest/autorun'
+
+# Object#stub and Minitest::Mock come from minitest/mock, which older
+# minitest releases happened to load from autorun and newer ones do not.
+# Require it explicitly: relying on the transitive load made the suite
+# pass on the local Ruby and fail on every CI distro image.
+require 'minitest/mock'
 require 'tmpdir'
 require 'fileutils'
 require 'pathname'
