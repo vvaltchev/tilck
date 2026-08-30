@@ -70,7 +70,16 @@ module SourceDigest
     return {} if !File.file?(file)
 
     result = Prism.parse_file(file.to_s)
-    src = File.read(file)
+
+    # binread, NOT read: Prism reports BYTE offsets, while String#[]=
+    # with a Range addresses CHARACTERS. Any multi-byte character
+    # earlier in the file -- an em-dash in a comment is enough --
+    # makes the two disagree, and the offsets then run off the end:
+    #
+    #   String#[]=: 46419...46435 out of range (RangeError)
+    #
+    # Reading as bytes makes the two coordinate systems the same one.
+    src = File.binread(file)
 
     # Blank every comment in place, so offsets stay valid and only
     # the code contributes to the hash.
