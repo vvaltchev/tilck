@@ -77,6 +77,14 @@ X11_LIBS = [
 
   { name: "libxinerama", upstream: "libXinerama", dir: "lib",
     check: "usr/lib/libXinerama.so", deps: ["host_libxext"] },
+
+  { name: "libxdamage", upstream: "libXdamage", dir: "lib",
+    check: "usr/lib/libXdamage.so",
+    deps: ["host_libxfixes", "host_libxext"] },
+
+  { name: "libxcomposite", upstream: "libXcomposite", dir: "lib",
+    check: "usr/lib/libXcomposite.so",
+    deps: ["host_libxfixes", "host_libxext"] },
 ].freeze
 
 class X11Package < Package
