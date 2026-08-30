@@ -227,3 +227,64 @@ class TestSysrootGraftedFragments < Minitest::Test
     end
   end
 end
+
+#
+# Documentation is not part of a sysroot, and usr/share/info/dir in
+# particular is a generated index every GNU package writes into — so
+# any two autotools packages collide there by construction. glibc and
+# libffi did exactly that.
+#
+class TestSysrootExcludes < Minitest::Test
+
+  def frag(root, name, files)
+    d = File.join(root, name)
+    files.each do |rel, content|
+      path = File.join(d, rel)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, content)
+    end
+    return d
+  end
+
+  def test_info_dir_from_two_packages_is_not_a_conflict
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/share/info/dir" => "a",
+                           "usr/lib/liba.so" => "a" })
+      b = frag(dir, "b", { "usr/share/info/dir" => "b",
+                           "usr/lib/libb.so" => "b" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a, b])
+
+      assert File.exist?(File.join(target, "usr/lib/liba.so"))
+      assert File.exist?(File.join(target, "usr/lib/libb.so"))
+      refute File.exist?(File.join(target, "usr/share/info/dir"))
+    end
+  end
+
+  def test_man_and_doc_are_excluded_too
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/share/man/man1/x.1" => "m",
+                           "usr/share/doc/x/README" => "d",
+                           "usr/include/x.h" => "h" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a])
+      assert File.exist?(File.join(target, "usr/include/x.h"))
+      refute File.exist?(File.join(target, "usr/share/man/man1/x.1"))
+      refute File.exist?(File.join(target, "usr/share/doc/x/README"))
+    end
+  end
+
+  # A real collision must still be an error: the exclusion is a
+  # narrow list, not a general softening of the check.
+  def test_a_real_library_collision_is_still_an_error
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/libfoo.so" => "a" })
+      b = frag(dir, "b", { "usr/lib/libfoo.so" => "b" })
+      assert_raises(Sysroot::ConflictError) {
+        Sysroot.compose(File.join(dir, "sysroot"), [a, b])
+      }
+    end
+  end
+end

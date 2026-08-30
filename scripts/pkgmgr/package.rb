@@ -371,6 +371,69 @@ class Package
     end
   end
 
+  # The shape every hermetic library build has.
+  #
+  # Our compiler; --prefix naming the SYSROOT rather than the package's
+  # own directory, so the absolute paths baked into the result are the
+  # ones the symlink farm makes true; the install staged through
+  # DESTDIR so the tree handed to the atomic move is complete; the
+  # fragment lifted into place; the source discarded.
+  #
+  # Only the configure invocation differs between build systems, which
+  # is what the two wrappers below supply. `block` is called with the
+  # prefix and the destdir and returns true on success.
+  def hermetic_install(install_dir, &block)
+
+    sysroot_usr = "#{hermetic_sysroot}/usr"
+    destdir = "#{install_dir}/destdir"
+    ok = false
+
+    with_hermetic_toolchain { ok = block.call(sysroot_usr, destdir) }
+    return false if !ok
+
+    FileUtils.mkdir_p("#{install_dir}/install")
+    FileUtils.mv("#{destdir}#{sysroot_usr}", "#{install_dir}/install/usr")
+
+    Dir.children(".").each { |e|
+      next if e == "install"
+      rm_rf(e)
+    }
+    return true
+  end
+
+  # ./configure && make && make install, the shape most of the X11 and
+  # freetype side of the QEMU closure uses.
+  def autotools_hermetic_build(install_dir, args: [])
+
+    return hermetic_install(install_dir) do |prefix, destdir|
+      run_command("configure.log",
+                  ["./configure", "--prefix=#{prefix}", *args]) &&
+      run_command("build.log", ["make", "-j#{BUILD_PAR}"]) &&
+      run_command("install.log", ["make", "install", "DESTDIR=#{destdir}"])
+    end
+  end
+
+  # meson + ninja, the shape glib and most of the GTK stack uses.
+  #
+  # --libdir=lib because the sysroot has exactly one library directory;
+  # meson would otherwise pick lib64 on this host and split it.
+  # meson and ninja are invoked by name: they are on PATH because they
+  # publish their bin dirs and with_hermetic_toolchain applies what the
+  # dependencies say.
+  def meson_hermetic_build(install_dir, args: [])
+
+    return hermetic_install(install_dir) do |prefix, destdir|
+      run_command("configure.log",
+                  ["meson", "setup", "build",
+                   "--prefix=#{prefix}", "--libdir=lib",
+                   "--buildtype=release", *args]) &&
+      run_command("build.log", ["ninja", "-C", "build"]) &&
+      run_command("install.log",
+                  ["meson", "install", "-C", "build",
+                   "--destdir=#{destdir}"])
+    end
+  end
+
   # A check the package runs AFTER the sysroot has been composed.
   #
   # Some things cannot be verified at install time because they depend

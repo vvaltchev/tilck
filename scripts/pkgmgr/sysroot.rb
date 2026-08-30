@@ -35,7 +35,22 @@ module Sysroot
   # order, and the result would differ between machines.
   class ConflictError < StandardError; end
 
+  # Not part of a sysroot.
+  #
+  # A sysroot exists to compile against, and documentation is
+  # definitionally not that. Excluding it is not only tidiness:
+  # usr/share/info/dir is a generated INDEX that every GNU package
+  # writes its entry into, so any two autotools packages collide there
+  # by construction — a real conflict in the file, and a meaningless
+  # one for our purposes.
+  EXCLUDED = ["usr/share/info", "usr/share/man", "usr/share/doc",
+              "usr/share/gtk-doc"].freeze
+
   module_function
+
+  def excluded?(rel)
+    return EXCLUDED.any? { |d| rel == d || rel.start_with?(d + "/") }
+  end
 
   # Build `target` as a symlink farm over `fragments`.
   #
@@ -82,6 +97,8 @@ module Sysroot
 
     Dir.glob("**/*", File::FNM_DOTMATCH, base: frag.to_s).each do |rel|
       next if rel == "." || rel.end_with?("/.", "/..")
+
+      next if excluded?(rel)
 
       src = frag / rel
       dst = target / rel

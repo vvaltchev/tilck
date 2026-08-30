@@ -366,7 +366,7 @@ module Cache
     return false
 
   ensure
-    rm_rf(tmp)
+    rm_rf(tmp) if tmp
   end # extract_file()
 
   def download_git_repo(
@@ -425,7 +425,10 @@ module Cache
     error e
     return false
   ensure
-    rm_rf(tmp)
+    # `tmp` is assigned after the assertions above, so it is still nil
+    # when one of them fires — and rm_rf(nil) then raises a TypeError
+    # that REPLACES the assertion, hiding what actually went wrong.
+    rm_rf(tmp) if tmp
   end # download_git_repo()
 
 end # module Cache
