@@ -64,7 +64,7 @@ endif()
 
 set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${HOST_VER_GTEST}/install)
 
-include_directories(${TCROOT}/noarch/gnuefi/${VER_GNUEFI}/inc)
+include_directories(${NOARCH_DIR}/gnuefi/${VER_GNUEFI}/inc)
 
 # Generated config headers (kernel-private + generated_config.h) live in
 # ${CMAKE_BINARY_DIR}/tilck_gen_headers/. Shared config headers from the
@@ -75,7 +75,7 @@ include_directories(${BUILD_DIR})
 include_directories(${PROJ_ROOT})
 include_directories(${PROJ_ROOT}/include)
 include_directories(${PROJ_ROOT}/include/system_headers)
-include_directories(${TCROOT}/noarch/acpica/${VER_ACPICA})
+include_directories(${NOARCH_DIR}/acpica/${VER_ACPICA})
 
 include_directories(${GTEST_INSTALL_DIR}/include)
 

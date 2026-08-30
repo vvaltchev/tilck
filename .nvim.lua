@@ -10,4 +10,19 @@ vim.g.indent_width = 3
 -- That no longer works under a LazyVim-based config: LazyVim configures clangd
 -- through nvim-lspconfig *after* 'exrc' has run, so the assignment was silently
 -- overwritten. A plain global read at LSP-setup time does work.
-vim.g.clangd_query_driver = vim.fn.getcwd() .. "/toolchain4/**/bin/*-linux-*"
+--
+-- The generation number is read from other/toolchain_conf rather than
+-- written here, so that a bump does not silently leave clangd pointed
+-- at a toolchain that is no longer built.
+local tc_conf = io.open(vim.fn.getcwd() .. "/other/toolchain_conf")
+local tc_name = "toolchain5"
+
+if tc_conf then
+   for line in tc_conf:lines() do
+      tc_name = line:match("^TOOLCHAIN_DIR_NAME=(%S+)") or tc_name
+   end
+   tc_conf:close()
+end
+
+vim.g.clangd_query_driver =
+   vim.fn.getcwd() .. "/" .. tc_name .. "/**/bin/*-linux-*"

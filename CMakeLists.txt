@@ -188,7 +188,25 @@ endif()
 
 # Main variables
 define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
-define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain4)
+
+# The toolchain generation, from the one file that names it. Re-run
+# configure when it changes: a bump moves TCROOT and every path cached
+# below it.
+set_property(
+   DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+   ${CMAKE_SOURCE_DIR}/other/toolchain_conf
+)
+file(
+   STRINGS ${CMAKE_SOURCE_DIR}/other/toolchain_conf TC_NAME_LINE
+   REGEX "^TOOLCHAIN_DIR_NAME="
+)
+string(REGEX REPLACE "^TOOLCHAIN_DIR_NAME=" "" TC_NAME "${TC_NAME_LINE}")
+
+if ("${TC_NAME}" STREQUAL "")
+   message(FATAL_ERROR "TOOLCHAIN_DIR_NAME missing from other/toolchain_conf")
+endif()
+
+define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/${TC_NAME})
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 
 define_env_cache_bool_var(TEST_GCOV)
@@ -227,20 +245,9 @@ set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
 
-# Host-side install roots in the toolchain4 layout.
-#
-# HOST_DIR_PORTABLE — statically-linked, distro-agnostic host tools (cross
-#    compilers). Shared across distros and host compilers; a GCC_TC_VER
-#    bump does not invalidate extracted tarballs here.
-#
-# HOST_DIR         — non-portable host tools (host_mtools, host_gtest) whose
-#    binaries or libraries depend on glibc/libstdc++ from a specific distro,
-#    built with a specific host compiler. Because C++ has no stable ABI, the
-#    host-compiler version is part of the path even for C-only tools that
-#    may pull in C++ host libs.
-set(HOST_DIR_PORTABLE   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/portable)
-set(HOST_DIR_DISTRO     ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO})
-set(HOST_DIR            ${HOST_DIR_DISTRO}/${HOST_CC})
+# The host-side and target-side install roots are NOT built here: they
+# come from the package manager, further down, once GCC_TC_VER is known
+# (see "Ask the package manager where things are").
 set(CMAKE_DIR           ${CMAKE_SOURCE_DIR}/other/cmake)
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
@@ -354,9 +361,13 @@ unset(VALUE_START_POS)
 # bootstrap) or be the system Ruby (used when the system version >= 3.2).
 # Try the toolchain path first, fall back to system `ruby`.
 #
+# This is the ONE installed path CMake constructs by hand, and it has
+# to be: it is the interpreter used to ask where everything else is.
+# It is a distro-tier install -- <machine>/<distro>/any/pkgs -- because
+# Ruby links against the distro's libc.
 set(PKGMGR_RUBY "")
 set(_tc_ruby
-   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/ruby/${HOST_VER_RUBY}/bin/ruby)
+   ${TCROOT}/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/any/pkgs/ruby/${HOST_VER_RUBY}/bin/ruby)
 
 if (EXISTS ${_tc_ruby})
    set(PKGMGR_RUBY ${_tc_ruby})
@@ -930,22 +941,93 @@ endif()
 message(STATUS "TCROOT: ${TCROOT}")
 message(STATUS "GCC_TC_VER: ${GCC_TC_VER}")
 
-# Target-side per-arch package root. toolchain4 layout:
+# --- Ask the package manager where things are ------------------------
 #
-#     ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH}/<pkg>/<ver>/
+# CMake used to build these paths from the layout schema itself. That
+# put the schema in two places, and the copies drifted the first time
+# the layout changed: CMake went on describing the previous generation
+# while every install had moved, and the build looked for directories
+# nothing creates. So ask instead -- one call, at configure time only.
 #
-# The "gcc-" prefix leaves room for other compiler families in the future
-# (clang/llvm slots) and the dotted version matches the rest of the
-# ecosystem (vs. the underscore-mangled path used in toolchain3).
-set(TCROOT_ARCH_DIR           ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH})
-set(TCROOT_ARCH_DIR_PARENT    ${TCROOT}/gcc-${GCC_TC_VER})
+# ARCH, BOARD and GCC_TC_VER go through the environment, which is how
+# the package manager takes them everywhere else.
+if (NOT PKGMGR_RUBY OR NOT EXISTS ${PKGMGR_MAIN})
+   message(FATAL_ERROR
+      "Cannot locate the package manager: run ${BTC_SCRIPT_REL} first.")
+endif()
+
+# BOARD only when one was actually chosen. It is empty here for every
+# arch with a single board, and passing BOARD= would override the
+# package manager's default with nothing -- which is how the i386
+# packages came back as tilck-i386/gcc-13.3.0, one coordinate short.
+set(_layout_env ARCH=${ARCH} GCC_TC_VER=${GCC_TC_VER})
+
+if (BOARD)
+   list(APPEND _layout_env BOARD=${BOARD})
+endif()
+
+execute_process(
+   COMMAND
+      ${CMAKE_COMMAND} -E env ${_layout_env}
+         ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --print-layout
+   RESULT_VARIABLE _layout_rc
+   OUTPUT_VARIABLE _layout_out
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if (NOT _layout_rc EQUAL 0)
+   message(FATAL_ERROR "Failed to read the toolchain layout: ${_layout_out}")
+endif()
+
+string(REPLACE "\n" ";" _layout_lines "${_layout_out}")
+
+foreach(_line ${_layout_lines})
+   string(REGEX MATCH "^([A-Za-z0-9_]+)=(.*)$" _m "${_line}")
+   if (_m)
+      set(PKGMGR_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}")
+   endif()
+endforeach()
+
+# The package manager derives the host identity independently. When the
+# two disagree, every host-tool path is wrong in a way that surfaces
+# much later as a missing file, so stop here instead.
+# BOARD is compared only when CMake has one: where it does not, the
+# package manager's default is the answer, not a disagreement.
+foreach(_v ARCH BOARD HOST_DISTRO HOST_CC)
+   if ("${_v}" STREQUAL "BOARD" AND NOT BOARD)
+      continue()
+   endif()
+   if (NOT "${PKGMGR_${_v}}" STREQUAL "${${_v}}")
+      message(FATAL_ERROR
+         "${_v} disagrees: CMake says '${${_v}}', "
+         "the package manager says '${PKGMGR_${_v}}'.")
+   endif()
+endforeach()
+
+# Host-side install roots, one per tier.
+#
+# HOST_DIR_PORTABLE — statically-linked, distro-agnostic host tools
+#    (the cross compilers). Shared across distros and host compilers.
+#
+# HOST_DIR_DISTRO   — host tools that link against the distro's libc.
+#
+# HOST_DIR          — host tools whose ABI additionally depends on the
+#    host compiler (anything that may pull in C++ host libs, since C++
+#    has no stable ABI).
+set(HOST_DIR_PORTABLE         ${PKGMGR_PKGS_HOST_PORTABLE})
+set(HOST_DIR_DISTRO           ${PKGMGR_PKGS_HOST_DISTRO})
+set(HOST_DIR                  ${PKGMGR_PKGS_HOST_CC})
+set(NOARCH_DIR                ${PKGMGR_PKGS_NOARCH})
+
+# Target-side package root for the arch AND board being built.
+set(TCROOT_ARCH_DIR           ${PKGMGR_PKGS_TARGET})
 
 set(BUSYBOX_DIR               ${TCROOT_ARCH_DIR}/busybox/${VER_BUSYBOX})
 set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
 set(ZLIB_DIR                  ${TCROOT_ARCH_DIR}/zlib/${VER_ZLIB})
 set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnuefi/${VER_GNUEFI})
 set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
-set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${HOST_VER_LCOV})
+set(LCOV_DIR                  ${NOARCH_DIR}/lcov/${HOST_VER_LCOV})
 
 set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
 
@@ -1270,7 +1352,8 @@ set(TILCK_EXPORTED_VARS
    BOARD BOARD_BSP
 
    # Toolchain paths, labels and versions
-   TCROOT TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
+   TCROOT TCROOT_ARCH_DIR NOARCH_DIR
+   PKGMGR_PKGS_TARGET_i386 PKGMGR_PKGS_TARGET_x86_64
    HOST_DIR_PORTABLE HOST_DIR_DISTRO HOST_DIR
    GCC_TC_VER
    GCC_TC_ROOT GCC_TC_ROOT_i386 GCC_TC_ROOT_x86_64
@@ -1891,7 +1974,7 @@ set(KCFG_DIR     "${CMAKE_BINARY_DIR}/kconfig")
 set(GEN_KCONFIG  "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/gen_kconfig.py")
 set(APPLY_CONFIG "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/apply_config.py")
 set(CMAKE_RUN    "${CMAKE_SOURCE_DIR}/scripts/cmake_run")
-set(MCONF_ROOT   "${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/mconf")
+set(MCONF_ROOT   "${HOST_DIR_DISTRO}/mconf")
 configure_file(
    "${CMAKE_SOURCE_DIR}/scripts/templates/run_config.in"
    "${CMAKE_BINARY_DIR}/run_config"

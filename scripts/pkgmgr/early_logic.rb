@@ -334,7 +334,11 @@ HOST_OS_ARCH = "#{HOST_OS}-#{HOST_ARCH.name}"
 
 
 DEFAULT_BOARD = ARCH.default_board
-BOARD = ENV["BOARD"] || DEFAULT_BOARD
+# getenv, not ENV[...] || default: an empty string is truthy in Ruby, so
+# `BOARD=` in the environment used to beat the default and leave the
+# board coordinate blank. CMake passes exactly that whenever the user
+# has not chosen a board.
+BOARD = getenv("BOARD", DEFAULT_BOARD)
 BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD : nil
 BUILD_PAR = ENV["BUILD_PAR"] or ""
 

@@ -18,7 +18,7 @@ include(${PROJ_ROOT}/kernel/sources.cmake)
 
 include_directories(${PROJ_ROOT}/include)
 include_directories(${PROJ_ROOT}/include/system_headers)
-include_directories(${TCROOT}/noarch/acpica/${VER_ACPICA})
+include_directories(${NOARCH_DIR}/acpica/${VER_ACPICA})
 
 # Kernel-private generated headers shadow shared ones via include path order.
 # CMAKE_BINARY_DIR (kernel's build dir) MUST come before BUILD_DIR (root's).
