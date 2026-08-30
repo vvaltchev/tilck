@@ -293,6 +293,72 @@ if (_upgrade_rc EQUAL 2)
 `-l` shows `stale` instead of `installed`, so the condition is visible
 without starting a build.
 
+## Deferred: the builds that are not command sequences
+
+Where a build IS a command sequence it is now data -- an ordered list
+of `Step(log, argv, dir:, env:, unset:)` that the runner both executes
+and records, so no command can go unrecorded. That covers **46**
+packages. The other **30** define their own `install_impl_internal`
+and are protected by the code fingerprint instead, which is correct
+and narrow but coarser: any change to the method is a rebuild, where a
+declared recipe would say exactly WHAT changed.
+
+Converting the rest means rewriting builds, and a rewritten build has
+to be run to be believed. **Do these after the toolchain5 rebuild**,
+one at a time, each verified by actually building it -- not before,
+when there is no stack to build against.
+
+Several of the 30 need nothing at all: the musl cross-compilers,
+`gnuefi_src`, `libmusl`, `lcov`, `freedoom`, `tfblib` and
+`sophgo_tools` are prebuilt blobs or source-only packages with no
+build to describe. The real work is five shapes:
+
+**1. A build that edits a source file.**
+`lua` reads `src/Makefile`, strips `-Wl,-E` with `gsub`, and writes it
+back -- we link statically against musl, so the export table is
+meaningless and the cross binutils-ld rejects the option. That wants
+to be `scripts/patches/lua/<ver>/*.diff`, which the base class already
+applies and already fingerprints. It is a behaviour change (patch(1)
+fails loudly where `gsub` silently does nothing), so it needs a build
+to confirm.
+
+**2. A build that installs its output by hand.**
+`ninja` bootstraps with `configure.py` and then copies the binary with
+`FileUtils.cp`. As a step that is `install -D ninja
+$INSTALL/install/bin/ninja` -- a different program doing the copy, so
+again a real change.
+
+**3. A build that supplies and then repairs a config.**
+`busybox` and `uboot` copy a checked-in `.config` in, build, and fix
+the file up afterwards (`fix_config_file`, and uboot patches
+`scriptaddr` first). The copy and the fixup are file operations around
+one `make`. Worth expressing as steps only if the fixups can move into
+the config file or a patch; otherwise the fingerprint is the honest
+answer.
+
+**4. A build that verifies its own output.**
+`host_gcc` writes a specs file after installing and then compiles a
+test program to prove the compiler emits portable binaries by default.
+That check is not part of building -- it is a POST-INSTALL assertion,
+and it deserves its own concept rather than being flattened into a
+step list. `host_glibc` and `host_binutils` are the same shape.
+
+**5. Sequences with file operations interleaved.**
+`gnuefi`, `ncurses`, `tcc`, `vim`, `mconf`, `meson`, `fbdoom`,
+`licheerv_nano_boot`, `host_gtest` and `host_qemu` mix `mkdir`, `cp`,
+symlinks or DESTDIR juggling between commands. Some of that is
+`stack_install`'s job already -- `host_zlib` turned out to be running
+exactly the sequence `autotools_stack_build` runs, and simply calling
+the helper removed thirty lines. The others need reading one at a
+time.
+
+A sixth possibility worth considering when the time comes: give
+`Step` a `:ruby` variant carrying a lambda, so a file operation can
+sit in the list without pretending to be a command. It buys uniform
+ordering and logging, but a lambda cannot be fingerprinted as data --
+it would fall back to hashing the method that defines it, which is
+where those packages already are. Probably not worth it.
+
 ## Non-goals, decided
 
 **Content addressing.** An install is identified by (machine, env,
@@ -321,3 +387,7 @@ need its own concept if it is ever wanted.
 4. Starting empty means there are no installs without `.build_inputs`,
    so build identity applies from the first package with no legacy
    case to tolerate.
+5. The 30 packages still on the code fingerprint rather than a
+   declared recipe -- see "Deferred: the builds that are not command
+   sequences" above. To be done AFTER the rebuild, each verified by
+   building it.
