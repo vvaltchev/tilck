@@ -76,8 +76,10 @@ module TestHelper
       host_dir_p = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "portable"
       host_dir_d = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / HOST_DISTRO
       host_dir   = host_dir_d / HOST_CC
+      host_herm  = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "hermetic"
       FileUtils.mkdir_p(host_dir_p)
       FileUtils.mkdir_p(host_dir)
+      FileUtils.mkdir_p(host_herm)
 
       with_context(
         ARCH: FAKE_ARCH,
@@ -90,6 +92,13 @@ module TestHelper
         HOST_DIR_PORTABLE: host_dir_p,
         HOST_DIR_DISTRO: host_dir_d,
         HOST_DIR: host_dir,
+
+        # Not optional. The hermetic sysroot is REBUILT from scratch
+        # whenever what it views changes, which means it is deleted
+        # first; a test that reached the real one would destroy the
+        # developer's toolchain, and did exactly that before this was
+        # overridden here.
+        HOST_DIR_HERMETIC_BASE: host_herm,
       ) do
         yield tc
       end
