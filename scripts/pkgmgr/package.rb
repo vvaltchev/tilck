@@ -330,6 +330,24 @@ class Package
   # whole set.
   def dep_list_for(ver = nil) = dep_list
 
+  # What this package needs from the HOST -- things pkgmgr does not
+  # build and cannot install as packages of its own: a Rust toolchain,
+  # a -dev library, a code generator.
+  #
+  # Empty for almost everything, and meant to stay that way. The
+  # bootstrap in scripts/bash_includes/install_pkgs already puts a
+  # compiler, make and the common -dev libraries on every machine;
+  # this is for the requirements that only SOME builds have, so that
+  # they are checked when that build is actually requested instead of
+  # being installed on every machine forever.
+  #
+  # Checked across the whole transitive closure before the first
+  # package is built, so a missing toolchain stops the run immediately
+  # rather than halfway through it.
+  #
+  # Returns an array of SystemDeps::SysDep. See system_deps.rb.
+  def system_deps(ver = nil) = []
+
   # The environment a hermetic package builds in.
   #
   # Everything above the toolchain has to be compiled by OUR compiler,

@@ -6,6 +6,7 @@ require_relative 'version'
 require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
+require_relative 'system_deps'
 
 GDK_PIXBUF_SOURCE = SourceRef.new(
   name: 'gdk_pixbuf',
@@ -32,6 +33,12 @@ GDK_PIXBUF_SOURCE = SourceRef.new(
 # otherwise 'default' resolves to glycin alone and nothing can decode
 # a PNG.
 #
+# WITH_GLYCIN below is the switch, and it drives BOTH the meson option
+# and the Rust requirement declared in system_deps. Keeping the two
+# together is the whole point: a flag flipped without the requirement
+# following it produces a build that runs for a while and then fails
+# inside cargo, on a machine whose Rust is missing or too old.
+#
 # gio_sniffing is off too, and that one is a real trade rather than an
 # omission. With it, gdk-pixbuf identifies image formats through GIO's
 # MIME database, which means a hard dependency on shared-mime-info and
@@ -44,6 +51,10 @@ class HostGdkPixbufPackage < Package
 
   include FileShortcuts
   include FileUtilsShortcuts
+
+  # Rust is not in the hermetic closure and we do not build it: when
+  # this is turned on, rustc and cargo have to come from the host.
+  WITH_GLYCIN = false
 
   def initialize
     super(
@@ -67,6 +78,15 @@ class HostGdkPixbufPackage < Package
   def default_cc = "syscc"
   def enabled? = HERMETIC_ENABLED
   def pkg_dirname = "gdk-pixbuf"
+
+  # glycin is a Rust crate: enabling it puts cargo on the critical
+  # path of this build. Declared rather than built -- a Rust toolchain
+  # is a big thing to compile from source for one image loader, and
+  # rustup gives a better one than we would.
+  def system_deps(ver = nil)
+    return [] if !WITH_GLYCIN
+    return [SystemDeps::RUSTC, SystemDeps::CARGO]
+  end
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libgdk_pixbuf-2.0.so", false],
@@ -98,7 +118,7 @@ class HostGdkPixbufPackage < Package
       "-Dman=false",
       "-Dtests=false",
       "-Dgio_sniffing=false",
-      "-Dglycin=disabled",
+      "-Dglycin=#{WITH_GLYCIN ? "enabled" : "disabled"}",
       "-Dbuiltin_loaders=png",
     ])
   end

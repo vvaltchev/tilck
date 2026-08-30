@@ -27,6 +27,8 @@ require_relative 'arch'
 require_relative 'term'
 require_relative 'version'
 require_relative 'package'
+require_relative 'system_pkgs'
+require_relative 'system_deps'
 require_relative 'gcc'
 require_relative 'cache'
 require_relative 'progress'
@@ -54,6 +56,8 @@ require_relative 'freetype'
 require_relative 'harfbuzz'
 require_relative 'fontconfig'
 require_relative 'x11'
+require_relative 'cairo'
+require_relative 'gdk_pixbuf'
 require_relative 'qemu'
 require_relative 'gnuefi'
 require_relative 'gtest'
@@ -996,6 +1000,15 @@ module Main
                                      ascii: options[:ascii])
             lines.each { |l| puts l }
             puts if !options[:ascii]
+
+            # Everything the plan needs from the host, checked as
+            # one batch before the first build starts. A missing Rust
+            # toolchain has to stop the run here, not forty minutes
+            # in when a configure script finally goes looking.
+            if !SystemDeps.check_plan(plan, dry_run: options[:dry_run])
+              failed = "unmet system dependencies"
+              next
+            end
 
             if options[:dry_run]
               info "Dry run (-d): nothing installed"

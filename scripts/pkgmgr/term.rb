@@ -26,6 +26,22 @@ module Term
   HLINE = "#{DIM}#{"─" * 72}#{RESET}"
 
   module_function
+
+  # Ask a yes/no question on the terminal.
+  #
+  # Returns `default` on EOF -- a closed stdin, a pipe, a CI runner --
+  # so that a non-interactive run can never block forever waiting for
+  # an answer that is not coming. That also means this cannot tell
+  # "the user pressed enter" from "there is nobody there": a caller
+  # whose question must not be answered by default has to check
+  # SystemPkgs.interactive? before asking.
+  def ask_yes_no(question, default: true)
+    print "#{question} #{default ? "[Y/n]" : "[y/N]"}: "
+    answer = STDIN.gets&.strip&.downcase
+    return default if answer.nil? || answer.empty?
+    return answer.start_with?("y")
+  end
+
   def makeWhite(s) = "#{WHITE}#{s}#{RESET}"
   def makeRed(s) = "#{RED}#{s}#{RESET}"
   def makeGreen(s) = "#{GREEN}#{s}#{RESET}"
