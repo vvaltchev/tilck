@@ -30,14 +30,16 @@ class BuildEnv
   # built against a dependency nobody selected.
   class ConflictError < StandardError; end
 
-  attr_reader :include_dirs, :lib_dirs, :pkg_config_dirs, :extra_env
+  attr_reader :include_dirs, :lib_dirs, :pkg_config_dirs, :bin_dirs
+  attr_reader :extra_env
 
-  def initialize(include_dirs: [], lib_dirs: [],
-                 pkg_config_dirs: [], extra_env: {})
+  def initialize(include_dirs: [], lib_dirs: [], pkg_config_dirs: [],
+                 bin_dirs: [], extra_env: {})
 
     @include_dirs    = BuildEnv.normalize(include_dirs)
     @lib_dirs        = BuildEnv.normalize(lib_dirs)
     @pkg_config_dirs = BuildEnv.normalize(pkg_config_dirs)
+    @bin_dirs        = BuildEnv.normalize(bin_dirs)
     @extra_env       = extra_env.map { |k, v| [k.to_s, v.to_s] }.to_h.freeze
 
     freeze
@@ -56,7 +58,8 @@ class BuildEnv
 
   def empty?
     return @include_dirs.empty? && @lib_dirs.empty? &&
-           @pkg_config_dirs.empty? && @extra_env.empty?
+           @pkg_config_dirs.empty? && @bin_dirs.empty? &&
+           @extra_env.empty?
   end
 
   # Combine two build environments, `self`'s entries first. Consumers
@@ -81,6 +84,7 @@ class BuildEnv
       include_dirs:    @include_dirs    + other.include_dirs,
       lib_dirs:        @lib_dirs        + other.lib_dirs,
       pkg_config_dirs: @pkg_config_dirs + other.pkg_config_dirs,
+      bin_dirs:        @bin_dirs        + other.bin_dirs,
       extra_env:       env,
     )
   end
@@ -96,13 +100,27 @@ class BuildEnv
   def env(base = ENV)
 
     e = @extra_env.dup
-    return e if @pkg_config_dirs.empty?
 
-    parts = @pkg_config_dirs.dup
-    inherited = base["PKG_CONFIG_PATH"]
-    parts << inherited if inherited && !inherited.empty?
+    if !@pkg_config_dirs.empty?
+      parts = @pkg_config_dirs.dup
+      inherited = base["PKG_CONFIG_PATH"]
+      parts << inherited if inherited && !inherited.empty?
+      e["PKG_CONFIG_PATH"] = parts.join(":")
+    end
 
-    e["PKG_CONFIG_PATH"] = parts.join(":")
+    # A dependency that ships a tool the build INVOKES — ninja, meson,
+    # pkg-config, glib-compile-resources — has to be reachable by name,
+    # because build systems look for those on PATH and not through any
+    # variable we could set. Publishing the directory keeps that a
+    # property of the dependency rather than something each consumer
+    # arranges for itself.
+    if !@bin_dirs.empty?
+      parts = @bin_dirs.dup
+      inherited = base["PATH"]
+      parts << inherited if inherited && !inherited.empty?
+      e["PATH"] = parts.join(":")
+    end
+
     return e
   end
 
