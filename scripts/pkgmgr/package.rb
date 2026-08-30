@@ -371,6 +371,75 @@ class Package
   def dep_list_for(ver = nil) = dep_list
 
   #
+  # One command in a package's build.
+  #
+  # `dir` is relative to the source tree, `env` is applied for the
+  # step only, `unset` removes variables for it (micropython builds
+  # mpy-cross for the HOST and must not inherit the cross compiler).
+  #
+  BuildStep = Struct.new(:log, :argv, :dir, :env, :unset,
+                         keyword_init: true)
+
+  def Step(log, argv, dir: nil, env: {}, unset: [])
+    return BuildStep.new(log: log, argv: argv, dir: dir,
+                         env: env, unset: unset)
+  end
+
+  #
+  # The ordered commands that build this package, as DATA.
+  #
+  # Declarative on purpose: the same list is executed and recorded,
+  # so a build cannot run a command that goes unrecorded. It takes no
+  # arguments and refers to the install directory and the parallelism
+  # through tokens, which keeps it computable during a staleness
+  # check -- when no build is running and there is no install
+  # directory to speak of.
+  #
+  #   $INSTALL   this version's install directory
+  #   $SYSROOT   the stack's composed sysroot
+  #   $PAR       the build parallelism
+  #
+  # Empty means "this package builds itself imperatively"; its
+  # install_impl_internal is then hashed instead. See
+  # docs/plans/toolchain5.md.
+  #
+  def build_steps = []
+
+  # Should the build tree be discarded once the install succeeded?
+  def prune_after_build? = false
+
+  def expand_tokens(str, install_dir)
+    return str.to_s
+              .gsub("$INSTALL", install_dir.to_s)
+              .gsub("$SYSROOT", (on_host ? stack_sysroot.to_s : ""))
+              .gsub("$PAR", BUILD_PAR.to_s)
+  end
+
+  def run_build_steps(install_dir)
+
+    for step in build_steps do
+
+      argv = step.argv.map { |a| expand_tokens(a, install_dir) }
+      env = (step.env || {}).transform_values { |v|
+        expand_tokens(v, install_dir)
+      }
+
+      ok = with_saved_env(env.keys + (step.unset || [])) do
+        (step.unset || []).each { |v| ENV.delete(v) }
+        env.each { |k, v| ENV[k] = v }
+
+        dir = step.dir ? expand_tokens(step.dir, install_dir) : "."
+        FileUtils.chdir(dir) { run_command(step.log, argv) }
+      end
+
+      return false if !ok
+    end
+
+    prune_build_tree if prune_after_build?
+    return true
+  end
+
+  #
   # THE BUILD RECIPE: what determines the artifact, beyond its name,
   # version and coordinates.
   #
@@ -427,8 +496,12 @@ class Package
       SourceDigest.method_source(__FILE__, h)
     }
 
+    steps = build_steps.map { |st|
+      [st.dir, st.unset, st.env, st.argv].inspect
+    }.join("\n")
+
     return "sha256:" + SourceDigest.digest(
-      build_flags(ver).join(" "), own, *helpers
+      build_flags(ver).join(" "), steps, own, *helpers
     )[0, 32]
   end
 
@@ -1018,7 +1091,13 @@ class Package
   end
 
   # Methods not implemented in the base class
-  def install_impl_internal(install_dir) = raise NotImplementedError
+  # A package declares either build_steps or its own
+  # install_impl_internal; declaring neither is a package that does
+  # not know how to build itself.
+  def install_impl_internal(install_dir)
+    raise NotImplementedError if build_steps.empty?
+    return run_build_steps(install_dir)
+  end
   def expected_files(ver = nil) = raise NotImplementedError
 
   # Normalize a kernel-style .config file: strip metadata header,

@@ -67,22 +67,20 @@ class HostLinuxHeadersPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
+  def build_steps = [
 
     # The kernel names x86_64 "x86"; both 32- and 64-bit headers come
     # out of that one tree.
-    ok = run_command("headers.log", [
+    Step("headers.log", [
       "make", "headers_install",
       "ARCH=x86",
-      "INSTALL_HDR_PATH=#{install_dir}/install/usr",
-    ])
-    return false if !ok
+      "INSTALL_HDR_PATH=$INSTALL/install/usr",
+    ]),
+  ]
 
-    # A kernel tree is ~1.5 GB extracted and we want a few MB of
-    # headers out of it.
-    prune_build_tree
-    return true
-  end
+  # A kernel tree is ~1.5 GB extracted and we want a few MB of
+  # headers out of it.
+  def prune_after_build? = true
 end
 
 pkgmgr.register(HostLinuxHeadersPackage.new())

@@ -38,7 +38,7 @@ class MtoolsPackage < Package
     "mtools"
   ]
 
-  def install_impl_internal(install_dir)
+  def build_steps
 
     conf_params = [
       "--without-x",
@@ -48,14 +48,10 @@ class MtoolsPackage < Package
       conf_params << "LIBS=-liconv"
     end
 
-    ok = run_command("configure.log", [
-      "./configure", *conf_params
-    ])
-
-    return false if !ok
-
-    ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
-    return ok
+    return [
+      Step("configure.log", ["./configure", *conf_params]),
+      Step("build.log", ["make", "-j$PAR"]),
+    ]
   end
 end
 

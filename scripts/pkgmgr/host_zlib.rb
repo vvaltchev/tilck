@@ -80,35 +80,12 @@ class HostZlibPackage < Package
     super(dir)
   end
 
+  # zlib's configure is hand-written rather than autotools, but it
+  # takes --prefix and its compiler from $CC, so the shared helper
+  # drives it unchanged -- and this way the flags are declared and
+  # recorded like every other package's.
   def install_impl_internal(install_dir)
-
-    sysroot_usr = "#{stack_sysroot}/usr"
-    destdir = "#{install_dir}/destdir"
-    ok = false
-
-    with_stack_toolchain do
-      # zlib's configure is hand-written rather than autotools and
-      # takes its compiler from $CC, which with_stack_toolchain has
-      # just pointed at ours.
-      ok = run_command("configure.log", [
-        "./configure", "--prefix=#{sysroot_usr}",
-      ])
-      next if !ok
-
-      ok = run_command("build.log", ["make", "-j#{BUILD_PAR}"])
-      next if !ok
-
-      ok = run_command("install.log",
-                       ["make", "install", "DESTDIR=#{destdir}"])
-    end
-
-    return false if !ok
-
-    FileUtils.mkdir_p("#{install_dir}/install")
-    FileUtils.mv("#{destdir}#{sysroot_usr}", "#{install_dir}/install/usr")
-
-    prune_build_tree
-    return true
+    return autotools_stack_build(install_dir)
   end
 end
 

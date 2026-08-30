@@ -3,6 +3,7 @@
 require_relative 'test_helper'
 require_relative '../source_digest'
 require_relative '../build_inputs'
+require_relative '../micropython'
 
 #
 # Fingerprinting the code that builds a package.
@@ -255,5 +256,135 @@ class TestBuildIdentity < Minitest::Test
     with_fake_tc do
       assert_empty FakePackage.new("foo").build_flags
     end
+  end
+end
+
+
+#
+# The declarative step runner.
+#
+# A step is {dir, env, unset, argv}, which is the smallest unit that
+# covers what the tree actually does -- micropython builds two
+# components in two directories, one of which must NOT inherit the
+# cross compiler.
+#
+class TestBuildSteps < Minitest::Test
+
+  include TestHelper
+
+  class StepPkg < TestHelper::FakePackage
+    attr_accessor :steps, :ran
+    def build_steps = (@steps || [])
+  end
+
+  # Package#Step is an instance method; the tests build the struct.
+  def Step(log, argv, dir: nil, env: {}, unset: [])
+    return Package::BuildStep.new(log: log, argv: argv, dir: dir,
+                                  env: env, unset: unset)
+  end
+
+  def pkg_with(steps)
+    p = StepPkg.new("stepped")
+    p.steps = steps
+    p.ran = []
+    # Capture instead of executing: what matters here is WHICH
+    # command would run, in which directory, with which environment.
+    p.define_singleton_method(:run_command) do |log, argv|
+      @ran << [log, argv, Dir.pwd, ENV["PROBE"], ENV.key?("GONE")]
+      true
+    end
+    return p
+  end
+
+  def test_tokens_are_expanded
+    with_fake_tc do
+      p = pkg_with([Step("b.log", ["make", "-j$PAR", "P=$INSTALL/x"])])
+      Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
+      _, argv, = p.ran.first
+      assert_equal "make", argv[0]
+      assert_equal "-j#{BUILD_PAR}", argv[1]
+      assert_match(%r{\AP=/.*/x\z}, argv[2])
+      refute_includes argv[2], "$INSTALL"
+    end
+  end
+
+  def test_steps_run_in_order
+    with_fake_tc do
+      p = pkg_with([Step("a.log", ["one"]), Step("b.log", ["two"])])
+      Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
+      assert_equal ["a.log", "b.log"], p.ran.map(&:first)
+    end
+  end
+
+  # A failing step stops the build: the ones after it would compile
+  # against whatever the failed one did not produce.
+  def test_a_failing_step_stops_the_rest
+    with_fake_tc do
+      p = pkg_with([Step("a.log", ["one"]), Step("b.log", ["two"])])
+      p.define_singleton_method(:run_command) { |log, argv|
+        @ran << [log, argv, Dir.pwd, nil, false]
+        false
+      }
+      Dir.mktmpdir { |d| refute p.run_build_steps(Pathname.new(d)) }
+      assert_equal ["a.log"], p.ran.map(&:first)
+    end
+  end
+
+  def test_dir_changes_the_working_directory
+    with_fake_tc do
+      Dir.mktmpdir do |d|
+        FileUtils.mkdir_p(File.join(d, "sub"))
+        p = pkg_with([Step("b.log", ["x"], dir: "sub")])
+        FileUtils.chdir(d) { p.run_build_steps(Pathname.new(d)) }
+        assert_equal "sub", File.basename(p.ran.first[2])
+      end
+    end
+  end
+
+  def test_env_applies_to_the_step_and_is_restored
+    with_fake_tc do
+      p = pkg_with([Step("b.log", ["x"], env: { "PROBE" => "set" })])
+      Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
+      assert_equal "set", p.ran.first[3]
+      assert_nil ENV["PROBE"]
+    end
+  end
+
+  # micropython's mpy-cross must not see the cross compiler.
+  def test_unset_removes_a_variable_for_the_step_only
+    with_fake_tc do
+      ENV["GONE"] = "yes"
+      p = pkg_with([Step("b.log", ["x"], unset: ["GONE"])])
+      Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
+      refute p.ran.first[4], "variable should be absent inside the step"
+      assert_equal "yes", ENV["GONE"], "and restored after it"
+    ensure
+      ENV.delete("GONE")
+    end
+  end
+
+  # The steps are part of the recipe, so changing one is a rebuild.
+  def test_steps_are_part_of_the_fingerprint
+    with_fake_tc do
+      a = pkg_with([Step("b.log", ["make", "X=1"])]).build_recipe_digest
+      b = pkg_with([Step("b.log", ["make", "X=2"])]).build_recipe_digest
+      refute_equal a, b
+    end
+  end
+
+  # micropython is the case the mechanism was shaped around.
+  def test_micropython_declares_its_two_components
+    steps = MicropythonPackage.new.build_steps
+    dirs = steps.map(&:dir)
+    assert_includes dirs, "mpy-cross"
+    assert_includes dirs, "ports/unix"
+
+    mpy = steps.find { |s| s.dir == "mpy-cross" }
+    assert_includes mpy.unset, "CC"
+    assert_includes mpy.unset, "CROSS_COMPILE"
+
+    unix = steps.select { |s| s.dir == "ports/unix" }
+    assert_equal 2, unix.length, "submodules, then the port itself"
+    assert_equal "-static", unix.last.env["LDFLAGS_EXTRA"]
   end
 end

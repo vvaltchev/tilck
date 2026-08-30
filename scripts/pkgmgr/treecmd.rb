@@ -38,9 +38,9 @@ class TreecmdPackage < Package
            out: "/dev/null", err: "/dev/null")
   end
 
-  def install_impl_internal(install_dir)
-    return run_command("build.log", ["make", "-j#{BUILD_PAR}"])
-  end
+  def build_steps = [
+    Step("build.log", ["make", "-j$PAR"]),
+  ]
 end
 
 pkgmgr.register(TreecmdPackage.new())

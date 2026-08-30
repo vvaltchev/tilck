@@ -32,60 +32,42 @@ class MicropythonPackage < Package
     ["ports/unix/build-standard/micropython", false],
   ]
 
-  def install_impl_internal(install_dir)
-    ok = build_mpy_cross
-    return false if !ok
-    return build_unix_port
-  end
+  # mpy-cross is compiled for the HOST, so it must not inherit the
+  # cross compiler the target build sets up -- hence `unset` rather
+  # than an override.
+  CC_VARS = %w[CC CXX AR NM RANLIB CROSS_PREFIX CROSS_COMPILE].freeze
 
-  private
+  def build_steps
 
-  # mpy-cross must be compiled for the host, not the target.
-  def build_mpy_cross
-    cc_vars = %w[CC CXX AR NM RANLIB CROSS_PREFIX CROSS_COMPILE]
-    with_saved_env(cc_vars) do
-      cc_vars.each { |v| ENV.delete(v) }
-      chdir("mpy-cross") do
-        make_argv = ["make", "V=1", "-j#{BUILD_PAR}"]
+    mpy_cross = ["make", "V=1", "-j$PAR"]
 
-        # macOS: Clang treats the VLA-folded-to-constant-array idiom
-        # used by MP_STATIC_ASSERT as -Werror,-Wgnu-folding-constant.
-        if OS == "Darwin"
-          make_argv << "CFLAGS_EXTRA=-Wno-error=gnu-folding-constant"
-        end
+    unix_port = [
+      "make", "V=1",
+      "MICROPY_PY_FFI=0",
+      "MICROPY_PY_THREAD=0",
+      "MICROPY_PY_BTREE=0",
+      "-j$PAR",
+    ]
 
-        return run_command("build.log", make_argv)
-      end
+    if OS == "Darwin"
+      # Clang treats the VLA-folded-to-constant-array idiom used by
+      # MP_STATIC_ASSERT as -Werror,-Wgnu-folding-constant.
+      mpy_cross << "CFLAGS_EXTRA=-Wno-error=gnu-folding-constant"
+
+      # The unix port Makefile detects Darwin and forces CC=clang plus
+      # macOS-specific linker flags (-Wl,-dead_strip). We cross-compile
+      # for Linux/Tilck with the GNU toolchain, so tell it we are on
+      # Linux and let it take the right path entirely.
+      unix_port << "UNAME_S=Linux"
     end
-  end
 
-  def build_unix_port
-    chdir("ports/unix") do
-      ok = run_command("make_submodules.log", ["make", "submodules"])
-      return false if !ok
-
-      with_saved_env(["LDFLAGS_EXTRA"]) do
-        ENV["LDFLAGS_EXTRA"] = "-static"
-        make_argv = [
-          "make", "V=1",
-          "MICROPY_PY_FFI=0",
-          "MICROPY_PY_THREAD=0",
-          "MICROPY_PY_BTREE=0",
-          "-j#{BUILD_PAR}",
-        ]
-
-        # macOS: the unix port Makefile detects Darwin and forces
-        # CC=clang plus macOS-specific linker flags (-Wl,-dead_strip).
-        # Since we're cross-compiling for Linux/Tilck with the GNU
-        # toolchain, tell the Makefile we're on Linux so it takes the
-        # right code path entirely.
-        if OS == "Darwin"
-          make_argv << "UNAME_S=Linux"
-        end
-
-        return run_command("build.log", make_argv)
-      end
-    end
+    return [
+      Step("build.log", mpy_cross, dir: "mpy-cross", unset: CC_VARS),
+      Step("make_submodules.log", ["make", "submodules"],
+           dir: "ports/unix"),
+      Step("build.log", unix_port, dir: "ports/unix",
+           env: { "LDFLAGS_EXTRA" => "-static" }),
+    ]
   end
 end
 
