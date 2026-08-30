@@ -225,15 +225,25 @@ class Package
   # hermetic/<gcc-ver>/gcc/<gcc-ver>/ — redundant-looking, but it keeps
   # every package on the uniform <root>/<pkg>/<ver>/ layout the install
   # scanners expect.
+  # Which hermetic stack an install of `ver` belongs to.
+  #
+  # For everything except the compiler this is the stack the world is
+  # currently being built for: choosing a different compiler means
+  # changing HOST_VER_GCC and rebuilding, which is coherent. host_gcc
+  # overrides it, because a compiler must belong to ITS OWN stack —
+  # binding one to another compiler's stack is how a gcc ends up
+  # configured against a sysroot it has no business in.
+  def stack_gcc_ver(ver = nil) = pkgmgr.default_hermetic_gcc_ver
+
   # "gcc-<ver>", not a bare version: the compiler is named because it
   # might not always be gcc, and it matches the target-side gcc-<ver>/
   # directories at the root of the toolchain. Both live on the package
   # manager so there is a single definition.
-  def hermetic_root = pkgmgr.hermetic_root
+  def hermetic_root = pkgmgr.hermetic_root(stack_gcc_ver)
 
   # The composed sysroot everything hermetic is built against: our
   # glibc, our headers, and a symlink farm of the resolved libraries.
-  def hermetic_sysroot = pkgmgr.hermetic_sysroot
+  def hermetic_sysroot = pkgmgr.hermetic_sysroot(stack_gcc_ver)
 
   # The root directory for the final install (where mv moves to).
   # For target packages, uses default_arch (which for the base class
@@ -271,6 +281,13 @@ class Package
   def final_install_prefix(staging_path)
     ver_dir = File.basename(staging_path.to_s)
     return final_install_root / pkg_dirname / ver_dir / "install"
+  end
+
+  # The version currently being installed, which is NOT default_ver
+  # when the user asked for another one. Taken from the staging
+  # directory's own name, the same way final_install_prefix does.
+  def installing_ver(staging_path)
+    return Ver(File.basename(staging_path.to_s))
   end
 
   # Clean build artifacts from a staging directory, keeping the
@@ -371,6 +388,33 @@ class Package
     end
   end
 
+  # Discard the build tree, keeping the install prefix and the logs.
+  #
+  # The logs are the record of HOW a package was built, and they are
+  # worth more than the space: warnings a newer compiler raises on older
+  # code often mark undefined behaviour it is about to exploit, and that
+  # signal is only visible in the build log. Deleting them alongside the
+  # source made the question unanswerable without a full rebuild.
+  def prune_build_tree
+
+    # A package configured out of tree — binutils, glibc, gcc, qemu —
+    # writes its logs inside the build directory about to be deleted.
+    # Lift them out first, prefixed with where they came from.
+    Dir.children(".").each do |d|
+      next if d == "install" || !File.directory?(d)
+
+      Dir.glob("#{d}/*.log").each do |log|
+        FileUtils.mv(log, "#{d}-#{File.basename(log)}")
+      end
+    end
+
+    Dir.children(".").each { |e|
+      next if e == "install"
+      next if e.end_with?(".log")
+      rm_rf(e)
+    }
+  end
+
   # The shape every hermetic library build has.
   #
   # Our compiler; --prefix naming the SYSROOT rather than the package's
@@ -394,10 +438,7 @@ class Package
     FileUtils.mkdir_p("#{install_dir}/install")
     FileUtils.mv("#{destdir}#{sysroot_usr}", "#{install_dir}/install/usr")
 
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 
@@ -443,7 +484,7 @@ class Package
   # libstdc++ reaches the sysroot only through the graft that follows.
   #
   # Returns true when there is nothing to check.
-  def post_sysroot_check = true
+  def post_sysroot_check(gcc_ver = nil) = true
 
   # Should the hermeticity audit ask its question with a hostile
   # LD_LIBRARY_PATH?
@@ -464,12 +505,20 @@ class Package
   # unless it overrides: host_gcc is a :distro package, but its TARGET
   # runtime — libstdc++, libgcc_s — is compiled against our glibc and
   # has to be in the sysroot for anything it builds to run.
-  def sysroot_fragments
+  def sysroot_fragments(gcc_ver = nil)
 
     return [] if host_tier != :hermetic
 
     inst = find_install(default_ver)
-    return inst ? [inst.path / "install"] : []
+    return [] if inst.nil?
+
+    # Only if this install actually lives in the stack being composed.
+    # Without the check, composing stack A would link in packages
+    # installed under stack B.
+    root = pkgmgr.hermetic_root(gcc_ver).to_s
+    return [] if !inst.path.to_s.start_with?(root + "/")
+
+    return [inst.path / "install"]
   end
 
   # A pin on a target dependency is meaningless — the target side is

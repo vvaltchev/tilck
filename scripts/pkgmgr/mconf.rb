@@ -134,10 +134,7 @@ class HostMconfPackage < Package
     # of busybox source we no longer need. Discard everything but the
     # install prefix so the tree matches expected_files and nothing
     # else.
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 end

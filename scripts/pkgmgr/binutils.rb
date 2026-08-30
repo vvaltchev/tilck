@@ -131,10 +131,7 @@ class HostBinutilsPackage < Package
 
     # The deliverable is the install prefix; the source and the build
     # tree together are several hundred MB of no further use.
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 end

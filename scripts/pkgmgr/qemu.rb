@@ -35,12 +35,16 @@ QEMU_SOURCE = SourceRef.new(
 # option, not a dependency, so supporting every system Tilck runs on
 # costs nothing beyond build time.
 #
-# --disable-werror is not laziness: a 2021 source tree meets a compiler
-# from 2024, and GCC 14 turned several long-standing warnings into
-# errors by default. If a QEMU version cannot be built by the default
-# compiler at all, the answer is to pin it to a contemporary one —
-# host_gcc supports majors 11 through 16 for exactly this — rather than
-# to patch QEMU.
+# Warning behaviour is left at QEMU's default, deliberately. QEMU
+# enables -Werror only for git builds — a release tarball defaults to
+# werror off — so nothing here overrides it in either direction. That
+# matters: a warning a newer compiler raises on older code is often a
+# real undefined behaviour it is about to exploit, and silencing it
+# with --disable-werror would hide exactly the signal worth having.
+#
+# If a QEMU version cannot be built by the default compiler, the answer
+# is to pin that build to a contemporary one rather than to quieten the
+# compiler.
 #
 class HostQemuPackage < Package
 
@@ -77,7 +81,7 @@ class HostQemuPackage < Package
   def enabled? = HERMETIC_ENABLED
 
   # Nothing is built against QEMU.
-  def sysroot_fragments = []
+  def sysroot_fragments(gcc_ver = nil) = []
 
   def expected_files(ver = nil) = [
     ["install/bin/qemu-system-i386", false],
@@ -120,8 +124,6 @@ class HostQemuPackage < Package
           "--disable-seccomp",
           "--disable-capstone",
           "--disable-docs",
-
-          "--disable-werror",
         ])
         next if !ok
 
@@ -141,10 +143,7 @@ class HostQemuPackage < Package
 
     FileUtils.mv("#{destdir}#{prefix}", "#{install_dir}/install")
 
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 end

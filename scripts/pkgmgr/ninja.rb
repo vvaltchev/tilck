@@ -78,10 +78,7 @@ class HostNinjaPackage < Package
     FileUtils.mkdir_p(bin)
     FileUtils.cp("ninja", bin)
 
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 end

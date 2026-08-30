@@ -103,10 +103,7 @@ class HostMesonPackage < Package
     SH
     FileUtils.chmod(0755, wrapper)
 
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
 
     # Run it, with the staging tree standing in for the final path, so
     # a wrapper that cannot start is caught here rather than by the

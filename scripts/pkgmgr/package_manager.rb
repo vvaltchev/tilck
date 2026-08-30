@@ -394,12 +394,16 @@ class PackageManager
       # :distro and still contributes its target runtime, while a
       # hermetic APPLICATION contributes nothing at all because nothing
       # is built against it.
-      if !pkg.sysroot_fragments.empty?
-        compose_hermetic_sysroot
+      # The stack this install belongs to, which for host_gcc is its
+      # OWN version rather than the current default.
+      stack = pkg.stack_gcc_ver(ver)
+
+      if !pkg.sysroot_fragments(stack).empty?
+        compose_hermetic_sysroot(stack)
 
         # Now that the sysroot includes this package, let it check
         # whatever it could not check before.
-        ok = false if !pkg.post_sysroot_check
+        ok = false if !pkg.post_sysroot_check(stack)
       end
 
       # Audited on being hermetic, not on contributing to the sysroot:
@@ -516,36 +520,53 @@ class PackageManager
   # The hermetic stack's root, and the sysroot inside it. Defined here
   # rather than on Package because several packages, the sysroot
   # composition and the audit all need the same answer.
-  def hermetic_root
+  def hermetic_root(gcc_ver = nil)
 
-    ver = get_config_ver("gcc", host: true)
+    gcc_ver ||= default_hermetic_gcc_ver
 
-    if ver.nil?
+    if gcc_ver.nil?
       raise "HOST_VER_GCC is missing from other/host_pkg_versions: it " \
             "names the hermetic stack's directory, so without it every " \
             "hermetic package would install to the same broken path"
     end
 
-    return HOST_DIR_HERMETIC_BASE / "gcc-#{ver}"
+    return HOST_DIR_HERMETIC_BASE / "gcc-#{gcc_ver}"
   end
 
-  def hermetic_sysroot = hermetic_root / "sysroot"
+  def hermetic_sysroot(gcc_ver = nil) = hermetic_root(gcc_ver) / "sysroot"
+
+  # Which stack the world is currently being built for. Everything
+  # except host_gcc belongs to this one: choosing a different compiler
+  # means changing HOST_VER_GCC and rebuilding, which is a coherent
+  # operation. host_gcc is the exception, because a compiler has to
+  # belong to ITS OWN stack — see HostGccPackage#stack_gcc_ver.
+  def default_hermetic_gcc_ver = get_config_ver("gcc", host: true)
+
+  # Every hermetic stack that exists on disk.
+  def hermetic_stacks
+
+    return [] if !HOST_DIR_HERMETIC_BASE.directory?
+
+    return Dir.children(HOST_DIR_HERMETIC_BASE)
+              .select { |d| d.start_with?("gcc-") }
+              .map { |d| d.sub("gcc-", "") }
+  end
 
   # readelf and the dynamic loader the audit uses. Ours when we have
   # them — we build binutils, so readelf is a tool we own — falling
   # back to the system readelf, which reads the same ELF either way.
   # Without our loader there is no resolution check, and the audit
   # reports that rather than passing silently.
-  def audit_tools
+  def audit_tools(gcc_ver = nil)
 
     bu = get("host_binutils")
     bu_inst = bu&.find_install(bu.default_ver)
     readelf = bu_inst ? bu_inst.path / "install/bin/readelf" : "readelf"
 
-    libc = get("host_glibc")
-    libc_inst = libc&.find_install(libc.default_ver)
-    loader = libc_inst ?
-      libc_inst.path / "install/usr/lib/ld-linux-x86-64.so.2" : nil
+    # The loader of the stack being audited, not of whichever stack
+    # happens to be the default.
+    loader = hermetic_sysroot(gcc_ver) / "usr/lib/ld-linux-x86-64.so.2"
+    loader = nil if !File.exist?(loader)
 
     return [readelf, loader]
   end
@@ -561,7 +582,7 @@ class PackageManager
     inst = pkg.find_install(ver)
     return true if inst.nil?
 
-    readelf, loader = audit_tools
+    readelf, loader = audit_tools(pkg.stack_gcc_ver(ver))
     if loader.nil?
       warning "No hermetic loader yet: auditing #{pkg.name} without " \
               "checking where its libraries resolve"
@@ -599,12 +620,14 @@ class PackageManager
   # makes that path real: glibc's own libc.so.6 will not exec before
   # this has run, its ELF interpreter pointing into a directory that
   # does not exist yet.
-  def compose_hermetic_sysroot
+  def compose_hermetic_sysroot(gcc_ver = nil)
 
-    fragments = @packages.values.flat_map { |p| p.sysroot_fragments }
+    gcc_ver ||= default_hermetic_gcc_ver
+    fragments = @packages.values.flat_map { |p| p.sysroot_fragments(gcc_ver) }
 
-    n = Sysroot.compose(hermetic_sysroot, fragments)
-    info "Hermetic sysroot: #{n} entries from #{fragments.length} packages"
+    n = Sysroot.compose(hermetic_sysroot(gcc_ver), fragments)
+    info "Hermetic sysroot gcc-#{gcc_ver}: #{n} entries from " \
+         "#{fragments.length} packages"
     return n
   end
 
@@ -810,9 +833,12 @@ class PackageManager
     # Without this it keeps symlinks pointing at packages that are no
     # longer there, and the next thing to build against it fails in a
     # way that looks nothing like the cause.
-    if removed > 0 && hermetic_sysroot.directory?
+    if removed > 0 && !hermetic_stacks.empty?
       refresh()
-      compose_hermetic_sysroot
+      # Every stack, not just the default: an uninstall can invalidate
+      # any of them, and a stale symlink is the failure mode hardest to
+      # notice.
+      hermetic_stacks.each { |v| compose_hermetic_sysroot(Ver(v)) }
     end
   end
 

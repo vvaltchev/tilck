@@ -80,10 +80,7 @@ class HostLinuxHeadersPackage < Package
 
     # A kernel tree is ~1.5 GB extracted and we want a few MB of
     # headers out of it.
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 end
