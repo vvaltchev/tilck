@@ -17,7 +17,11 @@ Architecture = Struct.new(
   :ld_output,           # Output format for linker scripts
   :efi,                 # UEFI architecture name
   :gcc_tc,              # Arch name for GCC toolchain
-  :boards,              # List of boards (only for embedded architectures)
+  # Every arch has at least one board, because the board is part of an
+  # installed package's path: a package built for one board must not
+  # be mistaken for the same package built for another. The x86 ones
+  # have exactly one, "pc", which is the ordinary PC platform.
+  :boards,
   :default_board,
 
   # Determined at runtime
@@ -52,6 +56,8 @@ ALL_ARCHS = [
     ld_output: "elf_i386",
     efi: "ia32",
     gcc_tc: "i686",
+    boards: ["pc"],
+    default_board: "pc",
   ),
   Architecture.new(
     name: "x86_64",
@@ -60,6 +66,8 @@ ALL_ARCHS = [
     ld_output: "elf_x86_64",
     efi: "x86_64",
     gcc_tc: "x86_64",
+    boards: ["pc"],
+    default_board: "pc",
   ),
   Architecture.new(
     name: "riscv64",

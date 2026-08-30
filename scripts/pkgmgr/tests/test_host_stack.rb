@@ -23,13 +23,13 @@ class TestPortableTier < Minitest::Test
   # from scratch whenever what it views changes, so composing it starts
   # by deleting it. A test whose portable paths escape the fake
   # toolchain therefore destroys the developer's real one — which is
-  # what happened before with_fake_tc overrode HOST_DIR_PORTABLE.
+  # what happened before with_fake_tc overrode the toolchain root.
   def test_host_stack_paths_stay_inside_the_fake_toolchain
     with_fake_tc do |tc|
       pkg = portable_pkg
 
       for path in [pkg.stack_root, pkg.stack_sysroot,
-                   pkg.host_install_root]
+                   pkg.coords.pkgs_dir]
         assert path.to_s.start_with?(tc.to_s + "/"),
                "#{path} escapes the fake toolchain at #{tc}"
       end
@@ -43,8 +43,8 @@ class TestPortableTier < Minitest::Test
       pkg = portable_pkg
       gcc_ver = pkgmgr.get_config_ver("gcc", host: true).to_s
 
-      root = pkg.host_install_root.to_s
-      assert_match(%r{/portable/gcc-#{Regexp.escape(gcc_ver)}\z}, root)
+      root = pkg.coords.pkgs_dir.to_s
+      assert_match(%r{/any/gcc-#{Regexp.escape(gcc_ver)}/pkgs\z}, root)
 
       # Neither the distro nor the system compiler appears: neither
       # takes part in the build, and the result runs without them.
@@ -55,13 +55,16 @@ class TestPortableTier < Minitest::Test
 
   # A package declared portable lands under portable/, which is the
   # promise that it runs on any host of this OS and architecture.
-  def test_a_stack_package_lands_in_the_portable_tree
+  def test_a_stack_package_needs_nothing_from_the_machine
     with_fake_tc do
-      root = portable_pkg.host_install_root.to_s
-      assert_includes root, "/portable/"
+      c = portable_pkg.coords
+      assert_equal Coords::ANY, c.env
 
-      # Not under the distro either: that is the whole distinction.
-      refute_includes root, HOST_DISTRO
+      # Neither the distro nor the host compiler is in the path:
+      # neither took part in the build, and the result runs without
+      # them.
+      refute_includes c.to_s, HOST_DISTRO
+      refute_includes c.to_s, HOST_CC
     end
   end
 
@@ -69,12 +72,16 @@ class TestPortableTier < Minitest::Test
   # outside the package tree altogether -- every scanner that walks
   # <pkg>/<ver>/ would otherwise have to be taught to skip it, and one
   # of them was not.
-  def test_sysroot_is_outside_the_package_tree
+  # A sysroot belongs to exactly one stack, so it lives inside it --
+  # beside pkgs/, never under it, since every scanner walking
+  # pkgs/<pkg>/<ver>/ would otherwise read it as a package.
+  def test_sysroot_sits_beside_the_packages_not_under_them
     with_fake_tc do
       pkg = portable_pkg
-      refute pkg.stack_sysroot.to_s.start_with?(
-               pkg.host_install_root.to_s + "/")
-      assert_includes pkg.stack_sysroot.to_s, "/sysroots/"
+      sysroot = pkg.stack_sysroot.to_s
+
+      refute sysroot.start_with?(pkg.coords.pkgs_dir.to_s + "/")
+      assert_equal (pkg.coords.root / "sysroot").to_s, sysroot
     end
   end
 
@@ -225,8 +232,8 @@ class TestPortableStackBinding < Minitest::Test
 
       pkgmgr.with_host_stack(Ver("13.4.0")) do
         assert_equal Ver("13.4.0"), pkg.stack_gcc_ver
-        assert pkg.stack_root.to_s.end_with?("/portable/gcc-13.4.0")
-        assert pkg.host_install_root.to_s.end_with?("/portable/gcc-13.4.0")
+        assert pkg.stack_root.to_s.end_with?("/any/gcc-13.4.0")
+        assert pkg.coords.to_s.end_with?("/any/gcc-13.4.0")
       end
 
       # ...and the scope is scoped.
@@ -286,8 +293,8 @@ class TestPortableStackBinding < Minitest::Test
       b = pkgmgr.stack_root(Ver("14.4.0")).to_s
 
       refute_equal a, b
-      assert a.end_with?("/portable/gcc-11.5.0")
-      assert b.end_with?("/portable/gcc-14.4.0")
+      assert a.end_with?("/any/gcc-11.5.0")
+      assert b.end_with?("/any/gcc-14.4.0")
     end
   end
 
@@ -296,7 +303,7 @@ class TestPortableStackBinding < Minitest::Test
       a = pkgmgr.stack_sysroot(Ver("11.5.0")).to_s
       b = pkgmgr.stack_sysroot(Ver("14.4.0")).to_s
       refute_equal a, b
-      assert a.end_with?("/sysroots/#{HOST_OS}-#{HOST_ARCH.name}/gcc-11.5.0")
+      assert a.end_with?("/any/gcc-11.5.0/sysroot")
     end
   end
 
@@ -307,10 +314,10 @@ class TestPortableStackBinding < Minitest::Test
   # package called "sysroot" at version "usr".
   def test_the_sysroot_is_not_inside_the_package_tree
     with_fake_tc do
-      pkgs = pkgmgr.stack_root(Ver("14.4.0")).to_s
+      pkgs = (pkgmgr.stack_coords(Ver("14.4.0")).pkgs_dir).to_s
       sysroot = pkgmgr.stack_sysroot(Ver("14.4.0")).to_s
 
-      refute sysroot.start_with?(pkgs),
+      refute sysroot.start_with?(pkgs + "/"),
              "#{sysroot} must not sit under #{pkgs}"
     end
   end
@@ -334,9 +341,13 @@ class TestPortableStackBinding < Minitest::Test
 
   def test_stacks_on_disk_are_discoverable
     with_fake_tc do
-      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-11.5.0")
-      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-14.4.0")
-      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "not-a-stack")
+      FileUtils.mkdir_p(stack_pkgs("11.5.0"))
+      FileUtils.mkdir_p(stack_pkgs("14.4.0"))
+      # A stack id may be anything -- the schema leaves room for
+      # gcc-14.4.0-lto or a clang stack -- but host_stacks answers
+      # "which GCC versions have a stack", so a non-GCC one is not in
+      # the list.
+      FileUtils.mkdir_p(Coords.new(HOST_OS_ARCH, nil, "some-other").pkgs_dir)
 
       assert_equal ["11.5.0", "14.4.0"], pkgmgr.host_stacks.sort
     end
@@ -382,49 +393,59 @@ end
 
 
 #
-# Telling a compiler SLOT from a package whose name merely starts like
-# one. portable/ holds both: gcc-14.4.0/ is a level containing
-# packages, while gcc-riscv64-musl/ IS a package. Getting this wrong
-# walks one level too deep and reads bin/, share/ and include/ as
-# version numbers -- which is exactly what happened, and was caught
-# only because the scanner reports what it cannot parse instead of
-# skipping it silently.
+# The ambiguity that toolchain4's compiler_slot? existed to guess at,
+# now settled by the layout instead of a predicate.
 #
-class TestCompilerSlotDetection < Minitest::Test
+# portable/ used to hold both gcc-14.4.0 (a directory OF packages) and
+# gcc-riscv64-musl (a package), at the same depth, so a name had to be
+# parsed to tell them apart -- and the first version of that test got
+# it wrong, walking into the cross-compiler and reading its bin/ and
+# share/ directories as version numbers. With three fixed coordinates
+# a package can only ever appear under pkgs/, so there is nothing left
+# to disambiguate.
+#
+class TestNoCompilerPackageAmbiguity < Minitest::Test
 
   include TestHelper
 
-  def slot?(name) = pkgmgr.send(:compiler_slot?, name)
+  # A package whose name looks exactly like a stack, scanned correctly
+  # because of WHERE it is, not what it is called.
+  def test_a_package_named_like_a_compiler_is_a_package
+    with_fake_tc do
+      reset_pkgmgr!
+      FileUtils.mkdir_p(portable_pkgs / "gcc-riscv64-musl" / "13.3.0")
 
-  def test_a_versioned_compiler_dir_is_a_slot
-    assert slot?("gcc-14.4.0")
-    assert slot?("gcc-11.5.0")
-    assert slot?("clang-14.0.0")
+      found = pkgmgr.send(:scan_toolchain)
+      musl = found.select { |i| i.pkgname == "gcc-riscv64-musl" }
+
+      assert_equal 1, musl.length
+      assert_equal Ver("13.3.0"), musl.first.ver
+    end
   end
 
-  # The musl cross-compilers, which live in portable/ beside the stack.
-  def test_the_musl_cross_compilers_are_packages_not_slots
-    refute slot?("gcc-i386-musl")
-    refute slot?("gcc-x86_64-musl")
-    refute slot?("gcc-riscv64-musl")
-  end
-
-  def test_ordinary_packages_are_not_slots
-    refute slot?("glib2")
-    refute slot?("gtk3")
-    refute slot?("mtools")
-    refute slot?("gcc")
-  end
-
-  # And the same distinction as the stack list sees it.
+  # ...and it is not mistaken for one of our stacks.
   def test_the_stack_list_excludes_cross_compiler_packages
     with_fake_tc do
-      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-riscv64-musl" / "13.3.0")
-      FileUtils.mkdir_p(HOST_DIR_PORTABLE / "gcc-14.4.0" / "glib2")
+      FileUtils.mkdir_p(portable_pkgs / "gcc-riscv64-musl" / "13.3.0")
+      FileUtils.mkdir_p(stack_pkgs("14.4.0") / "glib2" / "2.88.3")
 
       stacks = pkgmgr.host_stacks
       assert_includes stacks, "14.4.0"
       refute_includes stacks, "riscv64-musl"
+    end
+  end
+
+  # The scanner reads versions only from the version level, so a
+  # package's own subdirectories are never mistaken for versions --
+  # the concrete failure the old predicate produced.
+  def test_package_subdirectories_are_not_read_as_versions
+    with_fake_tc do
+      reset_pkgmgr!
+      root = portable_pkgs / "gcc-riscv64-musl" / "13.3.0"
+      ["bin", "share", "include"].each { |d| FileUtils.mkdir_p(root / d) }
+
+      out, = capture_io { pkgmgr.send(:scan_toolchain) }
+      refute_match(/Invalid package version/, out)
     end
   end
 end

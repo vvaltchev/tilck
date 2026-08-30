@@ -18,7 +18,7 @@ class TestUninstallSingle < Minitest::Test
         pkgmgr.refresh()
 
         gcc = FAKE_GCC_VER.to_s
-        ver_dir = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "1.0.0"
+        ver_dir = target_pkgs(ARCH, gcc) / "foo" / "1.0.0"
         assert ver_dir.directory?
 
         pkgmgr.uninstall("foo", false, false)
@@ -35,7 +35,7 @@ class TestUninstallSingle < Minitest::Test
         pkgmgr.refresh()
 
         gcc = FAKE_GCC_VER.to_s
-        pkg_dir = tc / "gcc-#{gcc}" / ARCH.name / "foo"
+        pkg_dir = target_pkgs(ARCH, gcc) / "foo"
         pkgmgr.uninstall("foo", false, false)
         refute pkg_dir.exist?
       end
@@ -50,7 +50,7 @@ class TestUninstallSingle < Minitest::Test
         pkgmgr.refresh()
 
         gcc = FAKE_GCC_VER.to_s
-        ver_dir = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "1.0.0"
+        ver_dir = target_pkgs(ARCH, gcc) / "foo" / "1.0.0"
         pkgmgr.uninstall("foo", true, false)  # dry = true
         assert ver_dir.directory?  # still there
       end
@@ -74,7 +74,7 @@ class TestUninstallSingle < Minitest::Test
         pkgmgr.register(pkg)
 
         # Manually create the noarch install dir
-        ver_dir = tc / "noarch" / "noarch_foo" / "1.0.0"
+        ver_dir = noarch_pkgs / "noarch_foo" / "1.0.0"
         FileUtils.mkdir_p(ver_dir)
         pkgmgr.refresh()
 
@@ -123,7 +123,7 @@ class TestUninstallOrphans < Minitest::Test
     pkgmgr.install("host_gone")
     reset_pkgmgr!
     pkgmgr.refresh()
-    return HOST_DIR_DISTRO / "gone" / "1.0.0"
+    return distro_pkgs / "gone" / "1.0.0"
   end
 
   def test_orphan_is_discovered
@@ -261,7 +261,7 @@ class TestUninstallALL < Minitest::Test
 
         # Also create a "riscv64" install manually
         gcc = FAKE_GCC_VER.to_s
-        rv_dir = tc / "gcc-#{gcc}" / "riscv64" / "foo" / "1.0.0"
+        rv_dir = target_pkgs(ALL_ARCHS["riscv64"], gcc) / "foo" / "1.0.0"
         FileUtils.mkdir_p(rv_dir)
         pkgmgr.refresh()
 
@@ -306,7 +306,7 @@ class TestUninstallVersions < Minitest::Test
 
         # Also install a second "version" manually
         gcc = FAKE_GCC_VER.to_s
-        v2_dir = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "2.0.0"
+        v2_dir = target_pkgs(ARCH, gcc) / "foo" / "2.0.0"
         FileUtils.mkdir_p(v2_dir)
         pkgmgr.refresh()
 
@@ -327,7 +327,7 @@ class TestUninstallVersions < Minitest::Test
 
         # Also add 2.0.0
         gcc = FAKE_GCC_VER.to_s
-        v2_dir = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "2.0.0"
+        v2_dir = target_pkgs(ARCH, gcc) / "foo" / "2.0.0"
         FileUtils.mkdir_p(v2_dir)
         pkgmgr.refresh()
 

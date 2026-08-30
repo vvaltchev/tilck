@@ -75,7 +75,7 @@ class GtestPackage < Package
       return false if !ok
     end
 
-    ver_dir = host_install_root / pkg_dirname / ver_dirname(ver)
+    ver_dir = coords.pkgs_dir / pkg_dirname / ver_dirname(ver)
     build_dir = ver_dir / "build"
     install_dir = ver_dir / "install"
     FileUtils.mkdir_p(build_dir)

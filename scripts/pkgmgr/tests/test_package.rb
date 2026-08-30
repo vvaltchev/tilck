@@ -276,7 +276,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
       # It carries no origin file, like every install made before
       # that file existed, and so reads as a default install.
       gcc_ver = ARCH.gcc_ver.to_s
-      old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+      old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
 
       pkg = FakePackage.new("foo")
@@ -327,7 +327,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
       # recorded as pinned: somebody asked for 0.9.0 by name, so a
       # later default bump must not drag them off it.
       gcc_ver = ARCH.gcc_ver.to_s
-      old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+      old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
       InstallOrigin.write(old_dir, false)
 
@@ -342,7 +342,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
   def test_install_without_origin_file_reads_as_default
     with_fake_tc do |tc|
       gcc_ver = ARCH.gcc_ver.to_s
-      old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+      old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
       refute (old_dir / InstallOrigin::FILE).exist?
 
