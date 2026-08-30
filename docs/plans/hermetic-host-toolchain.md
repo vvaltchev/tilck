@@ -276,7 +276,7 @@ Tracked to zero before this is considered done.
   * [x] `host_glibc` package
   * [ ] `host_gcc` package, majors 11 through 16
   * [x] tier 4 (`host_tier: :hermetic`) in the package manager
-  * [ ] composed sysroot + recomposition on resolution change
+  * [x] composed sysroot + recomposition on resolution change
   * [ ] hermeticity audit
   * [x] opt-in gating (`TILCK_HERMETIC=1`)
   * [ ] measured QEMU dependency closure, enumerated in this document

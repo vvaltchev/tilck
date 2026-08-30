@@ -95,7 +95,7 @@ class HostGlibcPackage < Package
   # has not composed the sysroot yet at this point in the build order.
   def linux_headers_include
     pkg = pkgmgr.get("host_linux_headers")
-    return pkg.install_prefix(pkg.default_ver) / "install" / "include"
+    return pkg.install_prefix(pkg.default_ver) / "install/usr/include"
   end
 
   def install_impl_internal(install_dir)

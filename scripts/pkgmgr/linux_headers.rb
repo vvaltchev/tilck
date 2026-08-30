@@ -22,6 +22,10 @@ LINUX_HEADERS_SOURCE = SourceRef.new(
 # copies headers, nothing more, which is why this sits below even
 # host_glibc in the build order.
 #
+# Installs a sysroot-shaped fragment (install/usr/include/...), the
+# convention every hermetic package follows so the symlink farm can
+# merge them all without special cases.
+#
 # An LTS kernel rather than the newest: these headers define the syscall
 # surface everything in the stack is compiled against, and there is
 # nothing to gain from tracking the tip. Note this is unrelated to the
@@ -53,9 +57,9 @@ class HostLinuxHeadersPackage < Package
   def enabled? = HERMETIC_ENABLED
 
   def expected_files(ver = nil) = [
-    ["install/include/linux/unistd.h", false],
-    ["install/include/asm/unistd.h", false],
-    ["install/include/asm-generic/errno.h", false],
+    ["install/usr/include/linux/unistd.h", false],
+    ["install/usr/include/asm/unistd.h", false],
+    ["install/usr/include/asm-generic/errno.h", false],
   ]
 
   def clean_build(dir)
@@ -70,7 +74,7 @@ class HostLinuxHeadersPackage < Package
     ok = run_command("headers.log", [
       "make", "headers_install",
       "ARCH=x86",
-      "INSTALL_HDR_PATH=#{install_dir}/install",
+      "INSTALL_HDR_PATH=#{install_dir}/install/usr",
     ])
     return false if !ok
 

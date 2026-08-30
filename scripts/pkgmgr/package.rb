@@ -220,25 +220,15 @@ class Package
   # hermetic/<gcc-ver>/gcc/<gcc-ver>/ — redundant-looking, but it keeps
   # every package on the uniform <root>/<pkg>/<ver>/ layout the install
   # scanners expect.
-  def hermetic_root
-
-    ver = pkgmgr.get_config_ver("gcc", host: true)
-
-    if ver.nil?
-      raise "HOST_VER_GCC is missing from other/host_pkg_versions: it " \
-            "names the hermetic stack's directory, so without it every " \
-            "hermetic package would install to the same broken path"
-    end
-
-    # "gcc-<ver>", not a bare version: the compiler is named because it
-    # might not always be gcc, and it matches the target-side
-    # gcc-<ver>/ directories at the root of the toolchain.
-    return HOST_DIR_HERMETIC_BASE / "gcc-#{ver}"
-  end
+  # "gcc-<ver>", not a bare version: the compiler is named because it
+  # might not always be gcc, and it matches the target-side gcc-<ver>/
+  # directories at the root of the toolchain. Both live on the package
+  # manager so there is a single definition.
+  def hermetic_root = pkgmgr.hermetic_root
 
   # The composed sysroot everything hermetic is built against: our
   # glibc, our headers, and a symlink farm of the resolved libraries.
-  def hermetic_sysroot = hermetic_root / "sysroot"
+  def hermetic_sysroot = pkgmgr.hermetic_sysroot
 
   # The root directory for the final install (where mv moves to).
   # For target packages, uses default_arch (which for the base class
