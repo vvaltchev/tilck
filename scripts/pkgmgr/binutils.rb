@@ -17,16 +17,24 @@ BINUTILS_SOURCE = SourceRef.new(
 # host_binutils: the assembler, linker and object tools the hermetic
 # toolchain is built with and builds through.
 #
-# First package of the hermetic stack, and the only one built by the
-# system compiler alone — at this point neither our glibc nor our GCC
-# exists yet. That is a bootstrap input, not a dependency: these are
-# build tools that run on the host, and what they are themselves linked
-# against does not reach anything they produce. The hermeticity that
-# matters belongs to the sysroot they target, which host_gcc fills in.
+# A :distro package, not a hermetic one. Its binaries are built by the
+# system compiler and link against the system libc, and the tier
+# describes what a package's own binaries depend on. That is fine:
+# these are build tools running on the host, and what they are linked
+# against does not reach anything they produce. Hermeticity belongs to
+# the sysroot they target.
 #
-# --with-sysroot points ld at our sysroot so that, once host_gcc has
-# populated it, nothing resolves out of /usr. The directory does not
-# exist yet at configure time and does not need to.
+# One binutils therefore serves every hermetic stack rather than being
+# rebuilt per compiler version. A GCC needing a particular binutils
+# pins it: Dep('host_binutils', true, ver: ...).
+#
+# --with-sysroot is not optional even though the value is only a
+# default: GNU ld rejects the runtime --sysroot flag unless it was
+# configured with --with-sysroot, and that runtime flag is how GCC
+# points ld at the right stack. The default names the hermetic base,
+# which exists but holds no usr/lib, so a bare `ld` invoked outside GCC
+# fails to find libraries rather than silently falling back to
+# /usr/lib. Failing closed is the point.
 #
 # See docs/plans/hermetic-host-toolchain.md.
 #
@@ -41,7 +49,7 @@ class HostBinutilsPackage < Package
       source: BINUTILS_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :distro,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [],
       default: false,
@@ -82,7 +90,7 @@ class HostBinutilsPackage < Package
     conf = [
       "../configure",
       "--prefix=#{prefix}",
-      "--with-sysroot=#{hermetic_sysroot}",
+      "--with-sysroot=#{HOST_DIR_HERMETIC_BASE}",
 
       # No translations: they would pull in the host's gettext, and
       # nothing here is user-facing enough to want them.
