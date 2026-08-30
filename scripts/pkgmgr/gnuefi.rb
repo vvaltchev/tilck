@@ -128,6 +128,10 @@ class GnuefiPackage < Package
     end
   end
 
+  # One call builds every arch in archs_needed, so all of them are
+  # recorded -- and only them.
+  def install_archs(ver = nil) = archs_needed
+
   def install_impl(ver)
 
     info "Install #{name} version: #{ver}"

@@ -125,8 +125,13 @@ class PackageManager
     @packages.values.select { |p|
       next false if !(p.host_supported? && p.board_supported? &&
                       p.arch_supported?)
+      # Every install, each judged against the recipe as it reads at
+      # ITS coordinates -- not the current one's recipe applied to all
+      # of them, which reported the whole set as stale from whichever
+      # arch happened not to be selected.
       p.get_install_list.any? { |i|
-        !i.path.nil? && !i.broken && p.build_inputs_changed?(i.ver)
+        !i.path.nil? && !i.broken &&
+        [:changed, :unknown].include?(p.build_inputs_state_of(i))
       }
     }
   end
@@ -448,8 +453,10 @@ class PackageManager
       # builds for i386, x86_64 AND noarch from one call, and
       # recording only what find_install happened to return left two
       # thirds of it unverifiable.
-      for i in pkg.get_install_list.select { |x| x.ver == ver && x.path }
-        pkg.write_build_inputs(i.path, ver)
+      for a in pkg.install_archs(ver)
+        i = a ? with_target_arch(a) { pkg.find_install(ver) }
+              : pkg.find_install(ver)
+        pkg.write_build_inputs(i) if i
       end
 
       # The sysroot is a view over what is installed, so it is stale
