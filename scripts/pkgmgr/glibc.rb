@@ -156,10 +156,7 @@ class HostGlibcPackage < Package
     FileUtils.mkdir_p("#{install_dir}/install")
     FileUtils.mv("#{destdir}#{sysroot_usr}", "#{install_dir}/install/usr")
 
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 end

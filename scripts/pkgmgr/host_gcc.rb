@@ -47,7 +47,21 @@ class HostGccPackage < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
-  # Latest point release of each supported major, per ftp.gnu.org.
+  # Latest point release of each major we intend to support, per
+  # ftp.gnu.org. INTEND is the operative word: this list is what the
+  # package will attempt, not a claim that each one works.
+  #
+  # What has actually been built against glibc 2.41:
+  #
+  #   11.5.0   not yet — needs --disable-libsanitizer, untested since
+  #   12.5.0   not yet — likewise
+  #   13.4.0   not yet — likewise
+  #   14.4.0   BUILT and verified hermetic
+  #   15.3.0   not attempted
+  #   16.2.0   not attempted
+  #
+  # Anything unverified is a claim waiting to be disproved: every one
+  # of the three failures above was found by building, not by reading.
   SUPPORTED = [
     Ver("11.5.0"), Ver("12.5.0"), Ver("13.4.0"),
     Ver("14.4.0"), Ver("15.3.0"), Ver("16.2.0"),
@@ -74,39 +88,48 @@ class HostGccPackage < Package
   def enabled? = HERMETIC_ENABLED
   def pkg_dirname = "gcc"
 
-  def expected_files(ver = nil) = [
-    ["install/bin/gcc", false],
-    ["install/bin/g++", false],
-    ["install/lib/gcc", true],
-  ]
-
-  # GCC is a :distro package, but the runtime it produces for the
-  # TARGET — libstdc++, libgcc_s — is compiled against our glibc and
-  # belongs in the sysroot: without it, anything C++ this compiler
-  # builds links fine and then dies at startup with
+  # A compiler belongs to ITS OWN stack, not to whichever one
+  # HOST_VER_GCC currently names.
   #
-  #   error while loading shared libraries: libstdc++.so.6
-  #
-  # because our loader has no reason to look in GCC's own lib64.
-  # Grafted at usr/lib rather than copied, so there stays one copy and
-  # it is obvious where it came from.
-  def sysroot_fragments
+  # This is the whole point of keying stacks by compiler version. With
+  # the base class's answer, `-s host_gcc:11.5.0` produced a compiler
+  # installed as 11.5.0 but configured --with-sysroot=.../gcc-14.4.0/
+  # and with 14.4.0's loader baked into its specs: a compiler bound to
+  # another compiler's stack, using its libstdc++. Worse, the binding
+  # is fixed at build time while the default it was taken from is
+  # mutable, so switching HOST_VER_GCC afterwards left the compiler
+  # pointing at a stack it no longer belonged to, with nothing
+  # detecting the disagreement.
+  def stack_gcc_ver(ver = nil) = ver || default_ver
 
-    inst = find_install(default_ver)
+  # The stack's compiler runtime comes from the gcc that NAMES the
+  # stack, so composing gcc-11.5.0 grafts 11.5.0's libstdc++ even when
+  # another gcc is the default.
+  def sysroot_fragments(gcc_ver = nil)
+
+    gcc_ver ||= default_ver
+    inst = find_install(gcc_ver)
     return [] if inst.nil?
 
     lib64 = inst.path / "install" / "lib64"
     return lib64.directory? ? [[lib64, "usr/lib"]] : []
   end
 
+  def expected_files(ver = nil) = [
+    ["install/bin/gcc", false],
+    ["install/bin/g++", false],
+    ["install/lib/gcc", true],
+  ]
+
   # The C++ half of the proof, which can only run once the sysroot has
   # been composed: libstdc++ and libgcc_s reach it through this
   # package's own graft, so at install time they are not there yet.
   # Without this a broken graft passes the install and fails later, at
   # runtime, in whatever package first links C++.
-  def post_sysroot_check
+  def post_sysroot_check(gcc_ver = nil)
 
-    inst = find_install(default_ver)
+    gcc_ver ||= default_ver
+    inst = find_install(gcc_ver)
     return true if inst.nil?
 
     ok = false
@@ -122,7 +145,7 @@ class HostGccPackage < Package
         next
       end
 
-      loader = "#{hermetic_sysroot}/usr/lib/ld-linux-x86-64.so.2"
+      loader = "#{sysroot}/usr/lib/ld-linux-x86-64.so.2"
       refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
       resolved = Hermeticity.resolve_libs(bin, loader: loader)
 
@@ -158,6 +181,9 @@ class HostGccPackage < Package
       return false
     end
 
+    ver = installing_ver(install_dir)
+    sysroot = pkgmgr.hermetic_sysroot(ver)
+
     prefix = final_install_prefix(install_dir)
     destdir = "#{install_dir}/destdir"
     binutils = binutils_bin_dir
@@ -178,7 +204,7 @@ class HostGccPackage < Package
       # The whole point: headers and libraries resolve inside our
       # sysroot, so libgcc and libstdc++ are built against OUR glibc
       # and anything this compiler builds looks there and nowhere else.
-      "--with-sysroot=#{hermetic_sysroot}",
+      "--with-sysroot=#{sysroot}",
 
       # Use the binutils we built, not whatever the host happens to
       # have. --with-build-time-tools covers the build itself; the
@@ -203,6 +229,34 @@ class HostGccPackage < Package
       "--disable-bootstrap",
     ]
 
+    # glibc removed libcrypt and crypt.h in 2.39; it lives in the
+    # separate libxcrypt project now. Older GCC includes <crypt.h>
+    # unconditionally from libsanitizer and cannot be built against a
+    # glibc that new:
+    #
+    #   libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cpp:
+    #     fatal error: crypt.h: No such file or directory
+    #
+    # The boundary here is MEASURED, not assumed. An earlier version of
+    # this comment claimed GCC 13 had fixed it upstream; 13.4.0 then
+    # failed exactly like 11.5.0 and 12.5.0 did. Observed against glibc
+    # 2.41: 11.5.0 fails, 12.5.0 fails, 13.4.0 fails, 14.4.0 builds.
+    # 15.3.0 and 16.2.0 are untested, and being newer than the last
+    # known-good they get no flag until something says otherwise.
+    #
+    # Supplying crypt.h instead would mean adding libxcrypt, which is an
+    # ordinary library that has to be built AGAINST our glibc and
+    # therefore needs our gcc — a real cycle, and not one the
+    # same-triple trick breaks, because libxcrypt cannot be built by the
+    # system compiler without linking the system libc.
+    #
+    # So the sanitizer runtimes are dropped for those versions only.
+    # Nothing in the QEMU stack uses them, and the alternative is not
+    # supporting those compilers at all.
+    if default_ver < Ver("14.0.0")
+      conf << "--disable-libsanitizer"
+    end
+
     ok = false
     chdir("build") do
       ok = run_command("configure.log", conf)
@@ -219,15 +273,13 @@ class HostGccPackage < Package
 
     FileUtils.mv("#{destdir}#{prefix}", "#{install_dir}/install")
 
-    return false if !install_hermetic_specs("#{install_dir}/install")
+    return false if !install_hermetic_specs("#{install_dir}/install",
+                                            sysroot)
     return false if !verify_produces_hermetic_binaries(
-                       "#{install_dir}/install")
+                       "#{install_dir}/install", sysroot)
 
     # A GCC build tree is several GB; the compiler is a few hundred MB.
-    Dir.children(".").each { |e|
-      next if e == "install"
-      rm_rf(e)
-    }
+    prune_build_tree
     return true
   end
 
@@ -251,13 +303,18 @@ class HostGccPackage < Package
   # leaving every consumer to remember -Wl,--dynamic-linker=. A
   # compiler that emits non-hermetic output unless invoked just so is a
   # trap, and the whole stack passes through this one place.
-  def install_hermetic_specs(install)
+  def install_hermetic_specs(install, sysroot)
 
     gcc = "#{install}/bin/gcc"
-    loader = "#{hermetic_sysroot}/usr/lib/ld-linux-x86-64.so.2"
+    loader = "#{sysroot}/usr/lib/ld-linux-x86-64.so.2"
 
     if !File.exist?(loader)
-      error "hermetic loader not found at #{loader}"
+      error "no hermetic loader at #{loader}"
+      error "gcc #{default_ver} belongs to the gcc-#{default_ver} stack, " \
+            "which has no glibc yet. A compiler is built against its OWN " \
+            "stack, so that stack has to exist first: set " \
+            "HOST_VER_GCC=#{default_ver} in other/host_pkg_versions and " \
+            "build host_glibc, which pulls in the kernel headers."
       return false
     end
 
@@ -286,7 +343,7 @@ class HostGccPackage < Package
 
     specs = specs.gsub(SYSTEM_LOADER, loader)
 
-    specs = add_link_rpath(specs, "#{hermetic_sysroot}/usr/lib")
+    specs = add_link_rpath(specs, "#{sysroot}/usr/lib")
     if specs.nil?
       error "gcc -dumpspecs has no *link: section to add an rpath to"
       return false
@@ -340,7 +397,7 @@ class HostGccPackage < Package
   # configured; this is the only step that observes what it actually
   # produces. It is cheap, and a toolchain quietly emitting
   # system-linked binaries would poison every package built after it.
-  def verify_produces_hermetic_binaries(install)
+  def verify_produces_hermetic_binaries(install, sysroot)
 
     ok = false
 
@@ -355,7 +412,7 @@ class HostGccPackage < Package
         next
       end
 
-      loader = "#{hermetic_sysroot}/usr/lib/ld-linux-x86-64.so.2"
+      loader = "#{sysroot}/usr/lib/ld-linux-x86-64.so.2"
       refs = Hermeticity.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
       resolved = Hermeticity.resolve_libs(bin, loader: loader)
 
