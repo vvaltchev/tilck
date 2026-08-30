@@ -136,6 +136,28 @@ class PackageManager
     }
   end
 
+  # Remove exactly what a forced reinstall is about to recreate.
+  #
+  # -f means "uninstall, then install", so the two halves have to
+  # agree about what they cover. Almost every package writes one tree
+  # per call and the current coordinates are the whole answer --
+  # widening it would delete the riscv64 build of zlib because the
+  # user asked to rebuild the i386 one.
+  #
+  # gnuefi is the exception it has to handle: one call builds i386 AND
+  # x86_64, so removing only the current arch left the other in place
+  # and the reinstall died on the directory it expected to create:
+  #
+  #   File exists - .../tilck-x86_64/.../gnuefi/3.0.17/3.0.17
+  #
+  # (It read as "all versions, current arch" because "ALL" was passed
+  # in the `ver` slot of uninstall's positional list, never the arch.)
+  def force_remove(name)
+    pkg = @packages.values.find { |p| p.name == name }
+    multi_arch = pkg && pkg.install_archs.length > 1
+    return uninstall(name, false, false, "ALL", nil, multi_arch ? "ALL" : nil)
+  end
+
   def get_installed_compilers
     @known_installed.select { |x|
       !x.pkg.nil? && x.pkg.is_compiler && !x.path.nil? &&

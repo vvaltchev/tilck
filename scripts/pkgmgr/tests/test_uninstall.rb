@@ -318,6 +318,56 @@ class TestUninstallVersions < Minitest::Test
     end
   end
 
+  #
+  # -f is an uninstall followed by an install, so the two halves have
+  # to cover the same ground.
+  #
+  class TwoArchPackage < TestHelper::FakePackage
+    def install_archs(ver = nil) =
+      [ALL_ARCHS["i386"], ALL_ARCHS["x86_64"]]
+  end
+
+  def fake_install_at(arch, name)
+    dir = target_pkgs(arch, FAKE_GCC_VER.to_s) / name / "1.0.0"
+    FileUtils.mkdir_p(dir)
+    return dir
+  end
+
+  # gnuefi's shape: one call builds i386 AND x86_64. Removing only the
+  # current arch left the other behind, and the reinstall then died on
+  # a directory it expected to create.
+  def test_force_remove_covers_every_arch_the_install_writes
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(TwoArchPackage.new("twoarch"))
+        i386 = fake_install_at(ALL_ARCHS["i386"], "twoarch")
+        x64  = fake_install_at(ALL_ARCHS["x86_64"], "twoarch")
+        pkgmgr.refresh()
+
+        pkgmgr.force_remove("twoarch")
+        refute i386.directory?, "the current arch was not removed"
+        refute x64.directory?, "the other arch this install writes stayed"
+      end
+    end
+  end
+
+  # ...and no further. Rebuilding the i386 zlib must not delete the
+  # riscv64 one, which nothing is about to recreate.
+  def test_force_remove_leaves_arches_the_install_does_not_write
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("onearch"))
+        here  = fake_install_at(ARCH, "onearch")
+        other = fake_install_at(ALL_ARCHS["riscv64"], "onearch")
+        pkgmgr.refresh()
+
+        pkgmgr.force_remove("onearch")
+        refute here.directory?, "the current arch was not removed"
+        assert other.directory?, "another arch's build was destroyed"
+      end
+    end
+  end
+
   def test_uninstall_falls_back_to_all_versions
     with_fake_tc do |tc|
       with_stubbed_externals do

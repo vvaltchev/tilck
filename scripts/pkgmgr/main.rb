@@ -33,6 +33,7 @@ require_relative 'gcc'
 require_relative 'cache'
 require_relative 'progress'
 require_relative 'package_manager'
+require_relative 'layout'
 require_relative 'zlib'
 require_relative 'acpica'
 require_relative 'mtools'
@@ -414,6 +415,7 @@ module Main
       all_build_types: false,
       run_tilck_tests: false,
       check_for_updates: false,
+      print_layout: false,
       upgrade: false,
       config: nil,
       install: [],
@@ -434,6 +436,7 @@ module Main
       :deps,
       :self_test,
       :check_for_updates,
+      :print_layout,
       :upgrade,
       :config,
       :install,
@@ -548,6 +551,15 @@ module Main
       'upgrades are needed. Lightweight: meant to be called directly',
       'by CMake without the bash wrapper. [MODE]'
     ) { opts[:check_for_updates] = true }
+
+    p.on(
+      '--print-layout',
+      'Print the installed-package directories as KEY=value lines, so',
+      'that the build system does not have to reconstruct them from',
+      'the layout schema. Reads ARCH, BOARD and GCC_TC_VER from the',
+      'environment like every other mode. Lightweight: meant to be',
+      'called directly by CMake without the bash wrapper. [MODE]'
+    ) { opts[:print_layout] = true }
 
     p.on('-s', '--install PKG',
          'Install the given package. Use ALL to install every',
@@ -751,6 +763,11 @@ module Main
       # any pkgmgr modules are loaded (coverage only tracks files
       # loaded after start).
       exec(RbConfig.ruby, *args)
+    end
+
+    if options[:print_layout]
+      Layout.print_vars
+      return 0
     end
 
     if options[:check_for_updates]
@@ -964,7 +981,7 @@ module Main
               info "Force mode (-f): removing requested packages"
               for name, _ver in requested do
                 info "  Force-removing: #{name}"
-                pkgmgr.uninstall(name, false, false, "ALL")
+                pkgmgr.force_remove(name)
               end
               pkgmgr.refresh()
             end
