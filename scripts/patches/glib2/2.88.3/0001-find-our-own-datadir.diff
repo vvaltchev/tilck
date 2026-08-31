@@ -1,0 +1,55 @@
+--- a/meson.build	2026-08-30 19:52:01.395882704 -0700
++++ b/meson.build	2026-08-30 19:52:01.412745670 -0700
+@@ -2362,6 +2362,7 @@
+ glib_conf.set('HAVE_GETTEXT', 1)
+ 
+ glib_conf.set_quoted('GLIB_LOCALE_DIR', glib_localedir)
++glib_conf.set_quoted('GLIB_DATADIR', glib_datadir)
+ 
+ glib_conf.set_quoted('GLIB_LOCALSTATEDIR', glib_localstatedir)
+ glib_conf.set_quoted('GLIB_RUNSTATEDIR', glib_runstatedir)
+--- a/glib/gutils.c	2026-08-30 19:52:01.396882795 -0700
++++ b/glib/gutils.c	2026-08-30 19:52:01.413079908 -0700
+@@ -2605,6 +2605,42 @@
+     data_dirs = "/usr/local/share/:/usr/share/";
+ 
+   data_dir_vector = g_strsplit (data_dirs, G_SEARCHPATH_SEPARATOR_S, 0);
++
++  /* This GLib is installed outside /usr, and so is everything
++   * installed beside it: GTK's icon themes, GSettings schemas, and
++   * glycin's loader configuration. XDG_DATA_DIRS names only the
++   * system locations, and the fallback above is worse, so none of
++   * that is found unless every single program using this GLib
++   * exports XDG_DATA_DIRS first -- one wrapper script per
++   * application, forever. Appending our own datadir here fixes all
++   * of them at once, which is the only place that can.
++   *
++   * APPENDED, not prepended: the system's data keeps priority, so a
++   * user's own icon theme still wins over anything we ship.
++   */
++  {
++    guint n_dirs = g_strv_length (data_dir_vector);
++    gboolean present = FALSE;
++    guint i;
++
++    for (i = 0; i < n_dirs; i++)
++      if (g_str_equal (data_dir_vector[i], GLIB_DATADIR))
++        present = TRUE;
++
++    if (!present)
++      {
++        gchar **extended = g_new0 (gchar *, n_dirs + 2);
++
++        for (i = 0; i < n_dirs; i++)
++          extended[i] = data_dir_vector[i];
++
++        extended[n_dirs] = g_strdup (GLIB_DATADIR);
++
++        /* The strings were moved, so only the vector is freed. */
++        g_free (data_dir_vector);
++        data_dir_vector = extended;
++      }
++  }
+ #else
+   if (!data_dirs || !data_dirs[0])
+     data_dir_vector = g_strdupv ((gchar **) g_win32_get_system_data_dirs_for_module_real (NULL));
