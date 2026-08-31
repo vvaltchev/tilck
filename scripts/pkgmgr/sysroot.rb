@@ -46,10 +46,30 @@ module Sysroot
   EXCLUDED = ["usr/share/info", "usr/share/man", "usr/share/doc",
               "usr/share/gtk-doc"].freeze
 
+  # Translations, same argument. GTK alone ships 238 .mo files and the
+  # stack as a whole 123 languages for 2.9 MB, none of which anything
+  # here reads: the toolchain speaks English.
+  #
+  # Filtered in the VIEW rather than removed from the installs, and
+  # that distinction is the point. Most of these packages expose no
+  # nls option at all -- gtk3, gdk-pixbuf and at-spi2-core have none,
+  # only glib does -- so the alternative was deleting files out of
+  # each package's install directory after the fact, which would make
+  # every install a lie about what its build produced. A sysroot is a
+  # view over installs, so a view is the honest place to narrow it.
+  LOCALE_DIR = "usr/share/locale"
+  KEPT_LOCALES = ["C", "en", "en_US", "en_GB"].freeze
+
   module_function
 
   def excluded?(rel)
-    return EXCLUDED.any? { |d| rel == d || rel.start_with?(d + "/") }
+
+    return true if EXCLUDED.any? { |d| rel == d || rel.start_with?(d + "/") }
+    return false if !rel.start_with?(LOCALE_DIR + "/")
+
+    # usr/share/locale/<lang>/... -- keep only the English ones.
+    lang = rel.delete_prefix(LOCALE_DIR + "/").split("/").first
+    return !KEPT_LOCALES.include?(lang)
   end
 
   # Build `target` as a symlink farm over `fragments`.

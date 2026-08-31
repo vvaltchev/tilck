@@ -288,3 +288,66 @@ class TestSysrootExcludes < Minitest::Test
     end
   end
 end
+
+
+#
+# Translations are filtered out of the VIEW, not removed from the
+# installs. Most of the GTK stack exposes no nls option -- gtk3,
+# gdk-pixbuf and at-spi2-core have none -- so the only alternative was
+# deleting files out of each package's install directory, which would
+# make the install a lie about what the build produced.
+#
+class TestSysrootLocaleFilter < Minitest::Test
+
+  include TestHelper
+
+  def test_english_is_kept
+    assert Sysroot.excluded?("usr/share/locale/de/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/en/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/en_US/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/en_GB/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/C/LC_MESSAGES/gtk30.mo")
+  end
+
+  # A language whose name merely starts with "en" is not English.
+  def test_prefix_matching_does_not_leak
+    assert Sysroot.excluded?("usr/share/locale/eo/LC_MESSAGES/x.mo")
+    assert Sysroot.excluded?("usr/share/locale/en_AU_x/LC_MESSAGES/x.mo")
+  end
+
+  # Everything outside share/locale is untouched by this rule.
+  def test_other_paths_are_unaffected
+    refute Sysroot.excluded?("usr/lib/libglib-2.0.so")
+    refute Sysroot.excluded?("usr/share/glycin-loaders/2+/conf.d/x.conf")
+    refute Sysroot.excluded?("usr/share/locale")
+  end
+
+  # The documentation rules still apply.
+  def test_docs_still_excluded
+    assert Sysroot.excluded?("usr/share/man/man1/x.1")
+    assert Sysroot.excluded?("usr/share/info/dir")
+  end
+
+  # End to end: a package shipping many languages contributes only the
+  # English ones to the composed view.
+  def test_compose_links_only_english
+    Dir.mktmpdir do |d|
+      frag = File.join(d, "frag")
+      %w[de fr en en_US].each do |lang|
+        FileUtils.mkdir_p(File.join(frag, "usr/share/locale", lang,
+                                    "LC_MESSAGES"))
+        File.write(File.join(frag, "usr/share/locale", lang,
+                             "LC_MESSAGES/app.mo"), "x")
+      end
+      FileUtils.mkdir_p(File.join(frag, "usr/lib"))
+      File.write(File.join(frag, "usr/lib/libapp.so"), "x")
+
+      target = File.join(d, "sysroot")
+      Sysroot.compose(Pathname.new(target), [Pathname.new(frag)])
+
+      langs = Dir.children(File.join(target, "usr/share/locale")).sort
+      assert_equal ["en", "en_US"], langs
+      assert File.exist?(File.join(target, "usr/lib/libapp.so"))
+    end
+  end
+end
