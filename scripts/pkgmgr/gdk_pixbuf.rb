@@ -26,18 +26,33 @@ GDK_PIXBUF_SOURCE = SourceRef.new(
 # JPEG support is off: nothing in QEMU's UI loads a JPEG and PNG covers
 # the icon set, so libjpeg-turbo stays out of the closure.
 #
-# glycin is off because it is written in Rust, which this closure
-# deliberately excludes. gdk-pixbuf 2.44 defaults it to enabled on
-# Linux and it becomes the ONLY builtin loader when present, so
-# disabling it also means naming the loaders we want explicitly —
-# otherwise 'default' resolves to glycin alone and nothing can decode
-# a PNG.
+# glycin is ON, which makes this the one place in the tree where a
+# Rust toolchain is required. WITH_GLYCIN below drives BOTH the meson
+# option and that requirement, declared in system_deps: a flag flipped
+# without the requirement following it would produce a build that runs
+# for a while and then fails inside cargo on a machine whose Rust is
+# missing or too old.
 #
-# WITH_GLYCIN below is the switch, and it drives BOTH the meson option
-# and the Rust requirement declared in system_deps. Keeping the two
-# together is the whole point: a flag flipped without the requirement
-# following it produces a build that runs for a while and then fails
-# inside cargo, on a machine whose Rust is missing or too old.
+# builtin_loaders has to name glycin explicitly:
+# gdk-pixbuf/meson.build:243 compiles the glycin loader only `if
+# builtin_loaders.contains('glycin')`, while the configure summary
+# lists it under "Enabled loaders" merely because the dependency was
+# found. Leaving it out produced a build that reported
+#
+#   Enabled loaders  : png
+#                      glycin
+#
+# and shipped no glycin at all: no module, and nothing in
+# libgdk_pixbuf's DT_NEEDED.
+#
+# The summary is equally unreliable in the other direction, so do not
+# trust it here. Asking for `png,glycin` reports both as builtin and
+# builds only glycin -- the resulting library has 38 undefined gly_*
+# symbols and not one png_ symbol or _fill_vtable entry. With glycin
+# enabled, gdk-pixbuf decodes through it and nothing else, so there is
+# no in-process fallback to be had and asking for one only makes the
+# build file lie. builtin_loaders therefore follows the same switch:
+# glycin when it is on, png when it is off.
 #
 # gio_sniffing is off too, and that one is a real trade rather than an
 # omission. With it, gdk-pixbuf identifies image formats through GIO's
@@ -52,9 +67,8 @@ class HostGdkPixbufPackage < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
-  # Rust is not in the hermetic closure and we do not build it: when
-  # this is turned on, rustc and cargo have to come from the host.
-  WITH_GLYCIN = false
+  # Rust is not built from source; rustc and cargo come from the host.
+  WITH_GLYCIN = true
 
   def initialize
     super(
@@ -69,6 +83,7 @@ class HostGdkPixbufPackage < Package
         Dep('host_meson', true),
         Dep('host_glib2', true),
         Dep('host_libpng', true),
+        Dep('host_glycin', true),
       ],
       default: false,
     )
@@ -119,7 +134,7 @@ class HostGdkPixbufPackage < Package
       "-Dtests=false",
       "-Dgio_sniffing=false",
       "-Dglycin=#{WITH_GLYCIN ? "enabled" : "disabled"}",
-      "-Dbuiltin_loaders=png",
+      "-Dbuiltin_loaders=#{WITH_GLYCIN ? "glycin" : "png"}",
     ])
   end
 end
