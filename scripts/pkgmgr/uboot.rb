@@ -44,7 +44,6 @@ class UbootPackage < Package
   def uboot_config = BOARD_BSP / "u-boot.config"
 
   def install_impl_internal(install_dir)
-    patch_qemu_riscv_scriptaddr
     cp uboot_config, ".config"
 
     ok = run_command("build.log", make_argv)
@@ -97,21 +96,6 @@ class UbootPackage < Package
     return argv
   end
 
-  #
-  # The default scriptaddr in qemu-riscv.h (0x8c100000) sits above the top
-  # of RAM when QEMU is launched with the 128 MB default, so u-boot fails
-  # to load boot.scr. Move the address into the low 128 MB range to match
-  # what the bash bootloader script does.
-  #
-  def patch_qemu_riscv_scriptaddr
-    file = "include/configs/qemu-riscv.h"
-    if !File.exist?(file)
-      raise LocalError, "uboot: expected file not found: #{file}"
-    end
-    data = File.read(file)
-    data.gsub!("scriptaddr=0x8c100000", "scriptaddr=0x80200000")
-    File.write(file, data)
-  end
 end
 
 pkgmgr.register(UbootPackage.new())
