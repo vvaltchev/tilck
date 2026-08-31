@@ -71,6 +71,7 @@ class HostQemuPackage < Package
         Dep('host_glib2', true),
         Dep('host_pixman', true),
         Dep('host_zlib', true),
+        Dep('host_gtk3', true),
       ],
       default: false,
     )
@@ -110,15 +111,23 @@ class HostQemuPackage < Package
           "--prefix=#{prefix}",
           "--target-list=#{TARGETS.join(",")}",
 
-          # Headless for now. The GTK UI is the goal and arrives with
-          # its closure; this milestone is about proving the toolchain
-          # and the dependency chain underneath it.
-          "--disable-gtk",
+          # The GTK UI, which is what the whole closure below this
+          # package exists for. QEMU 6.2's ui/gtk.c targets GTK 3.
+          "--enable-gtk",
+
+          # VNC's core needs nothing we do not already have; the
+          # optional encoders it can use (JPEG, PNG-over-VNC, SASL)
+          # stay out.
+          "--enable-vnc",
+
+          # SDL would be a second UI toolkit for the same job, and
+          # curses would need an ncurses inside the sysroot -- the one
+          # in the tree is a host-tier build for menuconfig, not part
+          # of this stack.
           "--disable-sdl",
-          "--disable-vnc",
+          "--disable-curses",
 
           # Each of these would pull in a dependency not built yet.
-          "--disable-curses",
           "--disable-libssh",
           "--disable-glusterfs",
           "--disable-seccomp",
