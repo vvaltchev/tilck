@@ -29,15 +29,10 @@ class TestApplyPatchesCoverage < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
 
-        # Create the patch directory with a real diff
-        patch_dir = MAIN_DIR / "scripts" / "patches" / "foo" / "1.0.0"
-        FileUtils.mkdir_p(patch_dir)
+        with_fake_patches(pkg) do |patch_dir|
+          File.write(patch_dir / "001-test.diff",
+            "--- /dev/null\n+++ b/patched.txt\n@@ -0,0 +1 @@\n+patched\n")
 
-        # Create a simple patch file
-        File.write(patch_dir / "001-test.diff",
-          "--- /dev/null\n+++ b/patched.txt\n@@ -0,0 +1 @@\n+patched\n")
-
-        begin
           Dir.mktmpdir do |workdir|
             FileUtils.cd(workdir) do
               # stub system("patch", ...) to succeed
@@ -46,8 +41,6 @@ class TestApplyPatchesCoverage < Minitest::Test
               assert_equal true, result
             end
           end
-        ensure
-          FileUtils.rm_rf(patch_dir)
         end
       end
     end
@@ -58,14 +51,13 @@ class TestApplyPatchesCoverage < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
 
-        patch_dir = MAIN_DIR / "scripts" / "patches" / "foo" / "1.0.0"
-        arch_patch_dir = patch_dir / ARCH.name
-        FileUtils.mkdir_p(arch_patch_dir)
+        with_fake_patches(pkg) do |patch_dir|
+          arch_patch_dir = patch_dir / ARCH.name
+          FileUtils.mkdir_p(arch_patch_dir)
 
-        File.write(arch_patch_dir / "001-arch.diff",
-          "--- /dev/null\n+++ b/arch_patched.txt\n@@ -0,0 +1 @@\n+arch\n")
+          File.write(arch_patch_dir / "001-arch.diff",
+            "--- /dev/null\n+++ b/arch_patched.txt\n@@ -0,0 +1 @@\n+arch\n")
 
-        begin
           Dir.mktmpdir do |workdir|
             FileUtils.cd(workdir) do
               pkg.define_singleton_method(:system) { |*args| true }
@@ -73,8 +65,6 @@ class TestApplyPatchesCoverage < Minitest::Test
               assert_equal true, result
             end
           end
-        ensure
-          FileUtils.rm_rf(patch_dir)
         end
       end
     end
@@ -85,11 +75,9 @@ class TestApplyPatchesCoverage < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
 
-        patch_dir = MAIN_DIR / "scripts" / "patches" / "foo" / "1.0.0"
-        FileUtils.mkdir_p(patch_dir)
-        File.write(patch_dir / "001-bad.diff", "garbage patch")
+        with_fake_patches(pkg) do |patch_dir|
+          File.write(patch_dir / "001-bad.diff", "garbage patch")
 
-        begin
           Dir.mktmpdir do |workdir|
             FileUtils.cd(workdir) do
               # stub system("patch", ...) to FAIL
@@ -98,8 +86,6 @@ class TestApplyPatchesCoverage < Minitest::Test
               assert_equal false, result
             end
           end
-        ensure
-          FileUtils.rm_rf(patch_dir)
         end
       end
     end

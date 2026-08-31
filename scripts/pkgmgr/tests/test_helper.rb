@@ -85,6 +85,23 @@ module TestHelper
 
   def noarch_pkgs = Coords.new("noarch", nil, nil).pkgs_dir
 
+  # A patch directory for `pkg`, in a temporary tree.
+  #
+  # Tests used to mkdir under the REAL scripts/patches/ and remove the
+  # version directory afterwards, which left the package directory
+  # behind: an empty scripts/patches/foo/ sat in the source tree, and
+  # would have been applied to the next package that took the name.
+  # A test has no business writing there at all.
+  def with_fake_patches(pkg, ver = "1.0.0")
+    Dir.mktmpdir("pkgmgr-patches-") do |root|
+      r = Pathname.new(root)
+      pkg.define_singleton_method(:patch_root) { r }
+      dir = pkg.patch_base(Ver(ver))
+      FileUtils.mkdir_p(dir)
+      yield dir
+    end
+  end
+
   def with_fake_tc
     Dir.mktmpdir("pkgmgr-test-") do |dir|
       tc = Pathname.new(dir)
