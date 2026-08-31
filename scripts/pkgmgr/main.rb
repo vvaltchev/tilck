@@ -981,14 +981,14 @@ module Main
           if options[:force]
             if options[:dry_run]
               info "Force mode (-f): would remove requested packages"
-              for name, _ver in requested do
-                info "  Would force-remove: #{name}"
+              for name, ver in requested do
+                info "  Would force-remove: #{name}#{ver ? ":#{ver}" : ""}"
               end
             else
               info "Force mode (-f): removing requested packages"
-              for name, _ver in requested do
-                info "  Force-removing: #{name}"
-                pkgmgr.force_remove(name)
+              for name, ver in requested do
+                info "  Force-removing: #{name}#{ver ? ":#{ver}" : ""}"
+                pkgmgr.force_remove(name, ver)
               end
               pkgmgr.refresh()
             end

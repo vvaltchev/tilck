@@ -152,7 +152,7 @@ class PackageManager
   #
   # (It read as "all versions, current arch" because "ALL" was passed
   # in the `ver` slot of uninstall's positional list, never the arch.)
-  def force_remove(name)
+  def force_remove(name, ver = nil)
 
     pkg = @packages.values.find { |p| p.name == name }
 
@@ -167,12 +167,30 @@ class PackageManager
     # that is simply gone is "not installed", not "stale" -- and it
     # surfaced two steps later as a riscv64 build that could not find
     # zlib.h.
-    v = pkg.default_ver
+    # THE version being rebuilt, not every version of the package.
+    # Several versions coexist on purpose -- six gcc majors sit side
+    # by side in one directory -- and `-s host_gcc:16.2.0 -f` removed
+    # all six before building one, so a loop over the majors destroyed
+    # each previous build and left whichever was interrupted with
+    # none.
+    v = ver || pkg.default_ver
+
     wanted = pkg.install_archs(v).map { |a|
       a ? with_target_arch(a) { pkg.coords(v) } : pkg.coords(v)
     }
 
-    return uninstall(name, false, false, "ALL", nil, "ALL", coords: wanted)
+    # Nothing installed at those coordinates is not an error: -f on a
+    # version that is not there yet is simply an install. Checked here
+    # rather than left to uninstall, whose "the asked-for version is
+    # not installed, so remove whatever is" fallback is right for a
+    # user typing -u and catastrophic for this.
+    present = pkg.get_install_list.any? { |i|
+      i.ver == v && !i.path.nil? && wanted.include?(i.coords)
+    }
+
+    return true if !present
+
+    return uninstall(name, false, false, v, nil, "ALL", coords: wanted)
   end
 
   def get_installed_compilers

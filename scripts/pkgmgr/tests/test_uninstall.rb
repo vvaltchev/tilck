@@ -351,6 +351,47 @@ class TestUninstallVersions < Minitest::Test
     end
   end
 
+  # Several versions of one package coexist on purpose -- six gcc
+  # majors in one directory -- and a forced rebuild of one must not
+  # take the others. It did: `-s host_gcc:16.2.0 -f` removed all six
+  # before building one, so a loop over the majors destroyed each
+  # previous build.
+  def test_force_remove_takes_only_the_version_asked_for
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("multi"))
+        dirs = ["1.0.0", "2.0.0", "3.0.0"].to_h { |v|
+          d = target_pkgs(ARCH, FAKE_GCC_VER.to_s) / "multi" / v
+          FileUtils.mkdir_p(d)
+          [v, d]
+        }
+        pkgmgr.refresh()
+
+        pkgmgr.force_remove("multi", Ver("2.0.0"))
+
+        refute dirs["2.0.0"].directory?, "the asked-for version stayed"
+        assert dirs["1.0.0"].directory?, "an older version was destroyed"
+        assert dirs["3.0.0"].directory?, "a newer version was destroyed"
+      end
+    end
+  end
+
+  # -f on a version that is not installed yet is just an install. It
+  # must not fall through to uninstall's "remove whatever IS there".
+  def test_force_remove_of_an_absent_version_removes_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("multi"))
+        d = target_pkgs(ARCH, FAKE_GCC_VER.to_s) / "multi" / "1.0.0"
+        FileUtils.mkdir_p(d)
+        pkgmgr.refresh()
+
+        pkgmgr.force_remove("multi", Ver("9.9.9"))
+        assert d.directory?, "an unrelated version was destroyed"
+      end
+    end
+  end
+
   # ...and no further, on EITHER axis. An arch covers all of its
   # boards at once, so this is the case the arch-level filter cannot
   # express: rebuilding zlib for one riscv64 board deleted the other
