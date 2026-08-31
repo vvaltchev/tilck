@@ -1,0 +1,23 @@
+Select Tilck's ACPICA environment header instead of Linux's.
+
+ACPICA picks a platform header by compiler predefine, and Tilck is not
+in its table: without this it takes the __linux__ branch and pulls in
+aclinux.h, which assumes a Linux kernel's headers and locking
+primitives. Point that branch at Tilck's own actilck.h.
+
+The "// patched" markers are kept from the in-place edit this replaces,
+so the rebuilt source is identical to what the gsubs produced.
+
+--- a/source/include/platform/acenv.h
++++ b/source/include/platform/acenv.h
+@@ -305,8 +305,8 @@
+ 
+ #endif
+ 
+-#if defined(_LINUX) || defined(__linux__)
+-#include "aclinux.h"
++#if defined(__TILCK_KERNEL__)   // patched
++#include "tilck/acpi/actilck.h" // patched
+ 
+ #elif defined(_APPLE) || defined(__APPLE__)
+ #include "acmacosx.h"

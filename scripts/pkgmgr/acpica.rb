@@ -17,16 +17,6 @@ class Acpica < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
-  PATCHES = {
-    'source/include/platform/acenv.h' => {
-      '#if defined(_LINUX) || defined(__linux__)' =>
-        '#if defined(__TILCK_KERNEL__)   // patched',
-
-      '#include "aclinux.h"' =>
-        '#include "tilck/acpi/actilck.h" // patched',
-    },
-  }
-
   def initialize
     super(
       name: 'acpica',
@@ -46,8 +36,11 @@ class Acpica < Package
     ["source/components/namespace", true],
   ]
 
+  # The source edit this build used to make in place is a patch now,
+  # applied and fingerprinted by the base class. What is left is not a
+  # build at all: acpica ships sources the kernel compiles itself, and
+  # the install only has to leave them where its include path expects.
   def install_impl_internal(ignored = nil)
-    apply_code_patches()
     chdir!("3rd_party") {
       File.write("README", "Directory created by Tilck")
       ln_s("../source/include", "acpi")
@@ -57,18 +50,6 @@ class Acpica < Package
 
   def default_arch = nil
   def default_cc = nil
-
-  private
-  # In-code patch applier: string substitutions in source files. Separate
-  # from the base class `apply_patches(ver)` which consumes diff files
-  # under scripts/patches/<pkg>/<ver>/.
-  def apply_code_patches
-    for filepath, patches in PATCHES
-      s = File.read(filepath)
-      patches.each { |before, after| s = s.gsub(before, after) }
-      File.write(filepath, s)
-    end
-  end
 end
 
 pkgmgr.register(Acpica.new())
