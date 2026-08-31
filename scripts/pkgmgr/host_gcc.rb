@@ -64,6 +64,37 @@ class HostGccPackage < Package
     Ver("14.4.0"), Ver("15.3.0"), Ver("16.2.0"),
   ].freeze
 
+  #
+  # The maths libraries each GCC wants, by major.
+  #
+  # They genuinely differ -- 11 wants gmp 6.1.0 where 16 wants 6.3.0 --
+  # and getting one wrong is not a build failure but a compiler built
+  # against a library its own sources were never tested with.
+  #
+  # This is a declared table and has to be: dependency resolution
+  # happens before any source is fetched, so it cannot be read out of
+  # the tarball at the time it is needed. It is not left to rot,
+  # though -- test_gcc_prereqs.rb reads contrib/download_prerequisites
+  # out of every cached GCC tarball and fails if this table disagrees
+  # with what upstream says.
+  #
+  PREREQ_NAMES = %w[host_gmp host_mpfr host_mpc host_isl].freeze
+
+  PREREQS = {
+    Ver("11.5.0") => { gmp: "6.1.0", mpfr: "3.1.6", mpc: "1.0.3",
+                       isl: "0.18" },
+    Ver("12.5.0") => { gmp: "6.2.1", mpfr: "4.1.0", mpc: "1.2.1",
+                       isl: "0.24" },
+    Ver("13.4.0") => { gmp: "6.2.1", mpfr: "4.1.0", mpc: "1.2.1",
+                       isl: "0.24" },
+    Ver("14.4.0") => { gmp: "6.2.1", mpfr: "4.1.0", mpc: "1.2.1",
+                       isl: "0.24" },
+    Ver("15.3.0") => { gmp: "6.2.1", mpfr: "4.1.0", mpc: "1.2.1",
+                       isl: "0.24" },
+    Ver("16.2.0") => { gmp: "6.3.0", mpfr: "4.2.2", mpc: "1.3.1",
+                       isl: "0.24" },
+  }.freeze
+
   def initialize
     super(
       name: 'host_gcc',
@@ -75,9 +106,37 @@ class HostGccPackage < Package
       dep_list: [
         Dep('host_binutils', true),
         Dep('host_glibc', true),
+
+        # Named here without a version, because this list is the
+        # STRUCTURE the dependency graph is built from and the graph
+        # has no version in hand. Which version belongs to which GCC
+        # is dep_list_for's job.
+        *PREREQ_NAMES.map { |n| Dep(n, true) },
       ],
       default: false,
     )
+  end
+
+  #
+  # The four maths libraries are pinned per GCC version, which is why
+  # this varies by version at all: one resolution binds one version of
+  # each package, so `-s host_gcc:11.5.0` gets gmp 6.1.0 and
+  # `-s host_gcc:16.2.0` gets 6.3.0, each in its own directory beside
+  # the other.
+  #
+  def dep_list_for(ver = nil)
+
+    p = PREREQS[ver || default_ver]
+    return dep_list if p.nil?
+
+    # Replace rather than append: the same package named twice, once
+    # bare and once pinned, would leave which one wins to the order
+    # the solver happens to walk them in.
+    base = dep_list.reject { |d| PREREQ_NAMES.include?(d.name) }
+
+    return base + PREREQ_NAMES.map { |n|
+      Dep(n, true, ver: Ver(p[n.delete_prefix("host_").to_sym]))
+    }
   end
 
   def default_arch = HOST_ARCH
@@ -221,12 +280,6 @@ class HostGccPackage < Package
     destdir = "#{install_dir}/destdir"
     binutils = binutils_bin_dir
 
-    # GCC downloads gmp, mpfr, mpc and isl for itself rather than
-    # requiring them from the host. That is one fewer host dependency
-    # and exactly the behaviour we want.
-    ok = run_command("prereq.log", ["./contrib/download_prerequisites"])
-    return false if !ok
-
     # GCC refuses to be configured in its own source tree.
     FileUtils.mkdir_p("build")
 
@@ -245,6 +298,11 @@ class HostGccPackage < Package
       "--with-build-time-tools=#{binutils}",
       "--with-as=#{binutils}/as",
       "--with-ld=#{binutils}/ld",
+
+      # The maths libraries, as packages we built at the versions THIS
+      # GCC asks for, rather than tarballs it downloads for itself
+      # mid-build. See PREREQS and gcc_prereqs.rb.
+      *prereq_flags(ver),
 
       "--enable-languages=c,c++",
 
@@ -467,6 +525,35 @@ class HostGccPackage < Package
   def binutils_bin_dir
     pkg = pkgmgr.get("host_binutils")
     return pkg.install_prefix(pkg.default_ver) / "install" / "bin"
+  end
+
+  # --with-gmp and friends, at the versions PREREQS pins for this GCC.
+  #
+  # Read back from the resolver rather than from the table directly:
+  # what actually got installed is what the resolver bound, and if the
+  # two ever disagree the configure line should follow the tree, not
+  # our intention about it.
+  def prereq_flags(ver)
+
+    table = PREREQS[ver] || {}
+
+    return [
+      ["gmp",  "host_gmp"],
+      ["mpfr", "host_mpfr"],
+      ["mpc",  "host_mpc"],
+      ["isl",  "host_isl"],
+    ].map { |flag, name|
+      pkg = pkgmgr.get(name)
+
+      # What the resolver actually bound for this request first: the
+      # tree is the authority on what got installed, and the table is
+      # only our statement of intent about it.
+      v = pkgmgr.resolved_ver(name) ||
+          (table[flag.to_sym] && Ver(table[flag.to_sym])) ||
+          pkg.default_ver
+
+      "--with-#{flag}=#{pkg.prefix_for(v)}"
+    }
   end
 end
 

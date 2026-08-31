@@ -29,6 +29,7 @@ class PackageManager
     @known_installed = nil
     @found_installed = nil
     @installable = nil
+    @resolved_versions = nil
     @target_arch = nil    # nil = fall back to the global ARCH
     @portable_stack = nil # nil = fall back to HOST_VER_GCC
   end
@@ -778,6 +779,13 @@ class PackageManager
   # Transitive dependency closure of `name`, nearest dependency first.
   # Used by Package#deps_build_env to collect the build interfaces a
   # package's dependencies publish.
+  # The version a package was resolved to for the request being
+  # installed right now, or nil outside an install.
+  #
+  # Set by resolve_install_plan, which is the only place that knows
+  # the whole closure and therefore the only place that can answer.
+  def resolved_ver(name) = @resolved_versions&.[](name)
+
   def dep_closure(name)
     return DepResolver.dep_closure(name, build_dep_graph)
   end
@@ -798,6 +806,15 @@ class PackageManager
     # requested packages go in together, so pins that disagree across
     # them are caught instead of quietly resolved by merge order.
     versions = resolved_versions_for(requested_pairs)
+
+    # Remember them for the builds that follow. A package being built
+    # needs to know which version of a DEPENDENCY it is being built
+    # against, and cannot work it out for itself: mpfr's own dep list
+    # names host_gmp with no version, so resolving from mpfr alone
+    # yields gmp's default -- while the gcc that asked for all of this
+    # pinned 6.3.0. Resolving from mpfr gave 6.2.1 and the build
+    # stopped on a gmp that was never installed.
+    @resolved_versions = versions
 
     # Build the set of already-installed package names.
     installed = Set.new
