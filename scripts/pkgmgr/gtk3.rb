@@ -52,7 +52,7 @@ class HostGtk3Package < Package
       source: GTK3_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [
         Dep('host_gcc', true),
@@ -84,7 +84,7 @@ class HostGtk3Package < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
   def pkg_dirname = "gtk3"
 
   def expected_files(ver = nil) = [
@@ -110,7 +110,7 @@ class HostGtk3Package < Package
   end
 
   def install_impl_internal(install_dir)
-    return meson_hermetic_build(install_dir, args: [
+    return meson_stack_build(install_dir, args: [
       "-Dx11_backend=true",
       "-Dwayland_backend=false",
       "-Dbroadway_backend=false",

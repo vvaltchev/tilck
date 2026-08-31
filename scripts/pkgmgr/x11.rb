@@ -120,7 +120,7 @@ class X11Package < Package
       source: src,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: deps,
       default: false,
@@ -129,7 +129,7 @@ class X11Package < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [["install/#{@check_file}", false]]
 
@@ -151,14 +151,14 @@ class X11Package < Package
 
   def install_impl_internal(install_dir)
 
-    return autotools_hermetic_build(install_dir, args: [
+    return autotools_stack_build(install_dir, args: [
       "--disable-static",
-      "--libdir=#{hermetic_sysroot}/usr/lib",
+      "--libdir=#{stack_sysroot}/usr/lib",
 
       # X.org's configure scripts look for their own .m4 macros and for
       # sibling headers under the prefix; without this they find the
       # host's copies in /usr/share and mix the two.
-      "--datarootdir=#{hermetic_sysroot}/usr/share",
+      "--datarootdir=#{stack_sysroot}/usr/share",
     ])
   end
 end

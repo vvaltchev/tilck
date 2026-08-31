@@ -76,10 +76,10 @@ module TestHelper
       host_dir_p = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "portable"
       host_dir_d = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / HOST_DISTRO
       host_dir   = host_dir_d / HOST_CC
-      host_herm  = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "hermetic"
+      sysroots   = tc / "sysroots" / "#{HOST_OS}-#{HOST_ARCH.name}"
       FileUtils.mkdir_p(host_dir_p)
       FileUtils.mkdir_p(host_dir)
-      FileUtils.mkdir_p(host_herm)
+      FileUtils.mkdir_p(sysroots)
 
       with_context(
         ARCH: FAKE_ARCH,
@@ -93,12 +93,12 @@ module TestHelper
         HOST_DIR_DISTRO: host_dir_d,
         HOST_DIR: host_dir,
 
-        # Not optional. The hermetic sysroot is REBUILT from scratch
+        # Not optional. A composed sysroot is REBUILT from scratch
         # whenever what it views changes, which means it is deleted
         # first; a test that reached the real one would destroy the
         # developer's toolchain, and did exactly that before this was
         # overridden here.
-        HOST_DIR_HERMETIC_BASE: host_herm,
+        TC_SYSROOTS: sysroots,
       ) do
         yield tc
       end

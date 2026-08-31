@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
-# The hermeticity audit. check_refs is the whole judgement and takes no
+# The portability audit. check_refs is the whole judgement and takes no
 # filesystem, so most of this is pure.
 #
 
 require_relative 'test_helper'
-require_relative '../hermeticity'
+require_relative '../portability'
 
-class TestHermeticityJudgement < Minitest::Test
+class TestPortabilityJudgement < Minitest::Test
 
   ALLOWED = ["/tc"].freeze
 
   def check(interp: nil, rpaths: [], resolved: {})
-    return Hermeticity.check_refs("/tc/bin/x", interp: interp,
+    return Portability.check_refs("/tc/bin/x", interp: interp,
                                   rpaths: rpaths, resolved: resolved,
                                   allowed: ALLOWED)
   end
@@ -46,7 +46,7 @@ class TestHermeticityJudgement < Minitest::Test
     v = check(interp: "/tc/lib/ld.so",
               resolved: { "libz.so.1" => "/usr/lib/libz.so.1" })
     assert_equal 1, v.length
-    assert_equal "resolved outside", v.first.kind
+    assert_equal "non-portable reference", v.first.kind
     assert_match(/libz\.so\.1/, v.first.detail)
     assert_match(%r{/usr/lib}, v.first.detail)
   end
@@ -69,7 +69,7 @@ class TestHermeticityJudgement < Minitest::Test
   # outside of.
   def test_vdso_is_not_a_violation
     assert_empty check(interp: "/tc/lib/ld.so",
-                       resolved: { Hermeticity::VDSO => nil })
+                       resolved: { Portability::VDSO => nil })
   end
 
   def test_shared_library_has_no_interpreter_and_that_is_fine
@@ -81,7 +81,8 @@ class TestHermeticityJudgement < Minitest::Test
               rpaths: ["/usr/lib", "/opt/lib"],
               resolved: { "libz.so.1" => "/usr/lib/libz.so.1" })
     assert_equal 4, v.length
-    assert_equal ["interpreter", "resolved outside", "rpath", "rpath"],
+    assert_equal ["interpreter", "non-portable reference",
+                  "rpath", "rpath"],
                  v.map(&:kind).sort
   end
 
@@ -97,18 +98,18 @@ class TestHermeticityJudgement < Minitest::Test
   end
 end
 
-class TestHermeticityElfDetection < Minitest::Test
+class TestPortabilityElfDetection < Minitest::Test
 
   # elf? means "an ELF this host could execute", so the magic alone is
   # not enough: it also has to be 64-bit little-endian x86-64. See
-  # TestHermeticityForeignElf for why.
+  # TestPortabilityForeignElf for why.
   def test_a_native_elf_header_is_recognised
     Dir.mktmpdir do |dir|
       f = File.join(dir, "bin")
       hdr = "\x7fELF".b + [2, 1, 1].pack("C3") + ("\0" * 9) +
             [2].pack("v") + [62].pack("v") + ("\0" * 44)
       File.binwrite(f, hdr)
-      assert Hermeticity.elf?(f)
+      assert Portability.elf?(f)
     end
   end
 
@@ -116,7 +117,7 @@ class TestHermeticityElfDetection < Minitest::Test
     Dir.mktmpdir do |dir|
       f = File.join(dir, "stub")
       File.binwrite(f, "\x7fELF\x02\x01\x01\x00")
-      refute Hermeticity.elf?(f)
+      refute Portability.elf?(f)
     end
   end
 
@@ -124,19 +125,19 @@ class TestHermeticityElfDetection < Minitest::Test
     Dir.mktmpdir do |dir|
       f = File.join(dir, "script")
       File.write(f, "#!/bin/sh\necho hi\n")
-      refute Hermeticity.elf?(f)
+      refute Portability.elf?(f)
     end
   end
 
   def test_a_directory_is_not_elf
-    Dir.mktmpdir { |dir| refute Hermeticity.elf?(dir) }
+    Dir.mktmpdir { |dir| refute Portability.elf?(dir) }
   end
 
   def test_an_empty_file_is_not_elf
     Dir.mktmpdir do |dir|
       f = File.join(dir, "empty")
       File.write(f, "")
-      refute Hermeticity.elf?(f)
+      refute Portability.elf?(f)
     end
   end
 
@@ -148,7 +149,7 @@ class TestHermeticityElfDetection < Minitest::Test
       File.binwrite(real, "\x7fELF\x02\x01\x01\x00")
       link = File.join(dir, "link")
       File.symlink(real, link)
-      refute Hermeticity.elf?(link)
+      refute Portability.elf?(link)
     end
   end
 end
@@ -159,14 +160,14 @@ end
 # no "=>" — as an unresolved dependency, and reported every one of
 # glibc's ~250 gconv modules as a violation.
 #
-class TestHermeticityLoaderOutput < Minitest::Test
+class TestPortabilityLoaderOutput < Minitest::Test
 
   def parse(text)
     fake = File.join(Dir.tmpdir, "fake-loader-#{$$}")
     File.write(fake, "#!/bin/sh\ncat <<'EOT'\n#{text}\nEOT\n")
     File.chmod(0755, fake)
     begin
-      return Hermeticity.resolve_libs("/tc/bin/x", loader: fake)
+      return Portability.resolve_libs("/tc/bin/x", loader: fake)
     ensure
       File.unlink(fake)
     end
@@ -183,7 +184,7 @@ class TestHermeticityLoaderOutput < Minitest::Test
                    "/tc/lib/ld-linux-x86-64.so.2" }, got)
 
     # ...and so it is not a violation.
-    assert_empty Hermeticity.check_refs("/tc/bin/x", interp: nil,
+    assert_empty Portability.check_refs("/tc/bin/x", interp: nil,
                                         rpaths: [], resolved: got,
                                         allowed: ["/tc"])
   end
@@ -210,9 +211,9 @@ class TestHermeticityLoaderOutput < Minitest::Test
     ].join("\n"))
 
     assert_equal 3, got.length
-    refute got.key?(Hermeticity::VDSO)
+    refute got.key?(Portability::VDSO)
 
-    v = Hermeticity.check_refs("/tc/bin/x", interp: nil, rpaths: [],
+    v = Portability.check_refs("/tc/bin/x", interp: nil, rpaths: [],
                                resolved: got, allowed: ["/tc"])
     assert_equal 1, v.length
     assert_match(/libz\.so\.1/, v.first.detail)
@@ -226,11 +227,11 @@ end
 # correctly when nothing competes and silently loads system libraries
 # when something does. The audit therefore asks the hostile question.
 #
-class TestHermeticityHostileCheck < Minitest::Test
+class TestPortabilityHostileCheck < Minitest::Test
 
   def test_system_libdirs_are_declared
-    refute_empty Hermeticity::SYSTEM_LIBDIRS
-    assert_includes Hermeticity::SYSTEM_LIBDIRS, "/usr/lib"
+    refute_empty Portability::SYSTEM_LIBDIRS
+    assert_includes Portability::SYSTEM_LIBDIRS, "/usr/lib"
   end
 
   # What the audit missed before: a binary with no RPATH that resolves
@@ -239,15 +240,15 @@ class TestHermeticityHostileCheck < Minitest::Test
     clean = { "libc.so.6" => "/tc/lib/libc.so.6" }
     hostile = { "libc.so.6" => "/usr/lib/libc.so.6" }
 
-    assert_empty Hermeticity.check_refs("/tc/bin/x", interp: "/tc/lib/ld.so",
+    assert_empty Portability.check_refs("/tc/bin/x", interp: "/tc/lib/ld.so",
                                         rpaths: [], resolved: clean,
                                         allowed: ["/tc"])
 
-    v = Hermeticity.check_refs("/tc/bin/x", interp: "/tc/lib/ld.so",
+    v = Portability.check_refs("/tc/bin/x", interp: "/tc/lib/ld.so",
                                rpaths: [], resolved: hostile,
                                allowed: ["/tc"])
     assert_equal 1, v.length
-    assert_equal "resolved outside", v.first.kind
+    assert_equal "non-portable reference", v.first.kind
   end
 end
 
@@ -258,7 +259,7 @@ end
 # (/lib/ld64.so.1). The audit asks whether a file would load system
 # libraries HERE, which is not a question about them.
 #
-class TestHermeticityForeignElf < Minitest::Test
+class TestPortabilityForeignElf < Minitest::Test
 
   # Minimal 64-bit little-endian ELF header with the given e_machine.
   def elf_header(machine)
@@ -276,27 +277,27 @@ class TestHermeticityForeignElf < Minitest::Test
 
   def test_native_x86_64_is_audited
     Dir.mktmpdir do |d|
-      assert Hermeticity.elf?(write(d, "native", elf_header(62)))
+      assert Portability.elf?(write(d, "native", elf_header(62)))
     end
   end
 
   def test_s390x_firmware_is_skipped
     Dir.mktmpdir do |d|
       # EM_S390 is 22 — the machine of the .img files QEMU installs.
-      refute Hermeticity.elf?(write(d, "s390-ccw.img", elf_header(22)))
+      refute Portability.elf?(write(d, "s390-ccw.img", elf_header(22)))
     end
   end
 
   def test_aarch64_and_riscv_are_skipped_too
     Dir.mktmpdir do |d|
-      refute Hermeticity.elf?(write(d, "arm64", elf_header(183)))
-      refute Hermeticity.elf?(write(d, "riscv", elf_header(243)))
+      refute Portability.elf?(write(d, "arm64", elf_header(183)))
+      refute Portability.elf?(write(d, "riscv", elf_header(243)))
     end
   end
 
   def test_a_truncated_file_is_not_elf
     Dir.mktmpdir do |d|
-      refute Hermeticity.elf?(write(d, "short", "\x7fELF".b + "\0\0\0"))
+      refute Portability.elf?(write(d, "short", "\x7fELF".b + "\0\0\0"))
     end
   end
 
@@ -304,7 +305,7 @@ class TestHermeticityForeignElf < Minitest::Test
     Dir.mktmpdir do |d|
       h = elf_header(62).dup
       h[5] = "\x02"    # EI_DATA: MSB
-      refute Hermeticity.elf?(write(d, "be", h))
+      refute Portability.elf?(write(d, "be", h))
     end
   end
 end

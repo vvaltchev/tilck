@@ -105,27 +105,59 @@ toolchain4/
       ...
     riscv64/
       ...
+  sysroots/
+    <os>-<host_arch>/
+      gcc-<ver>/                    # Composed view of a stack, not an install
   host/
     <os>-<host_arch>/               # e.g. linux-x86_64
-      portable/                     # Tier 1: statically linked (cross-compilers)
-        gcc-i386-musl/<ver>/
+      portable/                     # Runs on any host of this OS + arch
+        gcc-i386-musl/<ver>/        #   statically linked (cross-compilers)
         gcc-x86_64-musl/<ver>/
-      <distro>/                     # e.g. ubuntu-22.04
-        mtools/<ver>/               # Tier 2: distro libc, any host CC
+        <our-cc>/                   #   e.g. gcc-14.4.0: built by OUR compiler,
+          glibc/<ver>/              #   carries our glibc and loader
+          glib2/<ver>/
+          gtk3/<ver>/
+      <distro>/                     # Runs on this distro only
+        mtools/<ver>/               #   links the distro's libc
+        gcc/<ver>/                  #   our compiler: the system cc built it
         ruby/<ver>/                 # Bootstrap Ruby (not a registered package)
         <host-cc>/                  # e.g. gcc-11.4.0
-          gtest/<ver>/              # Tier 3: depends on host CC C++ ABI
+          gtest/<ver>/              #   + depends on the host C++ ABI
 ```
 
 ### Host tool tiers
 
-Host packages are placed in one of three tiers depending on their portability:
+A host package's directory answers exactly one question: **where can this
+run?** Another machine sharing the toolchain reads the answer off the path
+and knows whether to consume the package or rebuild it.
 
-| Tier | `host_tier` | Path | When to use |
-|------|-------------|------|-------------|
-| 1 | `:portable` | `host/<os>-<arch>/portable/` | Statically linked, any distro (cross-compilers) |
-| 2 | `:distro` | `host/<os>-<arch>/<distro>/` | Links distro libc, any host CC (mtools) |
-| 3 | `:compiler` | `host/<os>-<arch>/<distro>/<host-cc>/` | C++ ABI dependent (gtest) |
+| `host_tier` | Path | Runs on |
+|-------------|------|---------|
+| `:portable` | `host/<os>-<arch>/portable/` | any host of this OS + arch — statically linked (cross-compilers) |
+| `:stack` | `host/<os>-<arch>/portable/<our-cc>/` | the same, carrying our own glibc and loader (glibc, glib2, GTK, QEMU) |
+| `:distro` | `host/<os>-<arch>/<distro>/` | this distro only — links its libc (mtools, our gcc and binutils) |
+| `:compiler` | `host/<os>-<arch>/<distro>/<host-cc>/` | + this host C++ ABI (gtest) |
+
+`:stack` sits one level under `portable/` keyed by the version of *our*
+compiler, for the same reason `:compiler` carries the host compiler: a GCC
+bump can change the C++ ABI, so the whole set is rebuilt beside the old one
+rather than in place. Those packages are still portable — the compiler is a
+variant key, not a restriction on where they run. A directory level named
+`gcc-*` or `clang-*` is a compiler slot rather than a package, which is the
+same convention that separates tiers 2 and 3 under `<distro>/`.
+
+The tier is **declared** per package and never inferred from a build's
+outcome: `--prefix` and RPATH are baked in at configure time, so the
+directory has to be known before anything is built. The portability audit
+(`scripts/pkgmgr/portability.rb`) **enforces** the declaration — a package
+declared portable whose binaries reference anything outside `toolchain4`
+fails its install. A `:distro` package makes no such promise and is not
+asked to keep it.
+
+Composed sysroots live in `toolchain4/sysroots/`, outside the package tree:
+a sysroot is a *view* over installed packages, not an installation, and
+every scanner that walks `<pkg>/<ver>/` would otherwise have to be taught
+to skip it.
 
 ### Package lifecycle
 

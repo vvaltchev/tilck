@@ -149,7 +149,7 @@ end
 #
 # Grafted fragments: a package whose own layout is not sysroot-shaped
 # contributing part of itself anyway. GCC keeps libstdc++ and libgcc_s
-# in lib64/ and is not a hermetic package, but that runtime is built
+# in lib64/ and is not a stack package, but that runtime is built
 # against our glibc and has to be in the sysroot or every C++ binary it
 # produces dies at startup.
 #

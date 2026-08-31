@@ -77,7 +77,7 @@ class HostGlycinPackage < Package
       source: GLYCIN_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [
         Dep('host_gcc', true),
@@ -93,7 +93,7 @@ class HostGlycinPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
   def pkg_dirname = "glycin"
 
   # Rust is not built from source: rustup gives a better toolchain
@@ -195,7 +195,7 @@ class HostGlycinPackage < Package
 
   def install_impl_internal(install_dir)
 
-    gcc_bin, bu_bin = hermetic_toolchain_bins
+    gcc_bin, bu_bin = stack_toolchain_bins
     env = SystemDeps::Env.new
     cargo = env.which("cargo")
     rustc = env.which("rustc")
@@ -209,7 +209,7 @@ class HostGlycinPackage < Package
     cross = write_cross_file(gcc_bin, bu_bin, rustc)
 
     # cargo and rustc are found through PATH by meson. Set outside
-    # with_hermetic_toolchain (which meson_hermetic_build enters):
+    # with_stack_toolchain (which meson_stack_build enters):
     # that method rebuilds PATH from ENV["PATH"], so what is prepended
     # here survives, behind our own compiler rather than ahead of it.
     with_saved_env(["PATH", "RUSTFLAGS"]) do
@@ -217,7 +217,7 @@ class HostGlycinPackage < Package
       ENV["PATH"] = "#{File.dirname(cargo)}:#{ENV["PATH"]}"
       ENV["RUSTFLAGS"] = "-C linker=#{gcc_bin}/gcc"
 
-      meson_hermetic_build(install_dir, args: [
+      meson_stack_build(install_dir, args: [
         "--cross-file=#{cross}",
         "-Dlibglycin=true",
         "-Dglycin-loaders=true",

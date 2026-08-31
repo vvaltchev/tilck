@@ -43,7 +43,7 @@ class HostPangoPackage < Package
       source: PANGO_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [
         Dep('host_gcc', true),
@@ -61,7 +61,7 @@ class HostPangoPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libpango-1.0.so", false],
@@ -86,7 +86,7 @@ class HostPangoPackage < Package
   end
 
   def install_impl_internal(install_dir)
-    return meson_hermetic_build(install_dir, args: [
+    return meson_stack_build(install_dir, args: [
       "-Dintrospection=disabled",
       "-Ddocumentation=false",
       "-Dbuild-testsuite=false",

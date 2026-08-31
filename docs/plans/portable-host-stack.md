@@ -1,4 +1,4 @@
-# Hermetic host toolchain and QEMU build
+# Portable host stack and QEMU build
 
 Status: **design, not yet implemented**. This document is the plan of
 record; it is expected to gain a gap list and lose items from it as the
@@ -18,7 +18,7 @@ package manager rather than beside it.
 
   * Replacing the existing host packages. `host_ncurses`, `host_gtest`,
     `host_mtools` and `host_mconf` keep building exactly as they do
-    today. Hermeticity is opt-in per package.
+    today. Portability is opt-in per package.
   * Being in the default install set. The whole stack is second-tier
     and gated behind an explicit flag or environment variable: a
     30-60 minute toolchain build must never be something a contributor
@@ -27,7 +27,7 @@ package manager rather than beside it.
     at a known absolute path per checkout.
   * Rust. QEMU 9+ can optionally use it; we deliberately do not.
 
-## Hermetic-dynamic, not static
+## Portable-dynamic, not static
 
 Every binary we produce is dynamically linked, but exclusively against
 our own libraries:
@@ -48,7 +48,7 @@ $ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu our-loader --list prog
         libc.so.6      => /usr/lib/x86_64-linux-gnu/libc.so.6
 ```
 
-Hermeticity has to be a property of the binary, not of the environment
+Portability has to be a property of the binary, not of the environment
 it happens to run in.
 
 `DT_RPATH` specifically, not `DT_RUNPATH`: RPATH is searched *before*
@@ -58,7 +58,7 @@ on binutils' build-time default.
 
 The audit therefore asks its question with a hostile `LD_LIBRARY_PATH`.
 A clean-environment check would pass a binary that is only accidentally
-hermetic, which is exactly what it did before this was noticed.
+portable, which is exactly what it did before this was noticed.
 
 Fully static was considered and rejected: GTK loads pixbuf loaders,
 input methods and themes as shared modules at runtime, so a fully
@@ -86,7 +86,7 @@ cycle never forms:
 The system compiler is used as a build-time input and nothing more. It
 leaves no trace in the output: a GCC built by Ubuntu's 11.4 and one
 built by Fedora's 14 generate identical code from identical source, so
-using it does not weaken hermeticity.
+using it does not weaken portability.
 
 ### Rejected: building GCC with the pre-built musl toolchain
 
@@ -131,14 +131,14 @@ With the same triple, test programs run correctly (same architecture
 and ABI, our loader present), so configure results are accurate.
 
 The risk this accepts is system-path leakage: a configure script that
-hardcodes `-I/usr/include` would silently un-hermeticise the build.
+hardcodes `-I/usr/include` would silently un-portableise the build.
 That risk is *detectable*, which is why the audit below is not
 optional.
 
 ## Layout: a fourth host tier
 
 The three existing host tiers all exist because the system libc and
-compiler vary between machines. Hermeticity makes both irrelevant, so
+compiler vary between machines. Portability makes both irrelevant, so
 neither `:distro` nor `:compiler` describes these packages.
 
 ```
@@ -146,7 +146,7 @@ toolchain4/host/linux-x86_64/
   portable/                       tier 1  static, any distro   (unchanged)
   <distro>/                       tier 2  distro libc          (unchanged)
   <distro>/<host-cc>/             tier 3  C++ ABI dependent    (unchanged)
-  hermetic/<host-gcc-ver>/        tier 4  our libc             (NEW)
+  portable/<host-gcc-ver>/        tier 4  our libc             (NEW)
      toolchain/                   binutils + gcc + glibc: the compiler
      sysroot/                     composed view (see below)
      <pkg>/<ver>/                 each package, pkgmgr's normal layout
@@ -181,8 +181,8 @@ depend on:
 | Package | Tier | Contains |
 |---|---|---|
 | `host_binutils` | `:distro` | as/ld/ar — build tools, system-linked |
-| `host_linux_headers` | `:hermetic` | sysroot headers |
-| `host_glibc` | `:hermetic` | sysroot libc |
+| `host_linux_headers` | `:portable` | sysroot headers |
+| `host_glibc` | `:portable` | sysroot libc |
 | `host_gcc` | `:distro` | the compiler, system-linked |
 
 binutils and GCC are built by the system compiler and link the system
@@ -193,7 +193,7 @@ link against never reaches what they produce. GCC's *target* runtime
 glibc and belongs to the sysroot, which the symlink farm composes from
 GCC's install directory.
 
-One binutils serves every hermetic stack. A GCC needing a particular
+One binutils serves every host stack. A GCC needing a particular
 one pins it with `Dep('host_binutils', true, ver: ...)`.
 
 ### Supported GCC versions
@@ -201,7 +201,7 @@ one pins it with `Dep('host_binutils', true, ver: ...)`.
 Majors 11 through 16, at the latest point release of each, per
 ftp.gnu.org: 11.5.0, 12.5.0, 13.4.0, 14.4.0, 15.3.0, 16.2.0. The
 default is 14.4.0. Each installs beside the others and gets its own
-`hermetic/gcc-<ver>/` stack.
+`portable/gcc-<ver>/` stack.
 
 `host_gcc`'s own version is the GCC version. The versions of the pieces
 it builds are separate entries it reads, so they stay visible and
@@ -250,13 +250,13 @@ It composes with the version solver: the solver decides *which*
 versions, and the sysroot is the rendering of that decision. It is
 recomposed whenever the resolution changes.
 
-## The hermeticity audit
+## The portability audit
 
-"Hermetic" rots silently. One configure script slipping `-I/usr/include`
+"Portable" rots silently. One configure script slipping `-I/usr/include`
 through is enough, and nothing fails at the time — it fails months
 later, on a different machine.
 
-So every hermetic package install is followed by an audit that walks
+So every stack package install is followed by an audit that walks
 the produced binaries and shared libraries and fails if:
 
   * `ldd` resolves anything outside `toolchain4/`;
@@ -270,7 +270,7 @@ a first-class deliverable rather than a debugging aid.
 
   1. `host_binutils`
   2. `host_gcc` (kernel headers, glibc, gcc)
-  3. the hermeticity audit, proven against the toolchain itself
+  3. the portability audit, proven against the toolchain itself
   4. one trivial leaf library, end to end, to establish the pattern
   5. the QEMU dependency closure, bottom up
   6. QEMU itself, newest major first
@@ -297,10 +297,10 @@ Tracked to zero before this is considered done.
   * [x] `host_linux_headers` package
   * [x] `host_glibc` package
   * [x] `host_gcc` package (majors 11-16 declared; 14.4.0 built)
-  * [x] tier 4 (`host_tier: :hermetic`) in the package manager
+  * [x] tier 4 (`host_tier: :portable`) in the package manager
   * [x] composed sysroot + recomposition on resolution change
-  * [x] hermeticity audit
-  * [x] opt-in gating (`TILCK_HERMETIC=1`)
+  * [x] portability audit
+  * [x] opt-in gating (`TILCK_HOST_STACK=1`)
   * [ ] measured QEMU dependency closure, enumerated in this document
   * [x] first library through the tier (host_zlib), establishing the
     pattern the rest follows

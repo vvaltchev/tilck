@@ -953,7 +953,7 @@ module Main
             end
           end
 
-          # Which hermetic stack this invocation builds into: the
+          # Which host stack this invocation builds into: the
           # host_gcc version the request resolves to. `-s
           # host_gcc:13.4.0` therefore builds the 13.4.0 stack — that
           # stack's kernel headers and glibc included — rather than
@@ -980,7 +980,7 @@ module Main
           conflict = nil
           done = false
 
-          pkgmgr.with_hermetic_stack(stack) do
+          pkgmgr.with_host_stack(stack) do
             begin
               plan = pkgmgr.resolve_install_plan(requested)
             rescue VersionSolver::ConflictError,

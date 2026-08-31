@@ -23,7 +23,7 @@ GLIBC_SOURCE = SourceRef.new(
 GLIBC_MIN_KERNEL = "4.19"
 
 #
-# host_glibc: the C library the whole hermetic stack links against, and
+# host_glibc: the C library the whole host stack links against, and
 # the reason the stack exists at all.
 #
 # Built by the SYSTEM compiler, which is legal precisely because we
@@ -53,7 +53,7 @@ GLIBC_MIN_KERNEL = "4.19"
 # makes true. Baking this package's own path would work right up until
 # a second glibc version existed.
 #
-# See docs/plans/hermetic-host-toolchain.md.
+# See docs/plans/portable-host-stack.md.
 #
 class HostGlibcPackage < Package
 
@@ -66,7 +66,7 @@ class HostGlibcPackage < Package
       source: GLIBC_SOURCE,
       on_host: true,
       is_compiler: false,
-      host_tier: :hermetic,
+      host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
       dep_list: [Dep('host_linux_headers', true)],
       default: false,
@@ -75,15 +75,15 @@ class HostGlibcPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HERMETIC_ENABLED
+  def enabled? = HOST_STACK_ENABLED
 
   # The one package that cannot carry an RPATH to its own libc: the
   # libc in question is this package. Without this, its utilities
   # (getconf, gencat, ...) and its gconv modules report ~290
   # violations, all of them "libc.so.6 resolved to the system libc"
   # under an LD_LIBRARY_PATH no real invocation sets.
-  # See Package#hermeticity_hostile_check?
-  def hermeticity_hostile_check? = false
+  # See Package#portability_hostile_check?
+  def portability_hostile_check? = false
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libc.so.6", false],
@@ -110,7 +110,7 @@ class HostGlibcPackage < Package
 
     # Paths as they will be once the sysroot is composed, not as they
     # are in staging.
-    sysroot_usr = "#{hermetic_sysroot}/usr"
+    sysroot_usr = "#{stack_sysroot}/usr"
     destdir = "#{install_dir}/destdir"
 
     # glibc refuses to be configured in its own source tree.
