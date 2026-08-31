@@ -55,7 +55,7 @@ class LibmuslPackage < Package
   ]
 
   # Source-only package: nothing to build.
-  def install_impl_internal(ignored = nil) = true
+  def nothing_to_build? = true
 end
 
 pkgmgr.register(LibmuslPackage.new())

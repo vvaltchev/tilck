@@ -64,7 +64,7 @@ class SophgoToolsPackage < Package
 
   # Nothing to build: the tarball already contains x86_64 Linux ELF
   # binaries. The base install_impl flow will check expected_files.
-  def install_impl_internal(install_dir) = true
+  def nothing_to_build? = true
 end
 
 pkgmgr.register(SophgoToolsPackage.new())

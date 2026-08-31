@@ -68,19 +68,19 @@ class HostNinjaPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
+  # configure.py --bootstrap leaves ./ninja in the source tree and has
+  # no install target, so the copy is the install.
+  #
+  # `install -D` would do both steps at once, but only GNU coreutils
+  # has -D: this package is built on FreeBSD and macOS hosts too, whose
+  # install(1) does not. mkdir + cp is the portable pair.
+  def build_steps = [
+    Step("bootstrap.log", ["python3", "./configure.py", "--bootstrap"]),
+    Step("mkdir.log", ["mkdir", "-p", "$INSTALL/install/bin"]),
+    Step("install.log", ["cp", "ninja", "$INSTALL/install/bin/ninja"]),
+  ]
 
-    ok = run_command("bootstrap.log",
-                     ["python3", "./configure.py", "--bootstrap"])
-    return false if !ok
-
-    bin = "#{install_dir}/install/bin"
-    FileUtils.mkdir_p(bin)
-    FileUtils.cp("ninja", bin)
-
-    prune_build_tree
-    return true
-  end
+  def prune_after_build? = true
 end
 
 pkgmgr.register(HostNinjaPackage.new())
