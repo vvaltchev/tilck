@@ -343,6 +343,8 @@ old code produced.
 | `acpica` | a substitution table + its own applier | 1 patch | acenv.h identical, kernel builds |
 | `uboot` | scriptaddr gsub | 1 patch | u-boot.bin differs in 5 bytes, all inside the embedded build timestamp |
 | `licheerv_nano_boot` | 2 gsubs | 1 patch | bl2_main.c identical |
+| `gnuefi` | a substitution table + its own applier | 1 patch | efibind.h both arches, libgnuefi.a, libefi.a identical |
+| `ncurses`, `host_ncurses` | one applier, two callers wanting different sets | 1 + 2 patches | all 142 target and 109 host objects identical (only ar's container metadata differs) |
 | `lcov`, `libmusl`, `freedoom`, `host_sophgo_tools` | `install_impl_internal = true`, in two spellings | `nothing_to_build?` | extraction only |
 
 Each patch was also applied to the pristine tarball and diffed against
@@ -383,8 +385,25 @@ cannot collide with either. The prefix is added when missing rather
 than assumed: the musl cross-compilers are host packages named
 `gcc-<arch>-musl`.
 
-`gnuefi` and `ncurses` are unblocked by this and can now be converted;
-their patch sets stay apart from the packages they share sources with.
+`gnuefi` and `ncurses` were converted once this landed; their patch
+sets stay apart from the packages they share sources with.
+
+Converting them turned up a second hole in the same mechanism.
+`parse_defs` built one flat hash per FILE keyed by method name, so two
+package classes in one file shared a namespace and the later
+definition won: ncurses.rb held a single `install_impl_internal` and
+it was the HOST package's, so `class_source(NcursesPackage)` returned
+the host's build. The target's recipe could change without changing
+the target's digest -- a MISSING rebuild, not a spurious one. Defs are
+keyed by class now, and `method_source` refuses an ambiguous name
+rather than picking. A test asserts across the registry that no class
+borrows a neighbour's method; it found `gnuefi_src` and
+`host_libglycin` doing exactly that.
+
+gnuefi additionally replaces the base class's `install_impl` wholesale
+-- it extracts the tarball once per arch -- and that is where patches
+are applied, so the conversion silently applied none until
+`apply_patches` was wired into its own loop.
 
 ### Genuinely not command sequences
 
@@ -458,12 +477,18 @@ need its own concept if it is ever wanted.
    `unknown` rather than waved through.
 5. 26 packages remain on the code fingerprint rather than a declared
    recipe, from 32 -- see "The builds that are not command sequences"
-   above for what each one is waiting on. `gnuefi` and `ncurses` are
-   now unblocked -- patch directories are keyed on the package name --
-   and a `$SRC_REF` token would unblock `tcc`.
-6. Two artifacts are not reproducible, and it is worth deciding
+   above for what each one is waiting on. A `$SRC_REF` token would
+   unblock `tcc`; the rest are genuinely not command sequences.
+6. gnuefi's riscv64 hunk replaces a BOOLEAN typedef with a CHAR8 one,
+   which drops BOOLEAN rather than adding CHAR8, and leaves riscv64's
+   own CHAR16 as wchar_t. Nothing compiles it -- the package is
+   x86-only -- so it is preserved and flagged in the patch header
+   rather than silently kept or silently dropped.
+7. Three artifacts are not reproducible, and it is worth deciding
    whether to care: `fbdoom.gz` (gzip stores the input's mtime; `-n`
-   drops it) and `u-boot.bin` (u-boot embeds its build timestamp in
-   the banner). Both make a rebuilt image differ from its predecessor
+   drops it), `u-boot.bin` (u-boot embeds its build timestamp in the
+   banner) and the ncurses `.a` archives (ar records per-member
+   timestamps; `D` makes it deterministic). All make a rebuilt
+   artifact differ from its predecessor
    for no real reason, which costs a comparison that is otherwise
    free.
