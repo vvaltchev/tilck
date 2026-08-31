@@ -1,0 +1,65 @@
+Export the locale variables to C instead of unsetting them.
+
+configure guards every locale variable with
+
+    $as_unset LANG || test "${LANG+set}" != set || { LANG=C; export LANG; }
+
+whose || chain means "try to unset it; stop if that worked", so on any
+normal shell the variables end up unset rather than set to C. Homebrew's
+gawk 5.4.0 then hits a bug where, with no locale at all, gsub("[+]", " ")
+silently replaces nothing. That breaks mk-1st.awk's in_subset(), the
+per-model rules never reach ncurses/Makefile, and make dies with
+"No rule to make target ../lib/libncurses.a".
+
+This file is duplicated under host_ncurses and target_ncurses on
+purpose: they are two packages built for two machines, and a patch
+directory now belongs to exactly one of them. Sharing one is what let
+a host-only fix reach the cross-compiled build unnoticed.
+--- a/configure
++++ b/configure
+@@ -67,14 +67,14 @@
+ fi
+ 
+ # NLS nuisances.
+-$as_unset LANG || test "${LANG+set}" != set || { LANG=C; export LANG; }
+-$as_unset LC_ALL || test "${LC_ALL+set}" != set || { LC_ALL=C; export LC_ALL; }
+-$as_unset LC_TIME || test "${LC_TIME+set}" != set || { LC_TIME=C; export LC_TIME; }
+-$as_unset LC_CTYPE || test "${LC_CTYPE+set}" != set || { LC_CTYPE=C; export LC_CTYPE; }
+-$as_unset LANGUAGE || test "${LANGUAGE+set}" != set || { LANGUAGE=C; export LANGUAGE; }
+-$as_unset LC_COLLATE || test "${LC_COLLATE+set}" != set || { LC_COLLATE=C; export LC_COLLATE; }
+-$as_unset LC_NUMERIC || test "${LC_NUMERIC+set}" != set || { LC_NUMERIC=C; export LC_NUMERIC; }
+-$as_unset LC_MESSAGES || test "${LC_MESSAGES+set}" != set || { LC_MESSAGES=C; export LC_MESSAGES; }
++export LANG
++export LC_ALL
++export LC_TIME
++export LC_CTYPE
++export LANGUAGE
++export LC_COLLATE
++export LC_NUMERIC
++export LC_MESSAGES
+ 
+ # IFS
+ # We need space, tab and new line, in precisely that order.
+@@ -29644,14 +29644,14 @@
+ fi
+ 
+ # NLS nuisances.
+-$as_unset LANG || test "${LANG+set}" != set || { LANG=C; export LANG; }
+-$as_unset LC_ALL || test "${LC_ALL+set}" != set || { LC_ALL=C; export LC_ALL; }
+-$as_unset LC_TIME || test "${LC_TIME+set}" != set || { LC_TIME=C; export LC_TIME; }
+-$as_unset LC_CTYPE || test "${LC_CTYPE+set}" != set || { LC_CTYPE=C; export LC_CTYPE; }
+-$as_unset LANGUAGE || test "${LANGUAGE+set}" != set || { LANGUAGE=C; export LANGUAGE; }
+-$as_unset LC_COLLATE || test "${LC_COLLATE+set}" != set || { LC_COLLATE=C; export LC_COLLATE; }
+-$as_unset LC_NUMERIC || test "${LC_NUMERIC+set}" != set || { LC_NUMERIC=C; export LC_NUMERIC; }
+-$as_unset LC_MESSAGES || test "${LC_MESSAGES+set}" != set || { LC_MESSAGES=C; export LC_MESSAGES; }
++export LANG
++export LC_ALL
++export LC_TIME
++export LC_CTYPE
++export LANGUAGE
++export LC_COLLATE
++export LC_NUMERIC
++export LC_MESSAGES
+ 
+ # IFS
+ # We need space, tab and new line, in precisely that order.

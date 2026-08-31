@@ -20,30 +20,12 @@ GNUEFI_SOURCE = SourceRef.new(
   url:  GNUEFI_URL,
 )
 
-GNUEFI_PATCHES = {
-  'typedef wchar_t CHAR16' =>
-    'typedef unsigned short CHAR16',
-
-  'typedef uint8_t                 BOOLEAN;' =>
-    'typedef char       CHAR8;',
-}
-
 GNUEFI_COMMON_EXPECTED_FILES = [
   ["inc", true],
   ["gnuefi", true],
   ["lib", true],
   ["Makefile", false],
 ]
-
-def gnuefi_apply_patches
-  for efi_arch in ["ia32", "x86_64", "riscv64"]
-    file = "inc/#{efi_arch}/efibind.h"
-    next if !File.exist?(file)
-    s = File.read(file)
-    GNUEFI_PATCHES.each { |before, after| s = s.gsub(before, after) }
-    File.write(file, s)
-  end
-end
 
 #
 # Source-only (noarch) gnuefi: just the extracted source tree.
@@ -151,6 +133,14 @@ class GnuefiPackage < Package
           return false if !ok
           ok = chdir_install_dir(arch_dir, ver) do
             d = mkpathname(getwd)
+
+            # This package extracts the tarball once per arch and so
+            # replaces the base class's install_impl wholesale --
+            # which is where patches are normally applied. Apply them
+            # here, per extraction, or they are silently not applied
+            # at all.
+            next false if !apply_patches(ver)
+
             ok = install_impl_internal(d, arch)
             ok = check_install_dir(d, ver, true) if ok
           end
@@ -165,7 +155,6 @@ class GnuefiPackage < Package
   def install_impl_internal(install_dir, arch = nil)
 
     arch ||= default_arch()
-    gnuefi_apply_patches()
 
     efi = arch.efi
     tc = arch.gcc_tc

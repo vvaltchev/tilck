@@ -1,0 +1,50 @@
+CHAR16 must be exactly 16 bits wide.
+
+UEFI defines CHAR16 as a 16-bit unit, and gnu-efi types it as
+wchar_t. That is 32 bits on Linux targets, so every string the
+bootloader hands to firmware would be laid out wrong. Type it as
+unsigned short instead.
+
+The riscv64 hunk is NOT the same edit, and is preserved here only
+because it is what the substitution table it replaces did. That table
+matched "typedef uint8_t                 BOOLEAN;" and wrote a CHAR8
+typedef over it, which drops BOOLEAN rather than adding CHAR8 -- and
+it did not touch riscv64's CHAR16 at all, whose padding does not match
+the first rule's single space. None of it is reachable: this package
+is x86-only (arch_list: X86_ARCHS), so nothing compiles the riscv64
+header. Worth deciding on separately rather than silently keeping or
+silently dropping.
+
+--- a/inc/ia32/efibind.h
++++ b/inc/ia32/efibind.h
+@@ -87,7 +87,7 @@
+ 
+ #include <stddef.h>
+ 
+-typedef wchar_t CHAR16;
++typedef unsigned short CHAR16;
+ #define WCHAR CHAR16
+ 
+ 
+--- a/inc/x86_64/efibind.h
++++ b/inc/x86_64/efibind.h
+@@ -98,7 +98,7 @@
+ 
+ #include <stddef.h>
+ 
+-typedef wchar_t CHAR16;
++typedef unsigned short CHAR16;
+ #define WCHAR CHAR16
+ 
+ typedef uint64_t   UINT64;
+--- a/inc/riscv64/efibind.h
++++ b/inc/riscv64/efibind.h
+@@ -35,7 +35,7 @@
+ typedef wchar_t                 CHAR16;
+ #define WCHAR                   CHAR16
+ #ifndef BOOLEAN
+-typedef uint8_t                 BOOLEAN;
++typedef char       CHAR8;
+ #endif
+ #undef VOID
+ typedef void                    VOID;

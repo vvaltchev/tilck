@@ -19,61 +19,6 @@ NCURSES_SOURCE = SourceRef.new(
   tarname: ->(ver) { "ncurses-#{ver}.tar.gz" },
 )
 
-# ncurses 6.5's configure uses an old autoconf idiom that *unsets* the
-# locale variables instead of forcing them to C:
-#
-#   $as_unset LANG || test "${LANG+set}" != set || { LANG=C; export LANG; }
-#
-# The `||` chain means: try `unset LANG`; if it works, stop. So on any
-# normal shell every locale var ends up unset for the rest of configure.
-# On macOS, Homebrew's gawk 5.4.0 has a bug where, with *no* locale at all
-# (not even C), `gsub("[+]", " ", s)` silently fails to replace anything.
-# That breaks mk-1st.awk's in_subset() helper, so the per-model rules
-# never get appended to ncurses/Makefile, and `make` then dies with
-# "No rule to make target ../lib/libncurses.a".
-#
-# Patch the buggy idiom to unconditionally export the locale vars to C.
-def ncurses_patch_configure_locale
-  data = File.read("configure")
-  data.gsub!(
-    /^\$as_unset (\w+) \|\| test "\$\{\1\+set\}" != set \|\| \{ \1=C; export \1; \}$/,
-    'export \1=C'
-  )
-  File.write("configure", data)
-end
-
-# On darwin*, ncurses 6.5's configure unconditionally sets
-# `cf_cv_shlib_version_infix=yes` (macOS uses ABI-versioned dylib names
-# like libfoo.1.dylib). The per-model library-naming block then keys off
-# that flag WITHOUT checking whether the current model is actually shared,
-# so it rewrites cf_libname/cf_dir_suffix for the NORMAL (static .a) and
-# DEBUG (_g.a) models too.
-#
-# With --enable-widec --with-termlib=tinfo this produces a self-inconsistent
-# ncurses/Makefile:
-#
-#   LIBRARIES = ../lib/libtinfo.a ../lib/libtinfo_g.a ...   (from Libs_To_Make)
-#   ../lib/libtinfow.a : ...                                (from mk-1st.awk)
-#
-# ...because Libs_To_Make renames `ncursesw→tinfo` (no `w`), but mk-1st.awk
-# is invoked with name=${cf_libname}${cf_dir_suffix}=tinfo+w=tinfow. make
-# then fails with: No rule to make target '../lib/libtinfo.a'.
-#
-# Linux dodges it because cf_cv_shlib_version_infix defaults to "no" there,
-# so the whole block is a no-op for static-only builds. Narrow the guard
-# so the block runs only when actually building the shared model — the
-# naming it enforces is *about* shared libs (ABI version infix in the file
-# name), irrelevant to .a archives.
-def ncurses_patch_configure_shlib_infix_static
-  data = File.read("configure")
-  data.sub!(
-    /^( \t\t\t)if test "\$cf_cv_shlib_version_infix" = yes ; then$/,
-    "\\1if test \"$cf_cv_shlib_version_infix\" = yes && " \
-    "test \"$cf_item\" = shared ; then"
-  )
-  File.write("configure", data)
-end
-
 class NcursesPackage < Package
 
   include FileShortcuts
@@ -109,8 +54,6 @@ class NcursesPackage < Package
     # is documentation only — no Makefile target depends on it — so just
     # remove it to make `mkdir install` work.
     File.delete("INSTALL") if File.exist?("INSTALL")
-
-    ncurses_patch_configure_locale
 
     # Pass --build so configure sets cross_compiling=yes immediately
     # (when both --host and --build are set and differ).  Without it,
@@ -228,9 +171,6 @@ class NcursesHostPackage < Package
 
     # Same case-insensitive-FS workaround as the target build.
     File.delete("INSTALL") if File.exist?("INSTALL")
-
-    ncurses_patch_configure_locale
-    ncurses_patch_configure_shlib_infix_static
 
     # At runtime, ncurses needs to find terminfo entries for the
     # user's $TERM. The system ncurses on each host distro has its
