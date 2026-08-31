@@ -416,6 +416,7 @@ module Main
       all_build_types: false,
       run_tilck_tests: false,
       check_for_updates: false,
+      clean: false,
       print_layout: false,
       upgrade: false,
       config: nil,
@@ -437,6 +438,7 @@ module Main
       :deps,
       :self_test,
       :check_for_updates,
+      :clean,
       :print_layout,
       :upgrade,
       :config,
@@ -552,6 +554,14 @@ module Main
       'upgrades are needed. Lightweight: meant to be called directly',
       'by CMake without the bash wrapper. [MODE]'
     ) { opts[:check_for_updates] = true }
+
+    p.on(
+      '--clean',
+      'Uninstall everything, keeping the prebuilt cross-compilers, the',
+      'bootstrap Ruby and the download cache. What is left is what a',
+      'fresh checkout would download anyway, so the rebuild after it',
+      'is a real one. Combine with -d to see what would go. [MODE]'
+    ) { opts[:clean] = true }
 
     p.on(
       '--print-layout',
@@ -771,6 +781,14 @@ module Main
       # any pkgmgr modules are loaded (coverage only tracks files
       # loaded after start).
       exec(RbConfig.ruby, *args)
+    end
+
+    if options[:clean]
+      pkgmgr.refresh()
+      n = pkgmgr.clean(options[:dry_run])
+      info "#{options[:dry_run] ? "Would remove" : "Removed"}: " \
+           "#{n} installation(s)"
+      return 0
     end
 
     if options[:print_layout]
