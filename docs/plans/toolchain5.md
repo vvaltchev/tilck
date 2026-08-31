@@ -1,4 +1,4 @@
-# toolchain5: three coordinates, and why they should last
+# toolchain5: layout and build identity
 
 ## Why toolchain4's layout stopped working
 
@@ -171,11 +171,10 @@ linux-x86_64/any/own-14/{ stack.conf, sysroot/, pkgs/ }
 That is a rename plus writing manifests, not a restructure, and it can
 absorb any number of future axes.
 
-## Non-goals, decided
+## Build identity: what makes an install "current"
 
-**Content addressing.** An install is identified by (machine, env,
-stack, name, version) and NOT by its inputs, so two builds of one
-version from different inputs occupy the same path. Demonstrated:
+The layout says WHERE a package goes. It does not say whether what is
+there was built from the sources we have now — and today nothing does:
 
 ```
 $ ls scripts/patches/libglycin/2.2.alpha.7/
@@ -184,20 +183,129 @@ $ ./scripts/build_toolchain -s host_libglycin
 INFO: All requested packages are already installed
 ```
 
-— the patch changed the artifact's behaviour completely, and pkgmgr
-still considered the unpatched build current. Nix solves this by
-hashing every input into the path; that makes paths opaque, which
-destroys the property this whole schema exists for.
+That patch changed the artifact's behaviour completely, and pkgmgr
+still called the unpatched build current. The same thing happened with
+gdk-pixbuf, where `-Dbuiltin_loaders=png` and `png,glycin` are
+different artifacts at one path — and the wrong one shipped a QEMU
+that could not decode an icon while reporting success.
 
-**Mitigation instead**: record the inputs *inside* the install — patch
-names and hashes, configure arguments, resolved dependency versions —
-and compare on the next install, so pkgmgr reports "installed, but
-built from different inputs" rather than "already installed".
-Detection without content-addressed paths.
+"Installed" must mean *built from these sources with these flags*, not
+*a directory with this name exists*.
+
+### The unit is a STEP, not a flag
+
+"Configure flags plus build flags" is not general enough. micropython
+builds two components in one package:
+
+```
+mpy-cross    cwd=mpy-cross   UNSET CC CXX AR NM RANLIB CROSS_PREFIX
+                             CROSS_COMPILE
+                             make V=1 -j        (+ Darwin CFLAGS_EXTRA)
+unix port    cwd=ports/unix  make submodules
+                             LDFLAGS_EXTRA=-static
+                             make V=1 MICROPY_PY_FFI=0 …  (+ Darwin
+                             UNAME_S=Linux)
+```
+
+Two directories, env deletions AND additions, make variables,
+OS-conditional arguments, two invocations in one component. The
+general unit is a step — `{dir, env changes, argv}` — and a package is
+an ordered list of them.
+
+### Two ways to get a fingerprint, neither of which can be forgotten
+
+**A declarative recipe**, for builds that are a command sequence. The
+flags become data that the helper both EXECUTES and RECORDS, so there
+is no separate "remember to publish the flags" step to omit:
+
+```ruby
+def build_steps(ver) = [
+  Step.new(dir: "mpy-cross", unset: %w[CC CXX AR NM RANLIB],
+           argv: ["make", "V=1", "-j$PAR"]),
+  Step.new(dir: "ports/unix", argv: ["make", "submodules"]),
+  Step.new(dir: "ports/unix", env: { "LDFLAGS_EXTRA" => "-static" },
+           argv: ["make", "V=1", "MICROPY_PY_FFI=0", "-j$PAR"]),
+]
+```
+
+**A code fingerprint**, for the genuinely imperative tail: hash the
+method's own source with comments stripped. No rewrite, no discipline,
+and narrow — it hashes `build_unix_port`, not the file. Verified with
+Prism on Ruby 3.4:
+
+```
+fingerprint          : 9ce6678edeb2cf81
+after a comment edit : 9ce6678edeb2cf81   unchanged, no rebuild
+after MICROPY_PY_BTREE=0 -> 1
+                     : 46e7f55fed70f9f3   rebuild
+```
+
+Surveying every `install_impl_internal` in the tree splits 22 / 33:
+
+| shape | count | examples |
+|---|---|---|
+| helper call + args array | 22 | every stack package: glib2, gtk3, qemu … |
+| imperative | 33 | host_gcc (109 lines), ncurses (82), tcc (78), uboot (7) |
+
+So the 22 get a precise recipe almost for free, and the 33 are
+protected immediately by the code fingerprint, to be converted
+opportunistically rather than urgently.
+
+### What is recorded
+
+`.build_inputs`, in the install directory beside the `.install_origin`
+that is already there. Paths are normalised to `$TC`, `$SYSROOT` and
+`$STAGING`, and the parallelism to `-j$PAR`, so the record is stable
+across machines and still diffable by eye:
+
+```
+recipe   sha256:9ce6678edeb2cf81
+argv     meson setup build --prefix=$SYSROOT/usr --libdir=lib
+         --buildtype=release --wrap-mode=nofallback -Dpng=enabled …
+patches  0001-no-sandbox-outside-usr.diff sha256:…
+files    other/busybox.config sha256:…
+```
+
+The FULL argv is recorded, not only the package's own flags. That is
+what catches changes made in the shared helpers: adding
+`--wrap-mode=nofallback` to `meson_stack_build` altered dependency
+resolution for all 22 meson packages at once and rebuilt none of them.
+
+`build_files` covers inputs whose CONTENT matters rather than their
+name: the patch set for that version by default — the base class
+already applies those, so it already owns that knowledge — with
+busybox and u-boot adding their config files. Note that busybox
+already writes `.last_build_config` on every build and nothing has
+ever read it; this is that idea, finished and made general.
+
+### Where it is checked
+
+`--check-for-updates` reports a stale package exactly as it reports a
+version bump today, so **CMake needs no change at all**: it already
+stops the build on exit code 2.
+
+```cmake
+COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
+if (_upgrade_rc EQUAL 2)
+   message(FATAL_ERROR "Some installed toolchain packages need upgrading…")
+```
+
+`-l` shows `stale` instead of `installed`, so the condition is visible
+without starting a build.
+
+## Non-goals, decided
+
+**Content addressing.** An install is identified by (machine, env,
+stack, name, version) and not by a hash of its inputs, so paths stay
+legible — which is the property this whole schema exists for. The
+build-identity mechanism above gives detection instead: pkgmgr reports
+"installed, but built from different inputs" rather than making the
+stale artifact unreachable. That is a weaker guarantee than Nix's and
+a deliberate trade.
 
 **A bootable system.** The schema covers a package set. A system also
-needs state — `/etc`, `/var`, users — which is not packages and needs
-its own concept if it is ever wanted.
+needs state — `/etc`, `/var`, users — which is not packages and would
+need its own concept if it is ever wanted.
 
 ## Open items
 
@@ -206,5 +314,10 @@ its own concept if it is ever wanted.
 2. `any` becomes a reserved word: no distro, board or stack may be
    called it.
 3. Migration is a full rebuild, since every path change moves every
-   RPATH and ELF interpreter. Hence a new `toolchain5/` root rather
-   than an in-place migration; toolchain4 keeps working until deleted.
+   RPATH and ELF interpreter — hence a new `toolchain5/` root rather
+   than an in-place migration. `cache/` is symlinked from toolchain4
+   so that nothing is downloaded twice; toolchain4 keeps working until
+   it is deleted.
+4. Starting empty means there are no installs without `.build_inputs`,
+   so build identity applies from the first package with no legacy
+   case to tolerate.
