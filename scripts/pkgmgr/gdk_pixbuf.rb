@@ -83,7 +83,7 @@ class HostGdkPixbufPackage < Package
         Dep('host_meson', true),
         Dep('host_glib2', true),
         Dep('host_libpng', true),
-        Dep('host_glycin', true),
+        Dep('host_libglycin', true),
       ],
       default: false,
     )

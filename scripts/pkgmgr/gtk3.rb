@@ -62,6 +62,11 @@ class HostGtk3Package < Package
         Dep('host_pango', true),
         Dep('host_at_spi2_core', true),
         Dep('host_gdk_pixbuf', true),
+
+        # Not linked: the loaders are separate processes gdk-pixbuf
+        # execs to decode an image. Nothing would pull them in
+        # otherwise, and without them GTK cannot draw an icon.
+        Dep('host_glycin_loaders', true),
         Dep('host_libepoxy', true),
         Dep('host_xkbcommon', true),
         Dep('host_fribidi', true),
