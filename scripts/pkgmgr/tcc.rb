@@ -67,84 +67,72 @@ class TccPackage < Package
     ["examples",          true],
   ]
 
-  def install_impl_internal(install_dir)
+  #
+  # DEF_GITHASH is passed explicitly, and has to be. tcc's Makefile
+  # computes one itself by shelling out to git:
+  #
+  #   GITHASH := $(shell git log -1 --date=short --pretty='format:%cd ...')
+  #   GITMODF := $(shell git diff --quiet || echo '*')
+  #
+  # and the cached tarball still carries a .git, so that works -- it
+  # would bake a commit DATE into the version string, and append a "*"
+  # because the tree is dirty: we patch it. A command-line variable
+  # beats a makefile assignment, so passing it pins the value to the
+  # ref the source was fetched at.
+  #
+  # $SRC_REF rather than reading .ref_short here: build_steps is asked
+  # for during a staleness check too, when no source tree exists to
+  # read it from.
+  #
+  # CC and AR are unset for configure alone. tcc's configure picks CC
+  # up from the environment and then --cross-prefix prepends to it
+  # again, so it has to start from a bare "gcc"/"ar".
+  #
+  # No -j: this build is not parallel-safe, and was not run that way
+  # before either.
+  #
+  def build_steps
 
     arch = default_arch.gcc_tc    # "i686" or "riscv64"
     cpu = default_arch.name       # "i386" or "riscv64"
 
-    # Tilck runtime paths: where TCC looks for crt*.o and libraries at runtime
+    # Where TCC looks for crt*.o and libraries at runtime, on Tilck.
     tilck_lib = "/lib/#{arch}-tilck-musl"
 
-    # Compute DEF_GITHASH from saved git metadata (the .git dir was deleted
-    # during cache packaging).
-    make_vars = []
-    if File.file?(".ref_short")
-      githash = File.read(".ref_short").strip
-    elsif File.file?(".our_tag")
-      githash = File.read(".our_tag").strip
-    end
+    configure = [
+      "./configure",
+      "--cross-prefix=#{arch}-linux-",
+      "--cpu=#{cpu}",
+      "--enable-static",
+      "--config-bcheck=no",
+      "--config-backtrace=no",
+      "--prefix=/",
+      "--extra-ldflags=-static",
+      "--crtprefix=#{tilck_lib}",
+      "--libpaths=#{tilck_lib}",
+    ]
 
-    if githash
-      make_vars << "DEF_GITHASH=-DTCC_GITHASH=\\\"#{githash}\\\""
-    end
+    # macOS: configure auto-detects Darwin and sets CONFIG_OSX, adding
+    # macOS-only linker flags (-flat_namespace) that the GNU cross
+    # linker rejects. We are cross-compiling for Tilck.
+    configure << "--targetos=Linux" if OS == "Darwin"
 
-    # TCC's configure picks up CC from the environment (line 58) and then
-    # --cross-prefix prepends to it again (line 295). Clear CC/AR so that
-    # configure starts from "gcc"/"ar" and --cross-prefix works correctly.
-    with_saved_env(%w[CC AR]) do
+    return [
+      Step("configure.log", configure, unset: %w[CC AR]),
 
-      ENV.delete("CC")
-      ENV.delete("AR")
+      # <cpu>-libtcc1-usegcc=yes makes lib/Makefile compile libtcc1.a
+      # with $(CC), the cross GCC, instead of running the tcc it has
+      # just built on the build host.
+      Step("build.log", [
+        "make",
+        "#{cpu}-libtcc1-usegcc=yes",
+        "DEF_GITHASH=-DTCC_GITHASH=\\\"$SRC_REF\\\"",
+      ]),
 
-      configure_argv = [
-        "./configure",
-        "--cross-prefix=#{arch}-linux-",
-        "--cpu=#{cpu}",
-        "--enable-static",
-        "--config-bcheck=no",
-        "--config-backtrace=no",
-        "--prefix=/",
-        "--extra-ldflags=-static",
-        "--crtprefix=#{tilck_lib}",
-        "--libpaths=#{tilck_lib}",
-      ]
-
-      # macOS: TCC's configure auto-detects Darwin and sets CONFIG_OSX,
-      # which adds macOS-only linker flags (-flat_namespace) that the
-      # GNU cross-linker rejects. Force the target OS to Linux since
-      # we're cross-compiling for Tilck.
-      if OS == "Darwin"
-        configure_argv << "--targetos=Linux"
-      end
-
-      ok = run_command("configure.log", configure_argv)
-      return false if !ok
-    end
-
-    # Build TCC. The key flag is <cpu>-libtcc1-usegcc=yes which makes the
-    # lib/Makefile use $(CC) (the cross-GCC) to compile libtcc1.a instead
-    # of trying to run the just-built tcc binary on the host.
-    ok = run_command("build.log", [
-      "make",
-      "#{cpu}-libtcc1-usegcc=yes",
-      *make_vars,
-    ])
-    return false if !ok
-
-    if !File.file?("tcc")
-      error "Build succeeded but tcc binary not found"
-      return false
-    end
-
-    # Strip the binary
-    ok = system("#{arch}-linux-strip", "--strip-all", "tcc")
-    if !ok
-      error "Failed to strip tcc"
-      return false
-    end
-
-    return true
+      Step("strip.log", ["#{arch}-linux-strip", "--strip-all", "tcc"]),
+    ]
   end
+
 end
 
 pkgmgr.register(TccPackage.new())

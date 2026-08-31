@@ -192,6 +192,25 @@ that could not decode an icon while reporting success.
 "Installed" must mean *built from these sources with these flags*, not
 *a directory with this name exists*.
 
+### Tokens: naming a value instead of reading it
+
+A step's argv refers to the install directory, the sysroot, the build
+parallelism and the source's git ref through tokens -- `$INSTALL`,
+`$SYSROOT`, `$PAR`, `$SRC_REF` -- resolved when the step runs.
+
+`$SRC_REF` is the one that shows why they exist. Its value lives in
+`.ref_short`, written beside the extracted tree by the cache when it
+clones, so it can only be read once the source is there. A recipe that
+READ it would hash differently depending on whether a source tree
+happened to be present, and on which one -- the same defect that once
+made glycin report stale from a build directory and fresh from the
+repository root. Naming it leaves the literal `$SRC_REF` in the
+digest, which is the honest record: the value is a property of the
+pinned source, and the version already identifies that.
+
+A package that names it and has no git source is told so, rather than
+handed an empty string.
+
 ### The unit is a STEP, not a flag
 
 "Configure flags plus build flags" is not general enough. micropython
