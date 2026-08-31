@@ -1,0 +1,14 @@
+Look for the WAD files under /tmp.
+
+Upstream's FILES_DIR is /mnt, which Tilck does not mount. /tmp is a
+ramfs, always present, and is where the previous patch already sends
+the config and savegames -- one directory rather than two.
+
+--- a/fbdoom/config.h
++++ b/fbdoom/config.h
+@@ -97,4 +97,4 @@
+ #undef ORIGCODE
+ 
+ /* Define to the directory where all game files are located */
+-#define FILES_DIR "/mnt"
++#define FILES_DIR "/tmp"

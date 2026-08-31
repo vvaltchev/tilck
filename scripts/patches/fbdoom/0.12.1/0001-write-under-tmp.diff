@@ -1,0 +1,17 @@
+Write savegames and config to /tmp instead of /mnt.
+
+Tilck mounts no writable filesystem at /mnt, so Doom cannot store
+its configuration or savegames there. /tmp is a ramfs and always
+present.
+
+--- a/fbdoom/m_config.c
++++ b/fbdoom/m_config.c
+@@ -2052,7 +2052,7 @@
+     char *result;
+ 
+     // frosted HACK - homedir = getenv("HOME");
+-    homedir = "/mnt";
++    homedir = "/tmp";
+ 
+     if (homedir != NULL)
+     {
