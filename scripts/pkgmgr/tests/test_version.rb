@@ -214,3 +214,94 @@ class TestVersionClass < Minitest::Test
     assert_equal VersionType::HASH, v.type
   end
 end
+
+
+#
+# Prerelease versions.
+#
+# glycin ships nothing else -- gdk-pixbuf 2.44.8 requires `glycin-2 >=
+# 2.2.alpha.7` and there is no 2.2 final -- so a version string with a
+# word in it has to parse and, more importantly, has to ORDER: a
+# prerelease sorts before the release it leads to, which is the one
+# thing a dotted-number parser cannot express.
+#
+class TestPrereleaseVersions < Minitest::Test
+
+  def test_parses_what_used_to_be_rejected
+    v = Ver("2.2.alpha.7")
+    assert_equal VersionType::DOT_PRE, v.type
+    assert_equal [2, 2], v.comps
+    assert v.prerelease?
+    assert_equal "2.2.alpha.7", v.to_s
+  end
+
+  def test_a_plain_version_is_not_a_prerelease
+    refute Ver("2.2.0").prerelease?
+    refute Ver("1.2.3").prerelease?
+  end
+
+  def test_alpha_beta_rc_order
+    assert Ver("2.2.alpha.7") < Ver("2.2.beta.1")
+    assert Ver("2.2.beta.9") < Ver("2.2.rc.1")
+    assert Ver("2.2.alpha.4") < Ver("2.2.alpha.7")
+  end
+
+  # The property the whole thing exists for.
+  def test_a_prerelease_precedes_its_release
+    assert Ver("2.2.alpha.7") < Ver("2.2")
+    assert Ver("2.2.beta.1") < Ver("2.2.0")
+    assert Ver("2.2.rc.1") < Ver("2.2.0.0")
+  end
+
+  def test_release_components_dominate_the_prerelease_rank
+    assert Ver("2.3") > Ver("2.2.rc.9")
+    assert Ver("2.2.alpha.1") > Ver("2.1.9")
+  end
+
+  # "2.2.beta" with no number is the earliest beta.
+  def test_a_bare_prerelease_word_sorts_first
+    assert Ver("2.2.beta") < Ver("2.2.beta.1")
+    assert_equal [1, 0], Ver("2.2.beta").pre
+  end
+
+  # Upstreams spell the separator both ways.
+  def test_dash_separator
+    assert_equal [2, 1], Ver("1.0-rc1").pre     # rc *1*, not a bare rc
+    assert Ver("1.0-rc1") < Ver("1.0")
+    assert Ver("1.0-alpha1") < Ver("1.0-beta1")
+  end
+
+  def test_v_prefix
+    v = Ver("v3.1.beta.2")
+    assert v.prerelease?
+    assert_equal [3, 1], v.comps
+  end
+
+  def test_equality_and_hashing
+    assert_equal Ver("2.2.alpha.7"), Ver("2.2.alpha.7")
+    refute_equal Ver("2.2.alpha.7"), Ver("2.2.beta.1")
+
+    # Distinct prereleases of one release must not collide as hash keys.
+    h = { Ver("2.2.alpha.7") => :a, Ver("2.2.beta.1") => :b }
+    assert_equal 2, h.size
+  end
+
+  def test_serialize_round_trips
+    assert_equal "2.2.alpha.7", Ver("2.2.alpha.7").serialize
+  end
+
+  # to_dot would drop the prerelease part silently, turning
+  # 2.2.alpha.7 into 2.2 -- a different version that already exists.
+  def test_to_dot_refuses_to_discard_the_prerelease
+    assert_raises(TypeError) { Ver("2.2.alpha.7").to_dot }
+    assert_equal Ver("2.2"), Ver("2.2").to_dot
+  end
+
+  # Words we do not know are still rejected: guessing where "foo"
+  # sorts would be worse than refusing it.
+  def test_unknown_words_are_still_rejected
+    assert_nil SafeVer("2.2.gamma.1")
+    assert_nil SafeVer("2.2.snapshot")
+    assert_nil SafeVer("not-a-version")
+  end
+end
