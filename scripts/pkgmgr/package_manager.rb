@@ -770,7 +770,21 @@ class PackageManager
     gcc_ver ||= default_stack_cc_ver
     fragments = @packages.values.flat_map { |p| p.sysroot_fragments(gcc_ver) }
 
-    n = Sysroot.compose(stack_sysroot(gcc_ver), fragments)
+    # Nothing to compose over something already composed is not a
+    # sysroot with no packages in it -- it is a question asked wrongly.
+    # Replacing it would destroy a working stack silently, which is
+    # exactly what happened when this was asked about every stack from
+    # an invocation scoped to one of them.
+    root = stack_sysroot(gcc_ver)
+
+    if fragments.empty? && root.directory? && !Dir.empty?(root.to_s)
+      error "Refusing to empty the composed sysroot of gcc-#{gcc_ver}: " \
+            "no stack packages were found for it, which cannot be right " \
+            "for a stack that already has one"
+      return 0
+    end
+
+    n = Sysroot.compose(root, fragments)
     info "Composed sysroot gcc-#{gcc_ver}: #{n} entries from " \
          "#{fragments.length} packages"
     return n
