@@ -198,7 +198,8 @@ class PackageManager
   def with_cc(arch_name = nil, &block)
     arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
     arch_gcc = arch.gcc_tc
-    arch_dir = TC / "gcc-#{arch.gcc_ver}" / arch.name
+    arch_dir = Coords.new("tilck-#{arch.name}", arch.default_board,
+                          "gcc-#{arch.gcc_ver}").pkgs_dir
     assert { !arch_gcc.blank? }
 
     compilers = get_installed_compilers.select { |x| x.target_arch == arch }
@@ -549,7 +550,9 @@ class PackageManager
   # The host stack's root, and the sysroot inside it. Defined here
   # rather than on Package because several packages, the sysroot
   # composition and the audit all need the same answer.
-  def stack_root(gcc_ver = nil)
+  # The coordinates of one of OUR stacks: needs nothing from the
+  # machine, built by the compiler named.
+  def stack_coords(gcc_ver = nil)
 
     gcc_ver ||= default_stack_cc_ver
 
@@ -559,12 +562,11 @@ class PackageManager
             "stack package would install to the same broken path"
     end
 
-    return HOST_DIR_PORTABLE / "gcc-#{gcc_ver}"
+    return Coords.new(HOST_OS_ARCH, nil, "gcc-#{gcc_ver}")
   end
 
-  def stack_sysroot(gcc_ver = nil)
-    return TC_SYSROOTS / "gcc-#{gcc_ver || default_stack_cc_ver}"
-  end
+  def stack_root(gcc_ver = nil) = stack_coords(gcc_ver).root
+  def stack_sysroot(gcc_ver = nil) = stack_coords(gcc_ver).sysroot
 
   # Which stack the world is currently being built for. Everything
   # except host_gcc belongs to this one: choosing a different compiler
@@ -573,17 +575,26 @@ class PackageManager
   # belong to ITS OWN stack — see HostGccPackage#stack_gcc_ver.
   def default_stack_cc_ver = get_config_ver("gcc", host: true)
 
-  # Every host stack that exists on disk.
+  # The GCC versions of our stacks that exist on disk.
+  #
+  # Returns versions rather than stack ids, because that is what the
+  # callers want: which compilers have a stack built with them.
+  #
+  # Selecting gcc-* here is NOT the disambiguation toolchain4 needed.
+  # There, one directory level held both packages and compilers and a
+  # name had to be parsed to tell them apart. Here the level holds
+  # nothing but stacks, so this is only asking which of them are gcc
+  # ones -- a stack may legitimately be called anything, and the
+  # schema leaves room for gcc-14.4.0-lto or a clang stack later.
   def host_stacks
 
-    return [] if !HOST_DIR_PORTABLE.directory?
+    dir = TC / HOST_OS_ARCH / Coords::ANY
+    return [] if !dir.directory?
 
-    # compiler_slot? rather than a bare prefix test: portable/ also
-    # holds the musl cross-compilers, whose package names start the
-    # same way (gcc-riscv64-musl) and are not stacks.
-    return Dir.children(HOST_DIR_PORTABLE)
-              .select { |d| compiler_slot?(d) }
+    return Dir.children(dir)
+              .select { |d| d.start_with?("gcc-") && SafeVer(d.sub("gcc-", "")) }
               .map { |d| d.sub("gcc-", "") }
+              .sort
   end
 
   # readelf and the dynamic loader the audit uses. Ours when we have
@@ -892,24 +903,14 @@ class PackageManager
   # A slot is the prefix followed by a VERSION -- gcc-14.4.0,
   # clang-14.0.0 -- which no package name is, since a package's
   # version lives in the directory below it rather than in its name.
-  def compiler_slot?(name)
-
-    for prefix in ["gcc-", "clang-"] do
-      next if !name.start_with?(prefix)
-      return !SafeVer(name.delete_prefix(prefix)).nil?
-    end
-
-    return false
-  end
-
   # Scan one <pkg>/ directory, whose children are version directories.
-  def scan_one_pkg_dir(pkg_path, pkg_name, compiler, on_host, arch_obj, list)
+  def scan_one_pkg_dir(pkg_path, pkg_name, arch_obj, on_host, list)
 
     return if !pkg_path.directory?
 
     for ver_str in Dir.children(pkg_path)
       full_path = pkg_path / ver_str
-      next if @known_pkgs_paths.include? full_path
+      next if @known_pkgs_paths&.include?(full_path)
       ver = SafeVer(ver_str)
 
       if ver.nil?
@@ -918,103 +919,45 @@ class PackageManager
       end
 
       list << InstallInfo.new(
-        pkg_name, compiler, on_host, arch_obj, ver, full_path
+        pkg_name, "syscc", on_host, arch_obj, ver, full_path
       )
     end
   end
 
-  # Scan a whole <root>/<pkg>/<ver>/ tree.
-  def scan_pkg_dir_tree(root, compiler, on_host, arch_obj, list)
-
-    return if !root.directory?
-
-    for pkg_name in Dir.children(root)
-      scan_one_pkg_dir(
-        root / pkg_name, pkg_name, compiler, on_host, arch_obj, list
-      )
-    end
-  end
-
+  #
+  # Walk the whole toolchain: <machine>/<env>/<stack>/pkgs/<pkg>/<ver>/
+  #
+  # One loop for everything, because every install is at the same
+  # depth with the same meaning per level. toolchain4 needed four
+  # different walks and a predicate to tell a compiler directory from
+  # a package with a similar name; there is nothing left to
+  # disambiguate, since a package can only appear under pkgs/.
+  #
   def scan_toolchain
 
     list = []
+    return list if !TC.directory?
 
-    # Target-side: TC/gcc-<ver>/<arch>/<pkg>/<ver>/
-    for cc_dir in Dir.children(TC)
-      next if !cc_dir.start_with?("gcc-")
+    for machine in Dir.children(TC).sort
+      next if NON_INSTALL_DIRS.include?(machine)
 
-      cc_ver = SafeVer(cc_dir.sub("gcc-", ""))
-      if cc_ver.nil?
-        warning "Invalid compiler directory: #{TC / cc_dir}"
-        next
-      end
+      m_dir = TC / machine
+      next if !m_dir.directory?
 
-      for arch_name in Dir.children(TC / cc_dir)
-        arch_obj = ALL_ARCHS[arch_name]
-        if !arch_obj
-          warning "Unknown architecture '#{arch_name}' in #{TC / cc_dir}"
-          next
-        end
-        scan_pkg_dir_tree(TC / cc_dir / arch_name, cc_ver, false, arch_obj, list)
-      end
-    end
+      arch_obj, on_host, known = machine_to_arch(machine)
+      next if !known
 
-    # Noarch: TC/noarch/<pkg>/<ver>/
-    scan_pkg_dir_tree(TC / "noarch", nil, false, nil, list)
+      for env in Dir.children(m_dir).sort
+        e_dir = m_dir / env
+        next if !e_dir.directory?
 
-    # Host-side: TC/host/<os>-<arch>/{portable,<distro>/<host-cc>}/<pkg>/<ver>/
-    host_root = TC / "host"
-    if host_root.directory?
-      for os_arch in Dir.children(host_root)
-        os_dir = host_root / os_arch
-        next if !os_dir.directory?
+        for stack in Dir.children(e_dir).sort
+          pkgs = e_dir / stack / "pkgs"
+          next if !pkgs.directory?
 
-        # Tier 1: portable/<pkg>/<ver>/ -- runs anywhere, built by the
-        # system compiler. Children named like a compiler are the
-        # stack slots scanned just below, not packages: exactly the
-        # convention tier 2 and tier 3 already share under <distro>/.
-        portable_dir = os_dir / "portable"
-        if portable_dir.directory?
-          for pkg_name in Dir.children(portable_dir)
-            next if compiler_slot?(pkg_name)
+          for pkg_name in Dir.children(pkgs).sort
             scan_one_pkg_dir(
-              portable_dir / pkg_name, pkg_name, "syscc", true,
-              HOST_ARCH, list
-            )
-          end
-
-          # Portable, built by OUR compiler:
-          # portable/<our-cc>/<pkg>/<ver>/.
-          for cc in Dir.children(portable_dir)
-            next if !compiler_slot?(cc)
-            scan_pkg_dir_tree(
-              portable_dir / cc, "syscc", true, HOST_ARCH, list
-            )
-          end
-        end
-
-        for sub in Dir.children(os_dir)
-          next if sub == "portable"
-          distro_dir = os_dir / sub
-          next if !distro_dir.directory?
-
-          # Tier 2: distro-bound, compiler-independent packages live
-          # directly under <distro>/<pkg>/<ver>/. Scan each child that
-          # isn't a host-cc slot or the ruby bootstrap.
-          for pkg_name in Dir.children(distro_dir)
-            next if compiler_slot?(pkg_name)
-            next if pkg_name == "ruby"
-            scan_one_pkg_dir(
-              distro_dir / pkg_name, pkg_name, "syscc", true,
-              HOST_ARCH, list
-            )
-          end
-
-          # Tier 3: compiler-bound packages under <distro>/<host-cc>/.
-          for host_cc in Dir.children(distro_dir)
-            next if !compiler_slot?(host_cc)
-            scan_pkg_dir_tree(
-              distro_dir / host_cc, "syscc", true, HOST_ARCH, list
+              pkgs / pkg_name, pkg_name, arch_obj, on_host, list
             )
           end
         end
@@ -1022,6 +965,33 @@ class PackageManager
     end
 
     return list
+  end
+
+  # Top-level directories that are not machines.
+  NON_INSTALL_DIRS = ["cache", "staging"].freeze
+
+  # Turn a <machine> coordinate back into [Architecture, on_host].
+  #
+  # "noarch" has neither; a Tilck target names its arch directly; and
+  # anything else is a build machine, whose packages run on the host.
+  # Returns [Architecture, on_host, known?]. A machine we cannot
+  # identify is skipped rather than scanned: reading its packages
+  # would attribute them to a nil architecture and let them show up
+  # in listings for a target that does not exist.
+  def machine_to_arch(machine)
+
+    return [nil, false, true] if machine == "noarch"
+
+    if machine.start_with?("tilck-")
+      name = machine.delete_prefix("tilck-")
+      arch = ALL_ARCHS[name]
+      warning "Unknown architecture '#{name}' in #{TC / machine}" if !arch
+      return [arch, false, !arch.nil?]
+    end
+
+    # Any other machine is a build host. Only this one's packages can
+    # run here, so anything else is another machine's business.
+    return [HOST_ARCH, true, machine == HOST_OS_ARCH]
   end
 
   # Read one of the two version files into { "BUSYBOX" => Version }.

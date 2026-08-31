@@ -7,6 +7,7 @@ require_relative 'term'
 require_relative 'source_ref'
 require_relative 'package_manager'
 require_relative 'build_env'
+require_relative 'coords'
 
 PackageDep = Struct.new(
 
@@ -120,9 +121,12 @@ class Package
 
   public
   # host_tier controls where host packages are installed:
-  #   :portable  — statically linked, any distro   (HOST_DIR_PORTABLE)
-  #   :distro    — links distro libc, any host CC   (HOST_DIR_DISTRO)
-  #   :compiler  — depends on host CC C++ ABI       (HOST_DIR)
+  #   :portable  — needs nothing from the machine (static)
+  #   :distro    — links the distro's libraries
+  #   :compiler  — ...and depends on the host C++ ABI
+  #   :stack     — built by a compiler we built, against our sysroot
+  #
+  # The tier chooses the coordinates; see Package#coords.
   #
   # @param source [SourceRef, nil] where the package's source comes
   #   from. Required for packages that use the base class install
@@ -144,7 +148,12 @@ class Package
     @on_host = on_host
     @is_compiler = is_compiler
     @host_tier = host_tier
-    @arch_list = arch_list
+    # Accept either an Array of Architecture or the {name => arch}
+    # hashes several packages pass (ALL_ARCHS, X86_ARCHS), and store
+    # an Array. Both worked for arch_supported?, which only asks
+    # include?, but only one survives being ITERATED -- a Hash yields
+    # [name, arch] pairs -- and the install scan now iterates it.
+    @arch_list = arch_list.is_a?(Hash) ? arch_list.values : arch_list
     @dep_list = dep_list
     @host_os_list = host_os_list
     @host_arch_list = host_arch_list
@@ -202,31 +211,71 @@ class Package
     @default && host_supported? && board_supported? && arch_supported?
   end
 
-  def host_install_root
-    case @host_tier
-      when :portable then HOST_DIR_PORTABLE
-      when :distro   then HOST_DIR_DISTRO
-      when :compiler then HOST_DIR
+  #
+  # Where this package installs, as the three toolchain5 coordinates.
+  # Everything about placement derives from here; nothing else builds
+  # a path by hand. See scripts/pkgmgr/coords.rb.
+  #
+  def coords(ver = nil)
 
-      # Portable, but built by our own compiler, so keyed by its
-      # version one level under portable/ -- the same shape tier 3
-      # uses for the HOST compiler. The composed sysroot used to sit
-      # beside these and had to be fenced off from the scanners; it
-      # now lives outside the package tree entirely (TC_SYSROOTS),
-      # which is where a view of installed packages belongs.
-      when :stack then stack_root
+    return Coords.new("noarch", nil, nil) if !on_host && default_arch.nil?
+
+    if on_host
+      case @host_tier
+        when :portable
+          # Static, or otherwise needing nothing from the machine and
+          # caring about no particular compiler.
+          Coords.new(HOST_OS_ARCH, nil, nil)
+
+        when :distro
+          # Links the distro's libraries, so it runs only here.
+          Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
+
+        when :compiler
+          # ...and depends on the host C++ ABI, which is a property of
+          # where it can be USED, hence part of the environment.
+          Coords.new(HOST_OS_ARCH, HOST_DISTRO, HOST_CC)
+
+        when :stack
+          # Built by a compiler we built, against a sysroot we
+          # composed: needs nothing from the machine, but belongs to
+          # exactly one stack.
+          #
+          # Goes through the package manager rather than building the
+          # Coords here, so that a missing HOST_VER_GCC raises in one
+          # place instead of quietly producing the stack "gcc-", which
+          # every stack package would then share.
+          pkgmgr.stack_coords(stack_gcc_ver(ver))
+      end
+    else
+      a = default_arch
+
+      if a.gcc_ver.nil?
+        raise "#{name}: the cross-compiler version for #{a.name} is not " \
+              "set yet, so its stack coordinate would be the bare " \
+              "string \"gcc-\" and every arch would share one directory"
+      end
+
+      Coords.new("tilck-#{a.name}", target_board(a), "gcc-#{a.gcc_ver}")
     end
   end
 
-  # The host stack lives under the version of OUR compiler, not the
-  # system one: a GCC bump can change the C++ ABI, so everything built
-  # with it is rebuilt beside the old stack rather than in place. Same
-  # reasoning as the tier-3 <host-cc> directory, with our compiler.
+  # The board a target package is built for.
   #
-  # host_gcc itself lands in here too, at
-  # portable/<gcc-ver>/gcc/<gcc-ver>/ — redundant-looking, but it keeps
-  # every package on the uniform <root>/<pkg>/<ver>/ layout the install
-  # scanners expect.
+  # In the path because BOARD changes what gets built: before this,
+  # BOARD decided WHETHER a package installed (board_supported?) but
+  # never where, so two boards needing the same package would have
+  # silently overwritten each other. Only safe until now because
+  # board-specific packages happened to have distinct names.
+  #
+  # The current BOARD applies to the arch being built for; another
+  # arch reached through `-a` uses its own default, since BOARD is a
+  # single global and cannot mean two things at once.
+  def target_board(arch)
+    return BOARD if arch == ARCH && BOARD
+    return arch.default_board
+  end
+
   # Which host stack an install of `ver` belongs to.
   #
   # It is the stack this invocation is building into, which
@@ -237,29 +286,15 @@ class Package
   # gcc ends up configured against a sysroot it has no business in.
   def stack_gcc_ver(ver = nil) = pkgmgr.current_host_stack
 
-  # "gcc-<ver>", not a bare version: the compiler is named because it
-  # might not always be gcc, and it matches the target-side gcc-<ver>/
-  # directories at the root of the toolchain. Both live on the package
-  # manager so there is a single definition.
-  def stack_root = pkgmgr.stack_root(stack_gcc_ver)
+  def stack_root = coords.root
 
-  # The composed sysroot everything portable is built against: our
-  # glibc, our headers, and a symlink farm of the resolved libraries.
-  def stack_sysroot = pkgmgr.stack_sysroot(stack_gcc_ver)
+  # The composed sysroot everything in this stack is built against:
+  # our glibc, our headers, and a symlink farm of the resolved
+  # libraries.
+  def stack_sysroot = coords.sysroot
 
-  # The root directory for the final install (where mv moves to).
-  # For target packages, uses default_arch (which for the base class
-  # is pkgmgr.target_arch) so the install lands under the right
-  # gcc-<ver>/<arch>/ tree when `-a <arch>` is active.
-  def final_install_root
-    if on_host
-      host_install_root
-    elsif (a = default_arch).nil?
-      TC_NOARCH
-    else
-      TC / "gcc-#{a.gcc_ver}" / a.name
-    end
-  end
+  # Where the finished install is moved to.
+  def final_install_root = coords.pkgs_dir
 
   # Staging path for this package version.
   def staging_dir(ver)
@@ -957,7 +992,7 @@ class Package
   def syscc_package_get_install_list
 
     list = []
-    dir = host_install_root / pkg_dirname
+    dir = coords.pkgs_dir / pkg_dirname
 
     if dir.directory?
       for d in Dir.children(dir)
@@ -979,46 +1014,56 @@ class Package
     return list
   end
 
+  # The stack directories present under one <machine>/<env>.
+  def stack_dirs_of(machine, env)
+    dir = TC / machine / (env || Coords::ANY)
+    return [] if !dir.directory?
+    return Dir.children(dir).select { |d| d.start_with?("gcc-") }
+  end
+
   def regular_target_package_get_install_list
 
     list = []
 
-    for cc_dir in Dir.children(TC)
-      next if !cc_dir.start_with?("gcc-")
+    # tilck-<arch>/<board>/gcc-<ver>/pkgs/<pkg>/<ver>/ -- every
+    # combination this package could have been installed under, since
+    # one package may exist for several arches, boards and compilers
+    # at once.
+    for arch_obj in (arch_list || [])
+      for board in (arch_obj.boards || [nil])
+        for cc_dir in stack_dirs_of("tilck-#{arch_obj.name}", board)
 
-      cc_ver = SafeVer(cc_dir.sub("gcc-", ""))
-      next if !cc_ver
+          cc_ver = SafeVer(cc_dir.sub("gcc-", ""))
+          next if !cc_ver
 
-      for arch_name in Dir.children(TC / cc_dir)
-        arch_obj = ALL_ARCHS[arch_name]
-        next if !arch_obj
+          coords = Coords.new("tilck-#{arch_obj.name}", board, cc_dir)
+          dir = coords.pkgs_dir / pkg_dirname
+          next if !dir.directory?
 
-        dir = TC / cc_dir / arch_name / pkg_dirname
-        next if !dir.directory?
-
-        for d in Dir.children(dir) do
-          ver = Ver(d.to_s)
-          list << InstallInfo.new(
-            name,                             # package name
-            cc_ver,                           # compiler used
-            on_host,                          # runnning on host?
-            arch_obj,                         # arch
-            ver,                              # package version
-            dir / d,                          # install path
-            self,                             # package object
-            !check_install_dir(dir / d, ver), # broken?
-            default_install: InstallOrigin.default_install?(dir / d)
-          )
-        end # for ver_dir
-      end # for arch
-    end # for cc
+          for d in Dir.children(dir) do
+            ver = Ver(d.to_s)
+            list << InstallInfo.new(
+              name,                             # package name
+              cc_ver,                           # compiler used
+              on_host,                          # runnning on host?
+              arch_obj,                         # arch
+              ver,                              # package version
+              dir / d,                          # install path
+              self,                             # package object
+              !check_install_dir(dir / d, ver), # broken?
+              default_install: InstallOrigin.default_install?(dir / d)
+            )
+          end # for ver_dir
+        end # for stack
+      end # for board
+    end # for arch
     return list
   end
 
   def noarch_package_get_install_list
 
     list = []
-    dir = TC_NOARCH / pkg_dirname
+    dir = coords.pkgs_dir / pkg_dirname
 
     if dir.directory?
       for d in Dir.children(dir) do

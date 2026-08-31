@@ -376,7 +376,7 @@ class TestPackageManagerUpgrade < Minitest::Test
       # Simulate an old version on disk, installed as the default
       # (no origin file, like any pre-existing installation)
       gcc_ver = ARCH.gcc_ver.to_s
-      old_dir = tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+      old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
 
       pkg = FakePackage.new("foo")
@@ -397,7 +397,7 @@ class TestPackageManagerUpgrade < Minitest::Test
     with_fake_tc do |tc|
       # Create old install for riscv64
       gcc_ver = ARCH.gcc_ver.to_s
-      FileUtils.mkdir_p(tc / "gcc-#{gcc_ver}" / "riscv64" / "foo" / "0.9.0")
+      FileUtils.mkdir_p(target_pkgs(ALL_ARCHS["riscv64"], gcc_ver) / "foo" / "0.9.0")
 
       pkg = FakePackage.new("foo",
         arch_list: Archs("riscv64"))

@@ -59,7 +59,7 @@ class TestShowStatus < Minitest::Test
 
         # Also create an x86_64 install
         gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc}" / "x86_64" / "foo" / "1.0.0")
+        FileUtils.mkdir_p(target_pkgs(ALL_ARCHS["x86_64"], gcc) / "foo" / "1.0.0")
         pkgmgr.refresh()
 
         list = pkg.get_install_list
@@ -77,7 +77,7 @@ class TestShowStatus < Minitest::Test
     with_fake_tc do |tc|
       # Create a version dir with no expected files (broken)
       gcc = FAKE_GCC_VER.to_s
-      FileUtils.mkdir_p(tc / "gcc-#{gcc}" / ARCH.name / "brkpkg" / "1.0.0")
+      FileUtils.mkdir_p(target_pkgs(ARCH, gcc) / "brkpkg" / "1.0.0")
 
       # Register a package that expects a file
       pkg = FakePackage.new("brkpkg")
@@ -112,7 +112,7 @@ class TestShowStatus < Minitest::Test
         # but FakePackage has empty expected_files so it won't be broken)
         # Instead, create a package that IS broken on riscv64
         gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc}" / "riscv64" / "foo" / "1.0.0")
+        FileUtils.mkdir_p(target_pkgs(ALL_ARCHS["riscv64"], gcc) / "foo" / "1.0.0")
         pkgmgr.refresh()
 
         list = pkg.get_install_list
@@ -130,7 +130,7 @@ class TestShowStatus < Minitest::Test
   def test_show_status_noarch_package
     with_fake_tc do |tc|
       # Create a noarch install
-      FileUtils.mkdir_p(tc / "noarch" / "noarch_foo" / "1.0.0")
+      FileUtils.mkdir_p(noarch_pkgs / "noarch_foo" / "1.0.0")
 
       pkg = FakePackage.new("noarch_foo", arch_list: nil)
       pkgmgr.register(pkg)

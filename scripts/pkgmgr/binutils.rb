@@ -90,7 +90,7 @@ class HostBinutilsPackage < Package
     conf = [
       "../configure",
       "--prefix=#{prefix}",
-      "--with-sysroot=#{HOST_DIR_PORTABLE}",
+      "--with-sysroot=#{stack_sysroot}",
 
       # No translations: they would pull in the host's gettext, and
       # nothing here is user-facing enough to want them.

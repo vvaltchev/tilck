@@ -282,8 +282,13 @@ module Main
       ALL_ARCHS["x86_64"].gcc_ver = ver
     end
 
+    # Where this arch's packages live: the pkgs/ directory of its
+    # stack. Kept on the Architecture because a few packages need a
+    # sibling package's install path (vim needs ncurses').
     for name, arch in ALL_ARCHS do
-      arch.target_dir = TC / "gcc-#{arch.gcc_ver}" / name
+      arch.target_dir = Coords.new(
+        "tilck-#{name}", arch.default_board, "gcc-#{arch.gcc_ver}"
+      ).pkgs_dir
     end
   end
 
@@ -349,7 +354,15 @@ module Main
       puts "Project's root dir: '#{MAIN_DIR}'"
       exit 1
     end
-    if BOARD && !BOARD_BSP.exist?
+    # A BSP is board DATA -- device tree, u-boot config -- and only the
+    # embedded targets have any. Every arch now names a board, because
+    # the board is part of an installed package's path, but x86's is
+    # just "pc" and carries no BSP. So a missing BSP is an error only
+    # for an arch that ships them at all, which still catches a
+    # misspelled BOARD on riscv64.
+    bsp_root = MAIN_DIR / "other" / "bsp" / ARCH.name
+
+    if BOARD && bsp_root.directory? && !BOARD_BSP.exist?
       error "BOARD_BSP: #{BOARD_BSP} not found!"
       exit 1
     end
@@ -357,11 +370,8 @@ module Main
 
   def create_toolchain_dirs
     for name, arch in ALL_ARCHS do
-      mkdir_p(TC / "gcc-#{arch.gcc_ver}" / name)
+      mkdir_p(arch.target_dir)
     end
-    mkdir_p(HOST_DIR)
-    mkdir_p(HOST_DIR_PORTABLE)
-    mkdir_p(TC_NOARCH)
   end
 
   def parse_options(argv = ARGV.dup)

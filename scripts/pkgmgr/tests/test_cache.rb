@@ -319,7 +319,7 @@ class TestCacheExtractFile < Minitest::Test
       make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
 
       gcc = FAKE_GCC_VER.to_s
-      dest = tc / "gcc-#{gcc}" / ARCH.name / "mypkg"
+      dest = target_pkgs(ARCH, gcc) / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
@@ -335,7 +335,7 @@ class TestCacheExtractFile < Minitest::Test
       # Tarball has "upstream-name-1.0/" but we want "1.0.0/"
       make_test_tarball(tc, "pkg-1.0.tgz", "upstream-name-1.0")
 
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
@@ -351,7 +351,7 @@ class TestCacheExtractFile < Minitest::Test
     with_fake_tc do |tc|
       make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
 
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
@@ -370,7 +370,7 @@ class TestCacheExtractFile < Minitest::Test
       FileUtils.mkdir_p(tc / "cache" / "tmp")
       File.write(tc / "cache" / "tmp" / "stale", "old")
 
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
@@ -437,7 +437,7 @@ class TestCacheDownloadAndExtractIntegration < Minitest::Test
       assert (tc / "cache" / "mypkg-1.0.tar.gz").file?
 
       # Extract
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
@@ -465,7 +465,7 @@ class TestCacheDownloadAndExtractIntegration < Minitest::Test
       ok = Cache.download_file(@server.url, "old.tar.gz")
       assert ok
 
-      dest = tc / "noarch" / "pkg"
+      dest = noarch_pkgs / "pkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do

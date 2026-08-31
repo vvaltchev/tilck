@@ -13,7 +13,15 @@ KB = 1024
 MB = 1024 * KB
 
 # Basic constants specific to this project.
-DEFAULT_TC_NAME = "toolchain4"
+# Read from other/toolchain_conf, which the bash bootstrap sources,
+# so that the two halves cannot disagree about where the toolchain is.
+DEFAULT_TC_NAME = File.read(
+  File.join(File.dirname(File.dirname(__dir__)), "other", "toolchain_conf")
+).lines.grep(/\ATOOLCHAIN_DIR_NAME=/).first.to_s.split("=", 2).last.to_s.strip
+
+if DEFAULT_TC_NAME.empty?
+  raise "TOOLCHAIN_DIR_NAME missing from other/toolchain_conf"
+end
 OS = Etc.uname.fetch(:sysname)
 RUBY_SOURCE_DIR = Pathname.new(File.realpath(__dir__))
 MAIN_DIR = Pathname.new(RUBY_SOURCE_DIR.parent.parent)
@@ -295,7 +303,6 @@ end
 TC = InitOnly.get_tc_root()
 TC_CACHE = TC / "cache"
 TC_STAGING = TC / "staging"
-TC_NOARCH = TC / "noarch"
 ARCH = InitOnly.get_arch(getenv("ARCH", DEFAULT_ARCH))
 HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 
@@ -305,51 +312,26 @@ HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 # HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
 # HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
 #
-# A host package's directory answers exactly one question: WHERE CAN
-# THIS RUN? Another machine sharing this toolchain reads the answer off
-# the path and knows whether to consume the package or rebuild it.
+# Every installed package sits at exactly three coordinates:
 #
-#   HOST_DIR_PORTABLE   Runs on any host of this OS and architecture.
-#                       Either statically linked (the cross-compilers)
-#                       or carrying our own glibc and loader, which
-#                       amounts to the same promise: nothing at all is
-#                       needed from the distro.
+#   <machine>/<env>/<stack>/pkgs/<pkg>/<ver>/
 #
-#                       Packages built by OUR compiler live one level
-#                       down, under gcc-<ver>, for the same reason
-#                       HOST_DIR carries the host compiler: a GCC bump
-#                       can change the C++ ABI, so the whole set is
-#                       rebuilt beside the old one rather than in place.
-#                       They are still portable; the compiler is a
-#                       variant key, not a restriction on where they run.
+# HOST_OS_ARCH, HOST_DISTRO and HOST_CC below supply the values for
+# packages that run on THIS machine. See scripts/pkgmgr/coords.rb for
+# what each coordinate means and docs/plans/toolchain5.md for why the
+# depth is fixed.
 #
-#   HOST_DIR_DISTRO     Runs on this distro only, because it links the
-#                       distro's libraries. Our own gcc and binutils
-#                       live here: the system compiler built them.
-#
-#   HOST_DIR            The same, plus a dependency on the host C++
-#                       ABI, so also only under this host compiler.
-#
-# The tier is DECLARED per package (Package#host_tier), never inferred
-# from a build's outcome: --prefix and RPATH are baked in at configure
-# time, so the directory has to be known before anything is built. The
-# portability audit ENFORCES the declaration -- a package that says
-# portable and links something outside the toolchain fails its install.
-# See docs/plans/portable-host-stack.md.
+# The coordinates are DECLARED per package (Package#host_tier chooses
+# them), never inferred from a build's outcome: --prefix and RPATH are
+# baked in at configure time, so the location has to be known before
+# anything is built. The portability audit ENFORCES the declaration --
+# a package that claims to need nothing from the machine, and then
+# links something outside the toolchain, fails its install.
 HOST_OS      = InitOnly.get_host_os()
 HOST_DISTRO  = InitOnly.get_host_distro(HOST_OS)
 HOST_CC      = InitOnly.get_host_cc()
 HOST_OS_ARCH = "#{HOST_OS}-#{HOST_ARCH.name}"
 
-HOST_DIR_PORTABLE = TC / "host" / HOST_OS_ARCH / "portable"
-HOST_DIR_DISTRO   = TC / "host" / HOST_OS_ARCH / HOST_DISTRO
-HOST_DIR          = TC / "host" / HOST_OS_ARCH / HOST_DISTRO / HOST_CC
-
-# Composed sysroots. Kept out of the package tree because a sysroot is
-# a VIEW over installed packages, not an installation: living beside
-# them, it had to be fenced off from every scanner that walks the tree
-# looking for <pkg>/<ver>.
-TC_SYSROOTS = TC / "sysroots" / HOST_OS_ARCH
 
 DEFAULT_BOARD = ARCH.default_board
 BOARD = ENV["BOARD"] || DEFAULT_BOARD

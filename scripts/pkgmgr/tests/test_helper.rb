@@ -60,45 +60,49 @@ module TestHelper
   FAKE_ARCH = ALL_ARCHS["i386"]
   FAKE_GCC_VER = Ver("13.3.0")
 
+  # The pkgs/ directory of a tier, named the way tests used to name
+  # the old HOST_DIR* constants. Everything derives from TC now, so
+  # these are conveniences rather than configuration.
+  def portable_pkgs = Coords.new(HOST_OS_ARCH, nil, nil).pkgs_dir
+  def distro_pkgs   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil).pkgs_dir
+  def hostcc_pkgs   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, HOST_CC).pkgs_dir
+  def stack_pkgs(v) = Coords.new(HOST_OS_ARCH, nil, "gcc-#{v}").pkgs_dir
+
+  # Target and noarch package dirs. Tests used to spell these out as
+  # tc/"gcc-<ver>"/<arch>/..., which is why a layout change broke
+  # forty of them at once.
+  def target_pkgs(arch = ARCH, gcc = nil, board = :default)
+    gcc ||= arch.gcc_ver
+    board = arch.default_board if board == :default
+    return Coords.new("tilck-#{arch.name}", board, "gcc-#{gcc}").pkgs_dir
+  end
+
+  def noarch_pkgs = Coords.new("noarch", nil, nil).pkgs_dir
+
   def with_fake_tc
     Dir.mktmpdir("pkgmgr-test-") do |dir|
       tc = Pathname.new(dir)
       FileUtils.mkdir_p(tc / "cache")
       FileUtils.mkdir_p(tc / "staging")
-      FileUtils.mkdir_p(tc / "noarch")
-      FileUtils.mkdir_p(tc / "gcc-#{FAKE_GCC_VER}" / FAKE_ARCH.name)
 
       # Set gcc_ver for all architectures (normally done by main.rb's
       # read_gcc_ver_defaults, which tests don't call).
       saved_gcc_vers = ALL_ARCHS.map { |name, arch| [name, arch.gcc_ver] }
       ALL_ARCHS.each_value { |arch| arch.gcc_ver = FAKE_GCC_VER }
 
-      host_dir_p = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "portable"
-      host_dir_d = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / HOST_DISTRO
-      host_dir   = host_dir_d / HOST_CC
-      sysroots   = tc / "sysroots" / "#{HOST_OS}-#{HOST_ARCH.name}"
-      FileUtils.mkdir_p(host_dir_p)
-      FileUtils.mkdir_p(host_dir)
-      FileUtils.mkdir_p(sysroots)
-
+      # Only TC and its two non-install directories need overriding:
+      # every install location is derived from TC through Coords, so
+      # redirecting the root redirects all of them. Under toolchain4
+      # this block had to name five separate path constants, and the
+      # day one of them was missed the tests deleted the developer's
+      # real sysroot.
       with_context(
         ARCH: FAKE_ARCH,
-        BOARD: nil,
-        DEFAULT_BOARD: nil,
+        BOARD: FAKE_ARCH.default_board,
+        DEFAULT_BOARD: FAKE_ARCH.default_board,
         TC: tc,
         TC_CACHE: tc / "cache",
         TC_STAGING: tc / "staging",
-        TC_NOARCH: tc / "noarch",
-        HOST_DIR_PORTABLE: host_dir_p,
-        HOST_DIR_DISTRO: host_dir_d,
-        HOST_DIR: host_dir,
-
-        # Not optional. A composed sysroot is REBUILT from scratch
-        # whenever what it views changes, which means it is deleted
-        # first; a test that reached the real one would destroy the
-        # developer's toolchain, and did exactly that before this was
-        # overridden here.
-        TC_SYSROOTS: sysroots,
       ) do
         yield tc
       end
@@ -156,7 +160,8 @@ module TestHelper
     originals[:with_cc] = pm.method(:with_cc)
     pm.define_singleton_method(:with_cc) { |arch_name = nil, &block|
       arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
-      arch_dir = TC / "gcc-#{FAKE_GCC_VER}" / arch.name
+      arch_dir = Coords.new("tilck-#{arch.name}", arch.default_board,
+                            "gcc-#{FAKE_GCC_VER}").pkgs_dir
       FileUtils.mkdir_p(arch_dir)
       block.call(arch_dir)
     }

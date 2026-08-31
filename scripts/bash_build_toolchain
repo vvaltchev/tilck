@@ -44,6 +44,7 @@ source $MAIN_DIR/scripts/bash_includes/script_utils
 source $MAIN_DIR/scripts/bash_includes/install_pkgs
 source $MAIN_DIR/other/pkg_versions
 source $MAIN_DIR/other/host_pkg_versions
+source $MAIN_DIR/other/toolchain_conf
 
 function check_ruby_ver {
 
@@ -356,7 +357,7 @@ function dump_build_toolchain_env {
 
 
 : ${TCROOT_PARENT:=$MAIN_DIR}
-: ${TCROOT:=$TCROOT_PARENT/toolchain4}
+: ${TCROOT:=$TCROOT_PARENT/$TOOLCHAIN_DIR_NAME}
 TC="$TCROOT"
 export TCROOT
 
@@ -372,7 +373,19 @@ detect_host_env
 # but the host C/C++ compiler used to build it is irrelevant for running
 # Ruby itself. The full Ruby package manager layout (with a host-cc level)
 # applies only to *registered* non-portable packages.
-RUBY_INSTALL_DIR="$TC/host/$HOST_OS-$HOST_ARCH/$HOST_DISTRO/ruby/$HOST_VER_RUBY"
+# Ruby is a package like any other and lives at the same three
+# coordinates: it runs on this machine, it needs this distro (a
+# prebuilt binary is built for it, and a source build links its
+# libssl/libyaml/libffi), and no particular compiler matters.
+#
+#   <machine>/<env>/<stack>/pkgs/<pkg>/<ver>/
+#
+# It cannot be portable: that would mean building it inside our own
+# stack, and the stack is built by pkgmgr, which needs Ruby. Bash
+# performs the first install because it is what runs pkgmgr, but it
+# writes to the canonical location so pkgmgr can see it.
+RUBY_COORDS="$HOST_OS-$HOST_ARCH/$HOST_DISTRO/any"
+RUBY_INSTALL_DIR="$TC/$RUBY_COORDS/pkgs/ruby/$HOST_VER_RUBY"
 
 if [[ "$1" == "-n" || $1 == "--skip-install-pkgs" ]]; then
    export SKIP_INSTALL_PACKAGES=1

@@ -13,7 +13,7 @@ class TestChdirInstallDirMissing < Minitest::Test
     with_fake_tc do |tc|
       pkg = FakePackage.new("foo")
       gcc = FAKE_GCC_VER.to_s
-      arch_dir = tc / "gcc-#{gcc}" / ARCH.name
+      arch_dir = target_pkgs(ARCH, gcc)
       # Don't create foo/1.0.0 — it doesn't exist
       result = pkg.chdir_install_dir(arch_dir, Ver("1.0.0")) { true }
       assert_equal false, result

@@ -112,14 +112,14 @@ class TestUninstallEdgeCases < Minitest::Test
         # Also create a manual 2.0.0 install
         gcc = FAKE_GCC_VER.to_s
         FileUtils.mkdir_p(
-          tc / "gcc-#{gcc}" / ARCH.name / "foo" / "2.0.0"
+          target_pkgs(ARCH, gcc) / "foo" / "2.0.0"
         )
         pkgmgr.refresh()
 
         # Uninstall with default ver — 1.0.0 IS installed, so only
         # 1.0.0 is removed
         pkgmgr.uninstall("foo", false, false)
-        v2 = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "2.0.0"
+        v2 = target_pkgs(ARCH, gcc) / "foo" / "2.0.0"
         assert v2.directory?
 
         # Now 1.0.0 is gone. Uninstall again — default ver (1.0.0)
@@ -153,7 +153,7 @@ class TestScanToolchain < Minitest::Test
       with_stubbed_externals do
         # Create a package on disk that's NOT registered
         gcc = FAKE_GCC_VER.to_s
-        orphan_dir = tc / "gcc-#{gcc}" / ARCH.name / "orphan_pkg" / "1.0.0"
+        orphan_dir = target_pkgs(ARCH, gcc) / "orphan_pkg" / "1.0.0"
         FileUtils.mkdir_p(orphan_dir)
 
         pkgmgr.refresh()
@@ -170,7 +170,7 @@ class TestScanToolchain < Minitest::Test
   def test_scan_finds_noarch_orphans
     with_fake_tc do |tc|
       with_stubbed_externals do
-        FileUtils.mkdir_p(tc / "noarch" / "some_src" / "2.0.0")
+        FileUtils.mkdir_p(noarch_pkgs / "some_src" / "2.0.0")
         pkgmgr.refresh()
 
         found = pkgmgr.instance_variable_get(:@found_installed)
@@ -183,7 +183,7 @@ class TestScanToolchain < Minitest::Test
   def test_scan_finds_host_portable_orphans
     with_fake_tc do |tc|
       with_stubbed_externals do
-        FileUtils.mkdir_p(HOST_DIR_PORTABLE / "some_tool" / "3.0.0")
+        FileUtils.mkdir_p(portable_pkgs / "some_tool" / "3.0.0")
         pkgmgr.refresh()
 
         found = pkgmgr.instance_variable_get(:@found_installed)
@@ -197,7 +197,7 @@ class TestScanToolchain < Minitest::Test
   def test_scan_finds_host_distro_orphans
     with_fake_tc do |tc|
       with_stubbed_externals do
-        FileUtils.mkdir_p(HOST_DIR / "host_thing" / "1.0.0")
+        FileUtils.mkdir_p(hostcc_pkgs / "host_thing" / "1.0.0")
         pkgmgr.refresh()
 
         found = pkgmgr.instance_variable_get(:@found_installed)
@@ -213,7 +213,7 @@ class TestScanToolchain < Minitest::Test
         gcc = FAKE_GCC_VER.to_s
         # Create a dir with an unparseable version name
         FileUtils.mkdir_p(
-          tc / "gcc-#{gcc}" / ARCH.name / "pkg" / "not_a_version!!"
+          target_pkgs(ARCH, gcc) / "pkg" / "not_a_version!!"
         )
         pkgmgr.refresh()
 
@@ -238,7 +238,7 @@ class TestScanToolchain < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc}" / "mips" / "foo" / "1.0.0")
+        FileUtils.mkdir_p(tc / "tilck-mips" / "any" / "gcc-#{gcc}" / "pkgs" / "foo" / "1.0.0")
         pkgmgr.refresh()
 
         found = pkgmgr.instance_variable_get(:@found_installed)
@@ -341,7 +341,7 @@ class TestShowStatusAllCompilers < Minitest::Test
         # Create an install under a DIFFERENT gcc version (12.4.0)
         # to trigger the "non-current compiler" group.
         other_gcc = "12.4.0"
-        other_dir = tc / "gcc-#{other_gcc}" / ARCH.name / "foo" / "1.0.0"
+        other_dir = target_pkgs(ARCH, other_gcc) / "foo" / "1.0.0"
         FileUtils.mkdir_p(other_dir)
 
         pkgmgr.refresh()

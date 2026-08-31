@@ -20,7 +20,7 @@ class TestInstallTargetPackage < Minitest::Test
         pkgmgr.install("foo")
 
         gcc = FAKE_GCC_VER.to_s
-        ver_dir = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "1.0.0"
+        ver_dir = target_pkgs(ARCH, gcc) / "foo" / "1.0.0"
         assert ver_dir.directory?
       end
     end
@@ -72,8 +72,8 @@ class TestInstallHostPackage < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")
 
-        # Non-portable host packages go under HOST_DIR/pkg_dirname/ver
-        host_dir = HOST_DIR
+        # Host packages needing the distro AND the host C++ ABI
+        host_dir = hostcc_pkgs
         ver_dir = host_dir / "foo" / "1.0.0"
         assert ver_dir.directory?
       end
@@ -88,7 +88,7 @@ class TestInstallHostPackage < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")
 
-        ver_dir = HOST_DIR_PORTABLE / "foo" / "1.0.0"
+        ver_dir = portable_pkgs / "foo" / "1.0.0"
         assert ver_dir.directory?
       end
     end
@@ -126,7 +126,7 @@ class TestInstallNoarchPackage < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("noarch_foo")
 
-        ver_dir = tc / "noarch" / "noarch_foo" / "1.0.0"
+        ver_dir = noarch_pkgs / "noarch_foo" / "1.0.0"
         assert ver_dir.directory?
       end
     end
@@ -347,7 +347,7 @@ class TestInstallMvGuard < Minitest::Test
         assert pkgmgr.install("foo")
 
         gcc = FAKE_GCC_VER.to_s
-        final = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "1.0.0"
+        final = target_pkgs(ARCH, gcc) / "foo" / "1.0.0"
         assert (final / "marker.txt").file?
         refute pkg.get_install_list.any?(&:broken)
 
@@ -382,7 +382,7 @@ class TestInstallMvGuard < Minitest::Test
         assert pkgmgr.install("foo")
 
         gcc = FAKE_GCC_VER.to_s
-        final = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "1.0.0"
+        final = target_pkgs(ARCH, gcc) / "foo" / "1.0.0"
         marker_mtime_before = File.mtime(final / "marker.txt")
 
         # Force the bad state: pkgmgr sees the pkg as NOT installed
