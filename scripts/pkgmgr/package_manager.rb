@@ -153,9 +153,26 @@ class PackageManager
   # (It read as "all versions, current arch" because "ALL" was passed
   # in the `ver` slot of uninstall's positional list, never the arch.)
   def force_remove(name)
+
     pkg = @packages.values.find { |p| p.name == name }
-    multi_arch = pkg && pkg.install_archs.length > 1
-    return uninstall(name, false, false, "ALL", nil, multi_arch ? "ALL" : nil)
+
+    # An orphan has no package object to ask, so fall back to the
+    # plain behaviour: every version at the current coordinates.
+    return uninstall(name, false, false, "ALL") if pkg.nil?
+
+    # Ask where the install about to run will write, and remove exactly
+    # that. Not the arch: an arch covers every board built for it, so a
+    # rebuild of the licheerv-nano zlib took the qemu-virt one with it
+    # and put nothing back. Nothing reported it either -- a package
+    # that is simply gone is "not installed", not "stale" -- and it
+    # surfaced two steps later as a riscv64 build that could not find
+    # zlib.h.
+    v = pkg.default_ver
+    wanted = pkg.install_archs(v).map { |a|
+      a ? with_target_arch(a) { pkg.coords(v) } : pkg.coords(v)
+    }
+
+    return uninstall(name, false, false, "ALL", nil, "ALL", coords: wanted)
   end
 
   def get_installed_compilers
@@ -814,7 +831,14 @@ class PackageManager
   # nil                 => default/auto/configured from ENV (like install())
   # '*'                 => all architectures
   # other               => specific architecture (e.g. i386)
-  def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil, arch = nil)
+  # `coords`, when given, restricts the selection to installations at
+  # exactly those coordinates. The other filters cannot express a board:
+  # `arch` matches every board of that arch at once, which is right for
+  # `-u <pkg> -a riscv64` and wrong for a forced rebuild, where it
+  # deleted the qemu-virt zlib on the way to reinstalling the
+  # licheerv-nano one.
+  def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
+                arch = nil, coords: nil)
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
@@ -907,7 +931,8 @@ class PackageManager
       (all_pkgs   || e.pkgname == name     ) &&
       (all_ver    || e.ver == ver          ) &&
       (all_arch   || e.arch == arch        ) &&
-      (all_cc     || e.compiler == compiler)
+      (all_cc     || e.compiler == compiler) &&
+      (coords.nil? || coords.include?(e.coords))
     }
 
     if all_pkgs && !force

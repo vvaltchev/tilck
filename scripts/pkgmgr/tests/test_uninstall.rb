@@ -351,6 +351,35 @@ class TestUninstallVersions < Minitest::Test
     end
   end
 
+  # ...and no further, on EITHER axis. An arch covers all of its
+  # boards at once, so this is the case the arch-level filter cannot
+  # express: rebuilding zlib for one riscv64 board deleted the other
+  # board's build and put nothing back, and nothing reported it -- a
+  # package that is simply gone reads as "not installed", not "stale".
+  def test_force_remove_leaves_the_other_board_alone
+    with_fake_tc do
+      with_stubbed_externals do
+        rv = ALL_ARCHS["riscv64"]
+        pkgmgr.register(FakePackage.new("boardy", arch_list: [rv]))
+
+        dirs = rv.boards.to_h { |b|
+          d = target_pkgs(rv, FAKE_GCC_VER.to_s, b) / "boardy" / "1.0.0"
+          FileUtils.mkdir_p(d)
+          [b, d]
+        }
+        pkgmgr.refresh()
+
+        with_context(ARCH: rv, BOARD: "licheerv-nano") do
+          pkgmgr.force_remove("boardy")
+        end
+
+        refute dirs["licheerv-nano"].directory?, "the target board stayed"
+        assert dirs["qemu-virt"].directory?,
+               "the other board's build was destroyed"
+      end
+    end
+  end
+
   # ...and no further. Rebuilding the i386 zlib must not delete the
   # riscv64 one, which nothing is about to recreate.
   def test_force_remove_leaves_arches_the_install_does_not_write
