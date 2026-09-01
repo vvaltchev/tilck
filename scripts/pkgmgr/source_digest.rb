@@ -42,21 +42,49 @@ module SourceDigest
     file = source_file_of(klass)
     return "" if file.nil?
 
-    defs = method_defs(file)
+    defs = method_defs(file)[scope_of(klass)] || {}
     names = klass.instance_methods(false).sort + \
             klass.private_instance_methods(false).sort
 
     return names.uniq.filter_map { |n| defs[n] }.join("\n")
   end
 
-  # The source of one named method from a file.
+  # The source of one named method from a file, wherever in it the
+  # method is defined. Used for the build helpers, which live in one
+  # class; a name defined in two classes of one file is ambiguous and
+  # says so rather than picking.
   def method_source(file, name)
-    return method_defs(file)[name].to_s
+
+    found = method_defs(file).values.filter_map { |d| d[name] }.uniq
+    return "" if found.empty?
+
+    if found.length > 1
+      raise "#{name} is defined in #{found.length} classes of " \
+            "#{File.basename(file)}: ask for one of them by class"
+    end
+
+    return found.first
   end
+
+  # The key a class is filed under: its own name, without the modules
+  # around it. A class defined inside another (a test's fake package)
+  # reports a qualified Ruby name while the source says the bare one,
+  # and the two have to meet somewhere.
+  def scope_of(klass) = klass.name.to_s.split("::").last
 
   def digest(*parts) = Digest::SHA256.hexdigest(parts.join("\n"))
 
-  # { :method_name => "comment-free source" } for one file.
+  # { "ClassName" => { :method_name => "comment-free source" } } for
+  # one file. Top-level defs are filed under nil.
+  #
+  # Keyed by CLASS, not by name alone. It was one flat hash for the
+  # whole file, so two package classes sharing a file shared a
+  # namespace and the later definition won: ncurses.rb held ONE
+  # install_impl_internal and it was the host package's, so
+  # class_source(NcursesPackage) returned the host's method. The
+  # target's recipe could then change without changing the target's
+  # digest -- a changed recipe going unnoticed, which is the single
+  # thing this mechanism exists to prevent.
   #
   # Parsed once per file and cached: a full status listing asks about
   # every package, and re-parsing 55 files each time would be felt.
@@ -88,19 +116,28 @@ module SourceDigest
       src[a...b] = " " * (b - a)
     end
 
-    out = {}
-    collect_defs(result.value) do |node|
+    out = Hash.new { |h, k| h[k] = {} }
+
+    collect_defs(result.value, nil) do |scope, node|
       body = src[node.location.start_offset...node.location.end_offset]
-      out[node.name] = body.lines.map(&:rstrip).reject(&:empty?).join("\n")
+      out[scope][node.name] =
+        body.lines.map(&:rstrip).reject(&:empty?).join("\n")
     end
 
     return out
   end
 
-  def collect_defs(node, &block)
+  # Walk the tree remembering which class body we are inside.
+  def collect_defs(node, scope, &block)
+
     return if node.nil?
-    block.call(node) if node.is_a?(Prism::DefNode)
-    node.compact_child_nodes.each { |c| collect_defs(c, &block) }
+
+    if node.is_a?(Prism::ClassNode)
+      scope = node.constant_path.slice.split("::").last
+    end
+
+    block.call(scope, node) if node.is_a?(Prism::DefNode)
+    node.compact_child_nodes.each { |c| collect_defs(c, scope, &block) }
   end
 
   # Where a class was defined. Ruby records this per method, so the
