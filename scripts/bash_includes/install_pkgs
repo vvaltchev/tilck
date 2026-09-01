@@ -345,31 +345,64 @@ function install_arch {
       echo "You are all set, no packages need to be installed."
    fi
 
-   # power_assert and minitest are not packaged in Arch's main repos
-   # but are required by scripts/pkgmgr/ (early_logic.rb and the unit
-   # test suite). Install them via gem once Ruby is present.
+}
+
+#
+# Ruby libraries the pkgmgr and its test suite need, checked by asking
+# Ruby what it can require rather than by naming a distro package.
+#
+# power_assert backs early_logic's assert(); minitest and its mocking
+# half back the test suite. The mocking half is why this cannot be a
+# package list: minitest 5 bundles minitest/mock, minitest 6 moved it
+# into a separate gem, and both ship under the same name everywhere --
+# Fedora 44's rubygem-minitest is 6.0.3, Debian's Ruby bundles 5, and
+# `gem install minitest` on Arch now brings 6. A package-name check
+# says "installed" in every one of those cases; only the require tells
+# them apart.
+#
+# Nothing here matters when the bootstrap builds its own Ruby, which
+# bundles all three. It matters when the system Ruby is new enough to
+# be used as-is, which is exactly when the distro decides the version.
+#
+function ensure_ruby_gems {
+
+   local probes=(
+      "power_assert:power_assert"
+      "minitest:minitest"
+      "minitest/mock:minitest-mock"
+   )
    local missing_gems=()
-   for g in power_assert minitest; do
-      gem list -i "$g" &> /dev/null || missing_gems+=("$g")
+   local p feature gem_name gems
+
+   if ! which ruby &> /dev/null; then
+      return   # no system Ruby: the bootstrap will build its own
+   fi
+
+   for p in "${probes[@]}"; do
+      feature="${p%%:*}"
+      gem_name="${p##*:}"
+      ruby -e "require '$feature'" &> /dev/null || missing_gems+=("$gem_name")
    done
 
-   if [ ${#missing_gems[@]} -ne 0 ]; then
-      local gems="${missing_gems[*]}"
+   if [ ${#missing_gems[@]} -eq 0 ]; then
+      return
+   fi
 
-      if [ "$RUNNING_IN_CI" == 1 ] || [[ "$EUID" -eq 0 ]]; then
-         run_command "gem install --no-document $gems" || exit 1
-      else
+   gems="${missing_gems[*]}"
 
-         # A user-level gem install needs no root: it always lands
-         # under the invoking user's home, regardless of distro. Do
-         # NOT elevate here -- Arch's rubygems forces --user-install
-         # unconditionally (see gem's operating_system_defaults), so
-         # a sudo/su gem install would land the gems under root's
-         # home instead, invisible to the pkgmgr Ruby process that
-         # runs right after this, as the normal user.
-         run_command "gem install --no-document --user-install $gems" \
-            || exit 1
-      fi
+   if [ "$RUNNING_IN_CI" == 1 ] || [[ "$EUID" -eq 0 ]]; then
+      run_command "gem install --no-document $gems" || exit 1
+   else
+
+      # A user-level gem install needs no root: it always lands
+      # under the invoking user's home, regardless of distro. Do
+      # NOT elevate here -- Arch's rubygems forces --user-install
+      # unconditionally (see gem's operating_system_defaults), so
+      # a sudo/su gem install would land the gems under root's
+      # home instead, invisible to the pkgmgr Ruby process that
+      # runs right after this, as the normal user.
+      run_command "gem install --no-document --user-install $gems" \
+         || exit 1
    fi
 }
 
@@ -665,4 +698,9 @@ function install_packages {
       echo "After that, re-run this script with -n (--skip-install-pkgs)"
       exit 1
    fi
+
+   # Only reached when one of the branches above handled the platform:
+   # the fallback exits. Runs for every platform because the minitest
+   # split is not distro-specific -- it follows the Ruby version.
+   ensure_ruby_gems
 }
