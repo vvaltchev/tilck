@@ -1,0 +1,28 @@
+Apply the shared-library name infix only to the shared model.
+
+On darwin*, configure sets cf_cv_shlib_version_infix=yes because macOS
+uses ABI-versioned dylib names. The library-naming block below keys off
+that flag WITHOUT checking whether the model being named is actually
+shared, so it rewrites cf_libname and cf_dir_suffix for the NORMAL (.a)
+and DEBUG (_g.a) models too.
+
+With --enable-widec --with-termlib=tinfo that produces a Makefile that
+contradicts itself -- Libs_To_Make renames ncursesw to tinfo while
+mk-1st.awk is invoked with tinfo+w -- and make dies with "No rule to
+make target ../lib/libtinfo.a". Linux escapes it because the flag
+defaults to no there.
+
+Host-only: this is about naming host dylibs, and the cross-compiled
+ncurses never builds a shared model.
+
+--- a/configure
++++ b/configure
+@@ -31216,7 +31216,7 @@
+ 
+  			cf_dir_suffix=
+  			old_cf_suffix="$cf_suffix"
+- 			if test "$cf_cv_shlib_version_infix" = yes ; then
++ 			if test "$cf_cv_shlib_version_infix" = yes && test "$cf_item" = shared ; then
+ 			if test -n "$USE_LIB_SUFFIX" ; then
+ 				case "$USE_LIB_SUFFIX" in
+ 				(tw*)
