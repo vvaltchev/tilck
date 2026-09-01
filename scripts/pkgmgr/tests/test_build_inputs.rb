@@ -169,6 +169,105 @@ class TestBuildIdentity < Minitest::Test
     end
   end
 
+  #
+  # A recipe that reads differently per architecture.
+  #
+  # zlib is the real one: its build step names the archiver as
+  # "#{default_arch.gcc_tc}-linux-ar", so the same version installed
+  # for two arches was genuinely built from two different recipes.
+  # A digest is only meaningful together with the arch it was computed
+  # for, and both writing and checking have to say which they mean.
+  #
+  class ArchVaryingPackage < TestHelper::FakePackage
+    def build_flags(ver = nil) = ["--ar=#{default_arch.gcc_tc}-linux-ar"]
+  end
+
+  def two_arch_pkg
+    return ArchVaryingPackage.new(
+      "archy", arch_list: [ALL_ARCHS["i386"], ALL_ARCHS["riscv64"]]
+    )
+  end
+
+  def test_each_arch_records_its_own_recipe
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkg = two_arch_pkg
+        pkgmgr.register(pkg)
+
+        for a in ["i386", "riscv64"] do
+          with_context(ARCH: ALL_ARCHS[a], BOARD: nil) do
+            pkgmgr.install("archy")
+          end
+        end
+        pkgmgr.refresh
+
+        digests = pkg.get_install_list.map { |i|
+          BuildInputs.comparable(i.path)
+        }
+        assert_equal 2, digests.length
+        refute_equal digests[0], digests[1],
+                     "two arches, two recipes, two digests"
+      end
+    end
+  end
+
+  # ...and each of them reads back as OK, from either arch. Before,
+  # every install was checked against the CURRENT arch's recipe, so
+  # the whole set went stale as soon as the other arch was selected.
+  def test_neither_arch_is_stale_from_the_other
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkg = two_arch_pkg
+        pkgmgr.register(pkg)
+
+        for a in ["i386", "riscv64"] do
+          with_context(ARCH: ALL_ARCHS[a], BOARD: nil) do
+            pkgmgr.install("archy")
+          end
+        end
+        pkgmgr.refresh
+
+        for a in ["i386", "riscv64"] do
+          with_context(ARCH: ALL_ARCHS[a], BOARD: nil) do
+            assert_empty pkgmgr.get_stale_packages.map(&:name),
+                         "stale when viewed from #{a}"
+          end
+        end
+      end
+    end
+  end
+
+  # Installing for one arch must not touch the other arch's record.
+  # Recording "every install of this version" stamped trees the call
+  # never rebuilt, certifying an old binary against today's recipe.
+  def test_installing_one_arch_leaves_the_other_record_alone
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkg = two_arch_pkg
+        pkgmgr.register(pkg)
+
+        with_context(ARCH: ALL_ARCHS["riscv64"], BOARD: nil) do
+          pkgmgr.install("archy")
+        end
+        pkgmgr.refresh
+
+        rv = pkg.get_install_list.first
+        before = BuildInputs.comparable(rv.path)
+
+        with_context(ARCH: ALL_ARCHS["i386"], BOARD: nil) do
+          pkgmgr.install("archy")
+        end
+        pkgmgr.refresh
+
+        assert_equal before, BuildInputs.comparable(rv.path),
+                     "the riscv64 record was rewritten by an i386 install"
+      end
+    end
+  end
+
   def test_an_unchanged_package_is_not_stale
     with_fake_tc do
       with_stubbed_externals do

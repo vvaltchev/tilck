@@ -515,12 +515,42 @@ class Package
     )[0, 32]
   end
 
+  # Evaluate `block` as the recipe reads AT one install's coordinates.
+  #
+  # A recipe is not one text: build_steps and build_flags may vary by
+  # architecture, and several do -- zlib names its archiver
+  # "#{default_arch.gcc_tc}-linux-ar", which is i686-linux-ar for one
+  # install of a version and riscv64-linux-ar for another. A digest
+  # therefore only means anything together with the arch it was
+  # computed for, and both writing a record and checking one have to
+  # say which arch they mean.
+  #
+  # Noarch and host packages have nothing to scope: their recipe does
+  # not consult the target arch at all.
+  def with_install_context(inst, &block)
+    return block.call if on_host || inst.arch.nil?
+    return pkgmgr.with_target_arch(inst.arch, &block)
+  end
+
+  # The target architectures ONE install of this version writes.
+  #
+  # nil means "whatever the current scope says", which is the answer
+  # for everything that produces a single tree per call. gnuefi is the
+  # exception: one call builds i386 AND x86_64, so recording only the
+  # current arch left the other unverifiable -- and recording every
+  # install of the version instead was worse, because it stamped trees
+  # this call never touched with the recipe as it reads today, quietly
+  # certifying an old binary against a new recipe.
+  def install_archs(ver = nil) = [nil]
+
   # Record what this install was built from, beside what was built.
-  def write_build_inputs(dir, ver, argv = nil)
-    BuildInputs.write(dir,
-                      recipe: build_recipe_digest(ver),
-                      files: build_files(ver),
-                      argv: argv)
+  def write_build_inputs(inst, argv = nil)
+    with_install_context(inst) {
+      BuildInputs.write(inst.path,
+                        recipe: build_recipe_digest(inst.ver),
+                        files: build_files(inst.ver),
+                        argv: argv)
+    }
   end
 
   #
@@ -539,18 +569,22 @@ class Package
   # record counted as fine. An instrument has to say when it does not
   # know.
   #
-  def build_inputs_state(ver)
+  def build_inputs_state_of(inst)
 
-    inst = find_install(ver)
     return :not_installed if inst.nil?
 
     recorded = BuildInputs.comparable(inst.path)
     return :unknown if recorded.nil?
 
-    current = BuildInputs.render(recipe: build_recipe_digest(ver),
-                                 files: build_files(ver))
+    current = with_install_context(inst) {
+      BuildInputs.render(recipe: build_recipe_digest(inst.ver),
+                         files: build_files(inst.ver))
+    }
     return recorded == current.chomp ? :ok : :changed
   end
+
+  # The state of the install at THIS package's coordinates.
+  def build_inputs_state(ver) = build_inputs_state_of(find_install(ver))
 
   # Does this install need rebuilding? Both a changed recipe and a
   # missing record have the same remedy.
