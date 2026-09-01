@@ -514,24 +514,38 @@ class Package
   end
 
   #
-  # Is an installed version stale -- present, but built from
-  # something other than the current sources?
+  # What an installed version's record says about it.
   #
-  # An install with no record is NOT stale: it predates the mechanism
-  # or was made by hand, and rebuilding the world on that basis would
-  # be worse than the gap. New installs all carry one.
+  #   :not_installed  nothing to say
+  #   :ok             built from the sources we have
+  #   :changed        built from something else
+  #   :unknown        no record at all
   #
-  def build_inputs_changed?(ver)
+  # :unknown is reported rather than assumed benign. toolchain5 starts
+  # empty, so every install is made by this mechanism and a missing
+  # record means something went wrong -- expat's record write raised
+  # midway through the first rebuild, and gnuefi wrote one for a
+  # single arch out of three. Both were invisible while a missing
+  # record counted as fine. An instrument has to say when it does not
+  # know.
+  #
+  def build_inputs_state(ver)
 
     inst = find_install(ver)
-    return false if inst.nil?
+    return :not_installed if inst.nil?
 
     recorded = BuildInputs.comparable(inst.path)
-    return false if recorded.nil?
+    return :unknown if recorded.nil?
 
     current = BuildInputs.render(recipe: build_recipe_digest(ver),
                                  files: build_files(ver))
-    return recorded != current.chomp
+    return recorded == current.chomp ? :ok : :changed
+  end
+
+  # Does this install need rebuilding? Both a changed recipe and a
+  # missing record have the same remedy.
+  def build_inputs_changed?(ver)
+    return [:changed, :unknown].include?(build_inputs_state(ver))
   end
 
   # What this package needs from the HOST -- things pkgmgr does not

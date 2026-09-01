@@ -223,9 +223,12 @@ class TestBuildIdentity < Minitest::Test
     end
   end
 
-  # An install with no record predates the mechanism or was made by
-  # hand. Calling it stale would rebuild the world on no evidence.
-  def test_an_install_without_a_record_is_not_stale
+  # A missing record is "I do not know", and toolchain5 starts empty
+  # so every install is made by this mechanism: a record that is not
+  # there means something went wrong. Two real cases were invisible
+  # while this counted as fine -- expat's record write raised midway
+  # through a rebuild, and gnuefi recorded one arch out of three.
+  def test_an_install_without_a_record_is_unknown_and_needs_rebuilding
     with_fake_tc do
       with_stubbed_externals do
         reset_pkgmgr!
@@ -236,7 +239,28 @@ class TestBuildIdentity < Minitest::Test
 
         FileUtils.rm_f(pkg.find_install(Ver("1.0.0")).path /
                        BuildInputs::FILE)
-        refute pkg.build_inputs_changed?(Ver("1.0.0"))
+
+        assert_equal :unknown, pkg.build_inputs_state(Ver("1.0.0"))
+        assert pkg.build_inputs_changed?(Ver("1.0.0"))
+      end
+    end
+  end
+
+  def test_the_three_states_are_distinguished
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+
+        assert_equal :not_installed, pkg.build_inputs_state(Ver("1.0.0"))
+
+        pkgmgr.install("foo")
+        pkgmgr.refresh
+        assert_equal :ok, pkg.build_inputs_state(Ver("1.0.0"))
+
+        pkg.define_singleton_method(:build_flags) { |v = nil| ["--x"] }
+        assert_equal :changed, pkg.build_inputs_state(Ver("1.0.0"))
       end
     end
   end
