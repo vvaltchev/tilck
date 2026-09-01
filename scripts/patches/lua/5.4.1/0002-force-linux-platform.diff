@@ -1,0 +1,17 @@
+Build for "linux" instead of asking the Makefile to guess.
+
+`make guess` reads the BUILD host's uname, which is the wrong question
+when cross-compiling for Tilck: on macOS or FreeBSD it selects that
+platform's link flags for a Tilck binary.
+
+--- a/Makefile
++++ b/Makefile
+@@ -4,7 +4,7 @@
+ # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+ 
+ # Your platform. See PLATS for possible values.
+-PLAT= guess
++PLAT= linux
+ 
+ # Where to install. The installation starts in the src and doc directories,
+ # so take care if INSTALL_TOP is not an absolute path. See the local target.
