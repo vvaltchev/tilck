@@ -128,7 +128,7 @@ class FreedoomPackage < Package
   end
 
   # Unused but required to satisfy the Package contract.
-  def install_impl_internal(install_dir) = true
+  def nothing_to_build? = true
 end
 
 pkgmgr.register(FreedoomPackage.new())

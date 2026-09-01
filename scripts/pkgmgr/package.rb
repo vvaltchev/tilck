@@ -1156,11 +1156,21 @@ class Package
     list.any? { |x| x.default_install && x.ver != default_ver }
   end
 
+  # Does this package have anything to build at all?
+  #
+  # True for a prebuilt blob, and for sources another build consumes
+  # in place: extracting the tarball IS the install. Distinct from an
+  # empty build_steps, which means "this package builds itself
+  # imperatively" -- saying so out loud beats four copies of a method
+  # whose body is `true`, and keeps the recipe a declaration.
+  def nothing_to_build? = false
+
   # Methods not implemented in the base class
-  # A package declares either build_steps or its own
-  # install_impl_internal; declaring neither is a package that does
-  # not know how to build itself.
+  # A package declares either nothing_to_build?, build_steps, or its
+  # own install_impl_internal; declaring none of the three is a
+  # package that does not know how to build itself.
   def install_impl_internal(install_dir)
+    return true if nothing_to_build?
     raise NotImplementedError if build_steps.empty?
     return run_build_steps(install_dir)
   end

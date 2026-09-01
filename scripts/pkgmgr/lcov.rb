@@ -32,7 +32,7 @@ class LcovPackage < Package
     ["bin", true],
   ]
 
-  def install_impl_internal(ignored = nil) = true
+  def nothing_to_build? = true
 
   def default_arch = nil
   def default_cc = nil
