@@ -356,10 +356,10 @@ fbdoom's homedir substitution only *warned* when it found nothing, so
 an upstream rename would have produced a binary writing to a directory
 Tilck does not mount, and said so once in a log nobody reads.
 
-### Blocked: two packages may share a patch directory
+### Fixed: a patch directory belongs to one package
 
-`apply_patches` runs for every package and keys the directory on
-`pkg_dirname`, which is NOT unique. Three pairs share one:
+`apply_patches` keyed the directory on `pkg_dirname`, which names a
+SOURCE DIRECTORY and is shared on purpose. Three pairs shared one:
 
 ```
 zlib     -> zlib, host_zlib            (different versions today)
@@ -367,22 +367,24 @@ gnuefi   -> gnuefi_src, gnuefi         (SAME version)
 ncurses  -> ncurses, host_ncurses      (SAME version)
 ```
 
-Both blocked conversions are blocked by this, and both would be
-silent:
+An install path is disambiguated by its coordinates; a patch path has
+none, so a patch dropped in was applied to both packages and recorded
+among both packages' build inputs, with nothing said:
 
-  * `gnuefi` patches `inc/*/efibind.h` before compiling. `gnuefi_src`
-    is the noarch source tree the unit tests include headers from, and
-    is deliberately left pristine. A patch under
-    `scripts/patches/gnuefi/3.0.17/` would reach both.
+```
+$ echo ... > scripts/patches/ncurses/6.5/0001-host-only.diff
+$ ./scripts/build_toolchain -q --check-for-updates
+NEEDS_REBUILD host_ncurses ncurses          # the TARGET picked it up
+```
 
-  * `ncurses` applies one configure fix; `host_ncurses` applies that
-    one AND a second. They want DIFFERENT patch sets from one
-    directory.
+Keyed on the package name now, prefixed with the machine class it is
+for -- `host_glib2`, `target_lua`, and a bare name for noarch, which
+cannot collide with either. The prefix is added when missing rather
+than assumed: the musl cross-compilers are host packages named
+`gcc-<arch>-musl`.
 
-A patch belongs to a package, not to a source directory name, so the
-fix is to key on the package name -- which relocates the existing
-patch directories and rebuilds everything patched. Worth doing, not
-worth smuggling into a conversion.
+`gnuefi` and `ncurses` are unblocked by this and can now be converted;
+their patch sets stay apart from the packages they share sources with.
 
 ### Genuinely not command sequences
 
@@ -456,10 +458,9 @@ need its own concept if it is ever wanted.
    `unknown` rather than waved through.
 5. 26 packages remain on the code fingerprint rather than a declared
    recipe, from 32 -- see "The builds that are not command sequences"
-   above for what each one is waiting on. Six of them are waiting on
-   nothing but a decision: keying patch directories on the package
-   name instead of `pkg_dirname` unblocks `gnuefi` and `ncurses`, and
-   a `$SRC_REF` token unblocks `tcc`.
+   above for what each one is waiting on. `gnuefi` and `ncurses` are
+   now unblocked -- patch directories are keyed on the package name --
+   and a `$SRC_REF` token would unblock `tcc`.
 6. Two artifacts are not reproducible, and it is worth deciding
    whether to care: `fbdoom.gz` (gzip stores the input's mtime; `-n`
    drops it) and `u-boot.bin` (u-boot embeds its build timestamp in
