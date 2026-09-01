@@ -950,6 +950,51 @@ If a change is genuinely untestable in this environment (e.g. needs
 a real TTY), say so and ask for an exception rather than committing
 blind.
 
+### Package changes MUST be verified by RUNNING Tilck, end to end
+
+A package that builds is not a package that works. **Change a package
+— its build, its flags, its patches, anything — and you must boot
+Tilck and exercise what that package produces.** Not the build log,
+not `expected_files`, not "the binary is byte-identical": run it.
+
+TCC is the standing example, and it has failed at the last possible
+step more than once: it built cleanly, installed cleanly, ran on
+Tilck, *compiled a program on Tilck* — and the program it produced
+did not run. Everything up to the final `./ex1` looked perfect.
+
+So the test has to reach the END of the chain. For tcc that is
+`tests/system/scripts/tcc`, which compiles `ex1.c` **and executes the
+result and compares its output**:
+
+```sh
+tcc -static /lib/tcc-examples/ex1.c -o /tmp/ex1
+out=`./ex1`
+[ "$out" = "Hello World" ] || exit 1
+```
+
+**The trap: those tests are OFF by default and skip silently.** The
+`EXTRA_*` apps default to `OFF`, the scripts begin with
+
+```sh
+if ! [ -f /bin/tcc ]; then
+   echo "No TinyCC in /bin/tcc: skipping the test"
+   exit 0
+fi
+```
+
+and the runner then prints `[PASSED]`. A full green `run_all_tests`
+proves nothing about tcc unless tcc is in the image. Build it in and
+look at the output:
+
+```bash
+./scripts/cmake_run -DEXTRA_TCC=1 && make -j
+./build/st/run_all_tests -T shellcmd -f '^extra$' -o   # -o: show output
+```
+
+Do it for **every affected arch** — i386 and riscv64 behave
+differently, and a code generator is exactly the kind of package where
+that matters.
+
 ## CI
 Azure DevOps Pipelines tests all commits across i386, riscv64, x86_64 with
 debug/release builds, unit tests, system tests, and coverage.
