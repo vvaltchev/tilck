@@ -5,15 +5,20 @@ wchar_t. That is 32 bits on Linux targets, so every string the
 bootloader hands to firmware would be laid out wrong. Type it as
 unsigned short instead.
 
-The riscv64 hunk is NOT the same edit, and is preserved here only
-because it is what the substitution table it replaces did. That table
-matched "typedef uint8_t                 BOOLEAN;" and wrote a CHAR8
-typedef over it, which drops BOOLEAN rather than adding CHAR8 -- and
-it did not touch riscv64's CHAR16 at all, whose padding does not match
-the first rule's single space. None of it is reachable: this package
-is x86-only (arch_list: X86_ARCHS), so nothing compiles the riscv64
-header. Worth deciding on separately rather than silently keeping or
-silently dropping.
+The riscv64 hunk is a DIFFERENT fix that rides along in the same file.
+inc/efidef.h already typedefs BOOLEAN unconditionally, and riscv64's
+efibind.h typedefs it again behind "#ifndef BOOLEAN" -- a guard that
+cannot work, since #ifndef tests macros and BOOLEAN is a typedef. The
+two conflicting typedefs collide. riscv64 is also the only arch whose
+efibind.h lacks CHAR8. Replacing the duplicate BOOLEAN with the
+missing CHAR8 fixes both at once, which is what the riscv64 port
+(d53caaac4) meant by "definition confusion".
+
+What that hunk does NOT do is give riscv64 the CHAR16 fix above: the
+substitution it came from matched one space, and riscv64 writes the
+line padded. Nothing compiles the riscv64 header today -- this package
+is x86-only and riscv64 has no EFI -- so it is left as it was. See
+docs/plans/gnuefi-arch-asymmetry.md.
 
 --- a/inc/ia32/efibind.h
 +++ b/inc/ia32/efibind.h
