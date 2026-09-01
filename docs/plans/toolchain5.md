@@ -362,6 +362,7 @@ old code produced.
 | `acpica` | a substitution table + its own applier | 1 patch | acenv.h identical, kernel builds |
 | `uboot` | scriptaddr gsub | 1 patch | u-boot.bin differs in 5 bytes, all inside the embedded build timestamp |
 | `licheerv_nano_boot` | 2 gsubs | 1 patch | bl2_main.c identical |
+| `tcc` | 51 lines: a githash read from the source, env juggling, a hand-rolled existence check | 3 Steps + the `$SRC_REF` token | tcc identical on i386 and riscv64, version string unchanged |
 | `gnuefi` | a substitution table + its own applier | 1 patch | efibind.h both arches, libgnuefi.a, libefi.a identical |
 | `ncurses`, `host_ncurses` | one applier, two callers wanting different sets | 1 + 2 patches | all 142 target and 109 host objects identical (only ar's container metadata differs) |
 | `lcov`, `libmusl`, `freedoom`, `host_sophgo_tools` | `install_impl_internal = true`, in two spellings | `nothing_to_build?` | extraction only |
@@ -434,15 +435,6 @@ are applied, so the conversion silently applied none until
     into a step list. The specs file is also generated from gcc's own
     output, so it cannot be a patch.
 
-  * **A recipe that depends on the extracted source.** `tcc` reads
-    `.ref_short` from the tarball to set `DEF_GITHASH`. `build_steps`
-    is asked for during a staleness check, when there is no source
-    tree to read -- so a step list computed from it would hash
-    differently depending on where it was asked, which is exactly the
-    bug that made glycin report stale from a build directory. It could
-    be a `$SRC_REF` token, expanded at run time and literal in the
-    digest, if tcc is worth that.
-
   * **Supply-then-repair a config.** `busybox` and `uboot` copy a
     checked-in `.config` in, build, and normalise the file afterwards.
     The fixup could move into the config file itself; until it does,
@@ -494,10 +486,10 @@ need its own concept if it is ever wanted.
    so build identity applies from the first package with no legacy
    case to tolerate -- which is why a missing record is reported as
    `unknown` rather than waved through.
-5. 26 packages remain on the code fingerprint rather than a declared
+5. 25 packages remain on the code fingerprint rather than a declared
    recipe, from 32 -- see "The builds that are not command sequences"
-   above for what each one is waiting on. A `$SRC_REF` token would
-   unblock `tcc`; the rest are genuinely not command sequences.
+   above for why each one is where it is. The rest are genuinely not
+   command sequences.
 6. gnu-efi's three per-arch headers do not say the same thing, and the
    one patch over them means something different in each. Nothing
    built today compiles the affected header; see
