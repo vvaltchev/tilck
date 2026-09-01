@@ -479,16 +479,15 @@ need its own concept if it is ever wanted.
    recipe, from 32 -- see "The builds that are not command sequences"
    above for what each one is waiting on. A `$SRC_REF` token would
    unblock `tcc`; the rest are genuinely not command sequences.
-6. gnuefi's riscv64 hunk replaces a BOOLEAN typedef with a CHAR8 one,
-   which drops BOOLEAN rather than adding CHAR8, and leaves riscv64's
-   own CHAR16 as wchar_t. Nothing compiles it -- the package is
-   x86-only -- so it is preserved and flagged in the patch header
-   rather than silently kept or silently dropped.
-7. Three artifacts are not reproducible, and it is worth deciding
-   whether to care: `fbdoom.gz` (gzip stores the input's mtime; `-n`
-   drops it), `u-boot.bin` (u-boot embeds its build timestamp in the
-   banner) and the ncurses `.a` archives (ar records per-member
-   timestamps; `D` makes it deterministic). All make a rebuilt
-   artifact differ from its predecessor
-   for no real reason, which costs a comparison that is otherwise
-   free.
+6. gnu-efi's three per-arch headers do not say the same thing, and the
+   one patch over them means something different in each. Nothing
+   built today compiles the affected header; see
+   docs/plans/gnuefi-arch-asymmetry.md for what it is and the options.
+
+Closed: the artifacts that embed a build timestamp -- `fbdoom.gz`,
+`u-boot.bin`, the ncurses archives -- are not a problem. Only the
+timestamps differ and nothing reads them: the gzip payload, the ar
+members (142 target, 109 host) and all of u-boot but five bytes of a
+printed banner are identical. It costs a byte-for-byte comparison
+between rebuilds, which is a verification convenience and not a
+property of the toolchain.
