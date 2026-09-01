@@ -408,6 +408,17 @@ class Package
   #   $INSTALL   this version's install directory
   #   $SYSROOT   the stack's composed sysroot
   #   $PAR       the build parallelism
+  #   $SRC_REF   the short git ref the source was fetched at
+  #
+  # $SRC_REF is why tokens exist rather than string interpolation. Its
+  # value lives in a file inside the extracted source, which is not
+  # there during a staleness check -- so a recipe that READ it would
+  # hash differently depending on where it was asked from, which is
+  # the bug that once made glycin report stale from a build directory
+  # and fresh from the repository root. Naming it leaves the literal
+  # "$SRC_REF" in the digest, which is the honest thing to record: the
+  # value is a property of the pinned source, and the version already
+  # identifies that.
   #
   # Empty means "this package builds itself imperatively"; its
   # install_impl_internal is then hashed instead. See
@@ -419,10 +430,36 @@ class Package
   def prune_after_build? = false
 
   def expand_tokens(str, install_dir)
-    return str.to_s
-              .gsub("$INSTALL", install_dir.to_s)
-              .gsub("$SYSROOT", (on_host ? stack_sysroot.to_s : ""))
-              .gsub("$PAR", BUILD_PAR.to_s)
+
+    out = str.to_s
+             .gsub("$INSTALL", install_dir.to_s)
+             .gsub("$SYSROOT", (on_host ? stack_sysroot.to_s : ""))
+             .gsub("$PAR", BUILD_PAR.to_s)
+
+    # Resolved only when asked for: reading it requires the source to
+    # be extracted, which is true at build time and never during a
+    # staleness check.
+    return out if !out.include?("$SRC_REF")
+    return out.gsub("$SRC_REF", source_ref_short(install_dir))
+  end
+
+  # The short git ref the source was fetched at.
+  #
+  # Written by the cache beside the extracted tree when it clones a
+  # git repository (.ref_name, .ref_short and .ref), so that the exact
+  # commit survives independently of the .git directory. A package
+  # that asks for it and has no git source is asking for something
+  # that does not exist, and is told so rather than handed "".
+  def source_ref_short(install_dir)
+
+    f = Pathname.new(install_dir.to_s) / ".ref_short"
+
+    if !f.file?
+      raise "#{name}: $SRC_REF needs .ref_short, which only a source " \
+            "fetched from git has"
+    end
+
+    return f.read.strip
   end
 
   def run_build_steps(install_dir)
