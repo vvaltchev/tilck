@@ -319,71 +319,111 @@ if (_upgrade_rc EQUAL 2)
 `-l` shows `stale` instead of `installed`, so the condition is visible
 without starting a build.
 
-## Deferred: the builds that are not command sequences
+## The builds that are not command sequences
 
-Where a build IS a command sequence it is now data -- an ordered list
-of `Step(log, argv, dir:, env:, unset:)` that the runner both executes
-and records, so no command can go unrecorded. That covers **46**
-packages. The other **30** define their own `install_impl_internal`
-and are protected by the code fingerprint instead, which is correct
-and narrow but coarser: any change to the method is a rebuild, where a
-declared recipe would say exactly WHAT changed.
+Where a build IS a command sequence it is data -- an ordered list of
+`Step(log, argv, dir:, env:, unset:)` that the runner both executes
+and records, so no command can go unrecorded. The rest define their
+own `install_impl_internal` and are protected by the code fingerprint
+instead, which is correct and narrow but coarser: any change to the
+method is a rebuild, where a declared recipe would say exactly WHAT
+changed.
 
-Converting the rest means rewriting builds, and a rewritten build has
-to be run to be believed. **Do these after the toolchain5 rebuild**,
-one at a time, each verified by actually building it -- not before,
-when there is no stack to build against.
+### Done
 
-Several of the 30 need nothing at all: the musl cross-compilers,
-`gnuefi_src`, `libmusl`, `lcov`, `freedoom`, `tfblib` and
-`sophgo_tools` are prebuilt blobs or source-only packages with no
-build to describe. The real work is five shapes:
+Every conversion below was verified against the ARTIFACT, not by
+reading the diff: rebuild, then compare byte for byte with what the
+old code produced.
 
-**1. A build that edits a source file.**
-`lua` reads `src/Makefile`, strips `-Wl,-E` with `gsub`, and writes it
-back -- we link statically against musl, so the export table is
-meaningless and the cross binutils-ld rejects the option. That wants
-to be `scripts/patches/lua/<ver>/*.diff`, which the base class already
-applies and already fingerprints. It is a behaviour change (patch(1)
-fails loudly where `gsub` silently does nothing), so it needs a build
-to confirm.
+| package | was | is | verified |
+|---|---|---|---|
+| `lua` | 2 gsubs + make | 2 patches + a Step | lua, luac identical on 3 boards |
+| `host_ninja` | bootstrap + FileUtils.cp | 3 Steps | ninja identical |
+| `fbdoom` | 2 gsubs in patch_sources | 2 patches | binary identical (the .gz is not: gzip stores the mtime) |
+| `acpica` | a substitution table + its own applier | 1 patch | acenv.h identical, kernel builds |
+| `uboot` | scriptaddr gsub | 1 patch | u-boot.bin differs in 5 bytes, all inside the embedded build timestamp |
+| `licheerv_nano_boot` | 2 gsubs | 1 patch | bl2_main.c identical |
+| `lcov`, `libmusl`, `freedoom`, `host_sophgo_tools` | `install_impl_internal = true`, in two spellings | `nothing_to_build?` | extraction only |
 
-**2. A build that installs its output by hand.**
-`ninja` bootstraps with `configure.py` and then copies the binary with
-`FileUtils.cp`. As a step that is `install -D ninja
-$INSTALL/install/bin/ninja` -- a different program doing the copy, so
-again a real change.
+Each patch was also applied to the pristine tarball and diffed against
+what the gsub produced, before being committed. Keeping the result
+byte-identical -- leftover spaces in lua's `SYSLIBS` included -- is
+what makes the artifact comparison meaningful.
 
-**3. A build that supplies and then repairs a config.**
-`busybox` and `uboot` copy a checked-in `.config` in, build, and fix
-the file up afterwards (`fix_config_file`, and uboot patches
-`scriptaddr` first). The copy and the fixup are file operations around
-one `make`. Worth expressing as steps only if the fixups can move into
-the config file or a patch; otherwise the fingerprint is the honest
-answer.
+The patches are a behaviour change, and the right one: `patch(1)`
+fails loudly where a gsub that matches nothing succeeds silently.
+fbdoom's homedir substitution only *warned* when it found nothing, so
+an upstream rename would have produced a binary writing to a directory
+Tilck does not mount, and said so once in a log nobody reads.
 
-**4. A build that verifies its own output.**
-`host_gcc` writes a specs file after installing and then compiles a
-test program to prove the compiler emits portable binaries by default.
-That check is not part of building -- it is a POST-INSTALL assertion,
-and it deserves its own concept rather than being flattened into a
-step list. `host_glibc` and `host_binutils` are the same shape.
+### Blocked: two packages may share a patch directory
 
-**5. Sequences with file operations interleaved.**
-`gnuefi`, `ncurses`, `tcc`, `vim`, `mconf`, `meson`, `fbdoom`,
-`licheerv_nano_boot`, `host_gtest` and `host_qemu` mix `mkdir`, `cp`,
-symlinks or DESTDIR juggling between commands. Some of that is
-`stack_install`'s job already -- `host_zlib` turned out to be running
-exactly the sequence `autotools_stack_build` runs, and simply calling
-the helper removed thirty lines. The others need reading one at a
-time.
+`apply_patches` runs for every package and keys the directory on
+`pkg_dirname`, which is NOT unique. Three pairs share one:
 
-A sixth possibility worth considering when the time comes: give
-`Step` a `:ruby` variant carrying a lambda, so a file operation can
-sit in the list without pretending to be a command. It buys uniform
-ordering and logging, but a lambda cannot be fingerprinted as data --
-it would fall back to hashing the method that defines it, which is
-where those packages already are. Probably not worth it.
+```
+zlib     -> zlib, host_zlib            (different versions today)
+gnuefi   -> gnuefi_src, gnuefi         (SAME version)
+ncurses  -> ncurses, host_ncurses      (SAME version)
+```
+
+Both blocked conversions are blocked by this, and both would be
+silent:
+
+  * `gnuefi` patches `inc/*/efibind.h` before compiling. `gnuefi_src`
+    is the noarch source tree the unit tests include headers from, and
+    is deliberately left pristine. A patch under
+    `scripts/patches/gnuefi/3.0.17/` would reach both.
+
+  * `ncurses` applies one configure fix; `host_ncurses` applies that
+    one AND a second. They want DIFFERENT patch sets from one
+    directory.
+
+A patch belongs to a package, not to a source directory name, so the
+fix is to key on the package name -- which relocates the existing
+patch directories and rebuilds everything patched. Worth doing, not
+worth smuggling into a conversion.
+
+### Genuinely not command sequences
+
+  * **A build that verifies its own output.** `host_gcc` writes a
+    specs file and then compiles a test program to prove the compiler
+    emits portable binaries by default; `host_glibc` and
+    `host_binutils` are the same shape. That is a POST-INSTALL
+    ASSERTION and deserves its own concept rather than being flattened
+    into a step list. The specs file is also generated from gcc's own
+    output, so it cannot be a patch.
+
+  * **A recipe that depends on the extracted source.** `tcc` reads
+    `.ref_short` from the tarball to set `DEF_GITHASH`. `build_steps`
+    is asked for during a staleness check, when there is no source
+    tree to read -- so a step list computed from it would hash
+    differently depending on where it was asked, which is exactly the
+    bug that made glycin report stale from a build directory. It could
+    be a `$SRC_REF` token, expanded at run time and literal in the
+    digest, if tcc is worth that.
+
+  * **Supply-then-repair a config.** `busybox` and `uboot` copy a
+    checked-in `.config` in, build, and normalise the file afterwards.
+    The fixup could move into the config file itself; until it does,
+    the fingerprint is the honest answer.
+
+  * **File operations interleaved.** `vim`, `ncurses`, `host_qemu`,
+    `host_meson`, `host_mconf`, `host_gtest`, `gnuefi` and `fbdoom`
+    mix mkdir, cp, symlinks or DESTDIR juggling between commands.
+    `host_mconf` and `host_meson` additionally compute their argv from
+    `deps_build_env`, which resolves install paths and raises when a
+    dependency is absent -- not something a staleness check can call.
+
+  * **Renames over a blob.** The four `gcc-*-musl` packages rename
+    every file in `bin/`; `tfblib` symlinks itself into the source
+    tree. Neither is a build.
+
+A `Step` variant carrying a lambda would let a file operation sit in
+the list without pretending to be a command, but a lambda cannot be
+fingerprinted as data -- it falls back to hashing the method that
+defines it, which is where those packages already are. It buys
+uniform ordering and logging and nothing else.
 
 ## Non-goals, decided
 
@@ -414,7 +454,15 @@ need its own concept if it is ever wanted.
    so build identity applies from the first package with no legacy
    case to tolerate -- which is why a missing record is reported as
    `unknown` rather than waved through.
-5. The 30 packages still on the code fingerprint rather than a
-   declared recipe -- see "Deferred: the builds that are not command
-   sequences" above. To be done AFTER the rebuild, each verified by
-   building it.
+5. 26 packages remain on the code fingerprint rather than a declared
+   recipe, from 32 -- see "The builds that are not command sequences"
+   above for what each one is waiting on. Six of them are waiting on
+   nothing but a decision: keying patch directories on the package
+   name instead of `pkg_dirname` unblocks `gnuefi` and `ncurses`, and
+   a `$SRC_REF` token unblocks `tcc`.
+6. Two artifacts are not reproducible, and it is worth deciding
+   whether to care: `fbdoom.gz` (gzip stores the input's mtime; `-n`
+   drops it) and `u-boot.bin` (u-boot embeds its build timestamp in
+   the banner). Both make a rebuilt image differ from its predecessor
+   for no real reason, which costs a comparison that is otherwise
+   free.
