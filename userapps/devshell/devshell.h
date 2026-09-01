@@ -35,6 +35,7 @@ typedef u64 ull_t;
 #define STR_RUN       "[RUN   ] "
 #define STR_PASS      "[PASSED] "
 #define STR_FAIL      "[FAILED] "
+#define STR_SKIP      "[SKIPPED] "
 
 /* utils */
 #define RDTSC()                     __rdtsc()

@@ -4,12 +4,12 @@ set -e
 
 if ! [ -x /initrd/usr/bin/tracer ]; then
    echo "No /initrd/usr/bin/tracer: skipping the test"
-   exit 0
+   exit 77   # 77 = skipped, not passed
 fi
 
 if ! [ -e /syst/tracing/events ]; then
    echo "No /syst/tracing/events (MOD_tracing off?): skipping the test"
-   exit 0
+   exit 77   # 77 = skipped, not passed
 fi
 
 echo "Running tracer --test ..."

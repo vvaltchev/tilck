@@ -4,7 +4,7 @@ set -e
 
 if ! [ -f /bin/tcc ]; then
    echo "No TinyCC in /bin/tcc: skipping the test"
-   exit 0
+   exit 77   # 77 = skipped, not passed
 fi
 
 cd /tmp

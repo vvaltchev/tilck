@@ -288,9 +288,18 @@ static const char *extra_test_scripts[] = {
    "tracer-test",
 };
 
+/*
+ * A script exits 77 when it decided there was nothing to test: the
+ * component it exercises is not in this image. That is NOT a pass,
+ * and must not print like one -- every EXTRA_* app defaults to OFF,
+ * so a run with none of them built would otherwise report a full row
+ * of [PASSED] while testing nothing at all.
+ */
+#define EXTRA_TEST_SKIPPED 77
+
 static int run_extra_test(const char *name)
 {
-   int rc, pid, wstatus;
+   int rc, pid, wstatus, code;
    char buf[64];
 
    printf("%s Extra: %s\n", STR_RUN, name);
@@ -307,10 +316,21 @@ static int run_extra_test(const char *name)
 
    rc = waitpid(pid, &wstatus, 0);
    DEVSHELL_CMD_ASSERT(rc == pid);
-   rc = WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0;
 
-   printf("%s Extra: %s\n", rc ? STR_PASS : STR_FAIL, name);
-   return !rc;
+   if (!WIFEXITED(wstatus)) {
+      printf("%s Extra: %s\n", STR_FAIL, name);
+      return 1;
+   }
+
+   code = WEXITSTATUS(wstatus);
+
+   if (code == EXTRA_TEST_SKIPPED) {
+      printf("%s Extra: %s\n", STR_SKIP, name);
+      return 0;
+   }
+
+   printf("%s Extra: %s\n", !code ? STR_PASS : STR_FAIL, name);
+   return code != 0;
 }
 
 int cmd_extra(int argc, char **argv)

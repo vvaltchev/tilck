@@ -4,7 +4,7 @@ set -e
 
 if ! [ -d /syst ]; then
    echo "No sysfs mounted at /syst: skipping the test"
-   exit 0
+   exit 77   # 77 = skipped, not passed
 fi
 
 echo
