@@ -372,33 +372,60 @@ set(_tc_ruby
 if (EXISTS ${_tc_ruby})
    set(PKGMGR_RUBY ${_tc_ruby})
 else()
-   find_program(PKGMGR_RUBY ruby)
+   # Into a FRESH name. find_program writes a cache entry, and the
+   # normal variable set above shadows it, so searching straight into
+   # PKGMGR_RUBY left it empty -- silently, because the only use was
+   # guarded by "if (PKGMGR_RUBY ...)". Every CI image builds no Ruby
+   # of its own, the distro's being new enough, so the fallback was
+   # taken on all of them and the staleness check never ran anywhere
+   # but on a developer's machine.
+   find_program(_sys_ruby ruby)
+
+   if (_sys_ruby)
+      set(PKGMGR_RUBY ${_sys_ruby})
+   endif()
 endif()
 unset(_tc_ruby)
 
 set(PKGMGR_MAIN ${CMAKE_SOURCE_DIR}/scripts/pkgmgr/main.rb)
 
-if (PKGMGR_RUBY AND EXISTS ${PKGMGR_MAIN})
-   execute_process(
-      COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
-      RESULT_VARIABLE _upgrade_rc
-      OUTPUT_VARIABLE _upgrade_out
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-   )
-   if (_upgrade_rc EQUAL 2)
-      # NEEDS_UPGRADE: a version was bumped     -> --upgrade
-      # NEEDS_REBUILD: sources changed under an installed package,
-      #                so what is installed no longer matches them
-      #                -> -s <pkg> -f
-      message(FATAL_ERROR
-         "\nSome installed toolchain packages are out of date:\n"
-         "   ${_upgrade_out}\n\n"
-         "For NEEDS_UPGRADE run: ${BTC_SCRIPT_REL} --upgrade\n"
-         "For NEEDS_REBUILD run: ${BTC_SCRIPT_REL} -s <pkg> -f\n")
-   endif()
-   unset(_upgrade_rc)
-   unset(_upgrade_out)
+# Not optional: the layout below is read from the package manager, so
+# the build cannot proceed without being able to run it. Checked here,
+# once, right where it is found, rather than at each use.
+if (NOT PKGMGR_RUBY OR NOT EXISTS ${PKGMGR_MAIN})
+   message(FATAL_ERROR
+      "Cannot run the package manager (ruby: '${PKGMGR_RUBY}'): "
+      "run ${BTC_SCRIPT_REL} first.")
 endif()
+
+execute_process(
+   COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
+   RESULT_VARIABLE _upgrade_rc
+   OUTPUT_VARIABLE _upgrade_out
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+# 0 = up to date, 2 = something needs rebuilding. Anything else means
+# the check did not run, which is not the same as having nothing to
+# report and must not pass for it.
+if (NOT _upgrade_rc EQUAL 0 AND NOT _upgrade_rc EQUAL 2)
+   message(FATAL_ERROR
+      "\nCould not check whether the toolchain is up to date:\n"
+      "   ${_upgrade_out}\n")
+endif()
+
+if (_upgrade_rc EQUAL 2)
+   # NEEDS_UPGRADE: a version was bumped     -> --upgrade
+   # NEEDS_REBUILD: sources changed under an installed package,
+   #                so what is installed no longer matches them
+   #                -> -s <pkg> -f
+   message(FATAL_ERROR
+      "\nSome installed toolchain packages are out of date:\n"
+      "   ${_upgrade_out}\n\n"
+      "For NEEDS_UPGRADE run: ${BTC_SCRIPT_REL} --upgrade\n"
+      "For NEEDS_REBUILD run: ${BTC_SCRIPT_REL} -s <pkg> -f\n")
+endif()
+unset(_upgrade_rc)
+unset(_upgrade_out)
 
 # Reset the default flags
 set(CMAKE_C_FLAGS "")
@@ -951,11 +978,6 @@ message(STATUS "GCC_TC_VER: ${GCC_TC_VER}")
 #
 # ARCH, BOARD and GCC_TC_VER go through the environment, which is how
 # the package manager takes them everywhere else.
-if (NOT PKGMGR_RUBY OR NOT EXISTS ${PKGMGR_MAIN})
-   message(FATAL_ERROR
-      "Cannot locate the package manager: run ${BTC_SCRIPT_REL} first.")
-endif()
-
 # BOARD only when one was actually chosen. It is empty here for every
 # arch with a single board, and passing BOARD= would override the
 # package manager's default with nothing -- which is how the i386
