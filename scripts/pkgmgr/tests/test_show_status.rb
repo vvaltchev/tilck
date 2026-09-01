@@ -226,7 +226,9 @@ class TestShowStatus < Minitest::Test
     # An install that's found on disk but not from a registered package
     info = InstallInfo.new(
       "orphan_pkg", Ver("13.3.0"), false, ARCH, Ver("1.0.0"),
-      Pathname.new("/fake/orphan"), nil, false
+      Pathname.new("/fake/orphan"), nil, false,
+      coords: Coords.new("tilck-#{ARCH.name}", ARCH.default_board,
+                         "gcc-13.3.0")
     )
     output = capture_stdout {
       pkgmgr.show_status("orphan_pkg", nil, [info])

@@ -55,7 +55,7 @@ class TestGetInstalledCompilers < Minitest::Test
             InstallInfo.new(
               info.pkgname, info.compiler, info.on_host, info.arch,
               info.ver, info.path, info.pkg, info.broken,
-              target, "musl"
+              target, "musl", coords: info.coords
             )
           }
         }
@@ -271,7 +271,7 @@ class TestWithCc < Minitest::Test
           InstallInfo.new(
             info.pkgname, info.compiler, info.on_host, info.arch,
             info.ver, info.path, info.pkg, info.broken,
-            target, "musl"
+            target, "musl", coords: info.coords
           )
         }
       }
@@ -490,7 +490,9 @@ class TestShowStatusEdgeCases < Minitest::Test
     # An orphan install has pkg=nil — should show "found" not "installed"
     info = InstallInfo.new(
       "orphan", FAKE_GCC_VER, false, ARCH, Ver("1.0.0"),
-      Pathname.new("/fake/path"), nil, false
+      Pathname.new("/fake/path"), nil, false,
+      coords: Coords.new("tilck-#{ARCH.name}", ARCH.default_board,
+                         "gcc-#{FAKE_GCC_VER}")
     )
     output = capture_stdout {
       pkgmgr.show_status("orphan", nil, [info])
