@@ -77,12 +77,6 @@ class LicheervNanoBootPackage < Package
     rm_f("host-tools")
     ln_s(sophgo_dir.to_s, "host-tools")
 
-    # Patch the FSBL bl2_main.c to force SD boot + a sane UART baudrate.
-    # The path uses the `sg200x/` symlink that the upstream tarball
-    # ships pointing at the real `cv181x/` directory — same trick the
-    # bash version used.
-    return false if !apply_uart_patch
-
     # Run the vendor build with our cross-compiler env *unset* so that
     # cvisetup.sh's own toolchain selection wins. with_saved_env will
     # restore the prior values when we leave the block.
@@ -122,28 +116,6 @@ class LicheervNanoBootPackage < Package
     return mkpathname(list.first.path.to_s)
   end
 
-  def apply_uart_patch
-
-    file = "fsbl/plat/sg200x/bl2/bl2_main.c"
-
-    if !File.file?(file)
-      error "#{name}: expected file not found: #{file}"
-      return false
-    end
-
-    info "Patching #{file} for SD boot + 115200 baud"
-    s = File.read(file)
-    s = s.gsub(
-      "if (v == BOOT_SRC_UART)",
-      "if (v == BOOT_SRC_SD)"
-    )
-    s = s.gsub(
-      "console_init(0, PLAT_UART_CLK_IN_HZ, UART_DL_BAUDRATE)",
-      "console_init(0, 25804800, 115200)"
-    )
-    File.write(file, s)
-    return true
-  end
 end
 
 pkgmgr.register(LicheervNanoBootPackage.new())
