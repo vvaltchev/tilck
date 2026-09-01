@@ -10,7 +10,7 @@ include(${PROJ_ROOT}/other/cmake/errors.cmake)
 include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 
 set(EFI_ARCH ia32)
-set(GNUEFI_DIR ${TCROOT_ARCH_DIR_PARENT}/i386/gnuefi/${VER_GNUEFI})
+set(GNUEFI_DIR ${PKGMGR_PKGS_TARGET_i386}/gnuefi/${VER_GNUEFI})
 file(GLOB SOURCES ${GLOB_CONF_DEP} "${PROJ_ROOT}/boot/efi/*.c")
 
 include(${PROJ_ROOT}/boot/efi/GenericBuild.cmake)

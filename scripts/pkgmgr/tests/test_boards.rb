@@ -13,6 +13,42 @@
 
 require_relative 'test_helper'
 
+#
+# A coordinate is never blank.
+#
+# The schema promises exactly three levels. An empty string collapsed
+# the path to two -- tilck-i386/gcc-13.3.0 -- which is the toolchain4
+# ambiguity Coords exists to remove, and it happened for real: CMake
+# passes BOARD= when the user has not chosen a board, Ruby treats ""
+# as truthy, so the empty string beat the default and the board level
+# simply disappeared from every i386 package path.
+#
+class TestCoordsRejectBlanks < Minitest::Test
+
+  include TestHelper
+
+  def test_nil_means_any
+    c = Coords.new("noarch", nil, nil)
+    assert_equal "noarch/any/any", c.to_s
+  end
+
+  def test_a_blank_env_is_refused
+    assert_raises(RuntimeError) { Coords.new("tilck-i386", "", "gcc-13") }
+    assert_raises(RuntimeError) { Coords.new("tilck-i386", "  ", "gcc-13") }
+  end
+
+  def test_a_blank_machine_or_stack_is_refused
+    assert_raises(RuntimeError) { Coords.new("", "pc", "gcc-13") }
+    assert_raises(RuntimeError) { Coords.new("tilck-i386", "pc", "") }
+  end
+
+  # The whole point of refusing: the path keeps its three levels.
+  def test_every_coordinate_has_three_levels
+    c = Coords.new("tilck-i386", "pc", "gcc-13.3.0")
+    assert_equal 3, c.to_s.split("/").length
+  end
+end
+
 class TestInstallsAreBoardSpecific < Minitest::Test
 
   include TestHelper

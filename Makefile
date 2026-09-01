@@ -5,7 +5,18 @@
 MAKEFLAGS += --no-print-directory
 
 TCROOT_PARENT ?= ./
-TCROOT ?= $(TCROOT_PARENT)/toolchain4
+
+# Which toolchain generation to look for. Single source of truth in
+# other/toolchain_conf, shared with the bash bootstrap, the Ruby
+# package manager and CMake: a generation bump moves every install
+# path, and a consumer left behind looks for a directory that is not
+# built any more.
+TC_NAME := $(shell sed -n 's/^TOOLCHAIN_DIR_NAME=//p' other/toolchain_conf)
+ifeq ($(TC_NAME),)
+$(error TOOLCHAIN_DIR_NAME missing from other/toolchain_conf)
+endif
+
+TCROOT ?= $(TCROOT_PARENT)/$(TC_NAME)
 PREREQUISITES := $(TCROOT) build/CMakeCache.txt
 BUILD_DIR = build
 

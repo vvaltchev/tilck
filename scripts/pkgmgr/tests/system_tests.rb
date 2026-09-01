@@ -10,6 +10,7 @@
 require 'pathname'
 require 'fileutils'
 require_relative '../term'
+require_relative '../early_logic'   # DEFAULT_TC_NAME
 
 module SystemTests
 
@@ -21,7 +22,7 @@ module SystemTests
   # --- Paths ---
 
   MAIN_DIR   = Pathname.new(File.expand_path("../../..", __dir__))
-  TC         = MAIN_DIR / "toolchain4"
+  TC         = MAIN_DIR / DEFAULT_TC_NAME
   BTC        = (MAIN_DIR / "scripts" / "build_toolchain").to_s
   CMAKE_RUN  = (MAIN_DIR / "scripts" / "cmake_run").to_s
   BUILDS_DIR = MAIN_DIR / "other_builds"

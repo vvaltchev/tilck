@@ -34,12 +34,28 @@ class Coords
 
   attr_reader :machine, :env, :stack
 
+  # nil means "not applicable here" and becomes ANY: a noarch package
+  # has no environment and no stack, and says so.
+  #
+  # An empty string is different, and is refused. It means a caller
+  # computed a coordinate and got nothing -- which used to collapse the
+  # path to two levels, `tilck-i386/gcc-13.3.0`, in a schema whose
+  # whole promise is that there are always exactly three. That is the
+  # toolchain4 ambiguity this class exists to remove, so it must not be
+  # reachable by accident.
   def initialize(machine, env, stack)
-    @machine = machine.to_s
-    @env = (env || ANY).to_s
-    @stack = (stack || ANY).to_s
+    @machine = check("machine", machine)
+    @env = env.nil? ? ANY : check("env", env)
+    @stack = stack.nil? ? ANY : check("stack", stack)
     freeze
   end
+
+  def check(what, value)
+    s = value.to_s
+    raise "Coords: blank #{what}" if s.strip.empty?
+    return s
+  end
+  private :check
 
   # The three coordinates as a path fragment, for messages.
   def to_s = "#{@machine}/#{@env}/#{@stack}"

@@ -3,7 +3,9 @@
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/../.. && pwd)"
-DISTRO_FILE="$MAIN_DIR/toolchain4/.distro"
+
+source $MAIN_DIR/other/toolchain_conf   # TOOLCHAIN_DIR_NAME
+DISTRO_FILE="$MAIN_DIR/$TOOLCHAIN_DIR_NAME/.distro"
 
 if ! [ "$RUNNING_IN_CI" == 1 ]; then
    echo "This script was meant to be run in CI (toolchain_builds.yml)."

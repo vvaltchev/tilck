@@ -14,7 +14,7 @@ from .base import (
 EXEMPT_FRAGMENTS = (
    '/include/system_headers/',
    '/3rd_party/',
-   '/toolchain4/',
+   '/toolchain',
    '/build/',
 )
 

@@ -29,7 +29,7 @@ foreach (_rel
       break()
    endif()
 endforeach()
-if (NOT _have_any_extra AND EXISTS ${TCROOT}/noarch/tfblib/${VER_TFBLIB})
+if (NOT _have_any_extra AND EXISTS ${NOARCH_DIR}/tfblib/${VER_TFBLIB})
    set(_have_any_extra TRUE)
 endif()
 
@@ -101,7 +101,7 @@ if (EXISTS ${TCROOT_ARCH_DIR}/lua/${VER_LUA})
    message(STATUS "EXTRA_LUA: ${EXTRA_LUA}")
 endif()
 
-if (EXISTS ${TCROOT}/noarch/tfblib/${VER_TFBLIB})
+if (EXISTS ${NOARCH_DIR}/tfblib/${VER_TFBLIB})
    tilck_option(EXTRA_TFBLIB
       TYPE     BOOL
       CATEGORY "Userapps"

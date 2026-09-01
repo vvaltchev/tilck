@@ -731,15 +731,22 @@ module Main
     check_gcc_tc_ver
     create_toolchain_dirs
 
-    if ENV['QUIET'].blank? or ENV['QUIET'] == '0'
+    options = parse_options(argv)
+
+    # Printed after the options are parsed, so that -q can suppress it.
+    # The flag and the QUIET environment variable mean the same thing,
+    # but only the variable was ever checked here -- and it is the bash
+    # wrapper that sets it. A direct `ruby main.rb -q` stayed noisy, and
+    # CMake is documented to call this directly: --check-for-updates
+    # says it prints nothing when everything is fine, yet its context
+    # dump was arriving folded into CMake's error message.
+    if options[:quiet] == 0 && (ENV['QUIET'].blank? || ENV['QUIET'] == '0')
       puts "Context"
       puts "------------------"
       dump_context
       puts
       puts
     end
-
-    options = parse_options(argv)
 
     if options[:help]
       return 0
