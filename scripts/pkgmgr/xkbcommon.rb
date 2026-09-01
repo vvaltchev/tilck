@@ -75,13 +75,15 @@ class HostXkbcommonPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Denable-wayland=false",
       "-Denable-xkbregistry=false",
       "-Denable-docs=false",
       "-Denable-tools=false",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

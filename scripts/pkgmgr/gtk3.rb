@@ -114,8 +114,7 @@ class HostGtk3Package < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dx11_backend=true",
       "-Dwayland_backend=false",
       "-Dbroadway_backend=false",
@@ -130,7 +129,10 @@ class HostGtk3Package < Package
       "-Ddemos=false",
       "-Dexamples=false",
       "-Dtests=false",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

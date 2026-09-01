@@ -72,12 +72,14 @@ class HostFreetypePackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dharfbuzz=disabled",   # see the cycle note above
       "-Dbrotli=disabled",
       "-Dbzip2=disabled",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

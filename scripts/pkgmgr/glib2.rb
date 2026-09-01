@@ -101,16 +101,18 @@ class HostGlib2Package < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dnls=disabled",
       "-Dlibmount=disabled",
       "-Dselinux=disabled",
       "-Dintrospection=disabled",
       "-Dman-pages=disabled",
       "-Dtests=false",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+
+    return meson_stack_build(install_dir)
   end
 end
 

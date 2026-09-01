@@ -85,13 +85,15 @@ class HostPangoPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dintrospection=disabled",
       "-Ddocumentation=false",
       "-Dbuild-testsuite=false",
       "-Dbuild-examples=false",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

@@ -76,13 +76,15 @@ class HostLibepoxyPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dglx=yes",
       "-Degl=no",
       "-Dx11=true",
       "-Dtests=false",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

@@ -124,8 +124,7 @@ class HostGdkPixbufPackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dpng=enabled",
       "-Djpeg=disabled",
       "-Dtiff=disabled",
@@ -135,7 +134,10 @@ class HostGdkPixbufPackage < Package
       "-Dgio_sniffing=false",
       "-Dglycin=#{WITH_GLYCIN ? "enabled" : "disabled"}",
       "-Dbuiltin_loaders=#{WITH_GLYCIN ? "glycin" : "png"}",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

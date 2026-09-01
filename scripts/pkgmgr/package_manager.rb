@@ -117,6 +117,20 @@ class PackageManager
     }
   end
 
+  # Installed, but not from the sources we have now: a patch was
+  # added, a flag changed, or the code that drives the build did.
+  # Reported separately from a version bump because the remedy
+  # differs -- a rebuild rather than a new version.
+  def get_stale_packages
+    @packages.values.select { |p|
+      next false if !(p.host_supported? && p.board_supported? &&
+                      p.arch_supported?)
+      p.get_install_list.any? { |i|
+        !i.path.nil? && !i.broken && p.build_inputs_changed?(i.ver)
+      }
+    }
+  end
+
   def get_installed_compilers
     @known_installed.select { |x|
       !x.pkg.nil? && x.pkg.is_compiler && !x.path.nil? &&
@@ -343,7 +357,13 @@ class PackageManager
 
     if list.any? { |x| !x.pkg.nil? }
       if !installed.empty?
-        status = Package::INSTALLED_STR
+        # Present, but built from something other than the current
+        # sources. Shown here so the condition is visible without
+        # starting a build and discovering it the hard way.
+        stale = installed.any? { |e|
+          e.pkg && e.pkg.build_inputs_changed?(e.ver)
+        }
+        status = stale ? Package::STALE_STR : Package::INSTALLED_STR
       elsif !broken.empty?
         status = Package::BROKEN_STR
       else
@@ -415,7 +435,15 @@ class PackageManager
       # pinned versions alone. Written after the install rather than
       # inside it, so all three install_impl overrides get it for free.
       inst = pkg.find_install(ver)
-      InstallOrigin.write(inst.path, default_install) if inst
+
+      if inst
+        InstallOrigin.write(inst.path, default_install)
+
+        # ...and what it was built FROM, in the same place and for the
+        # same reason: nothing else on disk can answer it, and without
+        # it "installed" means only that a directory exists.
+        pkg.write_build_inputs(inst.path, ver)
+      end
 
       # The sysroot is a view over what is installed, so it is stale
       # the moment that changes.

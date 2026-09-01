@@ -114,19 +114,19 @@ class HostLibrsvgPackage < Package
   # Unlike glycin, librsvg needs no cross file: it takes the cargo
   # target from its own `triplet` option. Everything else about
   # driving cargo is the same, and lives in CargoBuild.
+  def build_flags(ver = nil) = [
+    "-Dtriplet=#{cargo_triple}",
+    "-Davif=disabled",
+    "-Dpixbuf=disabled",
+    "-Dintrospection=disabled",
+    "-Dvala=disabled",
+    "-Ddocs=disabled",
+    "-Dpixbuf-loader=disabled",
+    "-Dtests=false",
+  ]
+
   def install_impl_internal(install_dir)
-    with_cargo_env do
-      meson_stack_build(install_dir, args: [
-        "-Dtriplet=#{cargo_triple}",
-        "-Davif=disabled",
-        "-Dpixbuf=disabled",
-        "-Dintrospection=disabled",
-        "-Dvala=disabled",
-        "-Ddocs=disabled",
-        "-Dpixbuf-loader=disabled",
-        "-Dtests=false",
-      ])
-    end
+    with_cargo_env { meson_stack_build(install_dir) }
   end
 end
 

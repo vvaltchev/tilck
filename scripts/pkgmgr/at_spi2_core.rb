@@ -95,8 +95,7 @@ class HostAtSpi2CorePackage < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dx11=enabled",
       "-Dintrospection=disabled",
       "-Ddocs=false",
@@ -106,7 +105,10 @@ class HostAtSpi2CorePackage < Package
       # bridges GTK 2 widgets is still built by default two major
       # versions later.
       "-Dgtk2_atk_adaptor=false",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

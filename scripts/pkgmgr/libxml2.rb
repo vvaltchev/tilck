@@ -75,13 +75,15 @@ class HostLibxml2Package < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "-Dpython=disabled",
       "-Dhttp=disabled",
       "-Ddocs=disabled",
       "-Dicu=disabled",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+    return meson_stack_build(install_dir)
   end
 end
 

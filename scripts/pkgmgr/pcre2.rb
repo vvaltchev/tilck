@@ -67,13 +67,15 @@ class HostPcre2Package < Package
     super(dir)
   end
 
-  def install_impl_internal(install_dir)
-
-    return autotools_stack_build(install_dir, args: [
+  def build_flags(ver = nil) = [
       "--disable-static",
       "--enable-jit",           # glib builds GRegex against the JIT
       "--libdir=#{stack_sysroot}/usr/lib",
-    ])
+  ]
+
+  def install_impl_internal(install_dir)
+
+    return autotools_stack_build(install_dir)
   end
 end
 
