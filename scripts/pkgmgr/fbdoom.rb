@@ -54,9 +54,6 @@ class FbDoomPackage < Package
   def install_impl_internal(install_dir)
 
     arch_tc = default_arch().gcc_tc
-
-    patch_sources
-
     ok = false
     with_saved_env(["LDFLAGS"]) do
       ENV["LDFLAGS"] = "-static"
@@ -82,42 +79,6 @@ class FbDoomPackage < Package
       rm_rf(e)
     }
     return true
-  end
-
-  private
-
-  #
-  # Tilck doesn't have a writable /mnt at runtime, so redirect fbdoom's
-  # config home and WAD search path to /tmp.
-  #
-  def patch_sources
-    chdir("fbdoom") do
-      mc = "m_config.c"
-      if File.exist?(mc)
-        data = File.read(mc)
-        if data.include?('homedir = "/mnt"')
-          data.gsub!('homedir = "/mnt"', 'homedir = "/tmp"')
-          File.write(mc, data)
-        else
-          warning "fbdoom: homedir hack not found in #{mc}"
-        end
-      else
-        raise LocalError, "fbdoom: missing #{mc}"
-      end
-
-      ch = "config.h"
-      if File.exist?(ch)
-        data = File.read(ch)
-        if data =~ /FILES_DIR .+/
-          data.gsub!(/FILES_DIR .+/, 'FILES_DIR "/tmp"')
-          File.write(ch, data)
-        else
-          raise LocalError, "fbdoom: FILES_DIR define not found in #{ch}"
-        end
-      else
-        raise LocalError, "fbdoom: missing #{ch}"
-      end
-    end
   end
 end
 
