@@ -12,6 +12,8 @@
   * [Dependency resolution](#dependency-resolution)
   * [System dependencies](#system-dependencies)
   * [Default packages and upgrades](#default-packages-and-upgrades)
+  * [Build identity](#build-identity)
+  * [How the build system finds the toolchain](#how-the-build-system-finds-the-toolchain)
   * [Atomic installs and signal safety](#atomic-installs-and-signal-safety)
   * [Resumable downloads](#resumable-downloads)
   * [Package reconfiguration](#package-reconfiguration)
@@ -68,8 +70,11 @@ The package manager handles three categories of packages:
 # Upgrade packages after a version bump in one of the version files
 ./scripts/build_toolchain --upgrade
 
-# Check if upgrades are needed (used by CMake at configure time)
+# Check if anything needs upgrading or rebuilding (CMake runs this)
 ./scripts/build_toolchain --check-for-updates
+
+# Print where installed packages live, as KEY=value (CMake runs this too)
+./scripts/build_toolchain --print-layout
 
 # Run the package manager's own test suite
 ./scripts/build_toolchain -t
@@ -88,42 +93,84 @@ The package manager handles three categories of packages:
 
 ### Toolchain layout
 
+Every installation lives at three coordinates, always in the same
+order, each with a fixed meaning:
+
 ```
-toolchain4/
-  cache/                            # Downloaded tarballs (preserved across cleans)
-    partial/                        # Incomplete downloads (for resume)
-  staging/                          # In-progress builds (atomic install)
-  noarch/                           # Arch-independent packages
-    acpica/<ver>/
-    gnuefi/<ver>/
-    libmusl/<ver>/
-  gcc-<ver>/                        # Per-GCC-version cross-compiled packages
-    i386/
-      busybox/<ver>/
-      zlib/<ver>/
-    x86_64/
-      ...
-    riscv64/
-      ...
-  sysroots/
-    <os>-<host_arch>/
-      gcc-<ver>/                    # Composed view of a stack, not an install
-  host/
-    <os>-<host_arch>/               # e.g. linux-x86_64
-      portable/                     # Runs on any host of this OS + arch
-        gcc-i386-musl/<ver>/        #   statically linked (cross-compilers)
-        gcc-x86_64-musl/<ver>/
-        <our-cc>/                   #   e.g. gcc-14.4.0: built by OUR compiler,
-          glibc/<ver>/              #   carries our glibc and loader
-          glib2/<ver>/
-          gtk3/<ver>/
-      <distro>/                     # Runs on this distro only
-        mtools/<ver>/               #   links the distro's libc
-        gcc/<ver>/                  #   our compiler: the system cc built it
-        ruby/<ver>/                 # Bootstrap Ruby (not a registered package)
-        <host-cc>/                  # e.g. gcc-11.4.0
-          gtest/<ver>/              #   + depends on the host C++ ABI
+toolchain5/<machine>/<env>/<stack>/{ sysroot/, pkgs/<pkg>/<ver>/ }
 ```
+
+| coordinate | answers | example values |
+|------------|---------|----------------|
+| `<machine>` | where does it RUN? | `linux-x86_64`, `tilck-i386`, `noarch` |
+| `<env>` | which environment does it belong to? | `any`, `ubuntu-22.04`, `pc`, `qemu-virt` |
+| `<stack>` | which build environment made it? | `any`, `gcc-14.4.0`, `gcc-13.3.0` |
+
+`<env>` is *what the machine must already provide*; `any` means the
+artifact is self-contained. For a Tilck target it names the board
+instead — the same question asked of a system we configure rather than
+one we find. `pc` is the board for i386 and x86_64.
+
+`<stack>` is deliberately not called "the compiler". It is the identity
+of a build environment, which today is always a compiler but must be
+free to become `gcc-14.4.0-lto` without a schema change. `any` means no
+particular build environment matters: a static binary, or a blob.
+
+A package name can appear only under `pkgs/`, so it can never be
+mistaken for structure. `sysroot/` exists exactly when we built the
+environment — when `<env>` is `any` and `<stack>` is ours.
+
+```
+toolchain5/
+  cache/                                # Tarballs (kept across cleans)
+    partial/                            # Incomplete downloads (for resume)
+  staging/                              # In-progress builds (atomic install)
+
+  linux-x86_64/any/any/                 # Static: needs nothing from the host
+    pkgs/ gcc-i386-musl/<ver>/          #   the musl cross-compilers
+          gcc-x86_64-musl/<ver>/
+          gcc-riscv64-musl/<ver>/
+          sophgo_tools/<ver>/           #   a prebuilt board tool
+
+  linux-x86_64/any/gcc-14.4.0/          # Our stack: our glibc and loader
+    sysroot/                            #   a view of the stack, not an install
+    pkgs/ glibc/<ver>/  glib2/<ver>/  gtk3/<ver>/  qemu/<ver>/ ...
+
+  linux-x86_64/ubuntu-22.04/any/        # Needs this distro's libc
+    pkgs/ binutils/<ver>/  mtools/<ver>/  ninja/<ver>/  meson/<ver>/
+          mconf/<ver>/  ncurses/<ver>/
+          gcc/<ver>/                    #   our host gcc: system cc built it
+          ruby/<ver>/                   #   bootstrap Ruby (not a package)
+
+  linux-x86_64/ubuntu-22.04/gcc-11.4.0/ # + needs that host C++ ABI
+    pkgs/ gtest/<ver>/
+
+  noarch/any/any/
+    pkgs/ acpica/<ver>/  gnuefi/<ver>/  lcov/<ver>/  libmusl/<ver>/
+
+  tilck-i386/pc/gcc-13.3.0/             # Target packages, per arch AND board
+    pkgs/ busybox/<ver>/  zlib/<ver>/  vim/<ver>/ ...
+
+  tilck-riscv64/qemu-virt/gcc-13.3.0/
+    pkgs/ busybox/<ver>/  dtc/<ver>/  uboot/<ver>/ ...
+
+  tilck-riscv64/licheerv-nano/gcc-13.3.0/
+    pkgs/ busybox/<ver>/  licheerv_nano_boot/<ver>/ ...
+```
+
+Two boards of one architecture are two separate trees. They were not,
+until an install for one silently answered for the other: `-s ALL` with
+`BOARD=licheerv-nano` planned nineteen packages, installed two, and
+left the board without a C library — every package reporting as already
+installed on the strength of the qemu-virt build in a different
+directory.
+
+**New axes become values, never levels.** A fourth coordinate would put
+the schema back where toolchain4 ended up, with a directory name whose
+meaning depends on its depth. Anything else that needs distinguishing
+becomes a new *value* of one of the three — a new board, a new stack
+name — or, if it truly cannot, `<stack>` collapses to an opaque id with
+a manifest beside it.
 
 ### Host tool tiers
 
@@ -131,33 +178,31 @@ A host package's directory answers exactly one question: **where can this
 run?** Another machine sharing the toolchain reads the answer off the path
 and knows whether to consume the package or rebuild it.
 
-| `host_tier` | Path | Runs on |
-|-------------|------|---------|
-| `:portable` | `host/<os>-<arch>/portable/` | any host of this OS + arch — statically linked (cross-compilers) |
-| `:stack` | `host/<os>-<arch>/portable/<our-cc>/` | the same, carrying our own glibc and loader (glibc, glib2, GTK, QEMU) |
-| `:distro` | `host/<os>-<arch>/<distro>/` | this distro only — links its libc (mtools, our gcc and binutils) |
-| `:compiler` | `host/<os>-<arch>/<distro>/<host-cc>/` | + this host C++ ABI (gtest) |
+| `host_tier` | `<env>` / `<stack>` | Runs on |
+|-------------|---------------------|---------|
+| `:portable` | `any` / `any` | any host of this OS + arch — statically linked (cross-compilers) |
+| `:stack` | `any` / `gcc-<ver>` | the same, carrying our own glibc and loader (glibc, glib2, GTK, QEMU) |
+| `:distro` | `<distro>` / `any` | this distro only — links its libc (mtools, our gcc and binutils) |
+| `:compiler` | `<distro>` / `<host-cc>` | + this host C++ ABI (gtest) |
 
-`:stack` sits one level under `portable/` keyed by the version of *our*
-compiler, for the same reason `:compiler` carries the host compiler: a GCC
-bump can change the C++ ABI, so the whole set is rebuilt beside the old one
-rather than in place. Those packages are still portable — the compiler is a
-variant key, not a restriction on where they run. A directory level named
-`gcc-*` or `clang-*` is a compiler slot rather than a package, which is the
-same convention that separates tiers 2 and 3 under `<distro>/`.
+`:stack` and `:portable` share an `<env>` of `any`, because both run
+anywhere: our compiler is a *variant key*, not a restriction on where the
+result runs. It is in the path for the same reason `:compiler` carries the
+host compiler — a GCC bump can change the C++ ABI, so the whole set is
+rebuilt beside the old one rather than in place, and several stacks
+coexist as siblings without a new level.
 
 The tier is **declared** per package and never inferred from a build's
 outcome: `--prefix` and RPATH are baked in at configure time, so the
 directory has to be known before anything is built. The portability audit
 (`scripts/pkgmgr/portability.rb`) **enforces** the declaration — a package
-declared portable whose binaries reference anything outside `toolchain4`
+declared portable whose binaries reference anything outside the toolchain
 fails its install. A `:distro` package makes no such promise and is not
 asked to keep it.
 
-Composed sysroots live in `toolchain4/sysroots/`, outside the package tree:
-a sysroot is a *view* over installed packages, not an installation, and
-every scanner that walks `<pkg>/<ver>/` would otherwise have to be taught
-to skip it.
+A composed sysroot sits beside `pkgs/`, not inside it: a sysroot is a
+*view* over installed packages rather than an installation, and putting
+packages one level down means no scanner has to be taught to skip it.
 
 ### Package lifecycle
 
@@ -390,9 +435,85 @@ fails the build with a clear message telling the user to run `--upgrade`.
 Both version files are `CMAKE_CONFIGURE_DEPENDS`, so `make` automatically
 re-runs CMake when versions change.
 
+## Build identity
+
+A version number is not enough to say an install is current. Add a patch
+to a package, change a configure flag, edit the build steps — the version
+is the same and what is installed no longer matches the sources it claims
+to come from.
+
+So each install records what it was built FROM, in a hidden
+`.build_inputs` beside what was built: a digest of the *recipe* (the
+declared flags, the build steps, and the source of the methods the
+package itself defines, comments excluded) plus a digest of every patch
+file that applies to it.
+
+`--check-for-updates` compares each record against the sources present
+now, and reports three distinguishable states:
+
+| state | meaning | remedy |
+|-------|---------|--------|
+| `ok` | built from the sources we have | — |
+| `changed` | built from something else | `-s <pkg> -f` |
+| `unknown` | no record at all | `-s <pkg> -f` |
+
+`unknown` is reported rather than assumed benign. Every install is made
+by this mechanism, so a missing record means something went wrong while
+writing it — which is exactly the case that stays invisible if a missing
+record counts as fine.
+
+**A recipe is only a recipe at some coordinates.** A build step may name
+the archiver as `#{default_arch.gcc_tc}-linux-ar`, so the same version
+installed for two architectures was genuinely built from two different
+recipes. Each record is therefore written, and checked, against the
+recipe as it reads at *that install's* coordinates. A digest quoted
+without the coordinates it was computed for means nothing.
+
+The digest must also be **reproducible**: it may depend on the sources
+and on nothing else. A flag naming an absolute path built from the
+current working directory once made the same tree report as stale from a
+build directory and fresh from the repository root — an instrument that
+invents work is one people learn to ignore.
+
+## How the build system finds the toolchain
+
+CMake does not construct install paths. It asks:
+
+```
+$ ./scripts/build_toolchain -q --print-layout
+ARCH=i386
+BOARD=pc
+HOST_DISTRO=ubuntu-22.04
+HOST_CC=gcc-11.4.0
+TCROOT=/home/user/tilck/toolchain5
+PKGS_HOST_PORTABLE=.../linux-x86_64/any/any/pkgs
+PKGS_HOST_DISTRO=.../linux-x86_64/ubuntu-22.04/any/pkgs
+PKGS_HOST_CC=.../linux-x86_64/ubuntu-22.04/gcc-11.4.0/pkgs
+PKGS_NOARCH=.../noarch/any/any/pkgs
+PKGS_TARGET=.../tilck-i386/pc/gcc-13.3.0/pkgs
+PKGS_TARGET_<arch>=...              # one per arch, at its own default board
+```
+
+The alternative is the schema written down twice, and the copies drift:
+CMake went on describing toolchain4's layout after every install had
+moved, so a build looked for directories nothing creates. `Coords`
+(`scripts/pkgmgr/coords.rb`) stays the only thing that knows what a path
+looks like.
+
+The answer also carries `ARCH`, `BOARD`, `HOST_DISTRO` and `HOST_CC`,
+which CMake derives independently. They are compared, and a
+disagreement stops configure rather than surfacing much later as a
+missing file in a subtree nobody thought to look at.
+
+Which directory the toolchain itself lives in is named once, in
+`other/toolchain_conf`, and read by the bash bootstrap, the package
+manager, CMake, the root `Makefile` and the CI test wrapper. A
+generation bump moves every path, so a consumer left behind looks for a
+directory that is not built any more.
+
 ## Atomic installs and signal safety
 
-All package installs go through a **staging directory** (`toolchain4/staging/`).
+All package installs go through a **staging directory** (`toolchain5/staging/`).
 The flow:
 
   1. Download to `cache/` (or use cached tarball)
@@ -432,7 +553,7 @@ to update the base config file (e.g. `other/busybox.config`) and rebuild.
 
 ## Test infrastructure
 
-The package manager has a comprehensive test suite with 500+ tests. All tests
+The package manager has a comprehensive test suite with 750+ tests. All tests
 are run via `./scripts/build_toolchain -t`.
 
 ### Unit tests

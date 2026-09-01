@@ -338,9 +338,9 @@ tests/
   runners/        Python test infrastructure
 scripts/          Build automation (build_toolchain, cmake_run, etc.)
   pkgmgr/         Ruby package manager (see docs/package_manager.md)
-  pkgmgr/tests/   Package manager test suite (300+ unit + system tests)
+  pkgmgr/tests/   Package manager test suite (700+ unit + system tests)
 other/cmake/      CMake build modules
-toolchain4/       Generated cross-compiler toolchain (not in repo)
+toolchain5/       Generated cross-compiler toolchain (not in repo)
 ```
 
 `build/` artifacts: `tilck` / `tilck_unstripped`, `tilck.img`,
@@ -348,15 +348,16 @@ toolchain4/       Generated cross-compiler toolchain (not in repo)
 
 ## Toolchain Management
 
-Ruby pkgmgr at `scripts/pkgmgr/`, installed into `toolchain4/`
-(per-target-arch). Entry: `./scripts/build_toolchain` (bootstraps
-Ruby ≥3.2, execs `pkgmgr/main.rb`).
+Ruby pkgmgr at `scripts/pkgmgr/`, installed into `toolchain5/`.
+Entry: `./scripts/build_toolchain` (bootstraps Ruby ≥3.2, execs
+`pkgmgr/main.rb`). The directory name is in `other/toolchain_conf`,
+read by everyone who needs it — never spell it out again.
 
 **For non-trivial pkgmgr work, read `docs/package_manager.md` first**
-(authoritative on architecture, three-tier host layout, dependency
-resolution, atomic installs, resumable downloads, `-C` reconfigure,
-adding packages, the 300+ test suite). This section is only the
-bare minimum.
+(authoritative on the layout, the host tiers, dependency resolution,
+build identity, atomic installs, resumable downloads, `-C`
+reconfigure, adding packages, the 700+ test suite). This section is
+only the bare minimum.
 
 ```bash
 ./scripts/build_toolchain                 # default set for current ARCH
@@ -367,6 +368,8 @@ bare minimum.
 ./scripts/build_toolchain -U <arch>       # uninstall cross-cc for arch
 ./scripts/build_toolchain -C <pkg>        # reconfigure (e.g. busybox)
 ./scripts/build_toolchain --upgrade       # install new versions after bump
+./scripts/build_toolchain --check-for-updates  # 0=ok, 2=needs upgrade/rebuild
+./scripts/build_toolchain --print-layout  # where installed packages live
 ./scripts/build_toolchain -d              # dry-run
 ./scripts/build_toolchain -t [--coverage] # pkgmgr's own tests
 ./scripts/build_toolchain --clean         # remove pkgs for current ARCH
@@ -390,18 +393,37 @@ packages only; the target side is one version per package. An
 explicit pin beats a default (reported at info level); two pins that
 disagree are an error naming both paths.
 
-Layout:
+Layout — three coordinates, always, each with a fixed meaning:
 ```
-toolchain4/
-  cache/                              # tarballs (survive --clean)
-  staging/                            # in-progress (atomic install)
-  noarch/                             # arch-independent (acpica, gnuefi src)
-  gcc-<ver>/<arch>/                   # per-GCC-ver, per-target-arch
-  host/<os>-<arch>/
-    portable/                         # Tier 1: static, any distro
-    <distro>/<pkg>/<ver>/             # Tier 2: distro libc, any host CC
-    <distro>/<host-cc>/<pkg>/<ver>/   # Tier 3: C++ ABI-dependent (gtest)
+toolchain5/<machine>/<env>/<stack>/{ sysroot/, pkgs/<pkg>/<ver>/ }
+
+  <machine>  where it RUNS      linux-x86_64, tilck-i386, noarch
+  <env>      what the machine must already provide, or the BOARD
+             for a Tilck target                any, ubuntu-22.04, pc,
+                                               qemu-virt, licheerv-nano
+  <stack>    which build env made it           any, gcc-14.4.0
+
+toolchain5/
+  cache/                                  # tarballs (survive --clean)
+  staging/                                # in-progress (atomic install)
+  linux-x86_64/any/any/                   # static: musl cross-cc, blobs
+  linux-x86_64/any/gcc-14.4.0/            # our stack + its sysroot/
+  linux-x86_64/ubuntu-22.04/any/          # distro libc (ruby, mtools, mconf)
+  linux-x86_64/ubuntu-22.04/gcc-11.4.0/   # + host C++ ABI (gtest)
+  noarch/any/any/                         # acpica, gnuefi_src, lcov, libmusl
+  tilck-i386/pc/gcc-13.3.0/               # target pkgs, per arch AND board
+  tilck-riscv64/qemu-virt/gcc-13.3.0/
 ```
+A package name appears only under `pkgs/`, so it can never be read as
+structure. **New axes become VALUES, never LEVELS** — a fourth level
+puts us back where toolchain4 ended up, with `gcc-*` meaning four
+different things depending on its depth.
+
+Two boards of one arch are two separate trees. Anything that
+identifies an installation must compare `Coords`
+(`scripts/pkgmgr/coords.rb`), never re-derive part of the path:
+matching on (version, compiler, arch) let one board's build answer
+for another, and `-s ALL` for the second board installed nothing.
 
 Key concepts:
 - `Package` base class (`scripts/pkgmgr/package.rb`): every pkg
@@ -411,8 +433,19 @@ Key concepts:
 - `SourceRef` (`scripts/pkgmgr/source_ref.rb`): decouples upstream
   fetch from pkg def — N pkgs can share one tarball. Example:
   `GNUEFI_SOURCE` → `gnuefi_src` (noarch) + `gnuefi` (arch built).
-- `host_tier`: `:portable` / `:distro` / `:compiler` — selects
-  which tier a pkg installs into (table in `docs/package_manager.md`).
+- `host_tier`: `:portable` / `:stack` / `:distro` / `:compiler` —
+  selects the `<env>`/`<stack>` a host pkg installs into (table in
+  `docs/package_manager.md`).
+- **Build identity**: each install records what it was built FROM in
+  `.build_inputs` (recipe digest + patch digests).
+  `--check-for-updates` reports `ok` / `changed` / `unknown`, and
+  CMake refuses to build when anything is stale. A recipe is only a
+  recipe AT some coordinates — a build step naming
+  `#{default_arch.gcc_tc}-linux-ar` differs per arch — so records are
+  written and checked per install, and the digest must depend on the
+  sources and nothing else (never on `Dir.pwd`).
+- CMake never builds toolchain paths: it asks `--print-layout`.
+  `Coords` is the only thing that knows what a path looks like.
 
 ## FreeBSD Build Host
 
