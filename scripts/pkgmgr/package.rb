@@ -470,8 +470,7 @@ class Package
   #
   def build_files(ver = nil)
 
-    v = (ver || default_ver).to_s
-    base = MAIN_DIR / "scripts" / "patches" / pkg_dirname / v
+    base = patch_base(ver)
     return [] if !base.directory?
 
     return Pathname.glob(base / "**" / "*.diff").sort
@@ -883,6 +882,47 @@ class Package
   def default_cc = pkgmgr.target_arch.gcc_ver
   def default_ver = pkgmgr.get_config_ver(pkg_dirname, host: on_host)
   def pkg_dirname = name.sub("host_", "")
+
+  # Where patches live. Overridable so that a test can point it at a
+  # temporary directory instead of writing into the source tree.
+  def patch_root = MAIN_DIR / "scripts" / "patches"
+
+  #
+  # Which patch directory belongs to THIS package.
+  #
+  # The package name, NOT pkg_dirname. pkg_dirname names a SOURCE
+  # DIRECTORY, and two packages legitimately share one: host_ncurses
+  # and ncurses build the same sources for different machines, and
+  # gnuefi_src hands out the headers that gnuefi compiles. Their
+  # INSTALL directories are still distinct, because the coordinates
+  # disambiguate them -- but a patch path carries no coordinates, so
+  # sharing one means a package silently receiving another's patches,
+  # applied to its sources and recorded among its build inputs.
+  #
+  # A target package takes a "target_" prefix so that the two halves
+  # read the same way round -- host_ncurses beside target_ncurses,
+  # rather than beside a bare "ncurses" that looks like the default
+  # someone forgot to qualify.
+  #
+  # Most host packages are already named host_something, but not all:
+  # the musl cross-compilers are gcc-i386-musl and friends, and they
+  # run on the host too. The prefix is added when it is missing rather
+  # than assumed, so that the directory always says which machine the
+  # package is for.
+  #
+  # noarch is neither, and keeps its bare name: it cannot collide,
+  # since every host name starts with host_ and every target name with
+  # target_.
+  #
+  def patch_dirname
+    return name if !on_host && arch_list.nil?     # noarch
+    prefix = on_host ? "host_" : "target_"
+    return name.start_with?(prefix) ? name : prefix + name
+  end
+
+  def patch_base(ver = nil)
+    return patch_root / patch_dirname / (ver || default_ver).to_s
+  end
   def ver_dirname(ver) = ver.to_s()
 
   # Apply patch files from scripts/patches/<pkg>/<ver>/.
@@ -894,18 +934,18 @@ class Package
   # failure. Never returns nil.
   def apply_patches(ver)
 
-    patch_base = MAIN_DIR / "scripts" / "patches" / pkg_dirname / ver.to_s
-    return true if !patch_base.directory?
+    base = patch_base(ver)
+    return true if !base.directory?
 
     arch_name = default_arch&.name
 
     # Collect common patches (files directly in the version directory)
-    common = Pathname.glob(patch_base / "*.diff").sort
+    common = Pathname.glob(base / "*.diff").sort
 
     # Collect arch-specific patches
     arch_specific = []
     if arch_name
-      arch_dir = patch_base / arch_name
+      arch_dir = base / arch_name
       if arch_dir.directory?
         arch_specific = Pathname.glob(arch_dir / "*.diff").sort
       end
@@ -915,7 +955,7 @@ class Package
     return true if patches.empty?
 
     for p in patches
-      rel = p.relative_path_from(patch_base)
+      rel = p.relative_path_from(base)
       info "Applying patch: #{rel}"
       ok = system("patch", "-p1", "-s", in: p.to_s)
       if !ok
