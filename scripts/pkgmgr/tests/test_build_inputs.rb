@@ -388,3 +388,70 @@ class TestBuildSteps < Minitest::Test
     assert_equal "-static", unix.last.env["LDFLAGS_EXTRA"]
   end
 end
+
+
+#
+# Prism reports BYTE offsets; String#[]= with a Range addresses
+# CHARACTERS. One em-dash in a comment is enough to make the two
+# disagree, and the whole rebuild died on it -- after expat had been
+# built, because expat was the first package to call a shared helper
+# and so the first to hash package.rb, which is full of em-dashes.
+#
+class TestMultiByteSource < Minitest::Test
+
+  include TestHelper
+
+  MULTIBYTE = <<~RB
+    class Probe
+      # An em-dash — and an arrow → and an accent é, all multi-byte.
+      def first
+        run("a")
+      end
+
+      # More prose — with another — dash.
+      def second
+        run("b")
+      end
+    end
+  RB
+
+  def test_multibyte_comments_do_not_crash
+    Dir.mktmpdir do |d|
+      f = File.join(d, "mb.rb")
+      File.write(f, MULTIBYTE)
+      SourceDigest.instance_variable_set(:@cache, nil)
+
+      src = SourceDigest.method_source(f, :second)
+      refute_empty src
+      assert_includes src, '"b"'
+
+      # The comment must still be gone, not merely survived.
+      refute_includes src, "More prose"
+    end
+  end
+
+  def test_a_multibyte_comment_edit_still_changes_nothing
+    Dir.mktmpdir do |d|
+      f = File.join(d, "mb.rb")
+      File.write(f, MULTIBYTE)
+      SourceDigest.instance_variable_set(:@cache, nil)
+      a = SourceDigest.method_source(f, :first)
+
+      File.write(f, MULTIBYTE.sub("An em-dash — and an arrow → and an accent é",
+                                  "Rewritten — with ✓ different ✗ symbols"))
+      SourceDigest.instance_variable_set(:@cache, nil)
+      b = SourceDigest.method_source(f, :first)
+
+      assert_equal a, b
+    end
+  end
+
+  # The real file that broke it.
+  def test_the_real_package_rb_can_be_hashed
+    src = SourceDigest.method_source(
+      File.expand_path("../package.rb", __dir__), :meson_stack_build
+    )
+    refute_empty src
+    assert_includes src, "meson"
+  end
+end
