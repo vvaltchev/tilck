@@ -858,12 +858,23 @@ class Package
 
     return [] if host_tier != :stack
 
-    inst = find_install(default_ver)
+    # Ask about the stack BEING COMPOSED, not the one this invocation
+    # happens to be scoped to. find_install answers at the package's
+    # coordinates, and for a stack package the stack IS a coordinate,
+    # so asking it from outside gives the current stack's install --
+    # whose path then fails the check below and yields no fragment at
+    # all. Composing every stack from a default-stack invocation
+    # therefore replaced five populated sysroots with empty ones, and
+    # the next compiler build stopped on
+    #
+    #   The directory (BUILD_SYSTEM_HEADER_DIR) that should contain
+    #   system headers does not exist: .../gcc-16.2.0/sysroot/usr/include
+    inst = pkgmgr.with_host_stack(gcc_ver) { find_install(default_ver) }
     return [] if inst.nil?
 
-    # Only if this install actually lives in the stack being composed.
-    # Without the check, composing stack A would link in packages
-    # installed under stack B.
+    # Belt and braces: the install must live in that stack. It does,
+    # now that we asked the right question, but a fragment from
+    # another stack is the one mistake this must never make.
     root = pkgmgr.stack_root(gcc_ver).to_s
     return [] if !inst.path.to_s.start_with?(root + "/")
 
@@ -1315,12 +1326,32 @@ class Package
   private
   # Generic methods used depending on the package type.
 
+  #
+  # Every installation of a host package, across every coordinate it
+  # could be under.
+  #
+  # For a :stack package that means every stack, not just the one this
+  # invocation is scoped to. The stack is a coordinate, so scanning
+  # only the current one makes an install in another stack invisible:
+  # it cannot be found stale, it cannot be uninstalled, and its
+  # sysroot fragment cannot be located -- which is how composing one
+  # stack from an invocation scoped to another produced no fragments
+  # and emptied five sysroots.
+  #
+  # The other tiers have one coordinate each and so one directory.
+  #
   def syscc_package_get_install_list
 
     list = []
-    dir = coords.pkgs_dir / pkg_dirname
+    seen = []
 
-    if dir.directory?
+    for c in host_tier == :stack ? all_stack_coords : [coords] do
+      next if seen.include?(c)
+      seen << c
+
+      dir = c.pkgs_dir / pkg_dirname
+      next if !dir.directory?
+
       for d in Dir.children(dir)
         ver = Ver(d.to_s)
         list << InstallInfo.new(
@@ -1333,12 +1364,22 @@ class Package
           self,                             # package object
           !check_install_dir(dir / d, ver), # broken?
           default_install: InstallOrigin.default_install?(dir / d),
-          coords: coords                    # where it lives
+          coords: c                         # which stack it lives in
         )
       end
     end
 
     return list
+  end
+
+  # The coordinates of every stack on disk, plus the current one --
+  # which may not be on disk yet, during its own first install.
+  def all_stack_coords
+
+    out = pkgmgr.host_stacks.map { |v| pkgmgr.stack_coords(Ver(v)) }
+    here = coords
+    out << here if !out.include?(here)
+    return out
   end
 
   # The stack directories present under one <machine>/<env>.
