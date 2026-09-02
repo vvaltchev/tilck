@@ -207,7 +207,14 @@ class PackageManager
 
     return true if !present
 
-    return uninstall(name, false, false, v, nil, "ALL", coords: wanted)
+    # "ALL" for the compiler, not nil. nil does not mean "any": the
+    # filter reads it as "the compiler must BE nil", which is true
+    # only of a noarch package -- so a forced rebuild of anything
+    # else removed nothing, found its own install still there, and
+    # said "already installed" after announcing the removal. The
+    # coordinates are what narrows this; for a stack package they ARE
+    # the compiler.
+    return uninstall(name, false, false, v, "ALL", "ALL", coords: wanted)
   end
 
   def get_installed_compilers

@@ -427,6 +427,37 @@ class TestUninstallVersions < Minitest::Test
 
   # -f on a version that is not installed yet is just an install. It
   # must not fall through to uninstall's "remove whatever IS there".
+  # A host package's compiler is a version, not nil, and force_remove
+  # passed nil for it -- which the filter reads as "the compiler must
+  # BE nil", true only of a noarch package. So a forced rebuild of
+  # anything else removed nothing, found its own install still there
+  # and reported success:
+  #
+  #   INFO:   Force-removing: host_qemu:6.2.0
+  #   INFO: All requested packages are already installed
+  def test_force_remove_takes_a_host_package_too
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        inst = pkg.get_install_list.find { |i| !i.path.nil? }
+        refute_nil inst, "the fixture did not install"
+        assert inst.path.directory?
+
+        pkgmgr.force_remove("host_thing")
+        pkgmgr.refresh()
+
+        refute inst.path.directory?,
+               "a forced rebuild left the tree it was about to replace"
+      end
+    end
+  end
+
   def test_force_remove_of_an_absent_version_removes_nothing
     with_fake_tc do
       with_stubbed_externals do
