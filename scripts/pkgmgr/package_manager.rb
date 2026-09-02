@@ -458,7 +458,17 @@ class PackageManager
     broken = list.filter { |e| !e.path.nil? && e.broken }
 
     archs = installed.map{ |e| atos.call(e.arch) }.uniq
-    vers = installed.map { |e| e.ver }.uniq
+    # Sorted: the versions of a package are a sequence, and reading
+    # them in the order the filesystem happened to list them --
+    # 11.5.0, 13.4.0, 14.4.0, 12.5.0 -- makes a reader check twice.
+    # Arches are left in ALL_ARCHS order, which puts the primary one
+    # first and is more useful than alphabetical.
+    vers = installed.map { |e| e.ver }.uniq.sort
+
+    # A host package's arch is always "host" and a noarch package's
+    # always "noarch", so naming it once per version is a column of
+    # the same word. Only a target package has an arch worth saying.
+    named_arch = !list.all? { |e| e.on_host || e.arch.nil? }
 
     if group_by.nil?
 
@@ -473,7 +483,7 @@ class PackageManager
           add_braces.call(
             installed.filter {
               |e| atos.call(e.arch) == a
-            }.map(&:ver).uniq.map(&:to_s).join(", ")
+            }.map(&:ver).uniq.sort.map(&:to_s).join(", ")
           )
         ].join(": ")
       }.join(", ")
@@ -482,6 +492,8 @@ class PackageManager
 
       s = vers.map {
         |v|
+        next v.to_s if !named_arch
+
         [
           v,
           add_braces.call(
@@ -511,7 +523,8 @@ class PackageManager
           e.pkg &&
           [:changed, :unknown].include?(e.pkg.build_inputs_state_of(e))
         }
-        status = stale ? Package::STALE_STR : Package::INSTALLED_STR
+        n = installed.length
+        status = stale ? Package.stale_str(n) : Package.installed_str(n)
       elsif !broken.empty?
         status = Package::BROKEN_STR
       else
