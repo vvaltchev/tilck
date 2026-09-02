@@ -74,7 +74,6 @@ class HostGlibcPackage < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   # The one package that cannot carry an RPATH to its own libc: the
   # libc in question is this package. Without this, its utilities

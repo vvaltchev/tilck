@@ -124,7 +124,6 @@ class NcursesHostPackage < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   # Built with --enable-widec because busybox's and u-boot's kconfig
   # check-lxdialog.sh prefers -lncursesw over -lncurses. Without the

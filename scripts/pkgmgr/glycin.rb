@@ -74,7 +74,6 @@ class GlycinPackage < Package
   include CargoBuild
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   # Both halves come out of one tarball and are always the same
   # version, so they share a single entry in the version file even

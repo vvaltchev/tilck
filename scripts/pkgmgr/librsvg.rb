@@ -79,7 +79,6 @@ class HostLibrsvgPackage < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
   def pkg_dirname = "librsvg"
 
   # Plus cargo-c: librsvg's meson.build looks for the `cargo-cbuild`

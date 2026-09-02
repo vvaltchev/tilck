@@ -90,7 +90,6 @@ class HostGdkPixbufPackage < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
   def pkg_dirname = "gdk-pixbuf"
 
   # glycin is a Rust crate: enabling it puts cargo on the critical

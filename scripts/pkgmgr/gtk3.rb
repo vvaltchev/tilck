@@ -88,7 +88,6 @@ class HostGtk3Package < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
   def pkg_dirname = "gtk3"
 
   def expected_files(ver = nil) = [
