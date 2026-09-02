@@ -1117,18 +1117,18 @@ class PackageManager
       end
     end
 
-    # Check if the default compiler for this package is "syscc", meaning this
-    # is very likely a host tool, like a cross-compiler.
-    syscc     = (default_cc.eql? "syscc")
-
-    # If compiler is unset, check if the default is syscc. If that's the case,
-    # check if arch is nil or ALL, and if that's the case, use the default cc,
-    # ignoring the gcc_ver for the given ARCH. That's important as we could
-    # have arch=nil ===> ARCH=i386 by default and then pick up the *default*
-    # gcc_ver for that (default) arch and that would make *no* sense: if
-    # `arch` is not explicitly set to a specific value and the default cc is
-    # "syscc", we set it.
-    if syscc && (!arch || all_arch)
+    # A host package's compiler is whatever the package says it is,
+    # and never the cross compiler for ARCH -- which is what the
+    # fall-through below would otherwise pick, since arch defaults to
+    # i386 when nobody named one.
+    #
+    # The test used to be `default_cc == "syscc"`, which was the same
+    # question while every host package answered "syscc". A :stack
+    # package now answers with the GCC whose stack it lives in, so the
+    # proxy stopped being true and `-u host_qemu:6.2.0` quietly
+    # matched nothing: it was looking for an install built by the
+    # i386 cross compiler. on_host is what was being asked all along.
+    if pkg&.on_host && (!arch || all_arch)
       compiler  ||= default_cc
     end
 
