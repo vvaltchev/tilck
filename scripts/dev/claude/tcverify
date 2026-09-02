@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# tcverify -- check that what the package manager INSTALLED actually
+# works, as opposed to what it reported while installing it.
+#
+# The distinction matters. `build_toolchain -s host_gcc` ends with
+# "Verified: g++ produces portable binaries (libstdc++ included)", but
+# that check runs inside the install, from the code that just did the
+# work: it shares every assumption the install made. This runs from
+# outside, on the tree as it now stands, and asks the only questions
+# that matter for a compiler -- does it compile, does the result run,
+# and does the result reach into ITS OWN stack rather than into the
+# system's libraries or into another version's.
+#
+# The last one is the interesting one. Six gcc installations coexist,
+# each with a stack sysroot holding the libstdc++ it produced. A
+# binary from gcc 16 that resolves libstdc++ through gcc 14's stack
+# runs fine here and dies on any machine where the two versions are
+# not both present -- so "it ran" is not the test; "it ran against
+# gcc-16.2.0/" is.
+#
+# Usage: tcverify <sub-command> [args]
+#
+# Sub-commands:
+#   compilers [ver...]   compile + run C and C++ with each installed
+#                        host_gcc, and check where the result links
+#   stale                --check-for-updates for every arch/board
+#   all                  both of the above
+#
+set -euo pipefail
+
+TILCK_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+
+# Every arch/board combination that has its own package tree. A
+# staleness check answers for the coordinates it was asked about and
+# no others, which is exactly the bug class that made find_install
+# compare Coords in the first place.
+CONFIGS=(
+   "i386:pc"
+   "riscv64:qemu-virt"
+   "riscv64:licheerv-nano"
+   "x86_64:pc"
+)
+
+fail_count=0
+ok()   { printf '   %-38s \e[0;32mOK\e[0m %s\n' "$1" "${2:-}"; }
+bad()  { printf '   %-38s \e[0;31mFAIL\e[0m %s\n' "$1" "${2:-}"
+         fail_count=$((fail_count + 1)); }
+
+# The layout is the package manager's to know, so ask it rather than
+# spelling out a path that is right until the day it isn't.
+layout_var() {
+   "$TILCK_ROOT/scripts/build_toolchain" --print-layout 2>/dev/null |
+      sed -n "s/^$1=//p" | tail -1
+}
+
+installed_gcc_versions() {
+   local root="$1" d
+   for d in "$root"/gcc/*/; do
+      [ -x "$d/install/bin/gcc" ] && basename "$d"
+   done
+}
+
+write_test_sources() {
+   cat > "$WORK/t.c" <<'CEOF'
+#include <stdio.h>
+#include <string.h>
+int main(void)
+{
+   char buf[32];
+   snprintf(buf, sizeof(buf), "c-%d", 42);
+   return strcmp(buf, "c-42") ? 1 : (puts(buf), 0);
+}
+CEOF
+
+   # Exceptions and <string> are what pull in libstdc++ proper: a
+   # C++ program that only uses templates links against nothing and
+   # would pass this test on a broken installation.
+   cat > "$WORK/t.cpp" <<'XEOF'
+#include <iostream>
+#include <stdexcept>
+#include <string>
+int main()
+{
+   try {
+      throw std::runtime_error("cpp-" + std::to_string(42));
+   } catch (const std::exception &e) {
+      std::cout << e.what() << std::endl;
+      return __cplusplus >= 201103L ? 0 : 1;
+   }
+}
+XEOF
+}
+
+# Where a binary's dynamic loader and libstdc++ come from. Both must
+# name this compiler's own stack; anything else is a binary that
+# happens to run on this machine.
+check_links() {
+   local bin="$1" ver="$2" label="$3"
+   local interp libstd
+
+   interp=$(readelf -l "$bin" | sed -n 's/.*program interpreter: \(.*\)\]/\1/p')
+   case "$interp" in
+      *"/gcc-$ver/"*) ok "$label interpreter" "$(basename "$interp")" ;;
+      "")             bad "$label interpreter" "none (static?)" ;;
+      *)              bad "$label interpreter" "$interp" ;;
+   esac
+
+   libstd=$(ldd "$bin" | sed -n 's/.*libstdc++\.so\.6 => \([^ ]*\).*/\1/p')
+   [ -n "$libstd" ] || { ok "$label libstdc++" "not linked"; return; }
+   case "$libstd" in
+      *"/gcc-$ver/"*) ok "$label libstdc++" "own stack" ;;
+      *)              bad "$label libstdc++" "$libstd" ;;
+   esac
+}
+
+cmd_compilers() {
+   local distro_pkgs versions ver bin out
+
+   distro_pkgs=$(layout_var PKGS_HOST_DISTRO)
+   [ -d "$distro_pkgs" ] || { echo "tcverify: no $distro_pkgs" >&2; exit 1; }
+
+   if [ $# -gt 0 ]; then
+      versions="$*"
+   else
+      versions=$(installed_gcc_versions "$distro_pkgs")
+   fi
+   [ -n "$versions" ] || { echo "tcverify: no host_gcc installed" >&2; exit 1; }
+
+   write_test_sources
+
+   for ver in $versions; do
+      bin="$distro_pkgs/gcc/$ver/install/bin"
+      echo "host_gcc $ver"
+
+      out=$("$bin/gcc" -dumpversion 2>&1) || out="<failed>"
+      [ "$out" = "$ver" ] && ok "gcc -dumpversion" "$out" \
+                          || bad "gcc -dumpversion" "$out"
+
+      if "$bin/gcc" -O2 "$WORK/t.c" -o "$WORK/t" 2> "$WORK/cc.err"; then
+         ok "C compiles"
+         out=$("$WORK/t" 2>&1) || out="<crashed: $?>"
+         [ "$out" = "c-42" ] && ok "C runs" "$out" || bad "C runs" "$out"
+         check_links "$WORK/t" "$ver" "C"
+      else
+         bad "C compiles" "$(head -1 "$WORK/cc.err")"
+      fi
+
+      if "$bin/g++" -O2 "$WORK/t.cpp" -o "$WORK/tx" 2> "$WORK/cxx.err"; then
+         ok "C++ compiles"
+         out=$("$WORK/tx" 2>&1) || out="<crashed: $?>"
+         [ "$out" = "cpp-42" ] && ok "C++ runs" "$out" || bad "C++ runs" "$out"
+         check_links "$WORK/tx" "$ver" "C++"
+      else
+         bad "C++ compiles" "$(head -1 "$WORK/cxx.err")"
+      fi
+   done
+}
+
+# --check-for-updates: 0 = everything current, 2 = something is stale
+# or unknown. Anything else is the check itself failing, which is a
+# different kind of bad news and is reported as such.
+cmd_stale() {
+   local cfg arch board rc
+
+   for cfg in "${CONFIGS[@]}"; do
+      arch="${cfg%%:*}"
+      board="${cfg##*:}"
+      rc=0
+      ARCH="$arch" BOARD="$board" \
+         "$TILCK_ROOT/scripts/build_toolchain" --check-for-updates \
+         > "$WORK/upd.log" 2>&1 || rc=$?
+
+      case "$rc" in
+         0) ok "$arch/$board" "up to date" ;;
+         2) bad "$arch/$board" "stale: $(grep -c . "$WORK/upd.log") lines" ;;
+         *) bad "$arch/$board" "check failed (rc=$rc)" ;;
+      esac
+   done
+}
+
+cmd_all() {
+   echo "== compilers =="
+   cmd_compilers
+   echo
+   echo "== staleness =="
+   cmd_stale
+}
+
+main() {
+   local sub="${1:-all}"
+   shift || true
+
+   case "$sub" in
+      compilers|stale|all) "cmd_$sub" "$@" ;;
+      -h|--help|help)
+         sed -n '/^# Usage:/,/^#$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+         exit 0
+         ;;
+      *)
+         echo "tcverify: unknown sub-command '$sub'" >&2
+         exit 1
+         ;;
+   esac
+
+   echo
+   if [ "$fail_count" -eq 0 ]; then
+      echo "tcverify: all checks passed"
+   else
+      echo "tcverify: $fail_count check(s) FAILED"
+      exit 1
+   fi
+}
+
+main "$@"
