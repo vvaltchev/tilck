@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# pmprof -- a sampling profiler for the Ruby package manager.
+#
+# The pkgmgr's Ruby has no profiler gem, and a deterministic tracer
+# distorts exactly the thing being measured: a run made of many cheap
+# calls looks like a run made of a few expensive ones. So this samples
+# instead -- a second thread reads the main thread's backtrace every
+# INTERVAL and counts what it finds.
+#
+# Two numbers per frame, and they answer different questions:
+#
+#   SELF   the samples where this frame was on top: time spent IN it
+#   TOTAL  the samples where it appeared anywhere: time spent UNDER it
+#
+# A caller with a large TOTAL and a small SELF is not slow; something
+# it calls is. Only SELF says "the time is here".
+#
+# Usage: pmprof [-i SECONDS] [-n TOP] [--] [args for main.rb]
+#
+# With no args it profiles `-l -q`, the listing everyone waits for.
+#
+set -euo pipefail
+
+TILCK_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+INTERVAL=0.001
+TOP=20
+
+while [ $# -gt 0 ]; do
+   case "$1" in
+      -i) INTERVAL="$2"; shift 2 ;;
+      -n) TOP="$2"; shift 2 ;;
+      --) shift; break ;;
+      -h|--help|help)
+         sed -n '/^# Usage:/,/^#$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+         exit 0
+         ;;
+      *) break ;;
+   esac
+done
+
+[ $# -gt 0 ] || set -- -l -q
+
+find_ruby() {
+   local pkgs r
+   pkgs=$("$TILCK_ROOT/scripts/build_toolchain" --print-layout 2>/dev/null |
+          sed -n 's/^PKGS_HOST_DISTRO=//p' | tail -1)
+   for r in "$pkgs"/ruby/*/bin/ruby; do
+      [ -x "$r" ] && { echo "$r"; return 0; }
+   done
+   echo "pmprof: no pkgmgr ruby under $pkgs" >&2
+   return 1
+}
+
+INTERVAL="$INTERVAL" TOP="$TOP" ROOT="$TILCK_ROOT" "$(find_ruby)" -e '
+interval = ENV["INTERVAL"].to_f
+top      = ENV["TOP"].to_i
+root     = ENV["ROOT"]
+
+main_thread = Thread.current
+samples = []
+running = true
+
+# The sampler. It reads the MAIN thread, so its own work never
+# appears in the profile.
+sampler = Thread.new do
+  while running
+    begin
+      locs = main_thread.backtrace_locations
+      samples << locs if locs && !locs.empty?
+    rescue StandardError
+      # A thread can be between frames; a lost sample is noise, not
+      # a reason to stop profiling.
+    end
+    sleep interval
+  end
+end
+
+t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+# Required INSIDE the measured region: loading and registering the
+# packages is part of what a run costs, and profiling only what comes
+# after it would hide a third of the answer.
+$0 = root + "/scripts/pkgmgr/main.rb"
+begin
+  require $0
+  Main.main(ARGV)
+rescue SystemExit
+end
+
+elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+running = false
+sampler.join
+
+STDOUT.reopen(STDERR.dup) if STDOUT.closed?
+
+def frame_name(loc, root)
+  path = loc.path.to_s.sub(root + "/", "")
+  "#{path}:#{loc.lineno}  #{loc.label}"
+end
+
+self_count  = Hash.new(0)
+total_count = Hash.new(0)
+
+for st in samples do
+  self_count[frame_name(st.first, root)] += 1
+  seen = {}
+  for loc in st do
+    n = frame_name(loc, root)
+    next if seen[n]
+    seen[n] = true
+    total_count[n] += 1
+  end
+end
+
+n = samples.length
+pct = ->(c) { n.zero? ? 0.0 : 100.0 * c / n }
+
+puts
+puts "samples: #{n}   wall: #{"%.2f" % elapsed}s   interval: #{interval}s"
+puts
+
+puts "== SELF (time spent in this frame) =="
+self_count.sort_by { |_, c| -c }.first(top).each { |name, c|
+  printf("  %5.1f%%  %5d  %s\n", pct.call(c), c, name)
+}
+
+puts
+puts "== TOTAL (time spent under this frame) =="
+total_count.sort_by { |_, c| -c }.first(top).each { |name, c|
+  printf("  %5.1f%%  %5d  %s\n", pct.call(c), c, name)
+}
+' -- "$@"
