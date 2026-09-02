@@ -153,4 +153,36 @@ class TestSysrootCompositionAcrossStacks < Minitest::Test
       assert_equal 0, pkgmgr.compose_stack_sysroot(Ver(OTHER))
     end
   end
+
+  #
+  # ...and when the packages are genuinely GONE, emptying is right.
+  #
+  # The guard above must not fire here or a clean leaves a farm of
+  # symlinks pointing at things it just uninstalled -- which is what
+  # happened: --clean removed 104 installs and every stack kept its
+  # stale sysroot, because "no fragments" was being read as "asked
+  # wrongly" in a case where it meant "nothing left".
+  #
+  def test_an_emptied_stack_loses_its_sysroot
+    with_fake_tc do
+      reset_pkgmgr!
+      pkg = stack_pkg
+      pkgmgr.register(pkg)
+      install_into(pkg, OTHER)
+      pkgmgr.compose_stack_sysroot(Ver(OTHER))
+
+      root = pkgmgr.stack_sysroot(Ver(OTHER))
+      assert File.exist?(root / "usr" / "include" / "stdio.h")
+
+      # Uninstall it for real, the way --clean does.
+      pkgmgr.with_host_stack(Ver(OTHER)) do
+        FileUtils.rm_rf(pkg.coords.pkgs_dir)
+      end
+      pkgmgr.refresh()
+
+      assert_equal 0, pkgmgr.compose_stack_sysroot(Ver(OTHER))
+      refute File.exist?(root / "usr" / "include" / "stdio.h"),
+             "the sysroot still points at an uninstalled package"
+    end
+  end
 end
