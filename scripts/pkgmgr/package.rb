@@ -492,6 +492,14 @@ class Package
              .gsub("$SYSROOT", (on_host ? stack_sysroot.to_s : ""))
              .gsub("$PAR", BUILD_PAR.to_s)
 
+    # Resolved only when asked for: it requires host_python to be
+    # installed, which is true at build time -- the package that uses
+    # the token declares the dependency -- and not during a staleness
+    # check. A recipe digest records the token, never its value, so
+    # the fingerprint does not move when the interpreter's path does.
+    out = out.gsub("$PYTHON", pkgmgr.python_interpreter.to_s) if
+      out.include?("$PYTHON")
+
     # Resolved only when asked for: reading it requires the source to
     # be extracted, which is true at build time and never during a
     # staleness check.

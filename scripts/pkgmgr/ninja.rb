@@ -38,7 +38,7 @@ class HostNinjaPackage < Package
       is_compiler: false,
       host_tier: :distro,
       arch_list: ALL_HOST_ARCHS.values,
-      dep_list: [],
+      dep_list: [Dep('host_python', true)],
       default: false,
     )
   end
@@ -73,7 +73,12 @@ class HostNinjaPackage < Package
   # has -D: this package is built on FreeBSD and macOS hosts too, whose
   # install(1) does not. mkdir + cp is the portable pair.
   def build_steps = [
-    Step("bootstrap.log", ["python3", "./configure.py", "--bootstrap"]),
+    # OUR python, not whichever one PATH offers. deps_build_env puts
+    # host_python's bin dir at the front, so "python3" resolves to it
+    # -- but $PYTHON says which one was meant, and a build that finds
+    # a different interpreter than the one it declared is exactly the
+    # ambiguity this dependency exists to remove.
+    Step("bootstrap.log", ["$PYTHON", "./configure.py", "--bootstrap"]),
     Step("mkdir.log", ["mkdir", "-p", "$INSTALL/install/bin"]),
     Step("install.log", ["cp", "ninja", "$INSTALL/install/bin/ninja"]),
   ]

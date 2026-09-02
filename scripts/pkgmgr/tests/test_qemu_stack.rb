@@ -149,6 +149,31 @@ class TestQemuStack < Minitest::Test
                  "3.11 is what has tomllib AND still has distutils"
   end
 
+  # Everything that runs Python runs OURS, not just QEMU. meson is
+  # the one that matters most: it is a Python program, twenty-odd
+  # packages configure through it, and its wrapper used to exec a
+  # bare "python3" -- resolved against whatever PATH the caller had.
+  def test_everything_that_needs_python_declares_it
+    for name in ["host_qemu", "host_meson", "host_ninja"] do
+      deps = pkg(name).dep_list.map(&:name)
+      assert_includes deps, "host_python",
+                      "#{name} runs python without declaring which"
+    end
+  end
+
+  # The token, not an absolute path, in a recorded build step: a
+  # recipe digest stores what the step says, so baking the
+  # interpreter's path into it would move every fingerprint the day
+  # the Python version changes.
+  def test_ninja_bootstraps_through_the_token
+    argv = pkg("host_ninja").build_steps.flat_map(&:argv)
+
+    assert_includes argv, "$PYTHON",
+                    "ninja bootstraps with whatever python3 PATH offers"
+    refute argv.any? { |a| a.to_s.include?("/pkgs/python/") },
+           "an interpreter path was baked into a recorded step"
+  end
+
   # --- configure options that upstream removed ---------------------
 
   # QEMU stops on an option it does not know, so an option removed
