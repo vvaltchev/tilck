@@ -56,12 +56,6 @@ function install_debian_family {
    pkg_list+=(ruby)
    pkg_list+=(device-tree-compiler)
 
-   # QEMU 8.x and later build a Python venv during configure, and
-   # their mkvenv needs distlib to do it. Without it configure stops
-   # at "found no usable distlib, please install it" -- five minutes
-   # in, on a machine that has everything else.
-   pkg_list+=(python3-distlib)
-
    if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
       pkg_list+=(clang)
       pkg_list+=(gcc-multilib)
@@ -188,12 +182,6 @@ function install_fedora {
    pkg_list+=(ruby)
    pkg_list+=(rubygem-power_assert)
    pkg_list+=(rubygem-minitest)
-
-   # QEMU 8.x and later build a Python venv during configure, and
-   # their mkvenv needs distlib to do it. Without it configure stops
-   # at "found no usable distlib, please install it" -- five minutes
-   # in, on a machine that has everything else.
-   pkg_list+=(python3-distlib)
    pkg_list+=(dtc)
 
    if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 41 ]]; then
@@ -298,12 +286,6 @@ function install_arch {
    pkg_list+=(autoconf)
    pkg_list+=(ruby)
    pkg_list+=(dtc)
-
-   # QEMU 8.x and later build a Python venv during configure, and
-   # their mkvenv needs distlib to do it. Without it configure stops
-   # at "found no usable distlib, please install it" -- five minutes
-   # in, on a machine that has everything else.
-   pkg_list+=(python-distlib)
 
    if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
       pkg_list+=(clang)
@@ -456,14 +438,6 @@ function install_freebsd {
    pkg_list+=(python)
    pkg_list+=(ruby)
 
-   # QEMU 8.x and later build a Python venv during configure, and
-   # their mkvenv needs distlib to do it. Without it configure stops
-   # at "found no usable distlib, please install it" -- five minutes
-   # in, on a machine that has everything else.
-   # FreeBSD names it per Python version (py311-distlib and friends),
-   # so it is asked for through pip below rather than by a name that
-   # goes stale with the default interpreter.
-
    if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
       pkg_list+=(ImageMagick7-nox11)
    fi
@@ -516,10 +490,6 @@ function install_freebsd {
       tmp="${to_install[@]}"
       run_command "su - root -c \"pkg install $tmp\""
    fi
-
-   # Needed to BUILD, not just to test, so it is not under contrib.
-   echo "Installing distlib via pip (needed by QEMU 8+ configure)..."
-   python3 -m pip install distlib
 
    # Contrib: install Python testing packages via pip (FreeBSD doesn't
    # ship python3-serial / python3-coverage as system packages).
@@ -604,13 +574,6 @@ function install_darwin {
    else
       echo "You are all set, no packages need to be installed."
    fi
-
-   # Needed to BUILD, not just to test, so it is not under contrib:
-   # QEMU 8.x and later create a Python venv during configure and
-   # their mkvenv needs distlib for it.
-   echo "Installing distlib via pip (needed by QEMU 8+ configure)..."
-   python3 -m pip install distlib --break-system-packages 2>/dev/null \
-      || python3 -m pip install distlib
 
    # Contrib: install Python testing packages via pip (Homebrew's
    # python3 includes pip; macOS curl is built-in so no need to add it).
