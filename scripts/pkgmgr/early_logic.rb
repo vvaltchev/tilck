@@ -453,18 +453,26 @@ ensure
   saved&.each { |k,v| ENV[k] = v }
 end
 
-def run_command(out, argv)
+# `env` adds variables for this command only, and is logged with it:
+# a build step that behaves differently because of one has to say so,
+# or the log stops being a record of what ran.
+def run_command(out, argv, env: nil)
   assert { argv.is_a? Array }
   assert { argv.length > 0 }
+  assert { env.nil? || env.is_a?(Hash) }
 
   cmd_str = argv.map { |a| Shellwords.escape(a.to_s) }.join(" ")
+  cmd_str = env.map { |k, v| "#{k}=#{Shellwords.escape(v.to_s)}" }
+               .join(" ") + " " + cmd_str if env
   info "Run: #{cmd_str}"
 
+  args = env ? [env, *argv] : argv
+
   if !out
-    ok = system(*argv)
+    ok = system(*args)
   else
     File.open(out, "wb") do |fh|
-      ok = system(*argv, out: fh, err: fh)
+      ok = system(*args, out: fh, err: fh)
     end
   end
 

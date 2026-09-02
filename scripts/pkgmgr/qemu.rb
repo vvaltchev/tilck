@@ -246,12 +246,27 @@ class HostQemuPackage < Package
         ok = run_command("build.log", ["ninja"])
         next if !ok
 
-        # Through DESTDIR, so the tree handed to the atomic move is
+        # Installed with NINJA, not with `meson install`, and through
+        # DESTDIR so that the tree handed to the atomic move is
         # complete while the paths inside it name where it is going.
-        # QEMU's build directory is meson-generated, so its installer
-        # is the one to ask.
-        ok = run_command("install.log",
-                         ["meson", "install", "--destdir=#{destdir}"])
+        #
+        # QEMU configures its build directory with a meson of its own:
+        # 11.1 creates a pyvenv and installs the version pinned in
+        # pythondeps.toml, which is 1.11.1 here while the tree's meson
+        # is 1.12.0. A build directory belongs to the meson that
+        # generated it, and the other one refuses it --
+        #
+        #   ERROR: Build directory has been generated with Meson
+        #   version 1.11.1, which is incompatible with the current
+        #   version 1.12.0.
+        #
+        # -- after a build that had already succeeded, 3316 of 3316
+        # targets. ninja has no such opinion: it runs the install
+        # rules the generating meson wrote, so the build and the
+        # install are done by the same tool by construction rather
+        # than by two versions agreeing.
+        ok = run_command("install.log", ["ninja", "install"],
+                         env: { "DESTDIR" => destdir.to_s })
       end
     end
 
