@@ -171,6 +171,55 @@ class HostQemuPackage < Package
   # Everything else we pass is still an option in 11.1.
   GLUSTERFS_DROPPED = Ver("11.1.0")
 
+  # WHICH PYTHON BUILDS QEMU.
+  #
+  # QEMU 8.x and later create a Python venv during configure, and
+  # their mkvenv needs distlib to populate it. configure finds a
+  # python by searching PATH, which on a developer machine is whatever
+  # happens to be first:
+  #
+  #   python determined to be '/home/linuxbrew/.linuxbrew/bin/python3'
+  #   *** Ouch! ***
+  #   found no usable distlib, please install it
+  #
+  # -- a brew Python 3.14 with no distlib, while the distro's 3.10,
+  # which install_pkgs provisions distlib for, sat right there. Every
+  # other input to this build comes from somewhere we chose; the
+  # interpreter should too.
+  #
+  # So the requirement is stated and then searched for: a python3 that
+  # can import distlib, preferring the one the package list installs
+  # into. Being the distro's also makes it closer in age to the QEMU
+  # being built, which is the same argument as the compiler pinning.
+  PYTHON_CANDIDATES = [
+    "/usr/bin/python3",         # what install_pkgs provisions
+    "/usr/local/bin/python3",   # FreeBSD's, and Homebrew on Intel
+    "/opt/homebrew/bin/python3",
+  ].freeze
+
+  def usable_python
+
+    seen = []
+
+    # PATH searched here rather than shelled out to: Ruby runs a
+    # backtick without metacharacters directly, so `command -v` --
+    # a shell builtin -- is not a program it can exec.
+    from_path = ENV["PATH"].to_s.split(File::PATH_SEPARATOR)
+                           .map { |d| File.join(d, "python3") }
+
+    for py in PYTHON_CANDIDATES + from_path do
+      next if py.empty? || seen.include?(py) || !File.executable?(py)
+      seen << py
+      return py if system(py, "-c", "import distlib",
+                          out: File::NULL, err: File::NULL)
+    end
+
+    raise "#{name}: no python3 that can import distlib (tried: " \
+          "#{seen.join(", ")}). QEMU 8+ needs it to build its venv; " \
+          "install python3-distlib (or pip install distlib) for one " \
+          "of them."
+  end
+
   def configure_flags(ver)
 
     flags = [
@@ -222,6 +271,7 @@ class HostQemuPackage < Package
     ]
 
     flags << "--disable-glusterfs" if ver < GLUSTERFS_DROPPED
+    flags << "--python=#{usable_python}"
     return flags
   end
 

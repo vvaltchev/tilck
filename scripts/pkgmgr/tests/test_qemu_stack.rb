@@ -114,6 +114,28 @@ class TestQemuStack < Minitest::Test
     assert_equal "gcc-12.5.0", coords.stack
   end
 
+  # --- which python builds it ---------------------------------------
+
+  # configure finds a python by searching PATH, which on a developer
+  # machine is whatever happens to be first -- a brew 3.14 with no
+  # distlib, while the distro's 3.10, which install_pkgs provisions
+  # distlib for, sat right there. Every other input to this build
+  # comes from somewhere we chose; the interpreter has to as well.
+  def test_the_python_is_named_and_can_import_distlib
+    py = qemu.usable_python
+
+    assert File.executable?(py), "#{py} is not executable"
+    assert system(py, "-c", "import distlib",
+                  out: File::NULL, err: File::NULL),
+           "#{py} cannot import distlib, which QEMU 8+ needs"
+  end
+
+  def test_the_python_reaches_the_configure_line
+    flags = qemu.configure_flags(Ver("8.2.0"))
+    assert flags.any? { |f| f.start_with?("--python=") },
+           "configure was left to search PATH for a python"
+  end
+
   # --- configure options that upstream removed ---------------------
 
   # QEMU stops on an option it does not know, so an option removed
