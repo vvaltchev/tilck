@@ -886,6 +886,37 @@ class PackageManager
   # `-u <pkg> -a riscv64` and wrong for a forced rebuild, where it
   # deleted the qemu-virt zlib on the way to reinstalling the
   # licheerv-nano one.
+  #
+  # Packages this may NEVER remove, whatever it is asked.
+  #
+  # Ruby is the interpreter running this code. Removing it is not a
+  # bold choice the user gets to make with the right flags: it is the
+  # package manager deleting itself in the middle of a job, leaving a
+  # tree only the bash bootstrap can recover. It is not ours in the
+  # first place -- the bootstrap installs it, before any of this runs.
+  #
+  # Not a `clean` policy but an invariant of uninstall, because the
+  # expression that reaches it does not matter: `-u ruby`,
+  # `-u ALL -f -a ALL -c ALL`, and anything else all have to stop
+  # here.
+  #
+  # The cache needs no rule. It lives beside the installs rather than
+  # inside them, and nothing here walks anywhere but <coords>/pkgs/.
+  #
+  NEVER_REMOVE = ["ruby"].freeze
+
+  #
+  # Everything, except what a clean must never take.
+  #
+  # The prebuilt cross-compilers stay because they are downloaded
+  # blobs, not built here, and nothing about them can go stale in a
+  # way a rebuild would fix. Ruby and the cache stay by the rule
+  # above.
+  #
+  def clean(dry)
+    return uninstall("ALL", dry, false, "ALL", "ALL", "ALL")
+  end
+
   def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
                 arch = nil, coords: nil)
 
@@ -981,13 +1012,22 @@ class PackageManager
       (all_ver    || e.ver == ver          ) &&
       (all_arch   || e.arch == arch        ) &&
       (all_cc     || e.compiler == compiler) &&
-      (coords.nil? || coords.include?(e.coords))
+      (coords.nil? || coords.include?(e.coords)) &&
+      !NEVER_REMOVE.include?(e.pkgname)
     }
 
     if all_pkgs && !force
-      # When the package name is ALL, we need to exclude all the cross compilers
-      # from the list, unless `force` is also true.
-      to_remove = to_remove.select { |e| !e.compiler? }
+      # When the package name is ALL, exclude the cross compilers
+      # unless `force` is also true.
+      #
+      # Both ways of being one count. InstallInfo#compiler? reads the
+      # target_arch metadata, which only the GCC package attaches; a
+      # package that merely DECLARES is_compiler would otherwise be
+      # swept up by a plain -u ALL, which is the one thing the
+      # no-force form exists to prevent.
+      to_remove = to_remove.select { |e|
+        !(e.compiler? || e.pkg&.is_compiler)
+      }
     end
 
     p = "[DRY RUN] " if dry
@@ -1023,6 +1063,11 @@ class PackageManager
       # notice.
       host_stacks.each { |v| compose_stack_sysroot(Ver(v)) }
     end
+
+    # How many were taken -- or, in a dry run, how many would be.
+    # A caller that reports "removed nothing" when it selected fifty
+    # is worse than one that says nothing at all.
+    return dry ? to_remove.length : removed
   end
 
   private

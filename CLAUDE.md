@@ -372,8 +372,10 @@ only the bare minimum.
 ./scripts/build_toolchain --print-layout  # where installed packages live
 ./scripts/build_toolchain -d              # dry-run
 ./scripts/build_toolchain -t [--coverage] # pkgmgr's own tests
-./scripts/build_toolchain --clean         # remove pkgs for current ARCH
-./scripts/build_toolchain --clean-all     # remove everything except cache
+./scripts/build_toolchain --clean         # remove everything except the
+                                          # prebuilt cross-compilers, the
+                                          # bootstrap Ruby and the cache
+./scripts/build_toolchain -u ALL -f -a ALL -c ALL   # ...compilers too
 ```
 
 Versions live in two unrelated files: `other/pkg_versions`
