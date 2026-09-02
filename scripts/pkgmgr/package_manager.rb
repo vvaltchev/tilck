@@ -421,7 +421,7 @@ class PackageManager
       status = built.include?(v) ? Package::BUILT_STR : Package::NOT_BUILT_STR
       here = v == current_host_stack ? "  [ CURRENT ]" : ""
       printf("%-20s [ %s ] %3d pkgs%s\n",
-             "gcc-#{v}", status, packages_in_stack(v), here)
+             Coords.stack_name(v), status, packages_in_stack(v), here)
     end
 
     puts
@@ -746,7 +746,7 @@ class PackageManager
             "stack package would install to the same broken path"
     end
 
-    return Coords.new(HOST_OS_ARCH, nil, "gcc-#{gcc_ver}")
+    return Coords.new(HOST_OS_ARCH, nil, Coords.stack_name(gcc_ver))
   end
 
   def stack_root(gcc_ver = nil) = stack_coords(gcc_ver).root
@@ -775,9 +775,12 @@ class PackageManager
     dir = TC / HOST_OS_ARCH / Coords::ANY
     return [] if !dir.directory?
 
+    # stack_ver, not parse_stack: this reads a DIRECTORY, and a
+    # directory is only a stack if it is spelled like one. parse_stack
+    # is lenient because it reads what a person typed.
     return Dir.children(dir)
-              .select { |d| d.start_with?("gcc-") && SafeVer(d.sub("gcc-", "")) }
-              .map { |d| d.sub("gcc-", "") }
+              .filter_map { |d| Coords.new(HOST_OS_ARCH, nil, d).stack_ver }
+              .map(&:to_s)
               .sort
   end
 

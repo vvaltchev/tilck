@@ -481,12 +481,13 @@ module Main
       opts[:list_stacks] = true
     }
 
-    p.on('-H', '--host-gcc VER',
+    p.on('-H', '--host-gcc STACK',
          'Build for, and look at, the stack of the given host GCC',
          'instead of the one HOST_VER_GCC names. Applies to every',
          'mode: -s builds into that stack, -l and -L report on it.',
-         'The stack does not have to exist yet -- asking for it is',
-         'what builds it. [OPTION]') { |v|
+         'Written either way: "gcc-14.4.0", as -L prints it, or the',
+         'bare "14.4.0". The stack does not have to exist yet --',
+         'asking for it is what builds it. [OPTION]') { |v|
       opts[:host_gcc] = v
     }
 
@@ -755,18 +756,24 @@ module Main
     }
   end
 
-  # -H names a stack. It does not have to be built yet -- asking for
-  # one is how it gets built -- but it does have to be a version the
-  # compiler package knows how to build, or the whole run would go to
-  # coordinates nothing can ever fill.
+  # -H names a stack, either as it is spelled everywhere else --
+  # "gcc-14.4.0", which is what -L prints and what the path holds --
+  # or as the bare version that names it just as unambiguously.
+  #
+  # It does not have to be built yet: asking for a stack is how it
+  # gets built. It does have to be one the compiler package knows how
+  # to build, or the whole run would go to coordinates nothing can
+  # ever fill.
   def select_host_stack(str)
 
     gcc = pkgmgr.stack_compiler
-    ver = SafeVer(str)
+    ver = Coords.parse_stack(str)
 
     if ver.nil? || !gcc.installable_versions.include?(ver)
-      error "Unknown host GCC version: #{str}"
-      error "Available: #{gcc.installable_versions.map(&:to_s).join(', ')}"
+      names = gcc.installable_versions.map { |v| Coords.stack_name(v) }
+      error "Unknown host GCC stack: #{str}"
+      error "Available: #{names.join(', ')} " \
+            "(the \"gcc-\" prefix is optional)"
       return 1
     end
 
