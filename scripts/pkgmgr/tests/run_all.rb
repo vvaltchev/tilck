@@ -44,7 +44,10 @@ end
 if $coverage_enabled
   require 'coverage'
   require 'json'
-  Coverage.start(lines: true)
+  # Branches too: a line counts as covered the first time it runs,
+  # with only one of its two outcomes ever having happened, and that
+  # is exactly where this suite has been missing bugs.
+  Coverage.start(lines: true, branches: true)
 
   # Tell subprocesses (build_toolchain invocations) to also collect
   # coverage. Each subprocess writes a JSON file; we merge them all
@@ -338,6 +341,14 @@ Minitest.after_run {
     merged = {}
     raw.each { |path, data|
       merged[path] = { lines: data[:lines].dup }
+
+      # Branch data is NOT merged from subprocesses. Its keys are
+      # arrays that JSON can only carry as strings, and the subprocess
+      # runs are system tests -- real installs -- while the branches
+      # worth counting are the ones the unit tests reach. Merging a
+      # stringified half would inflate the number without making it
+      # mean anything.
+      merged[path][:branches] = data[:branches] if data[:branches]
     }
 
     Dir.glob(File.join($coverage_dir, "coverage_*.json")).each { |f|

@@ -35,6 +35,92 @@ module CoverageReporter
     }.to_h
   end
 
+  # Per-file BRANCH stats: { path => { total:, hit:, missed:, pct: } }
+  #
+  # Ruby reports branches as
+  #
+  #   { [:if, 0, 2, 2, 6, 5] => { [:then, 1, 3, 4, 3, 9] => 1,
+  #                               [:else, 2, 5, 4, 5, 9] => 0 } }
+  #
+  # -- the outer key is the construct, the inner ones its arms and how
+  # many times each was taken. An arm at 0 is a path the tests never
+  # went down, and that is the thing line coverage cannot see: a line
+  # counts as covered the first time it runs, with only one of its two
+  # outcomes ever having happened. Most of the bugs this suite has
+  # missed lived in the arm nobody took.
+  def compute_branch_stats(data)
+    data.map { |path, info|
+      arms = (info[:branches] || {}).values.flat_map(&:values)
+      total = arms.length
+      hit = arms.count { |n| n > 0 }
+      [path, { total: total, hit: hit, missed: total - hit,
+               pct: total > 0 ? (hit * 100.0 / total).round(1) : 100.0 }]
+    }.to_h
+  end
+
+  # Every arm never taken: [path, line, construct kind, arm kind].
+  # This is the worklist -- each entry is a test that does not exist.
+  def uncovered_branches(data)
+    out = []
+
+    data.each { |path, info|
+      (info[:branches] || {}).each { |construct, arms|
+        arms.each { |arm, count|
+          out << [path, arm[2], construct[0], arm[0]] if count.zero?
+        }
+      }
+    }
+
+    return out.sort_by { |path, line, _, _| [path, line] }
+  end
+
+  def print_branch_summary(data, source_dir, top: 40)
+
+    stats = compute_branch_stats(data)
+    return if stats.values.sum { |s| s[:total] }.zero?
+
+    puts
+    puts "=" * 72
+    puts "Ruby BRANCH coverage summary"
+    puts "=" * 72
+
+    total = 0
+    hit = 0
+
+    stats.sort_by { |p, s| [s[:pct], p] }.each do |path, s|
+      next if s[:total].zero?
+      rel = Pathname.new(path).relative_path_from(source_dir).to_s
+      printf "  %-40s %5d / %5d  %5.1f%%  [%s]\n",
+             rel, s[:hit], s[:total], s[:pct], s[:pct] >= 80 ? "OK" : "LOW"
+      total += s[:total]
+      hit += s[:hit]
+    end
+
+    pct = total > 0 ? (hit * 100.0 / total).round(1) : 100.0
+    puts "-" * 72
+    printf "  %-40s %5d / %5d  %5.1f%%\n", "TOTAL", hit, total, pct
+    puts "=" * 72
+
+    missed = uncovered_branches(data)
+    return if missed.empty?
+
+    puts
+    puts "Branches never taken (#{missed.length}) -- each one is a"
+    puts "test that does not exist:"
+    puts
+
+    missed.first(top).each { |path, line, construct, arm|
+      rel = Pathname.new(path).relative_path_from(source_dir).to_s
+      printf "  %-34s :%-5d %s -> %s\n", rel, line, construct, arm
+    }
+
+    if missed.length > top
+      puts "  ... and #{missed.length - top} more"
+    end
+
+    puts
+  end
+
   # Print a text summary to stdout.
   def print_summary(stats, source_dir)
     puts
@@ -176,6 +262,7 @@ module CoverageReporter
     data = filter_results(raw_result, source_dir)
     stats = compute_stats(data)
     print_summary(stats, Pathname.new(source_dir))
+    print_branch_summary(data, Pathname.new(source_dir))
     generate_html(data, stats, source_dir, output_dir)
   end
 end
