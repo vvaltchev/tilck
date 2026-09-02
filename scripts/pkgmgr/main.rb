@@ -1134,6 +1134,26 @@ module Main
             end
 
             if plan.empty?
+              # After a forced removal the plan CANNOT be empty: -f
+              # just deleted what the install would recreate. An empty
+              # one means the removal missed -- wrong stack, wrong
+              # filter -- and the run would otherwise report success
+              # having rebuilt nothing:
+              #
+              #   INFO:   Force-removing: host_qemu:6.2.0
+              #   INFO: All requested packages are already installed
+              #
+              # Two separate bugs produced exactly that, and the only
+              # evidence either time was three builds finishing in one
+              # second.
+              if options[:force] && !options[:dry_run]
+                error "-f removed nothing that the install would " \
+                      "recreate: the removal and the plan disagree " \
+                      "about which installation this is"
+                failed = requested.map(&:first).join(", ")
+                next
+              end
+
               info "All requested packages are already installed"
               done = true
               next

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 require_relative 'test_helper'
+require 'stringio'
 
 class TestUninstallSingle < Minitest::Test
   include TestHelper
@@ -427,6 +428,46 @@ class TestUninstallVersions < Minitest::Test
 
   # -f on a version that is not installed yet is just an install. It
   # must not fall through to uninstall's "remove whatever IS there".
+  # warning() writes to stdout, like everything else this tool says.
+  def capture_stdout(&block)
+    old = $stdout
+    $stdout = StringIO.new
+    block.call
+    $stdout.string
+  ensure
+    $stdout = old
+  end
+
+  # An uninstall that removes nothing and says nothing is the most
+  # expensive output this tool has produced. It has to say so, and
+  # say where the package actually is, since the usual cause is
+  # asking about one set of coordinates while it lives at another.
+  def test_a_no_op_uninstall_says_so_and_says_where
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkgmgr.with_host_stack(Ver("7.7.7")) { pkgmgr.install("host_thing") }
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          # Looking from a stack that has no install of it.
+          pkgmgr.with_host_stack(Ver("8.8.8")) {
+            pkgmgr.uninstall("host_thing", false, false)
+          }
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/nothing matched/, plain,
+                     "removed nothing and said nothing")
+        assert_match(/gcc-7\.7\.7/, plain,
+                     "did not say where it actually is")
+      end
+    end
+  end
+
   # -u has to find a :stack package's install.
   #
   # The compiler to match defaulted through `default_cc == "syscc"`,

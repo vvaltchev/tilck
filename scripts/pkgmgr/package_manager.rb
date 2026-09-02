@@ -1209,6 +1209,34 @@ class PackageManager
       }
     end
 
+    # Nothing matched, and the caller named something specific.
+    #
+    # An uninstall that removes nothing and says nothing is the most
+    # expensive output this tool has produced: `-u host_qemu:6.2.0`
+    # exited 0 with no output while the package sat there, and a
+    # forced rebuild announced a removal and then reported "already
+    # installed" -- twice, in one session, for two different reasons.
+    # Silence reads as success.
+    #
+    # ALL is exempt: `-u ALL` on a clean tree is a no-op by design,
+    # and so is --clean.
+    if to_remove.empty? && !all_pkgs
+      warning "#{name}: nothing matched, so nothing was removed"
+
+      # What DOES exist under that name, since the usual cause is
+      # asking about one set of coordinates while it lives at
+      # another -- another arch, board, stack or version.
+      elsewhere = install_list.select { |e|
+        e.pkgname == name && !e.path.nil?
+      }
+
+      for e in elsewhere.first(8) do
+        warning "  it is installed at #{e.coords}, version #{e.ver}"
+      end
+
+      return 0
+    end
+
     p = "[DRY RUN] " if dry
     removed = 0
 
