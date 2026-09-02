@@ -74,7 +74,7 @@ class PrettyReporter < Minitest::AbstractReporter
     @passes = 0
     @fails = []
     @errors = []
-    @skips = 0
+    @skips = []
     @total_time = 0.0
     @total_assertions = 0
     @current_class = nil
@@ -108,9 +108,12 @@ class PrettyReporter < Minitest::AbstractReporter
       puts "#{GREEN256}[ OK ]#{RESET}  #{DIM}#{ms}ms#{RESET}"
       show_captured(result) if $verbose_tests
     elsif result.skipped?
-      @skips += 1
+      @skips << result
       print "    #{result.name.ljust(55)} "
-      puts "#{YELLOW256}[ SKIP ]#{RESET}"
+      print "#{YELLOW256}[ SKIP ]#{RESET}"
+      why = skip_reason(result)
+      print "  #{DIM}#{why}#{RESET}" if why
+      puts
     else
       if result.failure.is_a?(Minitest::UnexpectedError)
         @errors << result
@@ -132,7 +135,7 @@ class PrettyReporter < Minitest::AbstractReporter
 
   def report
     wall = Process.clock_gettime(Process::CLOCK_MONOTONIC) - @wall_start
-    total = @passes + @fails.length + @errors.length + @skips
+    total = @passes + @fails.length + @errors.length + @skips.length
 
     puts
     puts HLINE
@@ -152,12 +155,13 @@ class PrettyReporter < Minitest::AbstractReporter
     if !@errors.empty?
       printf ", #{RED256}%d errors#{RESET}", @errors.length
     end
-    if @skips > 0
-      printf ", #{YELLOW256}%d skipped#{RESET}", @skips
+    if !@skips.empty?
+      printf ", #{YELLOW256}%d skipped#{RESET}", @skips.length
     end
 
     printf "  #{DIM}(%.2fs)#{RESET}\n", wall
     puts HLINE
+    show_skips
     puts
   end
 
@@ -168,6 +172,34 @@ class PrettyReporter < Minitest::AbstractReporter
   end
 
   private
+
+  # What a skip actually says. Minitest fills in a placeholder when
+  # `skip` is called with no argument, which is no more informative
+  # than the word SKIP itself, so it is dropped rather than echoed.
+  def skip_reason(result)
+    msg = result.failure&.message
+    return nil if msg.nil? || msg.empty?
+    return nil if msg.start_with?("Skipped, no message given")
+    return msg.lines.first.chomp
+  end
+
+  # A skipped test is a check that did NOT run, and a suite that
+  # prints ALL PASSED above a silent skip is claiming more than it
+  # verified. Repeat them under the summary, with their reasons, so
+  # that a CI log shows what went unchecked at the point where
+  # someone reads the result.
+  def show_skips
+    return if @skips.empty?
+
+    puts
+    puts "  #{YELLOW256}#{@skips.length} skipped#{RESET} " \
+         "#{DIM}(checks that did not run)#{RESET}"
+
+    for r in @skips do
+      why = skip_reason(r) || "no reason given"
+      puts "    #{DIM}-#{RESET} #{r.name}: #{DIM}#{why}#{RESET}"
+    end
+  end
 
   def show_captured(result)
     key = "#{result.class_name || result.klass}##{result.name}"
