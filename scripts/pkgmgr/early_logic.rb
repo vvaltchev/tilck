@@ -340,7 +340,78 @@ DEFAULT_BOARD = ARCH.default_board
 # has not chosen a board.
 BOARD = getenv("BOARD", DEFAULT_BOARD)
 BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD : nil
-BUILD_PAR = ENV["BUILD_PAR"] or ""
+#
+# How many jobs a parallel build may use.
+#
+# This used to be the empty string when BUILD_PAR was unset, so every
+# recipe ran `make -j` with NO number: not "one job per core" but
+# UNLIMITED, as many as the dependency graph will admit. GCC and QEMU
+# will happily take hundreds, and a machine that survives it still
+# spends the whole build unusable for anything else.
+#
+# Two ceilings, whichever is lower:
+#
+#   CPU  leave a sixth of the cores free, so the machine stays usable
+#   RAM  4 GB per job, out of five sixths of what the box has -- a C++
+#        translation unit in GCC or QEMU is the reason that number is
+#        not smaller
+#
+# On this 24-core, 94 GB machine: 24 - 4 = 20 by CPU, and
+# (94 * 5/6) / 4 = 19 by RAM. Nineteen.
+#
+# The proportion is the same everywhere rather than a table of special
+# cases, and it lands where it should at both ends: a 4-core laptop
+# gets 3, a 128-core server with 64 GB is held to 13 by memory rather
+# than running 128 compilers into swap.
+#
+# BUILD_PAR in the environment still wins, for a caller that knows
+# better than any of this.
+#
+module BuildJobs
+
+  GB          = 1024 * 1024 * 1024
+  RAM_PER_JOB = 4 * GB
+  RESERVE     = 6      # leave one sixth of each free
+
+  module_function
+
+  def total_ram
+
+    case Etc.uname.fetch(:sysname)
+      when "Linux"
+        kb = File.read("/proc/meminfo")[/^MemTotal:\s+(\d+) kB/, 1]
+        return kb && kb.to_i * 1024
+      when "Darwin"
+        out = `sysctl -n hw.memsize 2>/dev/null`.strip
+      when "FreeBSD"
+        out = `sysctl -n hw.physmem 2>/dev/null`.strip
+      else
+        return nil
+    end
+
+    return out.empty? ? nil : out.to_i
+
+  rescue StandardError
+    # Not knowing how much memory there is only costs the RAM
+    # ceiling; the CPU one still applies.
+    return nil
+  end
+
+  # `cores` and `ram` are arguments so that the arithmetic can be
+  # tested without a machine of the right shape.
+  def compute(cores: Etc.nprocessors, ram: total_ram)
+
+    by_cpu = cores - [cores / RESERVE, 1].max
+    return [by_cpu, 1].max if ram.nil? || ram <= 0
+
+    by_ram = (ram - ram / RESERVE) / RAM_PER_JOB
+    return [[by_cpu, by_ram].min, 1].max
+  end
+end
+
+# `or` rather than `||` here was a precedence bug: it bound after the
+# assignment, so BUILD_PAR was nil when unset and the "" was dead.
+BUILD_PAR = getenv("BUILD_PAR", BuildJobs.compute.to_s)
 
 # Opt-in for the portable host toolchain, which builds binutils, glibc
 # and GCC from source before anything else. That is tens of minutes of
