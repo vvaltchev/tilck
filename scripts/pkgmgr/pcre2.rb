@@ -43,7 +43,6 @@ class HostPcre2Package < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HOST_STACK_ENABLED
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libpcre2-8.so", false],

@@ -75,7 +75,6 @@ class GlycinPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HOST_STACK_ENABLED
 
   # Both halves come out of one tarball and are always the same
   # version, so they share a single entry in the version file even

@@ -79,7 +79,6 @@ class HostQemuPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HOST_STACK_ENABLED
 
   # Nothing is built against QEMU.
   def sysroot_fragments(gcc_ver = nil) = []

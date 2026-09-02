@@ -464,7 +464,6 @@ class PackageManager
 
     if !pkg.enabled?
       error "Package #{pkg.name} is not enabled in this configuration"
-      error "The host toolchain is opt-in: set TILCK_HOST_STACK=1"
       return false
     end
 

@@ -43,17 +43,23 @@ class TestPortablePackageDefs < Minitest::Test
     assert_equal :stack, pkg("host_glibc").host_tier
   end
 
-  # All of it is opt-in: building a libc is not something to stumble
-  # into.
+  # Building a libc is not something to stumble into, so none of it is
+  # in the default set.
   def test_none_of_it_is_in_the_default_set
     for n in ["host_binutils", "host_linux_headers", "host_glibc"]
       refute pkg(n).default?, "#{n} must not be a default package"
     end
   end
 
-  def test_gating_follows_the_environment_switch
-    for n in ["host_binutils", "host_linux_headers", "host_glibc"]
-      assert_equal HOST_STACK_ENABLED, pkg(n).enabled?, n
+  # Not in the default set is one thing; unreachable is another. The
+  # stack used to be hidden behind TILCK_HOST_STACK, so `-s host_qemu`
+  # answered "not enabled in this configuration" until you knew the
+  # word -- for packages that are ordinary, buildable and asked for by
+  # name. Staying out of the default set already says "do not stumble
+  # into this"; the switch only said "you may not ask".
+  def test_the_stack_is_not_gated_behind_a_switch
+    for n in ["host_binutils", "host_linux_headers", "host_glibc"] do
+      assert pkg(n).enabled?, "#{n} must be installable without a switch"
     end
   end
 

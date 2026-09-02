@@ -81,7 +81,6 @@ class GccPrereqPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HOST_STACK_ENABLED
 
   # The prefix a dependent passes to --with-<name>.
   def prefix_for(ver) = install_prefix(ver) / "install"
