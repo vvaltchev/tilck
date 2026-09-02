@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 require 'digest'
-require 'prism'
 
 #
 # Fingerprinting the CODE that builds a package.
@@ -130,6 +129,12 @@ module SourceDigest
   def parse_defs(file)
 
     return {} if !File.file?(file)
+
+    # Prism is ~17 ms of load time, almost all of it its node
+    # definitions, and only a digest ever parses Ruby. Operations
+    # that compute none -- --print-layout, which CMake runs on
+    # every configure, and -L -- should not pay for it.
+    require 'prism'
 
     result = Prism.parse_file(file.to_s)
 
