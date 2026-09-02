@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# restamp -- rewrite every install's .build_inputs record so that it
+# matches the recipe as it reads NOW.
+#
+# THIS IS A TESTING HACK AND IT LIVES HERE FOR A REASON.
+#
+# .build_inputs answers one question: "was this install produced by
+# the sources that are in the tree today?" Rewriting the record makes
+# it answer "yes" without rebuilding anything, which is a lie unless
+# the person running it knows the difference is inert -- a widened
+# fingerprint, a deleted method the build never called. The package
+# manager must never offer this, because a check that can be silenced
+# is not a check. A maintainer with a reason can run it from here.
+#
+# Usage: restamp <sub-command> [regex]
+#
+# Sub-commands:
+#   check           count installs by state, and name the changed ones
+#   apply [regex]   rewrite the records (all, or only matching names)
+#
+set -euo pipefail
+
+TILCK_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+
+# The pkgmgr's own Ruby, wherever the layout says packages live.
+find_ruby() {
+   local pkgs
+   pkgs=$("$TILCK_ROOT/scripts/build_toolchain" --print-layout 2>/dev/null |
+          sed -n 's/^PKGS_HOST_DISTRO=//p' | tail -1)
+   local r
+   for r in "$pkgs"/ruby/*/bin/ruby; do
+      [ -x "$r" ] && { echo "$r"; return 0; }
+   done
+   echo "restamp: no pkgmgr ruby under $pkgs" >&2
+   return 1
+}
+
+run_ruby() {
+   local mode="$1" filter="${2:-}"
+   MODE="$mode" FILTER="$filter" ROOT="$TILCK_ROOT" "$(find_ruby)" -e '
+require ENV["ROOT"] + "/scripts/pkgmgr/main"
+
+mode   = ENV["MODE"]
+filter = ENV["FILTER"].to_s.empty? ? nil : Regexp.new(ENV["FILTER"])
+
+pkgmgr.refresh
+counts = Hash.new(0)
+changed = []
+done = 0
+
+for pkg in pkgmgr.all_packages do
+   next if filter && pkg.name !~ filter
+
+   for inst in pkg.get_install_list do
+      next if inst.path.nil? || inst.broken
+
+      state = pkg.build_inputs_state_of(inst)
+      counts[state] += 1
+      changed << "#{pkg.name} #{inst.ver} #{inst.coords}" if state != :ok
+      next if mode != "apply" || state == :ok
+
+      # Written through the install as the recipe reads AT ITS
+      # coordinates -- the same scoping the checker uses, or an
+      # arch-dependent recipe gets stamped with another arch s answer.
+      pkg.with_install_context(inst) do
+         BuildInputs.write(inst.path,
+                           recipe: pkg.build_recipe_digest(inst.ver),
+                           files: pkg.build_files(inst.ver))
+      end
+      done += 1
+   end
+end
+
+puts "states: #{counts.inspect}"
+if mode == "apply"
+   puts "restamped: #{done}"
+else
+   changed.sort.each { |c| puts "   #{c}" }
+end
+'
+}
+
+case "${1:-check}" in
+   check)
+      run_ruby check "${2:-}"
+      ;;
+   apply)
+      echo "restamp: rewriting build records WITHOUT rebuilding." >&2
+      echo "restamp: only correct if you know the recipes are equivalent." >&2
+      run_ruby apply "${2:-}"
+      ;;
+   -h|--help|help)
+      sed -n '/^# Usage:/,/^#$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+      ;;
+   *)
+      echo "restamp: unknown sub-command '$1'" >&2
+      exit 1
+      ;;
+esac

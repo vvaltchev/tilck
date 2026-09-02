@@ -427,6 +427,59 @@ class TestShowStatusAll < Minitest::Test
     end
   end
 
+  # --- the stacks view (-L) ------------------------------------------
+
+  # A stand-in for the real compiler package: show_stacks asks it
+  # which versions exist and which are installed, nothing else.
+  def fake_stack_compiler(versions)
+    gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                          arch_list: ALL_HOST_ARCHS.values)
+    gcc.define_singleton_method(:installable_versions) { versions }
+    return gcc
+  end
+
+  # A stack is BUILT when the compiler that names it is installed:
+  # everything else in it is built BY that compiler, so a stack
+  # without one is a directory, not a stack.
+  def test_show_stacks_separates_built_from_declared
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(fake_stack_compiler([Ver("1.0.0"), Ver("2.0.0")]))
+        pkgmgr.install("host_gcc")
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.with_host_stack(Ver("1.0.0")) { pkgmgr.show_stacks }
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/gcc-1\.0\.0\s+\[\s*built\s*\].*CURRENT/, plain)
+        assert_match(/gcc-2\.0\.0\s+\[\s*not built\s*\]/, plain)
+        refute_match(/gcc-2\.0\.0.*CURRENT/, plain)
+      end
+    end
+  end
+
+  # What -H does, under the option: choosing a stack moves the
+  # coordinates a :stack package installs into. Without this the
+  # option would report on another stack while building into this one.
+  def test_selecting_a_stack_moves_where_packages_install
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+
+        here = pkg.coords.to_s
+        there = pkgmgr.with_host_stack(Ver("7.7.7")) { pkg.coords.to_s }
+
+        refute_equal here, there
+        assert_includes there, "gcc-7.7.7"
+      end
+    end
+  end
+
   def test_show_all_group_by_arch
     with_fake_tc do
       with_stubbed_externals do

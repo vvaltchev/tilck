@@ -235,6 +235,14 @@ class HostGccPackage < Package
 
   # Is this a version we know how to build?
   def supported_version?(ver) = SUPPORTED.include?(ver)
+  def installable_versions = SUPPORTED
+
+  # The default version IS the stack in effect. HOST_VER_GCC supplies
+  # it when nothing else does, but -H names another stack, and then
+  # the compiler the stack's packages are built against has to be that
+  # one -- otherwise `-H 16.2.0 -s host_qemu` would place QEMU in
+  # gcc-16.2.0 while building it against the 14.4.0 the file names.
+  def default_ver = pkgmgr.current_host_stack
 
   # The dynamic loader belonging to a given stack.
   #
