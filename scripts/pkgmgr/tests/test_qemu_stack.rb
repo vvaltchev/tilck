@@ -137,7 +137,7 @@ class TestQemuStack < Minitest::Test
     always = [
       "--enable-gtk", "--enable-vnc", "--disable-sdl", "--disable-curses",
       "--disable-libssh", "--disable-seccomp", "--disable-capstone",
-      "--disable-docs",
+      "--disable-docs", "--disable-xkbcommon",
     ]
 
     for v in HostQemuPackage::SUPPORTED do

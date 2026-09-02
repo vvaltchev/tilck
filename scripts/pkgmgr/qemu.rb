@@ -198,6 +198,27 @@ class HostQemuPackage < Package
       "--disable-seccomp",
       "--disable-capstone",
       "--disable-docs",
+
+      # xkbcommon is a BUILD-TIME dependency here, not a runtime one:
+      # qemu-system links nothing from it, only the qemu-keymap tool
+      # does. Its whole effect is that meson REGENERATES the keymaps
+      # in pc-bios/keymaps instead of installing the ones the tarball
+      # ships, and regenerating them needs xkeyboard-config's data --
+      # rules/evdev and the rest -- which this tree has no reason to
+      # carry:
+      #
+      #   qemu-keymap -f pc-bios/keymaps/cz -l cz
+      #   xkbcommon: ERROR: [XKB-632] Failed to add any default
+      #     include path (system path: .../sysroot/usr/share/X11/xkb)
+      #
+      # The shipped keymaps are what upstream generated from that same
+      # data, so installing them is the same answer without the
+      # package. QEMU 7.2 already did exactly this -- its installed
+      # keymaps carry the tarball's timestamp -- but by accident,
+      # because meson did not find the library. Saying so makes every
+      # version build the same way instead of depending on what a
+      # search happened to turn up.
+      "--disable-xkbcommon",
     ]
 
     flags << "--disable-glusterfs" if ver < GLUSTERFS_DROPPED
