@@ -10,6 +10,8 @@
     - [Host tool tiers](#host-tool-tiers)
     - [Package lifecycle](#package-lifecycle)
   * [Dependency resolution](#dependency-resolution)
+    - [Where a version comes from](#where-a-version-comes-from)
+    - [A package's own version can decide its dependencies'](#a-packages-own-version-can-decide-its-dependencies)
   * [System dependencies](#system-dependencies)
   * [Default packages and upgrades](#default-packages-and-upgrades)
   * [Build identity](#build-identity)
@@ -284,6 +286,70 @@ Version selection (`version_solver.rb`) follows two rules:
     nothing can satisfy both.
 
 Within one resolution a package name therefore has exactly one version.
+
+### Where a version comes from
+
+Exactly two places, and the order matters:
+
+  * **a pin**, if something in this resolution named one — a `ver:` on a
+    dependency edge, or `PKG:VER` on the command line;
+  * **the default** from the version file, otherwise.
+
+So the default in `other/host_pkg_versions` is what a package gets when
+*nobody said otherwise*: when the user types `-s host_glib2` with no
+version, and when a dependency edge points at it without one. It is not a
+global that overrides anything; it is the answer to a question nobody
+asked.
+
+### A package's own version can decide its dependencies'
+
+`dep_list` is the graph — who depends on whom — and it is version-less by
+design, because the graph does not change with the version. What may change
+is which versions those edges carry, and a package says so by overriding
+`dep_list_for(ver)`:
+
+```ruby
+# host_qemu: each QEMU is built by a compiler from its own time.
+def dep_list_for(ver = nil)
+  gcc = GCC_FOR[(ver || default_ver).series]
+  return dep_list if gcc.nil?
+
+  # Replace rather than append: the same package named twice, once bare
+  # and once pinned, leaves the winner to the solver's walk order.
+  base = dep_list.reject { |d| d.name == "host_gcc" }
+  return base + [Dep('host_gcc', true, ver: gcc)]
+end
+```
+
+Two packages do this today, for the same reason — a build is a pairing, not
+a package:
+
+| Package | Carries | Because |
+|---------|---------|---------|
+| `host_gcc` | gmp, mpfr, mpc, isl | GCC 11 wants gmp 6.1.0 where GCC 16 wants 6.3.0; its own sources were tested against those |
+| `host_qemu` | the compiler | building a 2021 QEMU with a 2026 GCC tests neither of them |
+
+The effect is that asking for one package can bring a whole world with it.
+With `HOST_VER_GCC` naming 14.4.0:
+
+```
+$ ./scripts/build_toolchain -s host_qemu:7.2.0
+INFO: host_gcc:  using 12.5.0, not the default 14.4.0
+      (pinned via host_qemu -> host_gcc)
+INFO: host_gmp:  using 6.1.0, not the default 6.2.1
+      (pinned via host_qemu -> host_gcc -> host_gmp)
+INFO: Building into the gcc-12.5.0 stack
+```
+
+The pins compose: QEMU names its compiler, that compiler names its maths
+libraries, and the default reaches none of them. `-s host_glib2` on its own
+still gets the default, because nothing pinned it.
+
+That last line is the other half. A `:stack` package lives under the
+compiler that built it, so the host_gcc version a request resolves to also
+decides which stack the install goes into — `-s host_qemu:7.2.0` builds
+into `gcc-12.5.0` however `HOST_VER_GCC` is set, and `-H` (see `--help`)
+moves the default for a run that has no pin to follow.
 
 When installing a package, the dependency resolver:
 
