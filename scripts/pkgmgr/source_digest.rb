@@ -31,13 +31,47 @@ module SourceDigest
 
   module_function
 
+  # The code that builds a package: `klass` and every class between it
+  # and `upto`, which is excluded.
+  #
+  # The chain matters. Four packages -- gmp, mpfr, mpc, isl -- share
+  # one out-of-tree configure/make/install written once on their
+  # common parent, and their own classes hold nothing but a name and
+  # an expected_files list. Hashing the leaf alone therefore hashed
+  # everything EXCEPT the recipe: a configure flag could be added to
+  # the shared method and every one of them still reported "ok".
+  # Verified before the fix by adding --disable-assembly to that
+  # method, which changes the binaries gmp produces:
+  #
+  #   $ build_toolchain --check-for-updates
+  #   (gmp, mpfr, mpc and isl not mentioned)
+  #
+  # `upto` is where the framework starts and the recipe stops --
+  # Package itself, whose shared build helpers are hashed separately
+  # and only for the packages that call them.
+  #
+  # `except` drops the hooks that say what a package IS rather than
+  # how it is built; see Package::NON_RECIPE_HOOKS.
+  def class_source(klass, upto: nil, except: [])
+
+    out = []
+    k = klass
+
+    while k.is_a?(Class) && k != upto
+      out << own_source(k, except)
+      k = k.superclass
+    end
+
+    return out.reject(&:empty?).join("\n")
+  end
+
   # The source of every method defined directly in `klass`, comments
   # blanked out, concatenated in a stable order.
   #
   # Sorted by name rather than by position so that moving a method
   # within its file is not a change: what matters is what the code
   # says, not where it sits.
-  def class_source(klass)
+  def own_source(klass, except = [])
 
     file = source_file_of(klass)
     return "" if file.nil?
@@ -46,7 +80,7 @@ module SourceDigest
     names = klass.instance_methods(false).sort + \
             klass.private_instance_methods(false).sort
 
-    return names.uniq.filter_map { |n| defs[n] }.join("\n")
+    return (names.uniq - except).filter_map { |n| defs[n] }.join("\n")
   end
 
   # The source of one named method from a file, wherever in it the
