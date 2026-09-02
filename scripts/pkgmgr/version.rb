@@ -73,6 +73,16 @@ class Version
   public
   attr_reader :comps, :type, :pre
 
+  # The release series a version belongs to: 9 for 9.2.0, 16 for
+  # 16.2.0. nil for anything not written as a dotted sequence -- a
+  # git hash or a date has no series, and a table keyed by one must
+  # get nil rather than a number that means nothing.
+  def series
+    return nil if ![VersionType::DOT, VersionType::V_DOT,
+                    VersionType::DOT_PRE].include?(@type)
+    return @comps.first
+  end
+
   def initialize(ver_str)
 
     if ver_str.is_a?(Version)

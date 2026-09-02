@@ -57,6 +57,52 @@ class HostQemuPackage < Package
     riscv64-softmmu
   ].freeze
 
+  #
+  # WHICH COMPILER EACH QEMU IS BUILT BY.
+  #
+  # A version of QEMU is built by a compiler from its own time: the
+  # one its developers were using, six months to a year older than the
+  # release. Building a 2021 QEMU with a 2026 compiler is a test of
+  # neither -- new warnings become errors, new optimisations expose
+  # old undefined behaviour, and the failures belong to the pairing
+  # rather than to either side.
+  #
+  # Keyed by SERIES, not by exact version, so that a point release we
+  # have not listed still gets the right compiler rather than the
+  # default one.
+  #
+  #   QEMU (last of series)   GCC series (first release)      gap
+  #   6.2.0   14 Dec 2021     11  (11.1, 27 Apr 2021)      7.6 months
+  #   7.2.0   14 Dec 2022     12  (12.1,  6 May 2022)      7.3 months
+  #   8.2.0   20 Dec 2023     13  (13.1, 26 Apr 2023)      7.8 months
+  #   9.2.0   11 Dec 2024     14  (14.1,  7 May 2024)      7.1 months
+  #  10.2.0   24 Dec 2025     15  (15.1, 25 Apr 2025)      8.0 months
+  #  11.1.0   11 Aug 2026     16  (16.1, 30 Apr 2026)      3.4 months
+  #
+  # The last row is the one that does not fit the six-to-twelve month
+  # rule, and neither choice does: GCC 15 would be 15.6 months older
+  # than QEMU 11.1. GCC 16 is the compiler that existed while QEMU 11
+  # was being written -- 16.1 landed a week after 11.0 opened the
+  # series -- so it is the contemporary one even though the gap is
+  # short.
+  #
+  GCC_FOR = {
+    6  => Ver("11.5.0"),
+    7  => Ver("12.5.0"),
+    8  => Ver("13.4.0"),
+    9  => Ver("14.4.0"),
+    10 => Ver("15.3.0"),
+    11 => Ver("16.2.0"),
+  }.freeze
+
+  # One point release per series: the last of each, which carries that
+  # series' fixes. Naming another version still works -- the table is
+  # keyed by series -- but these are the ones this tree is about.
+  SUPPORTED = [
+    Ver("6.2.0"), Ver("7.2.0"), Ver("8.2.0"),
+    Ver("9.2.0"), Ver("10.2.0"), Ver("11.1.0"),
+  ].freeze
+
   def initialize
     super(
       name: 'host_qemu',
@@ -78,6 +124,24 @@ class HostQemuPackage < Package
   end
 
   def default_arch = HOST_ARCH
+  def installable_versions = SUPPORTED
+
+  # The compiler this version of QEMU is built by, pinned rather than
+  # left to HOST_VER_GCC. Asking for a QEMU therefore asks for its
+  # stack, and `-s host_qemu:9.2.0` builds gcc 14.4.0, its glibc and
+  # the whole GTK closure underneath -- resolve_install_plan reads the
+  # host_gcc version out of this and installs into that stack.
+  def dep_list_for(ver = nil)
+
+    gcc = GCC_FOR[(ver || default_ver).series]
+    return dep_list if gcc.nil?
+
+    # Replace rather than append: the same package named twice, once
+    # bare and once pinned, leaves which one wins to the order the
+    # solver happens to walk them in.
+    base = dep_list.reject { |d| d.name == "host_gcc" }
+    return base + [Dep('host_gcc', true, ver: gcc)]
+  end
 
   # Nothing is built against QEMU.
   def sysroot_fragments(gcc_ver = nil) = []
