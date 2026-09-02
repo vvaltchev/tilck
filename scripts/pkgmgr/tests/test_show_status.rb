@@ -446,7 +446,7 @@ class TestShowStatusAll < Minitest::Test
         out = capture_stdout {
           pkgmgr.show_status("foo", nil, pkg.get_install_list)
         }
-        assert_match(/installed \(2\)/, out.gsub(/\e\[[0-9;]*m/, ""))
+        assert_match(/installed \(\s*2\)/, out.gsub(/\e\[[0-9;]*m/, ""))
       end
     end
   end
@@ -464,10 +464,29 @@ class TestShowStatusAll < Minitest::Test
         out = capture_stdout {
           pkgmgr.show_status("foo", nil, pkg.get_install_list)
         }
-        assert_match(/#{Regexp.escape(Term::RESET)} \(1\)/, out,
+        assert_match(/#{Regexp.escape(Term::RESET)} \(\s*1\)/, out,
                      "the count is inside the coloured span")
       end
     end
+  end
+
+  # Every status cell is one width, whatever it says and however many
+  # installs it counts. The padding sits inside the brackets -- "( 4)"
+  # against "(10)" -- because slack after them showed up as a double
+  # space before the closing "]".
+  def test_every_status_cell_is_the_same_width
+    plain = ->(s) { s.gsub(/\e\[[0-9;]*m/, "") }
+
+    cells = [1, 9, 10, 99].map { |n| Package.installed_str(n) } +
+            [Package.stale_str(7), Package::FOUND_STR,
+             Package::BROKEN_STR, Package::EMPTY_STR]
+
+    widths = cells.map { |c| plain.call(c).length }.uniq
+    assert_equal [Package::STATUS_CELL], widths,
+                 "status cells of different widths: #{widths.inspect}"
+
+    refute_match(/\s\s\z/, plain.call(Package.installed_str(4)),
+                 "trailing slack shows up as a double space before ]")
   end
 
   # --- -g ver -----------------------------------------------------------
