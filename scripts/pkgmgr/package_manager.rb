@@ -382,11 +382,17 @@ class PackageManager
     width = groups.map { |msg, _| msg.length }.max
     banner = ->(s) { puts; puts "--- #{s.center(width)} ---" }
 
+    # A pre-pass, so that the counts are one column down the whole
+    # listing and cost nothing when there is nothing to count: how
+    # many installs the busiest line stands for decides how wide the
+    # count is, and whether there is one at all.
+    digits = count_digits(groups)
+
     for msg, l in groups do
       next if l.empty?      # a stack with nothing in it is not news
       banner.call msg
       l.map { |x| x.pkgname }.uniq.each { |pkg|
-        show_status(pkg, group_by, l.select { |x| x.pkgname == pkg })
+        show_status(pkg, group_by, l.select { |x| x.pkgname == pkg }, digits)
       }
     end
 
@@ -437,12 +443,31 @@ class PackageManager
     return Dir.children(dir).count { |d| (dir / d).directory? }
   end
 
-  def show_status(name, group_by, list)
+  # How many digits the counts in a listing need: zero when no line
+  # stands for more than one install, which is the usual case and
+  # means no count is printed at all.
+  #
+  # Counted per LINE, which is one package within one section -- the
+  # same grouping show_status is handed -- because that is what the
+  # number on the line means. A package with installs in two stacks
+  # appears in both, and neither line claims the other's.
+  def count_digits(groups)
+
+    max = groups.flat_map { |_, l|
+      l.group_by(&:pkgname).values.map { |es|
+        es.count { |e| !e.path.nil? && !e.broken }
+      }
+    }.max || 0
+
+    return max < 2 ? 0 : max.to_s.length
+  end
+
+  def show_status(name, group_by, list, digits = 0)
 
     add_braces = ->(s) { "{#{s}}" }
 
     if list.nil? or list.empty?
-      puts "#{name.ljust(35)} [ #{Package::EMPTY_STR} ]"
+      puts "#{name.ljust(35)} [ #{Package.empty_str(digits: digits)} ]"
       return
     end
 
@@ -524,17 +549,18 @@ class PackageManager
           [:changed, :unknown].include?(e.pkg.build_inputs_state_of(e))
         }
         n = installed.length
-        status = stale ? Package.stale_str(n) : Package.installed_str(n)
+        status = stale ? Package.stale_str(n, digits: digits)
+                       : Package.installed_str(n, digits: digits)
       elsif !broken.empty?
-        status = Package::BROKEN_STR
+        status = Package.broken_str(digits: digits)
       else
-        status = Package::EMPTY_STR
+        status = Package.empty_str(digits: digits)
       end
     else
       if list.any? { |x| !x.path.nil? }
-        status = Package::FOUND_STR
+        status = Package.found_str(digits: digits)
       else
-        status = Package::EMPTY_STR
+        status = Package.empty_str(digits: digits)
       end
     end
 
