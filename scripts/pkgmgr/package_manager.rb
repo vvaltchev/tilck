@@ -423,8 +423,17 @@ class PackageManager
         # Present, but built from something other than the current
         # sources. Shown here so the condition is visible without
         # starting a build and discovering it the hard way.
+        #
+        # Judged at each install's OWN coordinates, exactly as
+        # get_stale_packages does. Asking the package for the state of
+        # a version re-derives the CURRENT stack, so an install
+        # belonging to another one is looked for where it is not,
+        # comes back :not_installed, and gets drawn as healthy -- the
+        # listing would then disagree with --check-for-updates about
+        # the very same install.
         stale = installed.any? { |e|
-          e.pkg && e.pkg.build_inputs_changed?(e.ver)
+          e.pkg &&
+          [:changed, :unknown].include?(e.pkg.build_inputs_state_of(e))
         }
         status = stale ? Package::STALE_STR : Package::INSTALLED_STR
       elsif !broken.empty?
