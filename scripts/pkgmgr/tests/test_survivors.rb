@@ -554,6 +554,22 @@ class TestSurvivorsToo < Minitest::Test
     end
   end
 
+  # package_manager.rb:270  `v = ver || pkg.default_ver` -> `ver`
+  # -f with no version named rebuilds the DEFAULT version. When only
+  # another version is here, that one is another installation, and
+  # stays.
+  def test_force_without_a_version_means_the_default
+    with_fake_tc do
+      p = FakePackage.new("multi")
+      p.define_singleton_method(:default_ver) { V2 }
+      pkgmgr.register(p)
+      fake_install(p, V1)
+
+      pkgmgr.force_remove("multi", nil)
+      assert p.installed?(V1), "the other version was taken for the default"
+    end
+  end
+
   # --- package_manager.rb: clean ------------------------------------------
 
   # package_manager.rb:1151  the arch argument of clean's uninstall

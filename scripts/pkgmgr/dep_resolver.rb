@@ -98,12 +98,15 @@ module DepResolver
   # startup validation was bypassed or the graph changed under it,
   # and either is worth a name rather than a silent answer.
   #
-  # And every walk is bounded. A finite graph is dequeued at most
-  # once per edge plus once per root; more than that is a walk that
-  # is not going to end, and it stops with NonTerminatingWalk instead
-  # of hanging the process.
-  def walk_limit(graph, roots = 1)
-    return graph.size + graph.values.sum(&:length) + roots + 1
+  # And every walk is bounded, EXACTLY: a node is expanded once, so
+  # everything ever queued is a root or the far end of one edge, and
+  # a finite graph is dequeued at most once per root plus once per
+  # edge. One more than that is a walk that is not going to end, and
+  # it stops with NonTerminatingWalk instead of hanging the process.
+  # Exact rather than generous so that a walk which uses every edge
+  # is the test of the bound itself.
+  def walk_limit(graph, roots)
+    return graph.values.sum(&:length) + roots
   end
 
   def check_cycle(node, path)
@@ -120,7 +123,7 @@ module DepResolver
     seen = Set.new([name])
     out = []
     queue = graph[name].map { |d| [d, [name, d]] }
-    limit = walk_limit(graph)
+    limit = walk_limit(graph, 0)     # the root itself is not dequeued
     steps = 0
 
     while !queue.empty?

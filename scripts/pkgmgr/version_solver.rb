@@ -45,14 +45,19 @@ module VersionSolver
   class CycleError < StandardError; end
 
   # A walk over a lambda-defined graph has no edge count to bound it
-  # by, so it is bounded two ways: by what it has seen -- a finite
-  # closure of N names is dequeued fewer than (N+1)^2 times -- and by
-  # an absolute cap on N, since a walk that keeps meeting new names
-  # grows "seen" as fast as it takes steps and no relative bound can
-  # catch it. No closure in this tree is a thousandth of the cap.
+  # by up front, so it keeps a budget as it goes: every entry it
+  # dequeues was a root or a dependency of a name it expanded, so the
+  # dequeues can never exceed the roots plus the dependencies seen.
+  # One more is a walk that is broken -- a queue fed nils, a loop
+  # condition inverted -- and it stops.
+  #
+  # The budget cannot see a graph that is simply infinite (every name
+  # depending on a new one), because such a graph pays for each step
+  # as it takes it. That is what the cap on distinct names is for. No
+  # closure in this tree comes to a tenth of it.
   class NonTerminatingWalk < StandardError; end
 
-  MAX_NAMES = 10_000
+  MAX_NAMES = 1_000
 
   # A package's dependency list may itself depend on the version it is
   # built at, so binding a version can change the closure, which can
@@ -113,12 +118,13 @@ module VersionSolver
     end
 
     steps = 0
+    budget = roots.length
 
     while !queue.empty?
       name, path = queue.shift
       steps += 1
 
-      if seen.size > MAX_NAMES || steps > (seen.size + 1)**2 + roots.length
+      if steps > budget
         raise NonTerminatingWalk, "version walk from #{roots.map(&:first)}"
       end
 
@@ -127,13 +133,22 @@ module VersionSolver
                           "#{path.join(' -> ')}"
       end
 
+      # mutation: equivalent -- a shared node expanded twice binds the same
       next if seen.include?(name)
       seen.add(name)
+
+      if seen.size > MAX_NAMES
+        raise NonTerminatingWalk, "more than #{MAX_NAMES} names from " \
+                                  "#{roots.map(&:first)}"
+      end
 
       # mutation: equivalent -- the fixpoint iteration reaches the same binding
       node_ver = versions[name] || bound[name] || default_of.call(name)
 
-      for dep in deps_of.call(name, node_ver)
+      deps = deps_of.call(name, node_ver)
+      budget += deps.length
+
+      for dep in deps
         dep_path = path + [dep.name]
 
         if dep.ver
