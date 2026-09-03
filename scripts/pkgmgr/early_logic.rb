@@ -358,7 +358,23 @@ DEFAULT_BOARD = ARCH.default_board
 # board coordinate blank. CMake passes exactly that whenever the user
 # has not chosen a board.
 BOARD = getenv("BOARD", DEFAULT_BOARD)
-BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD : nil
+# DERIVED, not stored.
+#
+# It used to be a constant computed at load time from ARCH and BOARD,
+# which are themselves constants -- so anything that changed those
+# afterwards left this one describing the old pair. A check comparing
+# a live ARCH against a frozen BOARD_BSP reported
+#
+#   ERROR: BOARD_BSP: .../other/bsp/i386/pc not found!
+#
+# while looking at riscv64. Production never noticed, because nothing
+# changes ARCH after startup; it surfaced the moment a test drove the
+# command line for a second arch, which is exactly the kind of thing
+# a derived constant hides until it matters.
+def board_bsp
+  return nil if !BOARD
+  return MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD
+end
 #
 # How many jobs a parallel build may use.
 #
