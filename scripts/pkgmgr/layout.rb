@@ -35,23 +35,20 @@
 require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'coords'
+require_relative 'package_manager'
 
 module Layout
 
   module_function
 
-  # The board an arch's packages are under: the one asked for when it
-  # is the arch being built, otherwise that arch's own default. Same
-  # rule as Package#target_board, and for the same reason -- BOARD
-  # names a board of ARCH, and means nothing for any other arch.
-  def board_of(arch)
-    return BOARD if arch == ARCH && BOARD
-    return arch.default_board
-  end
-
+  # Which board an arch's packages are under is the package manager's
+  # rule (PackageManager#board_for), asked rather than copied. This
+  # file used to carry its own copy, "same rule as Package#target_board"
+  # -- and when that rule learned about scopes, the copy did not, so
+  # CMake's view of the tree and the package manager's could disagree.
   def target_pkgs(arch)
     return nil if arch.gcc_ver.nil?
-    return Coords.new("tilck-#{arch.name}", board_of(arch),
+    return Coords.new("tilck-#{arch.name}", pkgmgr.board_for(arch),
                       "gcc-#{arch.gcc_ver}").pkgs_dir
   end
 
