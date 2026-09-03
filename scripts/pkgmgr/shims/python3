@@ -1,0 +1,45 @@
+#!/bin/sh
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# A python3 that refuses to be the system's.
+#
+# The toolchain builds with host_python, an interpreter it installed
+# and controls. Anything that reaches for "python3" and finds one on
+# PATH is reaching outside the toolchain -- which is how a QEMU build
+# ended up running a Homebrew 3.14 that had no distlib, while the
+# distro's 3.10, which the package list installs distlib for, sat
+# right beside it.
+#
+# The fix was to make the interpreter a package. This is the guard
+# that the fix is complete: host_python's bin directory goes on PATH
+# ahead of everything, and this shim goes on PATH behind it. A build
+# that finds the right interpreter never sees this file. A build that
+# has NOT been told where its interpreter is falls through to here
+# and stops, loudly, naming itself -- instead of silently working on
+# this machine and failing on someone else's.
+#
+# It is not a fallback. There is deliberately no "well, try
+# /usr/bin/python3 then": that is the behaviour being prevented.
+
+name=$(basename "$0")
+
+echo "ERROR: $name from the system was invoked during a toolchain build." >&2
+echo "" >&2
+echo "  argv: $name $*" >&2
+echo "" >&2
+echo "Every interpreter a build runs comes from host_python, like the" >&2
+echo "compiler and the libraries. Something asked for '$name' and got" >&2
+echo "this instead, which means it was not told where its interpreter" >&2
+echo "is." >&2
+echo "" >&2
+echo "Fix the caller, not this shim:" >&2
+echo "" >&2
+echo "  * a package that runs Python must declare Dep('host_python', true)" >&2
+echo "    -- deps_build_env then puts the right bin dir first on PATH;" >&2
+echo "  * a build STEP should use the \$PYTHON token, which expands to" >&2
+echo "    the interpreter's absolute path;" >&2
+echo "  * a wrapper script written at install time should embed that" >&2
+echo "    absolute path, as scripts/pkgmgr/meson.rb does." >&2
+echo "" >&2
+
+exit 127

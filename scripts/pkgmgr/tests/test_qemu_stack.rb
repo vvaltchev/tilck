@@ -14,6 +14,7 @@
 
 require_relative 'test_helper'
 require_relative '../main'
+require 'open3'
 
 class TestQemuStack < Minitest::Test
 
@@ -172,6 +173,43 @@ class TestQemuStack < Minitest::Test
                     "ninja bootstraps with whatever python3 PATH offers"
     refute argv.any? { |a| a.to_s.include?("/pkgs/python/") },
            "an interpreter path was baked into a recorded step"
+  end
+
+  # A build that was not told where its interpreter is must stop,
+  # not quietly use the machine's. The shim is the guard that the
+  # host_python work is complete rather than mostly complete.
+  def test_the_python_shim_refuses_and_explains
+    shim = Pathname.new(Package::SHIMS_DIR) / "python3"
+
+    assert shim.executable?, "the shim is missing or not executable"
+
+    out, status = Open3.capture2e(shim.to_s, "-c", "print(1)")
+
+    refute status.success?, "the system python3 shim ran something"
+    assert_match(/was invoked during a toolchain build/, out)
+    assert_match(/host_python/, out, "it does not say what to use instead")
+    assert_match(/\$PYTHON/, out, "it does not name the token")
+  end
+
+  # `python` too: a configure script written in the 2000s asks for
+  # that one.
+  def test_the_shim_covers_plain_python
+    shim = Pathname.new(Package::SHIMS_DIR) / "python"
+    assert shim.exist?, "only python3 is guarded"
+  end
+
+  # Behind what the dependencies publish, never in front: a package
+  # that declares host_python must still find the real interpreter.
+  def test_the_shim_does_not_shadow_the_real_interpreter
+    path = [pkgmgr.python_interpreter.dirname.to_s,
+            Package::SHIMS_DIR].join(":")
+
+    first = path.split(":")
+              .map { |d| File.join(d, "python3") }
+              .find { |p| File.executable?(p) }
+
+    refute_equal File.join(Package::SHIMS_DIR, "python3"), first,
+                 "the shim shadows the interpreter it exists to protect"
   end
 
   # --- configure options that upstream removed ---------------------

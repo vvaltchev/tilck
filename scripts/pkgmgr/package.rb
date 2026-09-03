@@ -596,6 +596,10 @@ class Package
   # altered dependency resolution for 22 packages at once and rebuilt
   # none of them; listing the helpers here is what catches that,
   # without making every package depend on all of package.rb.
+  # Programs a build must not reach for on the machine. See
+  # scripts/pkgmgr/shims/python3.
+  SHIMS_DIR = (RUBY_SOURCE_DIR / "shims").to_s
+
   BUILD_HELPERS = [
     :meson_stack_build, :autotools_stack_build, :stack_install,
   ].freeze
@@ -855,7 +859,17 @@ class Package
 
     # Our compiler ahead of everything, including any bin dir a
     # dependency contributed: nothing may shadow it.
-    vars["PATH"] = [gcc_bin, bu_bin, deps["PATH"] || ENV["PATH"]].join(":")
+    # The shims sit between what the dependencies publish and the
+    # machine's own PATH. A build that was told where its interpreter
+    # is finds it in deps["PATH"] and never reaches them; one that was
+    # not falls through to a python3 that refuses to run and says why,
+    # rather than silently using the system's -- which is how a QEMU
+    # build came to run a Homebrew 3.14 with no distlib.
+    #
+    # Behind the dependencies on purpose: this guards the gap, it does
+    # not close the door.
+    vars["PATH"] = [gcc_bin, bu_bin, deps["PATH"], SHIMS_DIR,
+                    ENV["PATH"]].compact.join(":")
 
     return with_saved_env(vars.keys) do
       vars.each { |k, v| ENV[k] = v }
