@@ -157,4 +157,23 @@ class TestInstallsAreBoardSpecific < Minitest::Test
                    "the scope has to close"
     end
   end
+
+  # A package with no arch of its own has no board either, whatever
+  # its board_list says: there is no arch for a board to belong to.
+  # The guard is what keeps board_for from being asked about nil.
+  def test_a_noarch_package_is_bound_to_no_board
+    p = FakePackage.new("noarchy", arch_list: nil,
+                        board_list: ["qemu-virt"])
+
+    with_context(ARCH: ALL_ARCHS["i386"], BOARD: "pc") do
+      assert p.board_supported?, "a package with no arch is not board-bound"
+      assert_nil p.board_bsp
+    end
+  end
+
+  # A host package builds for the machine. Boards are a property of
+  # what Tilck runs on, so it has no BSP to read.
+  def test_a_host_package_has_no_bsp
+    assert_nil FakePackage.new("host_thing", on_host: true).board_bsp
+  end
 end
