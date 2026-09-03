@@ -244,10 +244,21 @@ class Package
     return true
   end
 
-  # Is the current board supported? nil = any board.
+  # Is the board supported? nil = any board.
+  #
+  # The board that applies to the arch this package would be built
+  # FOR, which is not always the global one -- the same reason
+  # arch_supported? reads pkgmgr.target_arch. `-a riscv64` from an
+  # i386 shell asked whether u-boot supported the board "pc", refused
+  # to install it, and had already force-removed it by then.
   def board_supported?
+
     return true if @board_list.nil?
-    return @board_list.include?(BOARD)
+
+    a = default_arch
+    return true if a.nil?
+
+    return @board_list.include?(pkgmgr.board_for(a))
   end
 
   # Is the current target arch supported by this package?
@@ -351,12 +362,28 @@ class Package
   # silently overwritten each other. Only safe until now because
   # board-specific packages happened to have distinct names.
   #
-  # The current BOARD applies to the arch being built for; another
-  # arch reached through `-a` uses its own default, since BOARD is a
-  # single global and cannot mean two things at once.
-  def target_board(arch)
-    return BOARD if arch == ARCH && BOARD
-    return arch.default_board
+  # Which board applies to an arch is the package manager's to say
+  # (PackageManager#board_for): the answer depends on the invocation's
+  # scope, and a package asking it directly would read the global pair
+  # even while judging an install that belongs to another board.
+  def target_board(arch) = pkgmgr.board_for(arch)
+
+  # The BSP directory of THIS package's install: board data (device
+  # tree, bootloader config) for the arch and board it is built for.
+  #
+  # Deliberately not the global board_bsp() from early_logic, which
+  # answers for the invocation's ARCH/BOARD pair and is right for the
+  # startup validation that uses it. A recipe needs the board of the
+  # installation it is building or being judged against, which under
+  # with_install_context is not the same thing.
+  def board_bsp
+
+    return nil if on_host
+
+    a = default_arch
+    return nil if a.nil?
+
+    return MAIN_DIR / "other" / "bsp" / a.name / target_board(a)
   end
 
   # Which host stack an install of `ver` belongs to.
@@ -695,7 +722,16 @@ class Package
     end
 
     return block.call if inst.arch.nil?
-    return pkgmgr.with_target_arch(inst.arch, &block)
+
+    # The board goes with the arch. It is the `env` level of a target
+    # install's coordinates, so a recipe that reads it -- u-boot picks
+    # its .config out of the BSP directory -- renders differently for
+    # two boards of one arch, and judging one from the other's scope
+    # is the stack bug above with the coordinates changed.
+    board = inst.coords&.env
+    board = nil if board == Coords::ANY
+
+    return pkgmgr.with_target_coords(inst.arch, board, &block)
   end
 
   # The target architectures ONE install of this version writes.
