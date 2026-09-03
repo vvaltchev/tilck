@@ -313,9 +313,12 @@ class Package
 
   # Should this package be auto-installed for the current config?
   # Subclasses (e.g. GccCompiler) can override for richer logic.
-  def default?
-    @default && host_supported? && board_supported? && arch_supported?
-  end
+  # Can this package be built for the invocation at all: on this
+  # host, for this board, for this arch. The one conjunction, asked by
+  # everything that lists what applies here.
+  def supported? = host_supported? && board_supported? && arch_supported?
+
+  def default? = @default && supported?
 
   #
   # Where this package installs, as the three toolchain5 coordinates.
@@ -1584,12 +1587,10 @@ class Package
   def syscc_package_get_install_list
 
     list = []
-    seen = []
 
+    # all_stack_coords is already a set: the current stack joins the
+    # ones on disk without repeating.
     for c in host_tier == :stack ? all_stack_coords : [coords] do
-      next if seen.include?(c)
-      seen << c
-
       dir = pkg_dir_at(c)
       next if !dir.directory?
 

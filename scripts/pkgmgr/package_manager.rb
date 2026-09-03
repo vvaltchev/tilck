@@ -209,10 +209,7 @@ class PackageManager
   end
 
   def get_upgradable_packages
-    @packages.values.select { |p|
-      p.host_supported? && p.board_supported? && p.arch_supported? &&
-      p.needs_upgrade?
-    }
+    @packages.values.select { |p| p.supported? && p.needs_upgrade? }
   end
 
   # Installed, but not from the sources we have now: a patch was
@@ -221,8 +218,7 @@ class PackageManager
   # differs -- a rebuild rather than a new version.
   def get_stale_packages
     @packages.values.select { |p|
-      next false if !(p.host_supported? && p.board_supported? &&
-                      p.arch_supported?)
+      next false if !p.supported?
       # Every install, each judged against the recipe as it reads at
       # ITS coordinates -- not the current one's recipe applied to all
       # of them, which reported the whole set as stale from whichever
@@ -1134,7 +1130,7 @@ class PackageManager
     # Every package, every version, every compiler -- and every arch,
     # which is the one that has to be said: without it, ALL means the
     # scope's arch only.
-    return uninstall("ALL", dry, force, nil, nil, "ALL", except: except)
+    return uninstall("ALL", dry, force, nil, nil, "ALL", except: except) # mutation: equivalent -- for ALL, nil and "ALL" both mean every version and compiler
   end
 
   #

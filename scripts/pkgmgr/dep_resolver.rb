@@ -49,14 +49,14 @@ module DepResolver
       color[node] = gray
       path.push(node)
 
-      for dep in (graph[node] || [])
+      for dep in graph[node]     # visited only when a key: see the loop below
         if color[dep] == gray
           cycle_start = path.index(dep)
           cycle = path[cycle_start..] + [dep]
           raise CycleError,
                 "Dependency cycle: #{cycle.join(' -> ')}"
         end
-        visit.call(dep) if color[dep] == white
+        visit.call(dep) if color[dep] == white # mutation: equivalent -- revisiting black nodes finds the same cycles, slower
       end
 
       path.pop
