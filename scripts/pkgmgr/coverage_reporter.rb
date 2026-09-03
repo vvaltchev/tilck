@@ -74,7 +74,17 @@ module CoverageReporter
     return out.sort_by { |path, line, _, _| [path, line] }
   end
 
-  def print_branch_summary(data, source_dir, top: 40)
+  # How many untaken arms to list. A worklist you cannot see all of
+  # is a percentage with extra steps, so the cap is liftable:
+  # BRANCH_LIST=all, or a number.
+  def branch_list_limit(default = 40)
+    v = ENV["BRANCH_LIST"].to_s
+    return Float::INFINITY if v == "all"
+    return v.to_i if v =~ /\A\d+\z/
+    return default
+  end
+
+  def print_branch_summary(data, source_dir, top: branch_list_limit)
 
     stats = compute_branch_stats(data)
     return if stats.values.sum { |s| s[:total] }.zero?
@@ -109,13 +119,15 @@ module CoverageReporter
     puts "test that does not exist:"
     puts
 
-    missed.first(top).each { |path, line, construct, arm|
+    shown = top.infinite? ? missed : missed.first(top)
+    shown.each { |path, line, construct, arm|
       rel = Pathname.new(path).relative_path_from(source_dir).to_s
       printf "  %-34s :%-5d %s -> %s\n", rel, line, construct, arm
     }
 
-    if missed.length > top
-      puts "  ... and #{missed.length - top} more"
+    if missed.length > shown.length
+      puts "  ... and #{missed.length - shown.length} more " \
+           "(BRANCH_LIST=all to see them)"
     end
 
     puts
