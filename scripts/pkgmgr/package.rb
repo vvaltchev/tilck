@@ -406,6 +406,17 @@ class Package
   # Where the finished install is moved to.
   def final_install_root = coords.pkgs_dir
 
+  # This package's directory at some coordinates, and one version's
+  # installation inside it.
+  #
+  # Three scans spelled `pkgs_dir / pkg_dirname` out for themselves and
+  # a fourth caller used `name` instead -- which is not the same thing,
+  # since pkg_dirname drops the "host_" prefix -- and created an
+  # install directory that nothing could see. The layout of an
+  # installation is the package's to state, once.
+  def pkg_dir_at(c) = c.pkgs_dir / pkg_dirname
+  def install_dir(ver) = pkg_dir_at(coords(ver)) / ver_dirname(ver)
+
   # Staging path for this package version.
   def staging_dir(ver)
     TC_STAGING / pkg_dirname / ver_dirname(ver)
@@ -1563,7 +1574,7 @@ class Package
       next if seen.include?(c)
       seen << c
 
-      dir = c.pkgs_dir / pkg_dirname
+      dir = pkg_dir_at(c)
       next if !dir.directory?
 
       # The compiler is read off the coordinates being enumerated, not
@@ -1631,7 +1642,7 @@ class Package
           next if !cc_ver
 
           coords = Coords.new("tilck-#{arch_obj.name}", board, cc_dir)
-          dir = coords.pkgs_dir / pkg_dirname
+          dir = pkg_dir_at(coords)
           next if !dir.directory?
 
           for d in Dir.children(dir) do
@@ -1658,7 +1669,7 @@ class Package
   def noarch_package_get_install_list
 
     list = []
-    dir = coords.pkgs_dir / pkg_dirname
+    dir = pkg_dir_at(coords)
 
     if dir.directory?
       for d in Dir.children(dir) do

@@ -22,7 +22,69 @@ require_relative '../dep_resolver'
 require_relative '../cache'
 require_relative '../package_manager'
 
+#
+# A TEST MAY NOT READ THE DEVELOPER'S TOOLCHAIN.
+#
+# Two tests asked the real tree whether host_python was installed.
+# They passed here, where it is, and errored on all six CI images at
+# once, where it is not -- and neither one was about installation at
+# all: one checked a published bin dir, the other a PATH order. A test
+# that consults toolchain5/ is not testing the code, it is reporting
+# what this machine last built, and it does so silently until the day
+# it runs somewhere else.
+#
+# So the reading is made impossible rather than discouraged.
+# get_install_list and get_installable_list are where every such
+# question funnels -- find_install, installed?, install_prefix,
+# build_env, python_interpreter, refresh, the whole listing -- so the
+# guard sits there and names the caller. with_fake_tc builds a world
+# to ask about; with_real_tc is the deliberate opt-out, for a test
+# whose subject IS the real tree.
+#
+REAL_TC = TC
+
+module NoRealToolchainReads
+
+  @@allowed = false
+
+  def self.allowed? = @@allowed
+  def self.allow!(v) = @@allowed = v
+
+  def get_install_list
+    NoRealToolchainReads.check!("#{name}.get_install_list")
+    return super
+  end
+
+  def get_installable_list
+    NoRealToolchainReads.check!("#{name}.get_installable_list")
+    return super
+  end
+
+  def self.check!(what)
+
+    return if @@allowed || TC != REAL_TC
+
+    raise "#{what} would read the real toolchain at #{TC}. A test must " \
+          "build the world it asks about: wrap it in with_fake_tc, or in " \
+          "with_real_tc when the real tree is the subject."
+  end
+end
+
+Package.prepend(NoRealToolchainReads)
+
 module TestHelper
+
+  # For a test whose subject really is the installed tree.
+  def with_real_tc
+    prev = NoRealToolchainReads.allowed?
+    NoRealToolchainReads.allow!(true)
+
+    begin
+      yield
+    ensure
+      NoRealToolchainReads.allow!(prev)
+    end
+  end
 
   # Temporarily override top-level constants for the duration of a block.
   # Example: with_context(ARCH: ALL_ARCHS["riscv64"], BOARD: "qemu-virt")
@@ -90,6 +152,34 @@ module TestHelper
   end
 
   def noarch_pkgs = Coords.new("noarch", nil, nil).pkgs_dir
+
+  # An installation of `pkg` in the world the test is building.
+  #
+  # Everything expected_files names is created, because that list is
+  # what decides `broken`, and a broken install is invisible to
+  # find_install -- so a directory alone answers "not installed" and
+  # the test looks like a bug in the code it is exercising.
+  def fake_install(pkg, ver = nil)
+
+    ver ||= pkg.default_ver
+    dir = pkg.install_dir(ver)
+    FileUtils.mkdir_p(dir)
+
+    for name, is_dir in pkg.expected_files(ver) do
+      path = dir / name
+
+      if is_dir
+        FileUtils.mkdir_p(path)
+      else
+        FileUtils.mkdir_p(path.dirname)
+        FileUtils.touch(path)
+        FileUtils.chmod(0755, path)
+      end
+    end
+
+    pkgmgr.refresh
+    return dir
+  end
 
   # A patch directory for `pkg`, in a temporary tree.
   #

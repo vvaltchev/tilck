@@ -127,55 +127,69 @@ class TestExpandInstallAll < Minitest::Test
     reset_pkgmgr!
   end
 
-  def test_install_ALL_expands_to_installable_non_compilers
-    pkgmgr.register(FakePackage.new("foo"))
-    pkgmgr.register(FakePackage.new("bar"))
-    pkgmgr.register(
-      FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
-    )
+  # ALL is "everything installABLE", which is a question about a
+  # world: what is registered, and what is already there. These asked
+  # it of the developer's toolchain -- so the set they expanded to
+  # depended on what that machine had built, and the assertions held
+  # by luck. with_fake_tc gives them a world with nothing in it.
 
-    result = Main.expand_install_all(["ALL"])
-    names = result.map { |s| s.split(":").first }.sort
-    assert_equal ["bar", "foo"], names
+  def test_install_ALL_expands_to_installable_non_compilers
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("foo"))
+      pkgmgr.register(FakePackage.new("bar"))
+      pkgmgr.register(
+        FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
+      )
+
+      result = Main.expand_install_all(["ALL"])
+      names = result.map { |s| s.split(":").first }.sort
+      assert_equal ["bar", "foo"], names
+    end
   end
 
   def test_install_ALL_skips_packages_not_supported_on_current_arch
-    other_arch = (ALL_ARCHS.values - [ARCH]).first
-    pkgmgr.register(FakePackage.new("universal"))
-    pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
+    with_fake_tc do
+      other_arch = (ALL_ARCHS.values - [ARCH]).first
+      pkgmgr.register(FakePackage.new("universal"))
+      pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
 
-    result = Main.expand_install_all(["ALL"])
-    names = result.map { |s| s.split(":").first }
-    assert_includes names, "universal"
-    refute_includes names, "other_only"
+      result = Main.expand_install_all(["ALL"])
+      names = result.map { |s| s.split(":").first }
+      assert_includes names, "universal"
+      refute_includes names, "other_only"
+    end
   end
 
   def test_install_ALL_coexists_with_named_packages
-    pkgmgr.register(FakePackage.new("foo"))
-    pkgmgr.register(FakePackage.new("bar"))
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("foo"))
+      pkgmgr.register(FakePackage.new("bar"))
 
-    result = Main.expand_install_all(["custom", "ALL"])
-    names = result.map { |s| s.split(":").first }
-    assert_includes names, "custom"
-    assert_includes names, "foo"
-    assert_includes names, "bar"
+      result = Main.expand_install_all(["custom", "ALL"])
+      names = result.map { |s| s.split(":").first }
+      assert_includes names, "custom"
+      assert_includes names, "foo"
+      assert_includes names, "bar"
+    end
   end
 
   def test_install_ALL_respects_target_arch_scope
     # When with_target_arch scopes to riscv64, a package that only
     # supports riscv64 is included; an i386-only package is excluded.
-    rv = ALL_ARCHS["riscv64"]
-    i3 = ALL_ARCHS["i386"]
-    pkgmgr.register(FakePackage.new("rv_pkg", arch_list: [rv]))
-    pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
-    pkgmgr.register(FakePackage.new("universal"))
+    with_fake_tc do
+      rv = ALL_ARCHS["riscv64"]
+      i3 = ALL_ARCHS["i386"]
+      pkgmgr.register(FakePackage.new("rv_pkg", arch_list: [rv]))
+      pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
+      pkgmgr.register(FakePackage.new("universal"))
 
-    pkgmgr.with_target_arch(rv) do
-      result = Main.expand_install_all(["ALL"])
-      names = result.map { |s| s.split(":").first }
-      assert_includes names, "rv_pkg"
-      assert_includes names, "universal"
-      refute_includes names, "i3_pkg"
+      pkgmgr.with_target_arch(rv) do
+        result = Main.expand_install_all(["ALL"])
+        names = result.map { |s| s.split(":").first }
+        assert_includes names, "rv_pkg"
+        assert_includes names, "universal"
+        refute_includes names, "i3_pkg"
+      end
     end
   end
 end

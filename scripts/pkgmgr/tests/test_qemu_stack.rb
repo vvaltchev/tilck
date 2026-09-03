@@ -129,14 +129,31 @@ class TestQemuStack < Minitest::Test
                     "the build is left to find a python on PATH"
   end
 
-  def test_our_python_publishes_its_bin_dir
-    py = pkg("host_python")
-    refute_nil py, "host_python is not registered"
+  # host_python installed in a world this test builds, never the one
+  # on the machine running it.
+  #
+  # Both tests below used to read the real toolchain, so they passed
+  # wherever host_python happened to be installed and errored on every
+  # CI runner -- "host_python is not installed", from six workflows at
+  # once. A test that consults the developer's tree is not testing the
+  # code; it is reporting what that developer last built.
+  def with_fake_python
 
-    dirs = py.build_env(py.default_ver).bin_dirs
-    refute_empty dirs, "nothing published, so nothing reaches PATH"
-    assert dirs.first.to_s.end_with?("/bin"),
-           "published #{dirs.first}, which is not a bin dir"
+    with_fake_tc do
+      py = pkg("host_python")
+      refute_nil py, "host_python is not registered"
+
+      yield py, fake_install(py) / "bin"
+    end
+  end
+
+  def test_our_python_publishes_its_bin_dir
+    with_fake_python do |py, bin|
+      dirs = py.build_env(py.default_ver).bin_dirs
+      refute_empty dirs, "nothing published, so nothing reaches PATH"
+      assert_equal bin.to_s, dirs.first.to_s,
+                   "published #{dirs.first}, which is not its bin dir"
+    end
   end
 
   # 3.11 is not an arbitrary choice: it straddles the QEMU range this
@@ -201,15 +218,17 @@ class TestQemuStack < Minitest::Test
   # Behind what the dependencies publish, never in front: a package
   # that declares host_python must still find the real interpreter.
   def test_the_shim_does_not_shadow_the_real_interpreter
-    path = [pkgmgr.python_interpreter.dirname.to_s,
-            Package::SHIMS_DIR].join(":")
+    with_fake_python do
+      path = [pkgmgr.python_interpreter.dirname.to_s,
+              Package::SHIMS_DIR].join(":")
 
-    first = path.split(":")
-              .map { |d| File.join(d, "python3") }
-              .find { |p| File.executable?(p) }
+      first = path.split(":")
+                .map { |d| File.join(d, "python3") }
+                .find { |p| File.executable?(p) }
 
-    refute_equal File.join(Package::SHIMS_DIR, "python3"), first,
-                 "the shim shadows the interpreter it exists to protect"
+      refute_equal File.join(Package::SHIMS_DIR, "python3"), first,
+                   "the shim shadows the interpreter it exists to protect"
+    end
   end
 
   # --- configure options that upstream removed ---------------------
