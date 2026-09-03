@@ -148,14 +148,25 @@ module Exhaustive
     def to_s = "#{name}@#{ver} #{coords} #{record}/#{origin}"
   end
 
-  def candidates(pkgs)
+  # Each shape enumerates the axis it is about. A single-package shape
+  # is about coordinates -- every board, every stack, every record --
+  # and gets them all. A multi-package shape is about the dependency
+  # structure between its packages; giving it every coordinate of
+  # every package as well multiplies cases by twenty for questions the
+  # single-package shapes already ask, and made one shape (diamond)
+  # cost more than the other fourteen together.
+  NARROW = %w[stack_pin cross_cc chain diamond conflict default].freeze
+
+  def candidates(pkgs, narrow: false)
     out = []
     for p in pkgs do
       for v in p.installable_versions.empty? ? [p.default_ver]
                                               : p.installable_versions do
         origins = v == p.default_ver ? [:default] : [:default, :pinned]
-        for c in coords_for(p) do
-          for r in [:ok, :changed] do
+        coords = narrow ? coords_for(p).first(1) : coords_for(p)
+        records = narrow ? [:ok] : [:ok, :changed]
+        for c in coords do
+          for r in records do
             for o in origins do
               out << Candidate.new(p.name, v, c, r, o)
             end
@@ -246,7 +257,8 @@ module Exhaustive
     @tables ||= {}
     @tables[shape] ||= begin
       pkgs = SHAPES.fetch(shape).call
-      Tables.new(worlds(candidates(pkgs)), argv_lines(pkgs))
+      cands = candidates(pkgs, narrow: NARROW.include?(shape))
+      Tables.new(worlds(cands), argv_lines(pkgs))
     end
   end
 

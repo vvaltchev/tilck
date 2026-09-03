@@ -720,7 +720,7 @@ the model's grammar.
 fifteen registry shapes -- one feature each -- it enumerates every
 world of at most two installations, every invocation context, and
 every command line in the grammar, and hands each case to the laws.
-About three hundred thousand cases; `-t --exhaustive` runs them all,
+About sixty-six thousand cases; `-t --exhaustive` runs them all,
 one process per shape, in every toolchain workflow, and every `-t`
 runs a fixed-seed sample of a thousand. It self-tests first (a
 snapshot equals a second snapshot, a world reads back as built, a
