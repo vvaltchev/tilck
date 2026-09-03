@@ -98,12 +98,6 @@ class HostGccPackage < Package
   def initialize
     super(
       name: 'host_gcc',
-      # A root of the host world, and where that world runs: x86_64
-      # Linux, for now. Everything only this world needs follows
-      # (Package#host_supported?). Other host arches join once every
-      # package of the world has been built and exercised there.
-      host_os_list: ["linux"],
-      host_arch_list: ["x86_64"],
       source: HOST_GCC_SOURCE,
       on_host: true,
       is_compiler: false,
@@ -147,6 +141,14 @@ class HostGccPackage < Package
 
   def default_arch = HOST_ARCH
   def host_world_root? = true
+
+  # Where the host world runs: x86_64 Linux, for now. Everything only
+  # this world needs follows (Package#host_supported?). Other host
+  # arches join once every package of the world has been built and
+  # exercised there. Overrides, not constructor arguments: a statement
+  # about where the world runs is not part of any recipe.
+  def host_os_list = ["linux"]
+  def host_arch_list = ["x86_64"]
   def pkg_dirname = "gcc"
 
   # A compiler belongs to ITS OWN stack, not to whichever one

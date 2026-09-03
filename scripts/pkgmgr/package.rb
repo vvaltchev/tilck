@@ -122,7 +122,15 @@ end
 class Package
 
   attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
-  attr_reader :host_tier, :board_list, :host_os_list, :host_arch_list
+  attr_reader :host_tier, :board_list
+
+  # Where this package may run: OS names and host arch names, nil for
+  # anywhere. Constructor arguments for most; a package that is the
+  # root of a world overrides them instead, because they are then a
+  # statement about the world and not part of the recipe -- see
+  # NON_RECIPE_HOOKS, and host_world_root? beside them.
+  def host_os_list = @host_os_list
+  def host_arch_list = @host_arch_list
 
   # Declared `default: true`, before support is considered. default?
   # is the one that answers for an invocation; this is what the
@@ -264,9 +272,10 @@ class Package
     return pkgmgr.host_world_roots.all?(&:own_host_supported?)
   end
 
+  # Through the hooks, not the ivars: a world root overrides them.
   def own_host_supported?
-    return false if @host_os_list && !@host_os_list.include?(HOST_OS)
-    return false if @host_arch_list && !@host_arch_list.include?(HOST_ARCH.name)
+    return false if host_os_list && !host_os_list.include?(HOST_OS)
+    return false if host_arch_list && !host_arch_list.include?(HOST_ARCH.name)
     return true
   end
 
@@ -716,8 +725,12 @@ class Package
   # does not obviously use". default_arch stays IN: zlib's build step
   # names "#{default_arch.gcc_tc}-linux-ar", so an override of it
   # really does change the command that runs.
+  # host_os_list and host_arch_list say where a package RUNS, which no
+  # build step reads; declared as overrides by the two world roots,
+  # and hidden from the digest for the same reason host_world_root? is.
   NON_RECIPE_HOOKS = %i[enabled? default? default_cc
-                        host_world_root? installed?].freeze
+                        host_world_root? installed?
+                        host_os_list host_arch_list].freeze
 
   #
   # One digest standing for "how this package is built".

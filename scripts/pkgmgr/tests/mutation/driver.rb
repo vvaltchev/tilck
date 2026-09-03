@@ -42,6 +42,7 @@ module Mutation
   METHODS = {
     "package.rb" => %w[
       coords target_board board_bsp board_supported? arch_supported?
+      host_supported? own_host_supported? supported? target? noarch?
       with_install_context build_inputs_state_of build_inputs_changed?
       find_install installed? install_prefix install_dir pkg_dir_at
       needs_upgrade? syscc_package_get_install_list
@@ -54,10 +55,12 @@ module Mutation
       with_host_stack current_host_stack stack_coords uninstall
       uninstall_selector uninstall_where force_remove
       resolve_install_plan install resolved_versions_for
-      host_world_names get_stale_packages get_upgradable_packages
+      host_world_names compute_host_world_names host_world_roots
+      get_stale_packages get_upgradable_packages
       build_dep_graph clean get_installed_compilers
     ],
-    "main.rb" => %w[expand_install_all select_host_stack requested_arch],
+    "main.rb" => %w[expand_install_all select_host_stack requested_arch
+                    unsupported_reason],
   }.freeze
 
   Mutant = Struct.new(:site, :file) do
