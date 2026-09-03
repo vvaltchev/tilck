@@ -1,0 +1,63 @@
+# The package manager's own pipeline: everything that judges its
+# logic, on a stock distro image, independent of any toolchain build.
+#
+#   tests     the unit suite (lint, model, laws, ~1,000 tests), then
+#             the exhaustive lane: every small world x every command
+#             line against the model. Minutes.
+#
+#   mutation  the certificate that the tests are enough: every site
+#             of the logic core is made wrong one way and the whole
+#             suite must fail. Tens of minutes, so its own job.
+#
+# The six toolchain workflows run `-t --exhaustive` too, before they
+# build anything; this one exists so that the package manager is
+# judged even when nothing else is, and so that mutation, which no
+# toolchain build should wait on, still runs on every change.
+#
+name: Package manager
+
+on:
+  push:
+    branches-ignore: [readme*, temp-*, exp-*]
+    paths:
+      - '.github/workflows/ci-pkgmgr.yml'
+      - 'scripts/build_toolchain'
+      - 'scripts/bash_build_toolchain'
+      - 'scripts/bash_includes/**'
+      - 'scripts/pkgmgr/**'
+      - 'scripts/dev/claude/pmmutate'
+      - 'other/pkg_versions'
+      - 'other/host_pkg_versions'
+      - '!**/*.md'
+  pull_request:
+    paths:
+      - 'scripts/pkgmgr/**'
+      - 'scripts/dev/claude/pmmutate'
+  workflow_dispatch:
+
+env:
+  RUNNING_IN_CI: 1
+  # let git trust the root-owned container checkout (the tests run
+  # git: the mutation job makes a worktree per worker)
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: '*'
+  TILCK_NO_LOGO: 1
+  ARCH: i386
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    container: debian:stable-slim
+    steps:
+      - uses: actions/checkout@v5
+      - name: Unit tests and the exhaustive lane
+        run: ./scripts/build_toolchain -t --exhaustive
+
+  mutation:
+    runs-on: ubuntu-22.04
+    container: debian:stable-slim
+    steps:
+      - uses: actions/checkout@v5
+      - name: Every mutant of the logic core must die
+        run: ./scripts/build_toolchain -t --mutation

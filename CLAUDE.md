@@ -1013,8 +1013,9 @@ this order of authority, and a fix touches all three:
    world of two installations. A bug it did not catch means a shape
    or a command line is missing from `tests/exhaustive/domain.rb`:
    add it, and the lane fails before the fix and passes after.
-3. **Mutation** (`scripts/dev/claude/pmmutate run`) must be able to
-   *express* the bug as an operator and the suite must kill it. If
+3. **Mutation** (`-t --mutation`; `scripts/dev/claude/pmmutate run
+   --file F` for one file) must be able to *express* the bug as an
+   operator and the suite must kill it. If
    no operator produces the bug, add one to
    `tests/mutation/operators.rb`. The score to defend is zero
    survivors in scope; an equivalent mutant is excused on its line

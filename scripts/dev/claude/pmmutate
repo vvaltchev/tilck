@@ -24,7 +24,8 @@ set -euo pipefail
 MAIN_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 TC_NAME="$(sed -n 's/^TOOLCHAIN_DIR_NAME=//p' "$MAIN_DIR/other/toolchain_conf")"
 TC_NAME="${TC_NAME:-toolchain5}"
-RUBY="$(ls "$MAIN_DIR/$TC_NAME"/linux-*/*/any/pkgs/ruby/*/bin/ruby 2>/dev/null | head -1 || true)"
+RUBY="$(ls "$MAIN_DIR/$TC_NAME"/linux-*/*/any/pkgs/ruby/*/bin/ruby \
+           2>/dev/null | head -1 || true)"
 
 if [ -z "$RUBY" ]; then
    echo "pmmutate: no bootstrap ruby under $MAIN_DIR/$TC_NAME" >&2
@@ -37,7 +38,7 @@ exec "$RUBY" - "$MAIN_DIR" "$RUBY" "$cmd" "$@" <<'RUBY'
 main_dir, ruby, cmd, *args = ARGV
 require File.join(main_dir, "scripts/pkgmgr/tests/mutation/driver")
 
-opts = { jobs: 8, limit: nil, file: nil, op: nil, timeout: 120 }
+opts = { jobs: 8, limit: nil, file: nil, op: nil, timeout: nil }
 while !args.empty?
   case (a = args.shift)
   when "--jobs"    then opts[:jobs] = args.shift.to_i
@@ -76,51 +77,9 @@ when "check-annotations"
   exit(bad.empty? ? 0 : 1)
 
 when "run"
-  puts "pmmutate: #{mutants.length} mutants, #{opts[:jobs]} workers, " \
-       "timeout #{opts[:timeout]}s"
-  t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  verdicts = []
-  lock = Mutex.new
-  Mutation.run(mutants, jobs: opts[:jobs], ruby: ruby,
-               timeout: opts[:timeout]) { |v|
-    lock.synchronize {
-      verdicts << v
-      mark = { killed: "killed  ", survived: "SURVIVED", timeout: "timeout ",
-               error: "error   " }[v.status]
-      printf("  [%4d/%4d] %s  %5.1fs  %s\n", verdicts.length, mutants.length,
-             mark, v.seconds, v.mutant.site)
-      $stdout.flush
-    }
-  }
-  dt = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
-  by = verdicts.group_by(&:status).transform_values(&:length)
-  puts
-  puts "pmmutate: #{verdicts.length} mutants in #{dt.round}s: " \
-       "#{by[:killed] || 0} killed, #{by[:timeout] || 0} timed out, " \
-       "#{by[:survived] || 0} survived"
-  survivors = verdicts.select { |v| v.status == :survived }
-  if !survivors.empty?
-    puts
-    puts "SURVIVORS -- each is a test that does not exist:"
-    survivors.sort_by { |v| [v.mutant.file, v.mutant.site.line] }.each { |v|
-      puts "  #{v.mutant.site}"
-    }
-  end
-
-  # A mutant that hangs is not caught; it is waited out. The suite
-  # would have hung too, and a hang is the one failure nothing
-  # downstream can report. The walk it broke needs a bound that turns
-  # the hang into an exception -- so a timeout fails the run.
-  hung = verdicts.select { |v| v.status == :timeout }
-  if !hung.empty?
-    puts
-    puts "TIMEOUTS -- each is a walk without a bound:"
-    hung.sort_by { |v| [v.mutant.file, v.mutant.site.line] }.each { |v|
-      puts "  #{v.mutant.site}"
-    }
-  end
-
-  exit(survivors.empty? && hung.empty? ? 0 : 1)
+  ok = Mutation.certify(mutants, jobs: opts[:jobs], ruby: ruby,
+                        timeout: opts[:timeout])
+  exit(ok ? 0 : 1)
 
 else
   abort "pmmutate: sites | count | run | check-annotations"

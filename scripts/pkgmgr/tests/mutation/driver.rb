@@ -181,6 +181,81 @@ module Mutation
 
   # --- the run --------------------------------------------------------------
 
+  # The whole certification, as both pmmutate and `-t --mutation` run
+  # it. Returns true when every mutant in scope was killed.
+  #
+  # The instrument tests itself first: the UNMUTATED suite must pass
+  # in a worktree, or nothing can be judged -- a suite that fails on
+  # its own would "kill" every mutant. That run also sets the timeout:
+  # a mutant is given several times what the clean suite took, so the
+  # bound follows the machine rather than a number chosen elsewhere.
+  def certify(mutants, jobs:, ruby:, timeout: nil, out: $stdout)
+
+    out.puts "mutation: #{mutants.length} mutants, #{jobs} workers"
+    out.puts "mutation: the suite must pass unmutated first..."
+
+    probe = Worker.new("probe", ruby: ruby)
+    begin
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      status, tail = probe.run_suite(timeout || 1800)
+      clean = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+    ensure
+      probe.remove
+    end
+
+    if status != :survived
+      out.puts "mutation: the unmutated suite did not pass " \
+               "(#{status}); refusing to judge anything:"
+      out.puts tail
+      return false
+    end
+
+    timeout ||= [120, (clean * 5).ceil].max
+    out.puts format("mutation: clean suite %.0fs, timeout %ds per mutant",
+                    clean, timeout)
+
+    verdicts = []
+    lock = Mutex.new
+
+    run(mutants, jobs: jobs, ruby: ruby, timeout: timeout) { |v|
+      lock.synchronize {
+        verdicts << v
+        mark = { killed: "killed  ", survived: "SURVIVED",
+                 timeout: "TIMEOUT ", error: "error   " }[v.status]
+        out.printf("  [%4d/%4d] %s  %5.1fs  %s\n", verdicts.length,
+                   mutants.length, mark, v.seconds, v.mutant.site)
+        out.flush
+      }
+    }
+
+    by = verdicts.group_by(&:status).transform_values(&:length)
+    survivors = verdicts.select { |v| v.status == :survived }
+    hung = verdicts.select { |v| v.status == :timeout }
+
+    out.puts
+    out.puts "mutation: #{verdicts.length} mutants: #{by[:killed] || 0} " \
+             "killed, #{hung.length} timed out, #{survivors.length} survived"
+
+    if !survivors.empty?
+      out.puts
+      out.puts "SURVIVORS -- each is a test that does not exist:"
+      survivors.sort_by { |v| [v.mutant.file, v.mutant.site.line] }
+               .each { |v| out.puts "  #{v.mutant.site}" }
+    end
+
+    # A mutant that hangs is not caught; it is waited out. The suite
+    # would have hung too, and a hang is the one failure nothing
+    # downstream can report: the walk it broke needs a bound.
+    if !hung.empty?
+      out.puts
+      out.puts "TIMEOUTS -- each is a walk without a bound:"
+      hung.sort_by { |v| [v.mutant.file, v.mutant.site.line] }
+          .each { |v| out.puts "  #{v.mutant.site}" }
+    end
+
+    return survivors.empty? && hung.empty?
+  end
+
   # Run `mutants` over `jobs` workers; yields each verdict as it lands.
   def run(mutants, jobs:, ruby:, timeout:, &on_verdict)
 

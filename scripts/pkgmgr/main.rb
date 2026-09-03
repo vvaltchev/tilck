@@ -559,6 +559,12 @@ module Main
       (opts[:test_args] ||= []) << "--exhaustive"
     }
 
+    p.on('--mutation',
+         'After unit tests: every mutant of the logic core must die ' \
+         '(use with -t) [FLAG]') {
+      (opts[:test_args] ||= []) << "--mutation"
+    }
+
     p.on('--seed N', 'Seed of the sampled exhaustive lane [OPTION]') {
       |n| (opts[:test_args] ||= []) << "--seed" << n
     }
