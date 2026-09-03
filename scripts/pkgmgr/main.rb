@@ -946,8 +946,22 @@ module Main
           installable.map(&:name), graph, empty
         )
 
+        # A third tag, not a third column: the host world is optional
+        # by definition -- none of it is a default -- so this refines
+        # "optional" rather than contradicting it. A consumer that
+        # wants the packages Tilck is built from can now say so, and
+        # the system tests do.
+        world = Set.new(pkgmgr.host_world_names)
+
         full_order.each do |name|
-          tag = default_set.include?(name) ? "default" : "optional"
+          tag = if world.include?(name)
+            "host-world"
+          elsif default_set.include?(name)
+            "default"
+          else
+            "optional"
+          end
+
           puts "#{name} #{tag}"
         end
       end

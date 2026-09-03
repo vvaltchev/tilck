@@ -125,6 +125,7 @@ class HostQemuPackage < Package
   end
 
   def default_arch = HOST_ARCH
+  def host_world_root? = true
   def installable_versions = SUPPORTED
 
   # The compiler this version of QEMU is built by, pinned rather than

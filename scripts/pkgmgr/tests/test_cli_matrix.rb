@@ -355,7 +355,94 @@ class TestCliMatrix < Minitest::Test
     end
   end
 
-  # --- -l --------------------------------------------------------------
+  # --- the host world ------------------------------------------------
+
+  # The compiler we build ourselves and the QEMU built with it are
+  # expensive and rarely wanted. The system tests exist to prove that
+  # the packages Tilck is built FROM build on this machine, so they
+  # skip that world -- and --list-installable is what tells them
+  # which packages it is.
+  def test_list_installable_marks_the_host_world
+    with_fake_tc do
+      with_stubbed_externals do
+        base = FakePackage.new("ordinary")
+        gcc = FakePackage.new("host_gcc", on_host: true,
+                              host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        dep = FakePackage.new("host_only_for_gcc", on_host: true,
+                              host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        gcc.define_singleton_method(:host_world_root?) { true }
+        gcc.define_singleton_method(:dep_list) { [Dep("host_only_for_gcc", true)] }
+
+        [base, gcc, dep].each { |p| pkgmgr.register(p) }
+
+        _, out = run_cli("--list-installable", "-q")
+        tags = out.lines.map(&:split).select { |f| f.length == 2 }.to_h
+
+        assert_equal "host-world", tags["host_gcc"]
+        assert_equal "host-world", tags["host_only_for_gcc"],
+                     "a package only the root needs is part of its world"
+        refute_equal "host-world", tags["ordinary"],
+                     "an ordinary package was swept into the host world"
+      end
+    end
+  end
+
+  # ...and a package the host world shares with something Tilck needs
+  # is NOT part of it. Otherwise the first target package to want zlib
+  # would quietly stop being installed by the system tests.
+  def test_a_shared_dependency_is_not_host_world
+    with_fake_tc do
+      with_stubbed_externals do
+        shared = FakePackage.new("host_shared", on_host: true,
+                                 host_tier: :distro,
+                                 arch_list: ALL_HOST_ARCHS.values)
+        gcc = FakePackage.new("host_gcc", on_host: true,
+                              host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        gcc.define_singleton_method(:host_world_root?) { true }
+        gcc.define_singleton_method(:dep_list) { [Dep("host_shared", true)] }
+
+        tilck = FakePackage.new("target_thing",
+                                dep_list: [Dep("host_shared", true)])
+
+        [shared, gcc, tilck].each { |p| pkgmgr.register(p) }
+
+        refute_includes pkgmgr.host_world_names, "host_shared",
+                        "a dependency Tilck also needs was called host-world"
+        assert_includes pkgmgr.host_world_names, "host_gcc"
+      end
+    end
+  end
+
+  # --clean leaves what it is told to leave. The system tests wipe the
+  # tree to reinstall it, and rebuilding a compiler and a GTK stack to
+  # prove that busybox builds is hours spent on a different question.
+  def test_clean_can_spare_the_host_world
+    with_fake_tc do
+      with_stubbed_externals do
+        keep = FakePackage.new("host_keeper", on_host: true,
+                               host_tier: :distro,
+                               arch_list: ALL_HOST_ARCHS.values)
+        drop = FakePackage.new("ordinary")
+        pkgmgr.register(keep)
+        pkgmgr.register(drop)
+        pkgmgr.install("host_keeper")
+        pkgmgr.install("ordinary")
+        pkgmgr.refresh
+
+        kept = keep.get_install_list.find { |i| !i.path.nil? }.path
+        pkgmgr.clean(false, except: ["host_keeper"])
+        pkgmgr.refresh
+
+        assert kept.directory?, "--clean removed what it was told to keep"
+        assert_empty snapshot.select { |p| p.include?("/ordinary/") }
+      end
+    end
+  end
+
+  # --- -l --------------------------------------------------------------  # --- -l --------------------------------------------------------------
 
   def test_l_shows_every_arch_an_install_exists_for
     with_fake_tc do
