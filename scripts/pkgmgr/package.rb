@@ -661,12 +661,16 @@ class Package
   # skip. It cannot reach a produced byte, and leaving it out cost
   # twelve rebuilds of GCC and QEMU before anyone noticed.
   #
+  # installed? decides WHETHER to build, never what is built: gnuefi
+  # overrides it to require every arch it produces, and rewriting that
+  # lookup to use coordinates flagged both of its installs as changed.
+  #
   # Deliberately short, and deliberately not "everything the build
   # does not obviously use". default_arch stays IN: zlib's build step
   # names "#{default_arch.gcc_tc}-linux-ar", so an override of it
   # really does change the command that runs.
   NON_RECIPE_HOOKS = %i[enabled? default? default_cc
-                        host_world_root?].freeze
+                        host_world_root? installed?].freeze
 
   #
   # One digest standing for "how this package is built".

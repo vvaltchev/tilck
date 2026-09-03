@@ -393,9 +393,17 @@ module Model
 
     shape = registry[name]
 
-    # An orphan -- on disk, no package -- has no coordinates to ask
-    # about, so every copy of it goes.
-    return keys_of(world, name).to_set if shape.nil?
+    # An orphan -- on disk, no package -- has nothing to say where it
+    # lives, so -a and -c are read directly as coordinates: an arch's
+    # machine, a stack. With neither, every copy of it goes.
+    if shape.nil?
+      cc = req.cc == :all ? nil : req.cc
+      return keys_of(world, name).select { |k|
+        (cc.nil? || k.coords.stack == "gcc-#{cc}") &&
+        (req.arch.nil? || req.arch == :all ||
+         k.coords.machine == "tilck-#{req.arch.name}")
+      }.to_set
+    end
 
     at = keys_of(world, name).select { |k|
       uninstall_coords?(shape, k.coords, req, scope)
@@ -420,15 +428,17 @@ module Model
   # Is an installation at `c` one this request is about?
   def uninstall_coords?(shape, c, req, scope)
 
+    cc = req.cc == :all ? nil : req.cc     # -c ALL: no constraint
+
     if shape.noarch?
-      return req.arch.nil? && req.cc.nil?
+      return req.arch.nil? && cc.nil?
     end
 
     if shape.host?
       return false if !req.arch.nil?        # an arch means nothing here
-      return c == coords_of(shape, scope) if req.cc.nil?
+      return c == coords_of(shape, scope) if cc.nil?
       return false if !shape.stack?         # nor a compiler, unless :stack
-      return c == coords_of(shape, scope, stack: req.cc)
+      return c == coords_of(shape, scope, stack: cc)
     end
 
     # target
@@ -442,10 +452,10 @@ module Model
       want = coords_of(shape, scope, arch: a)
       if req.arch == :all
         # every board of every arch, and every compiler
-        c.machine == want.machine && (req.cc.nil? || c.stack == "gcc-#{req.cc}")
-      elsif req.cc
+        c.machine == want.machine && (cc.nil? || c.stack == "gcc-#{cc}")
+      elsif cc
         c.machine == want.machine && c.env == want.env &&
-          c.stack == "gcc-#{req.cc}"
+          c.stack == "gcc-#{cc}"
       else
         c == want
       end
@@ -462,7 +472,9 @@ module Model
       s = registry[k.name]
       next false if NEVER_REMOVE.include?(k.name)
       next false if s&.compiler? && !req.force
-      next false if req.cc && k.coords.stack != "gcc-#{req.cc}"
+      if req.cc && req.cc != :all
+        next false if k.coords.stack != "gcc-#{req.cc}"
+      end
 
       if s.nil? || !s.target?
         true
@@ -659,7 +671,9 @@ module Model
       when "-a"
         x = a.shift
         arch = x == "ALL" ? :all : ALL_ARCHS[x]
-      when "-c" then cc = Ver(a.shift)
+      when "-c"
+        x = a.shift
+        cc = x == "ALL" ? :all : Ver(x)
       when "-H" then stack = Coords.parse_stack(a.shift)
       when "--upgrade"           then mode = :upgrade
       when "--clean"             then mode = :clean

@@ -51,11 +51,16 @@ class TestLintAmbient < Minitest::Test
     package_manager.rb#host_stack=
   ].freeze
 
-  R2_PINNED = [
-    "gnuefi.rb#installed?",
-    "package_manager.rb#show_status_all",
-    "package_manager.rb#uninstall",
-  ].freeze
+  R2_PINNED = [].freeze
+
+  # Not identity: the listing GROUPS what it shows by the compiler that
+  # built it, and an installable candidate has no coordinates yet (its
+  # stack names a cross compiler that may not exist), so the group has
+  # to be read off the compiler field. Nothing is selected for action.
+  R2_ALLOW = {
+    "package_manager.rb#show_status_all" =>
+      "display grouping by compiler; candidates carry no coordinates",
+  }.freeze
 
   # Parsed once for the class, not once per test: 80 files through
   # Prism is ~600 ms, and eight tests re-doing it was most of the
@@ -82,7 +87,7 @@ class TestLintAmbient < Minitest::Test
   end
 
   def test_the_allowlist_names_things_that_exist
-    for key, reason in ALLOW do
+    for key, reason in ALLOW.merge(R2_ALLOW) do
       file, meth = key.split("#", 2)
       path = PKGMGR / file
 
@@ -116,7 +121,7 @@ class TestLintAmbient < Minitest::Test
   # --- R2 ---------------------------------------------------------------
 
   def test_r2_partial_key_comparisons_only_where_pinned
-    sites = of(:R2).map(&:where).uniq.sort
+    sites = of(:R2).map(&:where).uniq.sort - R2_ALLOW.keys
     new_ones = sites - R2_PINNED
 
     assert_empty new_ones,
@@ -127,7 +132,7 @@ class TestLintAmbient < Minitest::Test
 
   def test_r2_pin_shrinks_but_never_lies
     sites = of(:R2).map(&:where).uniq.sort
-    stale = R2_PINNED - sites
+    stale = (R2_PINNED + R2_ALLOW.keys) - sites
 
     assert_empty stale,
                  "these were converted; remove them from R2_PINNED: " \
