@@ -8,11 +8,14 @@
 # where a file mixes the core with everything else. A mutant outside
 # the scope is not a question this asks.
 #
-# A mutant runs in its own git worktree: the file is rewritten there,
-# the suite runs there against a fake toolchain, and the worktree is
-# restored afterwards. Worktrees are cheap, isolate a crash, and let
-# several mutants run at once. The bootstrap Ruby comes from the main
-# tree, since a worktree has no toolchain of its own.
+# A mutant runs in its own copy of the tree: the file is rewritten
+# there, the suite runs there against a fake toolchain, and the copy
+# is restored afterwards. A copy of the three directories the suite
+# reads is all a worker needs -- not a git worktree, which needs a
+# repository, and a stock CI image checks the tree out as a tarball
+# when git is not installed yet. Copies are cheap, isolate a crash,
+# and let several mutants run at once. The Ruby that runs the suite is
+# the one running this.
 #
 # Judgement: killed if the suite fails, survived if it passes, and a
 # timeout if it hangs. A survivor is a missing test; a timeout is a
@@ -114,24 +117,28 @@ module Mutation
     return bad
   end
 
-  # --- worktrees ------------------------------------------------------------
+  # --- workers --------------------------------------------------------------
 
   class Worker
 
     attr_reader :dir
 
-    # A worktree is HEAD; the subject is the WORKING tree, uncommitted
-    # edits included, so the parts the suite reads are copied over.
-    SYNCED = %w[scripts/pkgmgr other].freeze
+    # What the suite reads, relative to the repository root: the
+    # package manager, the patches its digests hash, and the version
+    # files. The subject is the WORKING tree, uncommitted edits
+    # included. Nothing else -- not the toolchain, which the tests
+    # never touch, and not the kernel.
+    SYNCED = %w[scripts/pkgmgr scripts/patches other].freeze
 
     def initialize(index, ruby:)
       @ruby = ruby
       @dir = File.join(Dir.tmpdir, "pkgmgr-mutant-#{Process.pid}-#{index}")
-      system("git", "-C", MAIN_DIR, "worktree", "add", "--detach", "-q",
-             @dir, "HEAD", exception: true)
+      FileUtils.rm_rf(@dir)
       for sub in SYNCED do
-        FileUtils.rm_rf(File.join(@dir, sub))
-        FileUtils.cp_r(File.join(MAIN_DIR, sub), File.join(@dir, sub))
+        src = File.join(MAIN_DIR, sub)
+        next if !File.directory?(src)
+        FileUtils.mkdir_p(File.dirname(File.join(@dir, sub)))
+        FileUtils.cp_r(src, File.join(@dir, sub))
       end
     end
 
@@ -175,7 +182,7 @@ module Mutation
     end
 
     def remove
-      system("git", "-C", MAIN_DIR, "worktree", "remove", "--force", @dir)
+      FileUtils.rm_rf(@dir)
     end
   end
 
@@ -185,7 +192,7 @@ module Mutation
   # it. Returns true when every mutant in scope was killed.
   #
   # The instrument tests itself first: the UNMUTATED suite must pass
-  # in a worktree, or nothing can be judged -- a suite that fails on
+  # in a worker's copy, or nothing can be judged -- a suite that fails on
   # its own would "kill" every mutant. That run also sets the timeout:
   # a mutant is given several times what the clean suite took, so the
   # bound follows the machine rather than a number chosen elsewhere.

@@ -11,7 +11,7 @@
 #                                           still sits on a site
 #
 # A mutant is one site rewritten (tests/mutation/operators.rb) in its
-# own git worktree, judged by the suite there: killed if the suite
+# own copy of the tree, judged by the suite there: killed if the suite
 # fails, survived if it passes, and a timeout if the suite hangs. A
 # survivor is a test that does not exist; a timeout is a walk without
 # a bound. The score to defend is zero of either, in scope.
