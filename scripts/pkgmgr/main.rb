@@ -784,8 +784,10 @@ module Main
       return "host: #{name} requires #{pkg.host_requirement}#{who}"
     end
 
+    # The arch and the board: a question only a target package can
+    # answer "no" to, and the two predicates say "yes" for every other
+    # kind, so there is nothing to guard.
     pkg = pkgmgr.get(name)
-    return nil if !pkg || !pkg.target?
     return "arch #{pkgmgr.target_arch.name}" if !pkg.arch_supported?
     return "board #{pkgmgr.board_for(pkgmgr.target_arch)}" \
       if !pkg.board_supported?
