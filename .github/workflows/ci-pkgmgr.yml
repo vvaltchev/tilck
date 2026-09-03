@@ -16,9 +16,14 @@
 #
 name: Package manager
 
+# Not skipped on exp-* branches, unlike the kernel workflows: those
+# need their containers updating, while this one runs on a stock
+# image, and the package manager's work happens on exactly those
+# branches. (A workflow can only be dispatched by name once it exists
+# on the default branch; on a topic branch the push is the trigger.)
 on:
   push:
-    branches-ignore: [readme*, temp-*, exp-*]
+    branches-ignore: [readme*, temp-*]
     paths:
       - '.github/workflows/ci-pkgmgr.yml'
       - 'scripts/build_toolchain'
