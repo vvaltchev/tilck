@@ -18,6 +18,13 @@ module DepResolver
   class CycleError < StandardError; end
   class MissingDepError < StandardError; end
 
+  # A walk that took more steps than a finite graph allows. Not a
+  # cycle -- cycles are named as such -- but a walk that is broken:
+  # a loop condition inverted, a queue fed nils, a graph that grows
+  # under the walk. Raised rather than hung, because a hang is the
+  # one failure that nothing downstream can report.
+  class NonTerminatingWalk < StandardError; end
+
   module_function
 
   # Validate that every dependency name referenced in the graph exists
@@ -56,7 +63,8 @@ module DepResolver
           raise CycleError,
                 "Dependency cycle: #{cycle.join(' -> ')}"
         end
-        visit.call(dep) if color[dep] == white # mutation: equivalent -- revisiting black nodes finds the same cycles, slower
+        # mutation: equivalent -- revisiting black nodes finds the same cycles
+        visit.call(dep) if color[dep] == white
       end
 
       path.pop
@@ -83,6 +91,26 @@ module DepResolver
   #
   # `name` itself is not included. Raises MissingDepError if `name` is
   # not in the graph.
+  # Every walk below carries the path it came by, so that meeting a
+  # node already ON that path is reported as the cycle it is, with
+  # the path in the message -- not swallowed by the "seen" set that
+  # keeps a diamond from being expanded twice. A cycle here means the
+  # startup validation was bypassed or the graph changed under it,
+  # and either is worth a name rather than a silent answer.
+  #
+  # And every walk is bounded. A finite graph is dequeued at most
+  # once per edge plus once per root; more than that is a walk that
+  # is not going to end, and it stops with NonTerminatingWalk instead
+  # of hanging the process.
+  def walk_limit(graph, roots = 1)
+    return graph.size + graph.values.sum(&:length) + roots + 1
+  end
+
+  def check_cycle(node, path)
+    return if !path[0...-1].include?(node)
+    raise CycleError, "Dependency cycle: #{path.join(' -> ')}"
+  end
+
   def dep_closure(name, graph)
 
     if !graph.key?(name)
@@ -91,14 +119,18 @@ module DepResolver
 
     seen = Set.new([name])
     out = []
-    queue = graph[name].dup
+    queue = graph[name].map { |d| [d, [name, d]] }
+    limit = walk_limit(graph)
+    steps = 0
 
     while !queue.empty?
-      n = queue.shift
+      n, path = queue.shift
+      raise NonTerminatingWalk, "dep_closure(#{name})" if (steps += 1) > limit
+      check_cycle(n, path)
       next if seen.include?(n)
       seen.add(n)
       out << n
-      queue.concat(graph[n] || [])
+      (graph[n] || []).each { |d| queue << [d, path + [d]] }
     end
 
     return out
@@ -126,10 +158,15 @@ module DepResolver
     # assumption APT makes). Only uninstalled packages and their
     # transitive deps are collected.
     needed = Set.new
-    queue = requested.dup
+    queue = requested.map { |r| [r, [r]] }
+    limit = walk_limit(graph, requested.length)
+    steps = 0
 
     while !queue.empty?
-      name = queue.shift
+      name, path = queue.shift
+      raise NonTerminatingWalk, "resolve(#{requested.join(', ')})" \
+        if (steps += 1) > limit
+      check_cycle(name, path)
       next if needed.include?(name)  # mutation: equivalent -- a Set adds once
       next if installed.include?(name)
 
@@ -138,7 +175,11 @@ module DepResolver
       end
 
       needed.add(name)
-      graph[name].each { |dep| queue.push(dep) if !needed.include?(dep) }
+      graph[name].each { |dep|
+        dep_path = path + [dep]
+        check_cycle(dep, dep_path)          # before "already needed" hides it
+        queue.push([dep, dep_path]) if !needed.include?(dep)
+      }
     end
 
     # --- 3. Kahn's toposort on the subgraph ---
@@ -175,7 +216,8 @@ module DepResolver
         in_degree[dependent] -= 1
         if in_degree[dependent] == 0
           # Insert in sorted position to maintain alphabetical order.
-          idx = queue.bsearch_index { |x| x >= dependent } || queue.length # mutation: equivalent -- the queue holds no duplicates
+          # mutation: equivalent -- the queue holds no duplicates
+          idx = queue.bsearch_index { |x| x >= dependent } || queue.length
           queue.insert(idx, dependent)
         end
       end

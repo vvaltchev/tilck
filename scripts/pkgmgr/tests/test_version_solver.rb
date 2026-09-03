@@ -245,10 +245,25 @@ class TestVersionSolverVersionDependentDeps < Minitest::Test
   def test_settles_on_a_stable_graph
     got = solve(
       [["a", nil]],
-      deps: { "a" => [Dep("b", true)], "b" => [Dep("a", true)] },
-      defaults: { "a" => Ver("1.0"), "b" => Ver("2.0") },
+      deps: { "a" => [Dep("b", true)], "b" => [Dep("c", true)], "c" => [] },
+      defaults: { "a" => Ver("1.0"), "b" => Ver("2.0"), "c" => Ver("3.0") },
     )
-    assert_equal({ "a" => Ver("1.0"), "b" => Ver("2.0") }, got)
+    assert_equal({ "a" => Ver("1.0"), "b" => Ver("2.0"), "c" => Ver("3.0") },
+                 got)
+  end
+
+  # Two packages needing each other is a cycle, and the solver says
+  # so rather than settling on it. This test used to assert the
+  # settling.
+  def test_a_mutual_dependency_is_a_cycle
+    e = assert_raises(VersionSolver::CycleError) {
+      solve(
+        [["a", nil]],
+        deps: { "a" => [Dep("b", true)], "b" => [Dep("a", true)] },
+        defaults: { "a" => Ver("1.0"), "b" => Ver("2.0") },
+      )
+    }
+    assert_match(/a -> b -> a/, e.message)
   end
 
   # A deps_of that never stops changing must be reported, not spun on.

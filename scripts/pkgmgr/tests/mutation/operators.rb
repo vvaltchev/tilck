@@ -206,13 +206,18 @@ module Mutation
     return out
   end
 
-  # Lines carrying `# mutation: equivalent -- <reason>`: sites on them
-  # are skipped, and the annotation is checked to still sit on a site.
+  # Lines excused by `# mutation: equivalent -- <reason>`: on the line
+  # itself when it shares the line with code, or on the line BELOW
+  # when the annotation stands alone (which is what keeps a long line
+  # under eighty columns). Sites on an excused line are skipped, and
+  # check-annotations requires each to still sit on a site.
   def equivalent_lines(src)
     out = {}
     src.each_line.with_index(1) { |l, i|
       m = l.match(/#\s*mutation:\s*equivalent\s*--\s*(.+)$/)
-      out[i] = m[1].strip if m
+      next if !m
+      alone = l.strip.start_with?("#")
+      out[alone ? i + 1 : i] = m[1].strip
     }
     return out
   end
