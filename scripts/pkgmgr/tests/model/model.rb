@@ -610,7 +610,8 @@ module Model
     when :configure then configure(registry, world, req, sc)
     when :default   then default_install(registry, world, req, sc)
     when :check_updates then observe_check_updates(registry, world, sc)
-    when :list, :installable, :layout then Outcome.new(0, world, "")
+    when :list, :installable, :layout, :context
+      Outcome.new(0, world, "")
     else raise "unknown mode #{req.mode}"
     end
   end
@@ -681,6 +682,9 @@ module Model
       when "--check-for-updates" then mode = :check_updates
       when "--list-installable"  then mode = :installable
       when "--print-layout"      then mode = :layout
+      when "-j"                  then mode = :context
+      when "-q", "--ascii", "-n" then nil          # change nothing
+      when "-g"                  then a.shift      # -l grouping
       else raise "model: unknown argv token #{t}"
       end
     end

@@ -122,7 +122,12 @@ end
 class Package
 
   attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
-  attr_reader :host_tier
+  attr_reader :host_tier, :board_list
+
+  # Declared `default: true`, before support is considered. default?
+  # is the one that answers for an invocation; this is what the
+  # package SAID, which the model needs to say the same thing.
+  def marked_default? = @default
 
   STATUS_LEN    = 9              # "installed", "not built"
   COUNT_GAP     = 3              # the " (" and the ")" around a count
