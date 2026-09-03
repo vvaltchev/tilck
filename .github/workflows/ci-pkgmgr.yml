@@ -40,6 +40,14 @@ on:
       - 'scripts/dev/claude/pmmutate'
   workflow_dispatch:
 
+# One run per branch at a time: a push while a run is in progress
+# cancels it, since the newer commit is what the branch is now and the
+# older result would be about something it no longer holds. Several
+# pushes in a row used to queue a run each.
+concurrency:
+  group: pkgmgr-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   RUNNING_IN_CI: 1
   # let git trust the root-owned container checkout (the tests run
