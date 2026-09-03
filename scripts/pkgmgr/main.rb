@@ -746,6 +746,13 @@ module Main
   # non-compiler package for the pkgmgr's current target_arch. Called
   # inside the with_target_arch scope so arch_supported? sees the
   # right arch. Compilers are reached via -S ALL or as implicit deps.
+  # The arch an invocation is about: `-a <arch>` when given, else the
+  # shell's. This is the one place the CLI turns ARCH into a scope;
+  # everything below the boundary reads pkgmgr.target_arch.
+  def requested_arch(arch_opt)
+    return arch_opt ? ALL_ARCHS[arch_opt] : ARCH
+  end
+
   def expand_install_all(install_list)
     install_list.flat_map { |x|
       raw, ver = x.split(":")
@@ -930,7 +937,7 @@ module Main
       #
       # Respects -a <arch> if given, so
       # `--list-installable -a riscv64` shows riscv64's set.
-      target = options[:arch] ? ALL_ARCHS[options[:arch]] : ARCH
+      target = requested_arch(options[:arch])
       pkgmgr.with_target_arch(target) do
         installable = pkgmgr.all_packages.reject { |p|
           p.get_installable_list.empty?
@@ -969,7 +976,7 @@ module Main
     end
 
     if !options[:deps].blank?
-      target = options[:arch] ? ALL_ARCHS[options[:arch]] : ARCH
+      target = requested_arch(options[:arch])
       pkgmgr.with_target_arch(target) do
         graph = pkgmgr.build_dep_graph
         installed = Set.new
@@ -1050,10 +1057,8 @@ module Main
       arch_opt = options[:arch]
       if arch_opt == "ALL"
         targets = ALL_ARCHS.values
-      elsif arch_opt
-        targets = [ALL_ARCHS[arch_opt]]
       else
-        targets = [ARCH]
+        targets = [requested_arch(arch_opt)]
       end
 
       for target in targets do
