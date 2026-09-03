@@ -62,18 +62,24 @@ module Model
   #   board_list   target only: board names, nil = any
   #   install_archs  nil, or arch NAMES one install writes (gnuefi)
   #   target_arch  cross_cc only: the arch NAME it targets
+  #   host_os, host_arch  where this package may run: lists of names,
+  #                       nil = anywhere
+  #   world_root   a root of the host world (host_gcc, host_qemu):
+  #                everything only the roots need runs where they do
   Shape = Data.define(:name, :kind, :versions, :default_ver, :deps,
                       :arch_list, :board_list, :default, :install_archs,
-                      :target_arch) do
+                      :target_arch, :host_os, :host_arch, :world_root) do
     def self.make(name, kind, versions: ["1.0.0"], default_ver: nil,
                   deps: [], arch_list: nil, board_list: nil,
-                  default: false, install_archs: nil, target_arch: nil)
+                  default: false, install_archs: nil, target_arch: nil,
+                  host_os: nil, host_arch: nil, world_root: false)
       vs = versions.map { |v| Ver(v) }
       new(name: name, kind: kind, versions: vs,
           default_ver: Ver(default_ver || versions.first),
           deps: deps.map { |d, p| [d, p && Ver(p)] },
           arch_list: arch_list, board_list: board_list, default: default,
-          install_archs: install_archs, target_arch: target_arch)
+          install_archs: install_archs, target_arch: target_arch,
+          host_os: host_os, host_arch: host_arch, world_root: world_root)
     end
 
     def target?   = kind == :target
@@ -107,16 +113,41 @@ module Model
       end
       return out
     end
+
+    def roots = shapes.select(&:world_root)
+
+    # The host world: reachable from a root, and from nothing else.
+    # Same derivation as PackageManager#host_world_names, over the
+    # version-less dependency lists.
+    def world_names
+      closure = ->(n) {
+        seen = []
+        queue = self[n].deps.map(&:first)
+        while (d = queue.shift)
+          next if seen.include?(d) || !key?(d)
+          seen << d
+          queue.concat(self[d].deps.map(&:first))
+        end
+        seen
+      }
+      world = roots.flat_map { |r| closure.call(r.name) + [r.name] }.uniq
+      outside = names - world
+      reachable = outside.flat_map { |n| closure.call(n) + [n] }.uniq
+      return world - reachable
+    end
   end
 
-  # The invocation's environment: the shell's ARCH and BOARD, and the
-  # stack HOST_VER_GCC names. The flags are in the Request.
-  Inv = Data.define(:env_arch, :env_board, :default_stack)
+  # The invocation's environment: the shell's ARCH and BOARD, the
+  # stack HOST_VER_GCC names, and the host itself (OS and arch names).
+  # The flags are in the Request.
+  Inv = Data.define(:env_arch, :env_board, :default_stack, :host_os,
+                    :host_arch)
 
   # What the invocation resolves to. board_of(a) is the one rule about
   # boards: the scoped board for the scoped arch, the shell's BOARD
   # for the shell's ARCH, an arch's own default otherwise.
-  Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board) do
+  Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board,
+                      :host_os, :host_arch) do
     def board_of(a)
       return board     if a == arch
       return env_board if a == env_arch && env_board
@@ -126,7 +157,8 @@ module Model
     def with(arch: self.arch, stack: self.stack)
       b = arch == self.arch ? board : board_of(arch)
       Scope.new(arch: arch, board: b, stack: stack,
-                env_arch: env_arch, env_board: env_board)
+                env_arch: env_arch, env_board: env_board,
+                host_os: host_os, host_arch: host_arch)
     end
   end
 
@@ -161,7 +193,8 @@ module Model
     end
     return Scope.new(arch: arch, board: board,
                      stack: req.stack || inv.default_stack,
-                     env_arch: inv.env_arch, env_board: inv.env_board)
+                     env_arch: inv.env_arch, env_board: inv.env_board,
+                     host_os: inv.host_os, host_arch: inv.host_arch)
   end
 
   # --- placement ------------------------------------------------------------
@@ -209,7 +242,24 @@ module Model
     return shape.board_list.include?(scope.board)
   end
 
-  def supported?(shape, scope)
+  # Where a shape may run, by its own word...
+  def own_host_supported?(shape, scope)
+    return false if shape.host_os && !shape.host_os.include?(scope.host_os)
+    return false if shape.host_arch &&
+                    !shape.host_arch.include?(scope.host_arch)
+    return true
+  end
+
+  # ...and by the world it belongs to: what exists only to serve the
+  # roots runs where the roots run.
+  def host_supported?(registry, shape, scope)
+    return false if !own_host_supported?(shape, scope)
+    return true if !registry.world_names.include?(shape.name)
+    return registry.roots.all? { |r| own_host_supported?(r, scope) }
+  end
+
+  def supported?(shape, scope, registry = nil)
+    return false if registry && !host_supported?(registry, shape, scope)
     return arch_supported?(shape, scope) && board_supported?(shape, scope)
   end
 
@@ -335,7 +385,7 @@ module Model
     return targets.flat_map { |name, ver|
       next [[name, ver]] if name != :all
       registry.shapes.reject(&:compiler?)
-              .select { |s| supported?(s, scope) }
+              .select { |s| supported?(s, scope, registry) }
               .map { |s| [s.name, ver] }
     }
   end
@@ -355,7 +405,7 @@ module Model
     for n in names do
       s = registry[n]
       next if !s.target?
-      if !supported?(s, scope)
+      if !supported?(s, scope, registry)
         return Outcome.new(1, world, "#{n} is not supported here")
       end
     end
@@ -366,6 +416,14 @@ module Model
                                                     scope), roots, scope)
     rescue Conflict => e
       return Outcome.new(1, world, "Version conflict: #{e.message}")
+    end
+
+    # Nothing in the plan may be a package this host cannot build:
+    # the implementation refuses the first such entry at the door, and
+    # a plan that would stop halfway is refused whole here.
+    if (off = entries.find { |n, _, _| !host_supported?(registry,
+                                                          registry[n], scope) })
+      return Outcome.new(1, world, "#{off.first} requires another host")
     end
 
     return Outcome.new(0, world, "dry run") if req.dry
@@ -540,7 +598,7 @@ module Model
   # is no longer the default. A pinned install is left alone.
   def upgradable(registry, world, scope)
     return registry.shapes.select { |s|
-      next false if !supported?(s, scope)
+      next false if !supported?(s, scope, registry)
       c = coords_of(s, scope)
       world.any? { |k|
         k.name == s.name && k.coords == c && k.origin == :default &&
@@ -559,7 +617,9 @@ module Model
 
   # No mode at all: the defaults, plus whatever wants upgrading.
   def default_install(registry, world, req, scope)
-    names = registry.shapes.select { |s| s.default && supported?(s, scope) }
+    names = registry.shapes.select { |s|
+      s.default && supported?(s, scope, registry)
+    }
                     .map(&:name)
     names |= upgradable(registry, world, scope)
     return Outcome.new(0, world, "nothing to do") if names.empty?
@@ -590,7 +650,7 @@ module Model
   def observe_check_updates(registry, world, scope)
     upgrades = upgradable(registry, world, scope).sort
     stale = registry.shapes.select { |s|
-      supported?(s, scope) &&
+      supported?(s, scope, registry) &&
         keys_of(world, s.name).any? { |k| state_of(k) != :ok }
     }.map(&:name).sort - upgrades
 
@@ -602,7 +662,7 @@ module Model
   end
 
   def observe_installable(registry, world, scope)
-    return registry.shapes.select { |s| supported?(s, scope) }
+    return registry.shapes.select { |s| supported?(s, scope, registry) }
                    .map(&:name).to_set
   end
 
@@ -657,7 +717,7 @@ module Model
       s2 = sc.with(arch: a)
       here = expand_all(registry, req.targets, s2).select { |n, _|
         s = registry[n]
-        s.nil? || !s.target? || supported?(s, s2)
+        s.nil? || !s.target? || supported?(s, s2, registry)
       }
       next if here.empty?
       o = install(registry, world, req.with(targets: here), s2)

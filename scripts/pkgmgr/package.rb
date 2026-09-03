@@ -122,7 +122,7 @@ end
 class Package
 
   attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
-  attr_reader :host_tier, :board_list
+  attr_reader :host_tier, :board_list, :host_os_list, :host_arch_list
 
   # Declared `default: true`, before support is considered. default?
   # is the one that answers for an invocation; this is what the
@@ -249,11 +249,42 @@ class Package
   end
 
   # Can this package run / be built on the current host?
-  # nil lists mean "any"; non-nil lists are allowlists.
+  #
+  # Its own declaration first (nil lists mean "any"; non-nil lists are
+  # allowlists). Then the world it belongs to: a package that exists
+  # only to serve roots this host cannot build -- the 42 libraries
+  # under a GTK QEMU on our glibc, the maths libraries under our GCC --
+  # is not supported here either, however portable it is on its own.
+  # The roots say where the world runs (host_gcc and host_qemu:
+  # x86_64 Linux, for now); the other fifty follow by derivation
+  # rather than by fifty flags that would each have to be remembered.
   def host_supported?
+    return false if !own_host_supported?
+    return true if !pkgmgr.host_world_names.include?(name)
+    return pkgmgr.host_world_roots.all?(&:own_host_supported?)
+  end
+
+  def own_host_supported?
     return false if @host_os_list && !@host_os_list.include?(HOST_OS)
     return false if @host_arch_list && !@host_arch_list.include?(HOST_ARCH.name)
     return true
+  end
+
+  # What a refusal says: the host this package needs, and -- when the
+  # requirement is inherited from the world it belongs to rather than
+  # declared by it -- whose requirement that is.
+  def host_requirement
+
+    lists = ->(p) {
+      [p.host_os_list, p.host_arch_list].compact.map { |l| l.join("/") }
+    }
+
+    return "a #{lists.call(self).join(' ')} host" if !own_host_supported?
+
+    roots = pkgmgr.host_world_roots.reject(&:own_host_supported?)
+    want = roots.flat_map { |r| lists.call(r) }.uniq.join(" ")
+    return "a #{want} host (it belongs to the host world of " \
+           "#{roots.map(&:name).join(', ')})"
   end
 
   # Is the board supported? nil = any board.
@@ -327,7 +358,8 @@ class Package
   #
   def coords(ver = nil)
 
-    return Coords.new("noarch", nil, nil) if !on_host && default_arch.nil? # mutation: equivalent -- a host package always has an arch
+    # mutation: equivalent -- a host package always has an arch
+    return Coords.new("noarch", nil, nil) if !on_host && default_arch.nil?
 
     if on_host
       case @host_tier
@@ -747,7 +779,8 @@ class Package
       return block.call if host_tier != :stack
 
       stack = inst.coords&.stack_ver
-      return block.call if stack.nil?  # mutation: equivalent -- a :stack install always names its stack
+      # mutation: equivalent -- a :stack install always names its stack
+      return block.call if stack.nil?
       return pkgmgr.with_host_stack(stack, &block)
     end
 
@@ -1261,10 +1294,7 @@ class Package
   def install_impl(ver)
 
     if !host_supported?
-      req = [@host_os_list, @host_arch_list].compact.map { |l|
-        l.join("/")
-      }.join(" ")
-      error "#{name} requires a #{req} host"
+      error "#{name} requires #{host_requirement}"
       return false
     end
 
@@ -1604,7 +1634,8 @@ class Package
       # coordinates, but that one names the HOST's compiler, which is
       # the system one: reading it here filed gtest under a stack of
       # its own.
-      cc = host_tier == :stack ? (c.stack_ver || "syscc") : "syscc" # mutation: equivalent -- a stack's coordinates always parse
+      # mutation: equivalent -- a stack's coordinates always parse
+      cc = host_tier == :stack ? (c.stack_ver || "syscc") : "syscc"
 
       for d in Dir.children(dir)
         ver = Ver(d.to_s)

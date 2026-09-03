@@ -207,6 +207,25 @@ A composed sysroot sits beside `pkgs/`, not inside it: a sysroot is a
 *view* over installed packages rather than an installation, and putting
 packages one level down means no scanner has to be taught to skip it.
 
+#### The host world runs on x86_64 Linux only
+
+`host_gcc` and `host_qemu` are the roots of the *host world*: our own
+GCC with its glibc sysroot, the QEMU matrix built by it, and the fifty
+packages nothing else needs -- the GTK closure, meson, ninja, python,
+the maths libraries GCC wants. That world is a Linux userland by
+construction (kernel headers, a glibc, a compiler targeting them), and
+it has been built and exercised on x86_64 only.
+
+The two roots declare it -- `host_os_list: ["linux"]`,
+`host_arch_list: ["x86_64"]` -- and `Package#host_supported?` derives
+the rest: a package in `host_world_names` (reachable from a root and
+from nothing else) is supported only where every root is. Fifty
+packages hidden by two declarations and one rule, not by fifty flags.
+On any other host they are not listed, `-s` refuses them at the door
+(`host_qemu requires a linux x86_64 host`), and `-L` says there are no
+stacks. Other host arches join once every package of the world has
+been built and exercised there.
+
 ### Package lifecycle
 
 Each Ruby package is a class inheriting from `Package` (in `package.rb`). It

@@ -33,6 +33,7 @@ class PackageManager
     @resolved_versions = nil
     @target_arch = nil    # nil = fall back to the global ARCH
     @target_board = nil   # nil = fall back to the global BOARD
+    @host_world = nil     # memoized host_world_names, per registry
     @portable_stack = nil # nil = fall back to HOST_VER_GCC
   end
 
@@ -169,8 +170,14 @@ class PackageManager
   # the world by the first half and out of it the moment a target
   # package wanted it, which is the behaviour we want.
   def host_world_names
+    @host_world ||= compute_host_world_names
+  end
 
-    roots = all_packages.select(&:host_world_root?).map(&:name)
+  def host_world_roots = all_packages.select(&:host_world_root?)
+
+  def compute_host_world_names
+
+    roots = host_world_roots.map(&:name)
     world = roots.flat_map { |r| dep_closure(r) + [r] }.uniq
     outside = all_packages.map(&:name) - world
     reachable = outside.flat_map { |n| dep_closure(n) + [n] }.uniq
@@ -299,6 +306,7 @@ class PackageManager
     end
 
     @packages[package.id] = package
+    @host_world = nil
   end
 
   def get(name)
@@ -484,6 +492,16 @@ class PackageManager
   def show_stacks
 
     gcc = stack_compiler
+
+    if gcc.nil? || !gcc.host_supported?
+      puts
+      puts "  No host stacks on #{HOST_OS}-#{HOST_ARCH.name}: the stack " \
+           "(our GCC, our glibc, the QEMU matrix) is built for x86_64 " \
+           "Linux only, for now."
+      puts
+      return
+    end
+
     built = gcc.get_install_list
                .reject { |i| i.path.nil? || i.broken }
                .map(&:ver)
@@ -1130,7 +1148,8 @@ class PackageManager
     # Every package, every version, every compiler -- and every arch,
     # which is the one that has to be said: without it, ALL means the
     # scope's arch only.
-    return uninstall("ALL", dry, force, nil, nil, "ALL", except: except) # mutation: equivalent -- for ALL, nil and "ALL" both mean every version and compiler
+    # mutation: equivalent -- for ALL, nil means what "ALL" means
+    return uninstall("ALL", dry, force, nil, nil, "ALL", except: except)
   end
 
   #
@@ -1346,7 +1365,8 @@ class PackageManager
         # Clean up empty parent directories left behind (pkg dir,
         # arch dir) so stale empty trees don't confuse the listing.
         parent = info.path.parent
-        while parent != TC && parent.directory? && # mutation: equivalent -- the root holds cache/ and staging/, never empty
+        # mutation: equivalent -- the root holds cache/, never empty
+        while parent != TC && parent.directory? &&
               Dir.empty?(parent)
           FileUtils.rmdir(parent)
           parent = parent.parent
@@ -1361,7 +1381,8 @@ class PackageManager
     # Without this it keeps symlinks pointing at packages that are no
     # longer there, and the next thing to build against it fails in a
     # way that looks nothing like the cause.
-    if removed > 0  # mutation: equivalent -- composing after removing nothing changes nothing
+    # mutation: equivalent -- composing after removing nothing changes nothing
+    if removed > 0
       refresh()
       # Every stack, not just the default: an uninstall can invalidate
       # any of them, and a stale symlink is the failure mode hardest to
