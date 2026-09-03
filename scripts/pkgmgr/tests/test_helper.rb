@@ -209,10 +209,17 @@ module TestHelper
   # what decides `broken`, and a broken install is invisible to
   # find_install -- so a directory alone answers "not installed" and
   # the test looks like a bug in the code it is exercising.
-  def fake_install(pkg, ver = nil)
+  #
+  #   at:      explicit coordinates (another board, another stack);
+  #            default: where the package puts `ver` in this scope
+  #   record:  :ok (a record matching the recipe), :changed (one that
+  #            does not), :missing (none)
+  #   origin:  :default or :pinned, what .install_origin says
+  #
+  def fake_install(pkg, ver = nil, at: nil, record: :ok, origin: :default)
 
     ver ||= pkg.default_ver
-    dir = pkg.install_dir(ver)
+    dir = at ? pkg.pkg_dir_at(at) / pkg.ver_dirname(ver) : pkg.install_dir(ver)
     FileUtils.mkdir_p(dir)
 
     for name, is_dir in pkg.expected_files(ver) do
@@ -225,6 +232,23 @@ module TestHelper
         FileUtils.touch(path)
         FileUtils.chmod(0755, path)
       end
+    end
+
+    InstallOrigin.write(dir, origin == :default)
+    pkgmgr.refresh
+
+    case record
+    when :ok
+      inst = pkg.get_install_list.find { |i| i.path == dir }
+      raise "fake_install: #{dir} is not seen by #{pkg.name}" if inst.nil?
+      pkg.write_build_inputs(inst)
+    when :changed
+      File.write(dir / BuildInputs::FILE,
+                 "recipe sha256:not-what-it-was-built-from\n")
+    when :missing
+      nil
+    else
+      raise ArgumentError, "record: #{record.inspect}"
     end
 
     pkgmgr.refresh

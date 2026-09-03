@@ -228,6 +228,16 @@ module Model
   # A root asked for by version is a pin. A pin anywhere in the closure
   # beats a default; two pins that disagree are an error, and nothing
   # is installed.
+  # The stack compiler's default version is the stack in effect --
+  # `-H 8.8.8 -s host_x` builds host_x into 8.8.8 because host_x
+  # depends on host_gcc and host_gcc resolves to 8.8.8 -- which is
+  # how the real HostGccPackage#default_ver reads too.
+  def default_of(registry, name, scope)
+    s = registry[name]
+    return scope.stack if s.kind == :stack_cc
+    return s.default_ver
+  end
+
   def bind_versions(registry, roots, scope)
 
     bound = {}
@@ -241,7 +251,7 @@ module Model
         bound[name] = ver
         pinned[name] = true
       else
-        bound[name] ||= registry[name].default_ver
+        bound[name] ||= default_of(registry, name, scope)
       end
       queue << name
     end
@@ -261,7 +271,7 @@ module Model
           bound[dep] = pin
           pinned[dep] = true
         else
-          bound[dep] ||= registry[dep].default_ver
+          bound[dep] ||= default_of(registry, dep, scope)
         end
 
         queue << dep
@@ -300,8 +310,16 @@ module Model
 
     roots.each { |n, _| visit.call(n) }
 
+    # What .install_origin records. A version the user asked for by
+    # name is pinned even when it equals the default; a dependency's
+    # pin is pinned only when it moved the version OFF the default --
+    # a pin equal to the default is still a default install, so that
+    # a later bump of the default still upgrades it.
+    named = roots.select { |_, v| v }.map(&:first).to_set
+
     entries = order.map { |n|
-      origin = pinned[n] ? :pinned : :default
+      moved = bound[n] != default_of(registry, n, scope)
+      origin = named.include?(n) || moved ? :pinned : :default
       [n, bound[n], origin]
     }
 
@@ -310,9 +328,21 @@ module Model
 
   # --- transitions ----------------------------------------------------------
 
+  # `-s ALL`: every package that can be installed HERE, less the cross
+  # compilers (expand_install_all in main.rb). Per scope, since what is
+  # installable depends on the arch and board.
+  def expand_all(registry, targets, scope)
+    return targets.flat_map { |name, ver|
+      next [[name, ver]] if name != :all
+      registry.shapes.reject(&:compiler?)
+              .select { |s| supported?(s, scope) }
+              .map { |s| [s.name, ver] }
+    }
+  end
+
   def install(registry, world, req, scope)
 
-    roots = req.targets
+    roots = expand_all(registry, req.targets, scope)
     names = roots.map(&:first)
 
     if (bad = names.find { |n| !registry.key?(n) })
@@ -625,7 +655,7 @@ module Model
   def install_every_arch(registry, world, req, sc)
     for a in ALL_ARCHS.values do
       s2 = sc.with(arch: a)
-      here = req.targets.select { |n, _|
+      here = expand_all(registry, req.targets, s2).select { |n, _|
         s = registry[n]
         s.nil? || !s.target? || supported?(s, s2)
       }

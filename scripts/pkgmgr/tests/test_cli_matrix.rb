@@ -365,6 +365,7 @@ class TestCliMatrix < Minitest::Test
       "uninstall all"      => ["-u", "spread", "-a", "ALL"],
       "clean"              => ["--clean"],
       "upgrade"            => ["--upgrade"],
+      "default install"    => [],
     }
 
     for what, argv in modes do
