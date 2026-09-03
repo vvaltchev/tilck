@@ -159,4 +159,26 @@ class TestHostWorld < Minitest::Test
       assert pkg("host_d").host_supported?
     end
   end
+
+  # package.rb  `host_world_roots.all?(&:own_host_supported?)` -> any?
+  # The world runs where EVERY root runs. Two roots, one of them Linux
+  # only, and their shared dependency is hidden on macOS even though
+  # the other root would run there.
+  def test_the_world_runs_where_every_root_runs
+    reset_pkgmgr!
+    pkgmgr.register(Root.new("host_r1", host_os_list: ["linux"],
+                             dep_list: [Dep("host_d", true)]))
+    pkgmgr.register(Root.new("host_r2", dep_list: [Dep("host_d", true)]))
+    pkgmgr.register(FakePackage.new("host_d", on_host: true,
+                                    host_tier: :distro,
+                                    arch_list: ALL_HOST_ARCHS.values))
+
+    assert_equal %w[host_d host_r1 host_r2], pkgmgr.host_world_names.sort
+
+    with_context(HOST_OS: "macos") do
+      assert pkg("host_r2").own_host_supported?, "r2 would run anywhere"
+      refute pkg("host_d").host_supported?, "but the world needs r1 too"
+      refute pkg("host_r2").host_supported?, "and so does r2's world"
+    end
+  end
 end

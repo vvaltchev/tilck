@@ -450,6 +450,13 @@ class TestSurvivorsToo < Minitest::Test
     assert t.target? && !t.noarch?
     assert n.noarch? && !n.target?
     refute h.target? || h.noarch?
+
+    # package.rb:137  `!on_host && arch_list.nil?` -> `arch_list.nil?`
+    # A host package with no arch list is a host package, not noarch.
+    hn = FakePackage.new("host_hn", on_host: true, host_tier: :distro,
+                         arch_list: nil)
+    refute hn.noarch?
+    refute hn.target?
   end
 
   # --- package_manager.rb: install's side effects -------------------------
