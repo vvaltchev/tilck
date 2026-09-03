@@ -130,7 +130,7 @@ module DepResolver
 
     while !queue.empty?
       name = queue.shift
-      next if needed.include?(name)
+      next if needed.include?(name)  # mutation: equivalent -- a Set adds once
       next if installed.include?(name)
 
       if !graph.key?(name)
@@ -140,8 +140,6 @@ module DepResolver
       needed.add(name)
       graph[name].each { |dep| queue.push(dep) if !needed.include?(dep) }
     end
-
-    return [] if needed.empty?
 
     # --- 3. Kahn's toposort on the subgraph ---
     #
@@ -177,7 +175,7 @@ module DepResolver
         in_degree[dependent] -= 1
         if in_degree[dependent] == 0
           # Insert in sorted position to maintain alphabetical order.
-          idx = queue.bsearch_index { |x| x >= dependent } || queue.length
+          idx = queue.bsearch_index { |x| x >= dependent } || queue.length # mutation: equivalent -- the queue holds no duplicates
           queue.insert(idx, dependent)
         end
       end

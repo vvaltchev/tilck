@@ -22,6 +22,7 @@
   * [Test infrastructure](#test-infrastructure)
     - [Unit tests](#unit-tests)
     - [System tests](#system-tests)
+    - [Correctness guarantees](#correctness-guarantees)
     - [Code coverage](#code-coverage)
   * [Adding a new package](#adding-a-new-package)
 
@@ -619,7 +620,7 @@ to update the base config file (e.g. `other/busybox.config`) and rebuild.
 
 ## Test infrastructure
 
-The package manager has a comprehensive test suite with 750+ tests. All tests
+The package manager has a comprehensive test suite with 1000+ tests. All tests
 are run via `./scripts/build_toolchain -t`.
 
 ### Unit tests
@@ -678,6 +679,77 @@ own test suites:
 
 System tests wipe the toolchain (except cache and Ruby) before each architecture,
 then install all default + optional packages from the cached archives.
+
+### Correctness guarantees
+
+The package manager's *logic* -- placement, identity, scoping,
+dependency and version resolution, staleness, listing -- is held to a
+stronger standard than "well tested". Four instruments, each answering
+a question the others cannot:
+
+**The lint** (`tests/test_lint_ambient.rb`) parses every source file
+with Prism and fails the suite if anything reads `ARCH`, `BOARD` or
+the current stack outside their owners (`pkgmgr.target_arch`,
+`board_for`, `current_host_stack`), compares an installation by part
+of a coordinate (`.arch ==`, `.compiler ==`) outside `InstallSelector`,
+or writes a scope variable outside its `with_*` method. Every logic
+bug the package manager has had was one of those three, and this is
+what makes the class unwritable rather than merely caught. The
+allowlist lives in the test, each entry with a reason, and an entry
+that no longer names a real method fails the test.
+
+**The model** (`tests/model/model.rb`) is the contract as a program:
+a world is a set of installations `(name, version, coordinates,
+record, origin)`, and every command line is a pure function from
+(registry, world, invocation) to (exit code, world', output). No I/O,
+no packages, small enough to audit. It is validated before it judges
+anything: every historical bug is a case in `test_model.rb` with the
+answer written by hand, and the model's own laws (`select` is total,
+dry-run changes nothing, determinism) hold.
+
+**The laws** (`tests/laws.rb`) run around every command line the
+suite drives, inside `TestHelper#run_cli`: the world after equals what
+the model computes (L1); `-d` changed nothing (L2); every installation
+sits where its package says, judged at its own coordinates (L3);
+everything installed carries a record that reads ok (L4). A test about
+`-l`'s output is thereby also a test that `-l` changed nothing. The
+runner prints how many lines were judged and how many fell outside
+the model's grammar.
+
+**The exhaustive lane** (`tests/exhaustive/`) is the theorem. For
+fifteen registry shapes -- one feature each -- it enumerates every
+world of at most two installations, every invocation context, and
+every command line in the grammar, and hands each case to the laws.
+About three hundred thousand cases; `-t --exhaustive` runs them all,
+one process per shape, in every toolchain workflow, and every `-t`
+runs a fixed-seed sample of a thousand. It self-tests first (a
+snapshot equals a second snapshot, a world reads back as built, a
+planted disagreement is seen) and refuses to run otherwise. A failure
+prints its id, the world, the argv and both worlds; `--case ID`
+replays it.
+
+**Mutation** (`scripts/dev/claude/pmmutate`) is the certificate that
+the above is enough. Each of ~450 sites in the logic core is
+rewritten one way it could be wrong -- a comparison flipped, a
+conjunct dropped, a guard deleted, `nil` for `"ALL"`, a scope not
+opened or not restored, the ways this tree has actually been wrong --
+and the suite must fail. A survivor is a test that does not exist,
+named to the line. The score to defend is zero survivors in scope.
+
+What this proves, mechanically, on every commit: for the catalogue of
+shapes and worlds of two, the implementation's effect on the tree and
+its answers equal the model's; the implementation reads its inputs
+only through their owners; and every line of the logic core is
+defended by a test that fails if it is wrong. What it does not prove:
+worlds of three or more (the bound rises when a bug appears there --
+none has), shapes outside the catalogue (add one when a package with
+a new feature appears), and anything about the real recipes or the
+network.
+
+When a logic bug is found, the fix touches all four: the model says
+the right answer (or is corrected first), a shape or a line is added
+so the lane fails before the fix and passes after, and the mutant
+that reproduces the bug is expressible and killed. See CLAUDE.md.
 
 ### Code coverage
 

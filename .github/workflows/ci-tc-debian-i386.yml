@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v5
       - run: printenv
       - name: Run pkgmgr unit tests
-        run: ./scripts/build_toolchain -t
+        run: ./scripts/build_toolchain -t --exhaustive
       - name: Install pkgs
         run: ./scripts/build_toolchain
       - name: Build gtest

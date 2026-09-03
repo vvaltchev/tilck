@@ -43,7 +43,9 @@ module Mutation
 
   Site = Struct.new(:file, :line, :op, :from, :to, :range) do
     def id = "#{File.basename(file)}:#{line}:#{op}:#{range.begin}"
-    def to_s = "#{File.basename(file)}:#{line}  #{op}  #{from} -> #{to}"
+    def to_s
+      "#{File.basename(file)}:#{line}@#{range.begin}  #{op}  #{from} -> #{to}"
+    end
   end
 
   RELATIONAL = { :== => "!=", :!= => "==", :< => "<=", :<= => "<",
@@ -65,19 +67,29 @@ module Mutation
     result = Prism.parse(src)
     out = []
 
-    walk(result.value) { |node|
-      next if within && !within.any? { |r| r.cover?(node.location.start_offset) }
-      mutate(node, file, src, out)
+    walk(result.value) { |node, parent|
+      at = node.location.start_offset
+      next if within && !within.any? { |r| r.cover?(at) }
+      mutate(node, parent, file, src, out)
     }
 
     return out
   end
 
-  def walk(node, &blk)
+  def walk(node, parent = nil, &blk)
     return if node.nil?
-    blk.call(node)
-    node.compact_child_nodes.each { |c| walk(c, &blk) }
+    blk.call(node, parent)
+    node.compact_child_nodes.each { |c| walk(c, node, &blk) }
   end
+
+  # A default parameter value is an interface, not a decision: `ver =
+  # nil` says the caller may omit it. Rewriting it to "ALL" changes
+  # what callers that omit it get, which no test of THIS file can be
+  # expected to pin; the callers' tests do. Not a site.
+  DEFAULTS = [Prism::OptionalParameterNode,
+              Prism::OptionalKeywordParameterNode].freeze
+
+  def default_value?(parent) = DEFAULTS.any? { |k| parent.is_a?(k) }
 
   def loc_range(loc) = (loc.start_offset...loc.end_offset)
 
@@ -90,7 +102,7 @@ module Mutation
     out << Site.new(file, loc.start_line, op, from, to, r)
   end
 
-  def mutate(node, file, src, out)
+  def mutate(node, parent, file, src, out)
 
     case node
     when Prism::CallNode
@@ -151,13 +163,17 @@ module Mutation
       end
 
     when Prism::NilNode
-      add(out, file, src, node, "O7", '"ALL"')
+      add(out, file, src, node, "O7", '"ALL"') if !default_value?(parent)
 
     when Prism::StringNode
-      add(out, file, src, node, "O7", "nil") if node.unescaped == "ALL"
+      if node.unescaped == "ALL" && !default_value?(parent)
+        add(out, file, src, node, "O7", "nil")
+      end
 
     when Prism::SymbolNode
-      add(out, file, src, node, "O7", "nil") if node.unescaped == "all"
+      if node.unescaped == "all" && !default_value?(parent)
+        add(out, file, src, node, "O7", "nil")
+      end
 
     when Prism::InstanceVariableWriteNode
       v = node.value
@@ -182,7 +198,7 @@ module Mutation
     want = names.map(&:to_s).to_set
     out = []
 
-    walk(result.value) { |n|
+    walk(result.value) { |n, _|
       next if !n.is_a?(Prism::DefNode)
       out << loc_range(n.location) if want.include?(n.name.to_s)
     }

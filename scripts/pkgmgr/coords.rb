@@ -109,9 +109,4 @@ class Coords
 
   # The composed sysroot of this stack, when we built the environment.
   def sysroot = root / "sysroot"
-
-  # Does this stack have a sysroot? Only when the environment is ours:
-  # a package that needs the distro is compiled against the distro's
-  # own headers and libraries, and there is nothing for us to compose.
-  def own_env? = @env == ANY && @stack != ANY
 end

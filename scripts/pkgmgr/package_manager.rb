@@ -171,8 +171,6 @@ class PackageManager
   def host_world_names
 
     roots = all_packages.select(&:host_world_root?).map(&:name)
-    return [] if roots.empty?
-
     world = roots.flat_map { |r| dep_closure(r) + [r] }.uniq
     outside = all_packages.map(&:name) - world
     reachable = outside.flat_map { |n| dep_closure(n) + [n] }.uniq
@@ -230,8 +228,7 @@ class PackageManager
       # of them, which reported the whole set as stale from whichever
       # arch happened not to be selected.
       p.get_install_list.any? { |i|
-        !i.path.nil? && !i.broken &&
-        [:changed, :unknown].include?(p.build_inputs_state_of(i))
+        !i.broken && [:changed, :unknown].include?(p.build_inputs_state_of(i))
       }
     }
   end
@@ -256,9 +253,10 @@ class PackageManager
 
     pkg = @packages.values.find { |p| p.name == name }
 
-    # An orphan has no package object to ask, so fall back to the
-    # plain behaviour: every version at the current coordinates.
-    return uninstall(name, false, false, "ALL") if pkg.nil?
+    # An orphan has no package object to ask where it would be
+    # rebuilt, so every copy of it goes -- which is what the selector
+    # does for an orphan with no version named.
+    return uninstall(name, false, false) if pkg.nil?
 
     # Ask where the install about to run will write, and remove exactly
     # that. Not the arch: an arch covers every board built for it, so a
@@ -279,31 +277,18 @@ class PackageManager
       a ? with_target_arch(a) { pkg.coords(v) } : pkg.coords(v)
     }
 
-    # Nothing installed at those coordinates is not an error: -f on a
-    # version that is not there yet is simply an install. Checked here
-    # rather than left to uninstall, whose "the asked-for version is
-    # not installed, so remove whatever is" fallback is right for a
-    # user typing -u and catastrophic for this.
-    present = pkg.get_install_list.any? { |i|
-      i.ver == v && !i.path.nil? && wanted.include?(i.coords)
-    }
-
-    return true if !present
-
-    # "ALL" for the compiler, not nil. nil does not mean "any": the
-    # filter reads it as "the compiler must BE nil", which is true
-    # only of a noarch package -- so a forced rebuild of anything
-    # else removed nothing, found its own install still there, and
-    # said "already installed" after announcing the removal. The
-    # coordinates are what narrows this; for a stack package they ARE
-    # the compiler.
-    return uninstall(name, false, false, v, "ALL", "ALL", coords: wanted)
+    # Exactly those coordinates, and nothing about the compiler or the
+    # arch: the coordinates ARE the compiler and the arch. A version
+    # that is not there is not an error -- the selector says so and
+    # names nothing, and -f on it is simply an install.
+    return uninstall(name, false, false, v, coords: wanted)
   end
 
+  # An install list never holds a candidate (those have no path), so
+  # only the package and the version are asked.
   def get_installed_compilers
     @known_installed.select { |x|
-      !x.pkg.nil? && x.pkg.is_compiler && !x.path.nil? &&
-      x.ver == x.target_arch.gcc_ver
+      x.pkg&.is_compiler && x.ver == x.target_arch.gcc_ver
     }
   end
 
@@ -687,7 +672,7 @@ class PackageManager
     # produced by regular_target_package_get_installable_list — both use
     # default_arch as the source of truth for "the arch this package builds
     # for in the current invocation context".
-    if !pkg.on_host && !pkg.arch_list.nil?
+    if pkg.target?
       a = pkg.default_arch
       if a.nil? || !pkg.arch_list.include?(a)
         a_name = a.nil? ? "<nil>" : a.name
@@ -782,7 +767,7 @@ class PackageManager
 
     @packages.transform_values { |pkg|
       deps = pkg.dep_list.map { |d| d.name }
-      if has_cc && !pkg.on_host && !pkg.arch_list.nil?
+      if has_cc && pkg.target?
         deps << cc_name if !deps.include?(cc_name)
       end
       deps
@@ -1060,12 +1045,11 @@ class PackageManager
     # stopped on a gmp that was never installed.
     @resolved_versions = versions
 
-    # Build the set of already-installed package names.
-    installed = Set.new
-    @packages.each_value do |pkg|
-      ver = user_vers[pkg.name] || versions[pkg.name] || pkg.default_ver
-      installed.add(pkg.name) if ver && pkg.installed?(ver)
-    end
+    # What is already installed, at the version bound for it. Only the
+    # closure is asked: `versions` covers exactly the packages the
+    # request can reach, and a package outside it cannot be in the
+    # plan whether it is installed or not.
+    installed = versions.select { |n, v| get(n)&.installed?(v) }.keys.to_set
 
     requested_names = requested_pairs.map(&:first)
     ordered_names = DepResolver.resolve(requested_names, graph, installed)
@@ -1076,9 +1060,8 @@ class PackageManager
     # install() this is a default install rather than a pinned one.
     ordered_names.map { |name|
       next [name, user_vers[name]] if user_vers[name]
-      pkg = get(name)
       v = versions[name]
-      [name, (v && pkg && v != pkg.default_ver) ? v : nil]
+      [name, v != get(name).default_ver ? v : nil]
     }
   end
 
@@ -1148,7 +1131,10 @@ class PackageManager
   # and a GTK-enabled QEMU to prove that busybox builds is hours of
   # rebuilding for a question neither answers.
   def clean(dry, except: [], force: false)
-    return uninstall("ALL", dry, force, "ALL", "ALL", "ALL", except: except)
+    # Every package, every version, every compiler -- and every arch,
+    # which is the one that has to be said: without it, ALL means the
+    # scope's arch only.
+    return uninstall("ALL", dry, force, nil, nil, "ALL", except: except)
   end
 
   #
@@ -1260,7 +1246,7 @@ class PackageManager
     end
 
     # Noarch: one place, and neither -a nor -c can mean anything.
-    if !pkg.on_host && pkg.arch_list.nil?
+    if pkg.noarch?
       return [] if !arch.nil? || (!cc.nil? && cc != :any)
       return [CoordsFilter.exact(pkg.coords)]
     end
@@ -1338,15 +1324,13 @@ class PackageManager
     #
     # ALL is exempt: `-u ALL` on a clean tree is a no-op by design,
     # and so is --clean.
-    if to_remove.empty? && !all_pkgs
+    if to_remove.empty?
       warning "#{name}: nothing matched, so nothing was removed"
 
       # What DOES exist under that name, since the usual cause is
       # asking about one set of coordinates while it lives at
       # another -- another arch, board, stack or version.
-      elsewhere = install_list.select { |e|
-        e.pkgname == name && !e.path.nil?
-      }
+      elsewhere = install_list.select { |e| e.pkgname == name }
 
       for e in elsewhere.first(8) do
         warning "  it is installed at #{e.coords}, version #{e.ver}"
@@ -1366,7 +1350,7 @@ class PackageManager
         # Clean up empty parent directories left behind (pkg dir,
         # arch dir) so stale empty trees don't confuse the listing.
         parent = info.path.parent
-        while parent != TC && parent.directory? &&
+        while parent != TC && parent.directory? && # mutation: equivalent -- the root holds cache/ and staging/, never empty
               Dir.empty?(parent)
           FileUtils.rmdir(parent)
           parent = parent.parent
@@ -1381,7 +1365,7 @@ class PackageManager
     # Without this it keeps symlinks pointing at packages that are no
     # longer there, and the next thing to build against it fails in a
     # way that looks nothing like the cause.
-    if removed > 0 && !host_stacks.empty?
+    if removed > 0  # mutation: equivalent -- composing after removing nothing changes nothing
       refresh()
       # Every stack, not just the default: an uninstall can invalidate
       # any of them, and a stale symlink is the failure mode hardest to

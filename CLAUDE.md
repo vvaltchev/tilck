@@ -1000,6 +1000,32 @@ four hundred lines away, kept reading the global and refused to
 rebuild the u-boot that `-f` had just deleted. The grep would have
 found it in the same minute.
 
+**A pkgmgr logic bug is not fixed until its mutant dies.** The
+package manager's logic core is covered by three instruments, in
+this order of authority, and a fix touches all three:
+
+1. **The model** (`scripts/pkgmgr/tests/model/model.rb`) is the
+   contract. If the bug is a wrong answer, the model already says the
+   right one, or the model is wrong and is fixed first. Every
+   historical bug is a case in `test_model.rb`.
+2. **The exhaustive lane** (`-t --exhaustive`; sampled in every
+   `-t`) diffs the implementation against the model over every
+   world of two installations. A bug it did not catch means a shape
+   or a command line is missing from `tests/exhaustive/domain.rb`:
+   add it, and the lane fails before the fix and passes after.
+3. **Mutation** (`scripts/dev/claude/pmmutate run`) must be able to
+   *express* the bug as an operator and the suite must kill it. If
+   no operator produces the bug, add one to
+   `tests/mutation/operators.rb`. The score to defend is zero
+   survivors in scope; an equivalent mutant is excused on its line
+   with `# mutation: equivalent -- <reason>`, never by shrinking the
+   scope.
+
+**Why:** a fix that only patches the site it was found at leaves the
+class alive. The model states the class, the lane finds every
+instance the domain can express, and the mutant proves the tests
+would notice a recurrence.
+
 ## No changes without testing
 
 Never commit changes affecting build logic, package installs, or
