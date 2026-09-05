@@ -26,8 +26,8 @@ class TestSourceDigestIsPerClass < Minitest::Test
   # The real pair that exposed it: two packages, one file, one method
   # name, two genuinely different builds.
   def test_each_class_gets_its_own_method_body
-    target = SourceDigest.class_source(NcursesPackage)
-    host   = SourceDigest.class_source(NcursesHostPackage)
+    target = SourceDigest.own_source(NcursesPackage)
+    host   = SourceDigest.own_source(NcursesHostPackage)
 
     assert_includes target, "--host=",
                     "the target package lost its own build"
@@ -58,9 +58,6 @@ class TestSourceDigestIsPerClass < Minitest::Test
         shared = a.instance_methods(false) & b.instance_methods(false)
         next if shared.empty?
 
-        sa = SourceDigest.class_source(a)
-        sb = SourceDigest.class_source(b)
-
         for m in shared do
           ta = SourceDigest.method_defs(f)[SourceDigest.scope_of(a)][m]
           tb = SourceDigest.method_defs(f)[SourceDigest.scope_of(b)][m]
@@ -87,5 +84,54 @@ class TestSourceDigestIsPerClass < Minitest::Test
     f = SourceDigest.source_file_of(Package)
     src = SourceDigest.method_source(f, :meson_stack_build)
     assert_includes src, "meson"
+  end
+
+  # A recipe shared by several packages lives on their common parent,
+  # and hashing only the leaf class missed it completely.
+  #
+  # gmp, mpfr, mpc and isl are one build written once on
+  # GccPrereqPackage; their own classes hold a name and a file list.
+  # So the fingerprint covered everything about them EXCEPT how they
+  # are built -- verified before the fix by adding --disable-assembly
+  # to that shared configure, which changes the binaries gmp produces,
+  # and watching --check-for-updates stay silent about all four.
+  def test_a_recipe_on_a_shared_parent_is_part_of_the_digest
+    own = SourceDigest.own_source(HostGmpPackage)
+    full = SourceDigest.class_source(HostGmpPackage, upto: Package)
+
+    refute_includes own, "--enable-static",
+                    "the leaf class was expected to hold no recipe"
+    assert_includes full, "--enable-static",
+                    "the shared parent's build is not in the digest"
+  end
+
+  # The walk stops at Package: its build helpers are hashed
+  # separately, and only for the packages that actually call them.
+  def test_the_walk_stops_at_the_framework
+    full = SourceDigest.class_source(HostGmpPackage, upto: Package)
+    refute_includes full, "def meson_stack_build",
+                    "the framework's own methods leaked into a package"
+  end
+
+  # ...and it stays precise: widening the digest to the parent chain
+  # must not make unrelated packages share a fingerprint.
+  def test_two_families_do_not_borrow_each_others_parents
+    gmp = SourceDigest.class_source(HostGmpPackage, upto: Package)
+    qemu = SourceDigest.class_source(HostQemuPackage, upto: Package)
+
+    refute_equal gmp, qemu
+    refute_includes qemu, "--enable-static"
+  end
+
+  # What a package IS, and whether it may be asked for, is not how it
+  # is built: excluded, for the same reason comments are.
+  def test_the_non_recipe_hooks_are_left_out
+    kept = SourceDigest.class_source(Acpica, upto: Package)
+    dropped = SourceDigest.class_source(Acpica, upto: Package,
+                                        except: Package::NON_RECIPE_HOOKS)
+
+    assert_includes kept, "def default_cc",
+                    "the fixture no longer defines the hook it is about"
+    refute_includes dropped, "def default_cc"
   end
 end

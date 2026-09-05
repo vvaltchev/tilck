@@ -171,8 +171,8 @@ class TestTwoOfEverything < Minitest::Test
     # genuinely different builds.
     require_relative '../ncurses'
 
-    t = SourceDigest.class_source(NcursesPackage)
-    h = SourceDigest.class_source(NcursesHostPackage)
+    t = SourceDigest.own_source(NcursesPackage)
+    h = SourceDigest.own_source(NcursesHostPackage)
 
     refute_equal t, h, "two classes in one file hash identically"
   end

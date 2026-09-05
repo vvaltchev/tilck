@@ -522,6 +522,25 @@ class Package
     :meson_stack_build, :autotools_stack_build, :stack_install,
   ].freeze
 
+  # Hooks that say what a package IS, or whether it may be asked for,
+  # rather than how it is built. The build never calls them: they are
+  # read by the package manager for placement, policy and display, so
+  # changing one cannot change a produced byte.
+  #
+  # They are therefore excluded from the fingerprint, for the same
+  # reason comments are blanked out of it. Deleting `enabled?` and a
+  # duplicated `default_cc` from thirty-eight files -- a change that
+  # could not alter a single installed binary -- otherwise condemned
+  # 69 installs to a rebuild, including all three cross compilers.
+  # A safety mechanism that charges hours for edits it can see are
+  # inert is one people learn to switch off.
+  #
+  # Deliberately short, and deliberately not "everything the build
+  # does not obviously use". default_arch stays IN: zlib's build step
+  # names "#{default_arch.gcc_tc}-linux-ar", so an override of it
+  # really does change the command that runs.
+  NON_RECIPE_HOOKS = %i[enabled? default? default_cc].freeze
+
   #
   # One digest standing for "how this package is built".
   #
@@ -534,7 +553,8 @@ class Package
   #
   def build_recipe_digest(ver = nil)
 
-    own = SourceDigest.class_source(self.class)
+    own = SourceDigest.class_source(self.class, upto: Package,
+                                    except: NON_RECIPE_HOOKS)
     file = SourceDigest.source_file_of(self.class)
 
     helpers = BUILD_HELPERS.filter_map { |h|
