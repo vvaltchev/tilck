@@ -67,10 +67,16 @@ class HostBinutilsPackage < Package
     ["install/bin/strip", false],
   ]
 
+  # Everything the build wrote is under build/ and install/: the source
+  # tree is never configured in place (see below), so once those two
+  # are gone it is exactly what the tarball held. The base class's
+  # `make distclean` in the source tree has nothing to clean and no
+  # Makefile to do it with -- it fails, and a resume that reported the
+  # failure went on to re-extract the whole tarball for nothing.
   def clean_build(dir)
     FileUtils.rm_rf(dir / "install")
     FileUtils.rm_rf(dir / "build")
-    super(dir)
+    return true
   end
 
   def install_impl_internal(install_dir)
@@ -101,6 +107,14 @@ class HostBinutilsPackage < Package
       # Byte-identical archives across rebuilds: no timestamps, uids or
       # gids recorded. Cheap, and it keeps rebuild comparisons honest.
       "--enable-deterministic-archives",
+
+      # gprofng is a profiler, and not why this package exists: this is
+      # the assembler and linker the host stack is built through, and
+      # nothing here has ever run gprofng. It is also what breaks the
+      # build under GCC 15 and later, whose default C23 reads its
+      # `real_func ()` declarations as taking no arguments and refuses
+      # the calls that pass three.
+      "--disable-gprofng",
     ]
 
     ok = false
