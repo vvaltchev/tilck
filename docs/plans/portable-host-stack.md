@@ -300,7 +300,9 @@ Tracked to zero before this is considered done.
   * [x] tier 4 (`host_tier: :portable`) in the package manager
   * [x] composed sysroot + recomposition on resolution change
   * [x] portability audit
-  * [x] opt-in gating (`TILCK_HOST_STACK=1`)
+  * [x] ~~opt-in gating (`TILCK_HOST_STACK=1`)~~ removed: keeping the
+    stack out of the default set is what stops an accidental libc
+    build; a switch on top of that only stopped a deliberate one
   * [ ] measured QEMU dependency closure, enumerated in this document
   * [x] first library through the tier (host_zlib), establishing the
     pattern the rest follows

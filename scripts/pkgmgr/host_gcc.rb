@@ -141,7 +141,6 @@ class HostGccPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def enabled? = HOST_STACK_ENABLED
   def pkg_dirname = "gcc"
 
   # A compiler belongs to ITS OWN stack, not to whichever one

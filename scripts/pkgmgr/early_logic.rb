@@ -413,12 +413,6 @@ end
 # assignment, so BUILD_PAR was nil when unset and the "" was dead.
 BUILD_PAR = getenv("BUILD_PAR", BuildJobs.compute.to_s)
 
-# Opt-in for the portable host toolchain, which builds binutils, glibc
-# and GCC from source before anything else. That is tens of minutes of
-# build time, so the packages are invisible to `-l` and refused by `-s`
-# unless this is set: nobody should trip over it by accident.
-HOST_STACK_ENABLED = !ENV["TILCK_HOST_STACK"].to_s.strip.empty?
-
 def get_human_arch_name(arch)
   return "noarch" if arch.nil?
   return "host" if arch == HOST_ARCH
