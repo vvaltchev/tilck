@@ -33,11 +33,26 @@ def getenv(name, default)
   return !val.empty? ? val : default
 end
 
+# PowerAssert's message is worth its price only when there is a
+# failure to explain, and its price is steep: it enables a TracePoint
+# and READS THE SOURCE FILE to reconstruct the expression, once per
+# call, whether or not the assertion holds.
+#
+# It was paying that on every assert. A plain `-l` spends about eighty
+# per cent of its time inside PowerAssert, two thirds of it in the
+# File.exist? that goes with re-opening the source -- for assertions
+# that all passed.
+#
+# So the block is evaluated directly first. Only a failure goes
+# through PowerAssert, which re-evaluates the expression to describe
+# it: an assertion that is not side-effect free was already a bug, and
+# this is the path that raises anyway.
 def assert(&expr)
+  return true if expr.call
+
   PowerAssert.start(expr, assertion_method: __method__) do |ctx|
-    ok = ctx.yield
-    raise "Assertion failed:\n#{ctx.message}" unless ok
-    true
+    ctx.yield
+    raise "Assertion failed:\n#{ctx.message}"
   end
 end
 
