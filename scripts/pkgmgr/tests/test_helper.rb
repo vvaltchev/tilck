@@ -72,6 +72,19 @@ end
 
 Package.prepend(NoRealToolchainReads)
 
+#
+# THE REAL PACKAGE SET, AND THE ONLY MOMENT IT IS ALL THERE.
+#
+# main.rb registers every package as it loads, `require` loads a file
+# once, and reset_pkgmgr! empties the registry before each test: after
+# the unit lane has run, no later require can put the real packages
+# back. So they are taken here, at load, before a single test has had
+# the chance to swap in its own -- the same reason test_gcc_prereqs.rb
+# and test_no_gating.rb snapshot at load time.
+#
+require_relative '../main'
+REAL_PACKAGES = pkgmgr.all_packages.dup.freeze
+
 require_relative 'laws'
 require_relative 'model/bridge'
 require 'stringio'
@@ -134,6 +147,25 @@ module TestHelper
     ensure
       NoRealToolchainReads.allow!(prev)
     end
+  end
+
+  # For the lane whose subject is the installed tree from end to end.
+  #
+  # The system tests run in this process, after the unit lane, and the
+  # world it leaves behind is the one it needed: a registry holding
+  # whatever fakes its last test registered, and the guard above,
+  # armed. Both are wrong for a lane that uninstalls real packages and
+  # installs them again -- one of them raises, and the other, when the
+  # registry is merely empty, is worse: host_world_names computes []
+  # from it, and the wipe that meant to keep the host world takes it.
+  #
+  # So the real package set goes back and the guard comes off. Not
+  # scoped to a block, unlike with_real_tc: from here on, the real
+  # tree is the subject and there is no unit test left to protect.
+  def real_world!
+    reset_pkgmgr!
+    REAL_PACKAGES.each { |p| pkgmgr.register(p) }
+    NoRealToolchainReads.allow!(true)
   end
 
   # Temporarily override top-level constants for the duration of a block.
