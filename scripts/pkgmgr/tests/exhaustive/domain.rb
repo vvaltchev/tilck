@@ -220,6 +220,14 @@ module Exhaustive
       vers.each { |v|
         lines << "-s #{n}:#{v}" << "-s #{n}:#{v} -f" << "-u #{n}:#{v}"
       }
+      # A version the package does not offer, and a series alone.
+      # Every package here declares its versions, so the first is
+      # refused at the door and the second names the one release of
+      # its series -- or is refused too, when the series has two.
+      if !p.installable_versions.empty?
+        lines << "-s #{n}:9.9.9" << "-u #{n}:9.9.9"
+        vers.map(&:series).uniq.each { |sr| lines << "-s #{n}:#{sr}" }
+      end
       if !p.on_host && !p.arch_list.nil?
         lines << "-s #{n} -a riscv64" << "-s #{n} -a ALL" \
               << "-u #{n} -c #{TestHelper::FAKE_GCC_VER}"

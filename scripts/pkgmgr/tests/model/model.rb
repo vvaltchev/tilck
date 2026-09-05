@@ -57,6 +57,9 @@ module Model
   #
   #   kind         :target | :noarch | :portable | :distro | :compiler
   #                | :stack | :stack_cc (host_gcc) | :cross_cc (gcc-*-musl)
+  #   versions     the choice the package DECLARES (installable_versions):
+  #                a request must name one of them, exactly or by a
+  #                series that picks one. Empty: any version, as written
   #   deps         [[name, pin_or_nil], ...]
   #   arch_list    target only: arch NAMES it builds for
   #   board_list   target only: board names, nil = any
@@ -69,13 +72,13 @@ module Model
   Shape = Data.define(:name, :kind, :versions, :default_ver, :deps,
                       :arch_list, :board_list, :default, :install_archs,
                       :target_arch, :host_os, :host_arch, :world_root) do
-    def self.make(name, kind, versions: ["1.0.0"], default_ver: nil,
+    def self.make(name, kind, versions: [], default_ver: nil,
                   deps: [], arch_list: nil, board_list: nil,
                   default: false, install_archs: nil, target_arch: nil,
                   host_os: nil, host_arch: nil, world_root: false)
       vs = versions.map { |v| Ver(v) }
       new(name: name, kind: kind, versions: vs,
-          default_ver: Ver(default_ver || versions.first),
+          default_ver: Ver(default_ver || versions.first || "1.0.0"),
           deps: deps.map { |d, p| [d, p && Ver(p)] },
           arch_list: arch_list, board_list: board_list, default: default,
           install_archs: install_archs, target_arch: target_arch,
@@ -390,9 +393,30 @@ module Model
     }
   end
 
+  # SPEC: a version names one the package declares -- exactly, or by
+  # a series that picks exactly one -- or the request is refused at
+  # the door. A package declaring nothing takes the version as
+  # written. `host_qemu:6` is 6.2.0; `host_qemu:9.9.9` is refused
+  # before a compiler is built for it.
+  def resolve_versions(registry, targets)
+    out = targets.map { |n, v|
+      s = registry[n]
+      next [n, v] if v.nil? || v == :all || s.nil? || s.versions.empty?
+      next [n, v] if s.versions.include?(v)
+      hits = s.versions.select { |x| x.to_s.start_with?("#{v}.") }
+      return [nil, "#{n}:#{v} is not a version #{n} can install"] \
+        if hits.length != 1
+      [n, hits.first]
+    }
+    return [out, nil]
+  end
+
   def install(registry, world, req, scope)
 
-    roots = expand_all(registry, req.targets, scope)
+    roots, refused = resolve_versions(registry,
+                                      expand_all(registry, req.targets,
+                                                 scope))
+    return Outcome.new(1, world, refused) if refused
     names = roots.map(&:first)
 
     if (bad = names.find { |n| !registry.key?(n) })
@@ -581,6 +605,11 @@ module Model
     if name != :all && !registry.key?(name) && keys_of(world, name).empty?
       return Outcome.new(1, world, "Package not found: #{name}")
     end
+    targets, refused = resolve_versions(registry, req.targets)
+    return Outcome.new(1, world, refused) if refused
+    req = Request.new(mode: req.mode, targets: targets, force: req.force,
+                      dry: req.dry, arch: req.arch, cc: req.cc,
+                      stack: req.stack)
     gone = select(registry, world, req, scope)
     return Outcome.new(0, world, "dry run") if req.dry
     return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
