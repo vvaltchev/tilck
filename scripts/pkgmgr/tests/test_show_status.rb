@@ -427,6 +427,99 @@ class TestShowStatusAll < Minitest::Test
     end
   end
 
+  # --- the status cell ------------------------------------------------
+
+  # How many installs a line stands for. host_gcc is one line and six
+  # compilers; the line said "installed" either way.
+  def test_the_status_carries_the_number_of_installs
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list)
+        }
+        assert_match(/installed \(2\)/, out.gsub(/\e\[[0-9;]*m/, ""))
+      end
+    end
+  end
+
+  # The count is not part of the word: green says "installed", and a
+  # number is not a state.
+  def test_the_count_is_outside_the_colour
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list)
+        }
+        assert_match(/#{Regexp.escape(Term::RESET)} \(1\)/, out,
+                     "the count is inside the coloured span")
+      end
+    end
+  end
+
+  # --- -g ver -----------------------------------------------------------
+
+  # A host package's arch is always "host". Printing it once per
+  # version is a column of the same word.
+  def test_group_by_ver_omits_the_arch_for_host_packages
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("host_thing", "ver", pkg.get_install_list)
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/1\.0\.0/, plain)
+        refute_match(/\{host\}/, plain)
+      end
+    end
+  end
+
+  # ...but a target package's arch is the whole point of the line.
+  def test_group_by_ver_keeps_the_arch_for_target_packages
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", "ver", pkg.get_install_list)
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/1\.0\.0: \{/, plain)
+        assert_match(/i386/, plain)
+        assert_match(/x86_64/, plain)
+      end
+    end
+  end
+
   # --- the stacks view (-L) ------------------------------------------
 
   # A stand-in for the real compiler package: show_stacks asks it

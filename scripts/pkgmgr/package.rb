@@ -124,19 +124,40 @@ class Package
   attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
   attr_reader :host_tier
 
-  STATUS_LEN    = 9
-  INSTALLED_STR = Term.makeGreen("installed".center(STATUS_LEN))
-  FOUND_STR     = Term.makeBlue("found".center(STATUS_LEN))
-  SKIPPED_STR   = Term.makeYellow("skipped".center(STATUS_LEN))
-  BROKEN_STR    = Term.makeRed("broken".center(STATUS_LEN))
-  STALE_STR     = Term.makeYellow("stale".center(STATUS_LEN))
-  EMPTY_STR     = "".center(STATUS_LEN)
+  STATUS_LEN    = 9              # "installed", "not built"
+  COUNT_LEN     = 5              # " (99)"
+  STATUS_CELL   = STATUS_LEN + COUNT_LEN
+
+  # One status cell: the word in its own colour, the count of matching
+  # installs in none, the pair centred AS A UNIT.
+  #
+  # Centred as a unit rather than appended, because the field after it
+  # would otherwise start at a different column for every package --
+  # the count is the one part of the line whose width varies, so it
+  # has to be absorbed here.
+  def self.status_str(word, color, n = nil, width: STATUS_CELL)
+
+    tail = n.nil? ? "" : " (#{n})"
+    pad  = [width - word.length - tail.length, 0].max
+    lpad = pad / 2
+
+    return "#{' ' * lpad}#{Term.send(color, word)}#{tail}#{' ' * (pad - lpad)}"
+  end
+
+  def self.installed_str(n) = status_str("installed", :makeGreen, n)
+  def self.stale_str(n) = status_str("stale", :makeYellow, n)
+
+  FOUND_STR     = status_str("found", :makeBlue)
+  SKIPPED_STR   = status_str("skipped", :makeYellow)
+  BROKEN_STR    = status_str("broken", :makeRed)
+  EMPTY_STR     = " " * STATUS_CELL
 
   # For stacks rather than packages: a stack is BUILT when the
   # compiler that names it is installed, since that is what makes it
-  # usable as one.
-  BUILT_STR     = Term.makeGreen("built".center(STATUS_LEN))
-  NOT_BUILT_STR = Term.makeRed("not built".center(STATUS_LEN))
+  # usable as one. No count, and the narrow cell: nothing in that
+  # listing has a number to carry.
+  BUILT_STR     = status_str("built", :makeGreen, width: STATUS_LEN)
+  NOT_BUILT_STR = status_str("not built", :makeRed, width: STATUS_LEN)
 
   public
   # host_tier controls where host packages are installed:
