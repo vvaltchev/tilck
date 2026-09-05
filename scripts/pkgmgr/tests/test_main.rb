@@ -977,3 +977,180 @@ class TestRenderDepTreesFancy < Minitest::Test
     ], out
   end
 end
+
+# ---------------------------------------------------------------
+# A subtree is drawn once. The graphs are diamonds all the way down,
+# and a tree that redraws a shared subtree at every mention grows
+# exponentially in its depth: twenty thousand lines for host_qemu's
+# fifty packages. Later mentions say "(+ deps)" and point back up.
+# ---------------------------------------------------------------
+
+class TestRenderDepTreesOnce < Minitest::Test
+
+  # a needs b and c; both need d; d needs e. Two subtrees are shared:
+  # d (with something under it) and, through it, e.
+  DIAMOND = {
+    "a" => ["b", "c"], "b" => ["d"], "c" => ["d"], "d" => ["e"], "e" => []
+  }.freeze
+
+  def fancy(roots, graph, **kw)
+    Main.render_dep_trees(roots, graph, ascii: false, **kw)
+  end
+
+  def ascii(roots, graph, **kw)
+    Main.render_dep_trees(roots, graph, ascii: true, **kw)
+  end
+
+  def test_the_second_mention_is_marked_and_not_redrawn
+    assert_equal [
+      "    ┌ a",
+      "    │",
+      "    ├── b",
+      "    │   │",
+      "    │   └── d",
+      "    │       │",
+      "    │       └── e",
+      "    │",
+      "    └── c",
+      "        │",
+      "        └── d (+ deps)",
+    ], fancy(["a"], DIAMOND).map { |l| l.gsub(/\e\[[0-9;]*m/, "") }
+  end
+
+  def test_the_mark_is_dim_in_the_fancy_mode
+    line = fancy(["a"], DIAMOND).last
+    assert_equal "        └── d#{Term::DIM} (+ deps)#{Term::RESET}", line
+  end
+
+  def test_a_shared_leaf_is_never_marked
+    # Nothing is left out under a leaf, so there is nothing to point
+    # back at: the name is repeated bare, every time.
+    out = fancy(["a"], {"a" => ["b", "c"], "b" => ["e"], "c" => ["e"],
+                        "e" => []})
+    assert_equal 2, out.count { |l| l.end_with?("── e") }
+    assert_empty out.grep(/\+ deps/)
+  end
+
+  def test_a_root_already_drawn_under_an_earlier_root_is_marked
+    out = fancy(["a", "d"], DIAMOND).map { |l| l.gsub(/\e\[[0-9;]*m/, "") }
+    assert_equal "    ─ d (+ deps)", out.last
+    refute_includes out, "    (no dependencies)"
+  end
+
+  def test_ascii_mode_follows_the_same_rule
+    assert_equal ["a", "  b", "    d", "      e", "  c", "    d (+ deps)"],
+                 ascii(["a"], DIAMOND)
+  end
+
+  def test_installed_deps_hidden_by_the_plan_do_not_count_as_drawn
+    # In plan mode d is installed and hidden; b and c become leaves,
+    # and a leaf is never marked.
+    out = fancy(["a"], DIAMOND, installed: Set.new(["d"]))
+    assert_empty out.grep(/\+ deps/)
+  end
+
+  def test_a_cycle_ends_at_its_first_repeat
+    out = ascii(["a"], {"a" => ["b"], "b" => ["a"]})
+    assert_equal ["a", "  b", "    a (+ deps)"], out
+  end
+end
+
+class TestDepTreeClosure < Minitest::Test
+
+  DIAMOND = TestRenderDepTreesOnce::DIAMOND
+
+  def test_each_package_once_dependencies_first
+    assert_equal ["e", "d", "b", "c", "a"],
+                 Main.dep_tree_closure(["a"], DIAMOND)
+  end
+
+  def test_the_plan_mode_leaves_out_what_is_installed
+    assert_equal ["b", "c", "a"],
+                 Main.dep_tree_closure(["a"], DIAMOND,
+                                       installed: Set.new(["d"]))
+  end
+
+  def test_two_roots_share_one_closure
+    assert_equal ["e", "d", "b", "c", "a"],
+                 Main.dep_tree_closure(["a", "d"], DIAMOND)
+  end
+end
+
+class TestRenderNameList < Minitest::Test
+
+  def test_a_short_list_is_one_indented_line
+    assert_equal ["    a, b, c"], Main.render_name_list(%w[a b c])
+  end
+
+  def test_wraps_at_eighty_columns_with_the_comma_kept_on_the_line
+    names = (1..30).map { |i| "package_%02d" % i }
+    out = Main.render_name_list(names)
+
+    assert out.length > 1
+    assert out.all? { |l| l.length <= 80 }, out.map(&:length).inspect
+    assert out[0..-2].all? { |l| l.end_with?(",") }
+    refute out.last.end_with?(",")
+    assert_equal names, out.join(" ").split(/,\s*/).map(&:strip)
+  end
+
+  def test_installed_names_are_dimmed_in_deps_mode
+    out = Main.render_name_list(%w[a b], installed: Set.new(["b"]),
+                                show_installed: true)
+    assert_equal ["    a, #{Term::DIM}b#{Term::RESET}"], out
+  end
+
+  def test_an_empty_list_is_one_empty_line
+    assert_equal ["    "], Main.render_name_list([])
+  end
+end
+
+class TestMainPlanShowsTheFlatList < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_install_plan_ends_with_the_packages_in_install_order
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("a", dep_list: [Dep("b", false),
+                                                        Dep("c", false)]))
+        pkgmgr.register(FakePackage.new("b", dep_list: [Dep("d", false)]))
+        pkgmgr.register(FakePackage.new("c", dep_list: [Dep("d", false)]))
+        pkgmgr.register(FakePackage.new("d", dep_list: [Dep("e", false)]))
+        pkgmgr.register(FakePackage.new("e"))
+
+        result, out = run_cli("-s", "a", "-d", "--ascii")
+        assert_equal 0, result
+
+        assert_match(/^    d \(\+ deps\)$/, out)
+        assert_equal 1, out.scan(/^      e$/).length
+
+        assert_match(/5 package\(s\) to install, in this order:/, out)
+        list = out[/in this order:\n(.*)$/, 1]
+        names = list.strip.split(", ")
+        assert_equal 5, names.length
+        assert_operator names.index("e"), :<, names.index("d")
+        assert_operator names.index("d"), :<, names.index("b")
+        assert_equal "a", names.last
+      end
+    end
+  end
+
+  def test_deps_mode_ends_with_the_whole_closure
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("a", dep_list: [Dep("b", false)]))
+        pkgmgr.register(FakePackage.new("b", dep_list: [Dep("c", false)]))
+        pkgmgr.register(FakePackage.new("c"))
+
+        result, out = run_cli("--deps", "a", "--ascii")
+        assert_equal 0, result
+        assert_match(/3 package\(s\) in all, dependencies first:/, out)
+        assert_match(/^    c, b, a$/, out)
+      end
+    end
+  end
+end

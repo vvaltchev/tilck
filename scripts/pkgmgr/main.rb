@@ -161,33 +161,92 @@ module Main
   #                           line per node, no decoration. Machine-
   #                           friendly for parsing and tests.
   #
+  # A subtree is drawn once. Dependency graphs are diamonds all the
+  # way down -- gmp under mpfr, under mpc, under isl, under gcc, under
+  # everything built with gcc -- and a tree that redraws a shared
+  # subtree at every mention grows exponentially in its depth: the
+  # plan for host_qemu ran to twenty thousand lines for a closure of
+  # fifty packages. So a package is expanded where the walk first
+  # reaches it, and every later mention names it with "(+ deps)",
+  # which points back up at the one drawing. That set is shared by
+  # every root of one render, for the same reason.
+  #
   # Returns an Array of ready-to-puts strings.
   def render_dep_trees(roots, graph, installed: Set.new,
                        show_installed: false, ascii: false)
     lines = []
+    expanded = Set.new
     roots.each_with_index do |name, ri|
       lines << "" if ri > 0 && !ascii
       if ascii
         dep_tree_ascii(name, graph, installed, show_installed,
-                       lines, "", Set.new)
+                       lines, "", expanded)
       else
-        dep_tree_root(name, graph, installed, show_installed, lines)
+        dep_tree_root(name, graph, installed, show_installed,
+                      lines, expanded)
       end
     end
     lines
   end
 
+  # Every package a tree shows, each once, dependencies before the
+  # packages that need them: the closure, flat. What the reader wants
+  # after the picture -- how many, and which -- and what the picture
+  # cannot show without repeating itself.
+  def dep_tree_closure(roots, graph, installed: Set.new,
+                       show_installed: false)
+    seen = Set.new
+    out = []
+    add = ->(name) {
+      next if seen.include?(name)
+      seen << name
+      dep_tree_deps(name, graph, installed, show_installed).each(&add)
+      out << name
+    }
+    roots.each(&add)
+    out
+  end
+
+  # `names` as a comma-separated paragraph that fits in 80 columns,
+  # indented like the tree. Installed ones are dimmed in --deps mode,
+  # as they are in the tree above them.
+  def render_name_list(names, installed: Set.new, show_installed: false)
+    rows = [[]]
+    names.each do |n|
+      row = rows.last
+      width = LEAD.length + (row + [n]).join(", ").length + 1  # +1: the ","
+      rows << (row = []) if !row.empty? && width > 80
+      row << n
+    end
+
+    rows.map.with_index { |row, i|
+      text = row.map { |n| dep_tree_fmt(n, installed, show_installed) }
+                .join(", ")
+      LEAD + text + (i == rows.length - 1 ? "" : ",")
+    }
+  end
+
+  # The flat list under a tree: a heading, the names, and the blank
+  # line the fancy mode puts after every block.
+  def show_name_list(heading, names, ascii, installed: Set.new,
+                     show_installed: false)
+    info heading
+    render_name_list(names, installed: installed,
+                            show_installed: show_installed)
+      .each { |l| puts l }
+    puts if !ascii
+  end
+
   # --- ASCII (machine-friendly) mode ---
 
   def dep_tree_ascii(name, graph, installed, show_installed,
-                     lines, indent, visited)
-    lines << "#{indent}#{name}"
-    return if visited.include?(name)
-    deps = dep_tree_deps(name, graph, installed, show_installed)
-    new_visited = visited | [name]
+                     lines, indent, expanded)
+    deps, elided = dep_tree_visit(name, graph, installed, show_installed,
+                                  expanded)
+    lines << "#{indent}#{name}#{elided ? ELIDED : ''}"
     deps.each do |dep|
       dep_tree_ascii(dep, graph, installed, show_installed,
-                     lines, indent + "  ", new_visited)
+                     lines, indent + "  ", expanded)
     end
   end
 
@@ -204,17 +263,21 @@ module Main
   # is always visible (even when a subtree has only one child).
 
   LEAD = "    "
+  ELIDED = " (+ deps)"
 
-  def dep_tree_root(name, graph, installed, show_installed, lines)
-    deps = dep_tree_deps(name, graph, installed, show_installed)
+  def dep_tree_root(name, graph, installed, show_installed, lines,
+                    expanded)
+    deps, elided = dep_tree_visit(name, graph, installed, show_installed,
+                                  expanded)
 
     # Root with no visible subtree uses a bare "─ " bullet rather
     # than the "┌ " corner — there is no trunk to open.
     corner = deps.empty? ? "─" : "┌"
-    lines << "#{LEAD}#{corner} #{dep_tree_fmt(name, installed, show_installed)}"
+    lines << "#{LEAD}#{corner} " +
+             dep_tree_fmt(name, installed, show_installed, elided: elided)
 
     if deps.empty?
-      if show_installed
+      if show_installed && !elided
         lines << "#{LEAD}(no dependencies)"
       end
       return
@@ -225,46 +288,61 @@ module Main
     deps.each_with_index do |dep, i|
       last = (i == deps.length - 1)
       dep_tree_child(dep, graph, LEAD, last, lines, installed,
-                     show_installed, Set.new([name]))
+                     show_installed, expanded)
       lines << spacer if !last
     end
   end
 
   def dep_tree_child(name, graph, prefix, is_last, lines, installed,
-                     show_installed, visited)
+                     show_installed, expanded)
+    deps, elided = dep_tree_visit(name, graph, installed, show_installed,
+                                  expanded)
     conn = is_last ? "└── " : "├── "
-    lines << "#{prefix}#{conn}#{dep_tree_fmt(name, installed, show_installed)}"
-
-    return if visited.include?(name)
-    deps = dep_tree_deps(name, graph, installed, show_installed)
+    lines << "#{prefix}#{conn}" +
+             dep_tree_fmt(name, installed, show_installed, elided: elided)
     return if deps.empty?
 
     child_prefix = prefix + (is_last ? "    " : "│   ")
     spacer = "#{child_prefix}│"
     lines << spacer
 
-    new_visited = visited | [name]
     deps.each_with_index do |dep, i|
       last = (i == deps.length - 1)
       dep_tree_child(dep, graph, child_prefix, last, lines, installed,
-                     show_installed, new_visited)
+                     show_installed, expanded)
       lines << spacer if !last
     end
   end
 
   # --- Shared helpers ---
 
+  # What one mention of `name` shows: its visible deps, to be drawn
+  # under it, or none and the "(+ deps)" mark because they were drawn
+  # under an earlier mention. A package with nothing visible under it
+  # is never marked -- nothing is being left out. Marking happens
+  # before the descent, so a cycle, should one ever get past the
+  # resolver, ends at its first repeat instead of never.
+  def dep_tree_visit(name, graph, installed, show_installed, expanded)
+    deps = dep_tree_deps(name, graph, installed, show_installed)
+    return [deps, false] if deps.empty?
+    return [[], true] if expanded.include?(name)
+    expanded << name
+    return [deps, false]
+  end
+
   def dep_tree_deps(name, graph, installed, show_installed)
     deps = graph[name] || []
     show_installed ? deps : deps.reject { |d| installed.include?(d) }
   end
 
-  def dep_tree_fmt(name, installed, show_installed)
-    if show_installed && installed.include?(name)
+  def dep_tree_fmt(name, installed, show_installed, elided: false)
+    text = if show_installed && installed.include?(name)
       "#{Term::DIM}#{name}#{Term::RESET}"
     else
       name
     end
+    text += "#{Term::DIM}#{ELIDED}#{Term::RESET}" if elided
+    text
   end
 
   # -----------------------------------------------------------
@@ -1045,6 +1123,12 @@ module Main
         puts if !options[:ascii]
         lines.each { |l| puts l }
         puts if !options[:ascii]
+
+        closure = dep_tree_closure(roots, graph, installed: installed,
+                                   show_installed: true)
+        show_name_list("#{closure.length} package(s) in all, " \
+                       "dependencies first:", closure, options[:ascii],
+                       installed: installed, show_installed: true)
       end
       return 0
     end
@@ -1269,6 +1353,9 @@ module Main
                                      ascii: options[:ascii])
             lines.each { |l| puts l }
             puts if !options[:ascii]
+            show_name_list("#{plan.length} package(s) to install, " \
+                           "in this order:", plan.map(&:first),
+                           options[:ascii])
 
             # Everything the plan needs from the host, checked as
             # one batch before the first build starts. A missing Rust
@@ -1387,6 +1474,8 @@ module Main
                              ascii: options[:ascii])
     lines.each { |l| puts l }
     puts if !options[:ascii]
+    show_name_list("#{plan.length} package(s) to install, in this order:",
+                   plan.map(&:first), options[:ascii])
 
     # The one mode that never checked -d. Found by the exhaustive
     # lane: `-d` with no mode installed the defaults.
