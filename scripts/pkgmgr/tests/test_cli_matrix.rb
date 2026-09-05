@@ -365,6 +365,7 @@ class TestCliMatrix < Minitest::Test
       "uninstall all"      => ["-u", "spread", "-a", "ALL"],
       "clean"              => ["--clean"],
       "upgrade"            => ["--upgrade"],
+      "rebuild"            => ["--rebuild"],
       "default install"    => [],
     }
 

@@ -56,7 +56,8 @@ module Mutation
       uninstall_selector uninstall_where force_remove
       resolve_install_plan install resolved_versions_for
       host_world_names compute_host_world_names host_world_roots
-      get_stale_packages get_upgradable_packages
+      get_stale_packages get_stale_installs get_upgradable_packages
+      built_against deps_of_install with_resolved_versions replace
       build_dep_graph clean get_installed_compilers
     ],
     "main.rb" => %w[expand_install_all select_host_stack requested_arch

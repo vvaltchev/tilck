@@ -240,7 +240,7 @@ module Exhaustive
 
     lines << "-s ALL" << "-u ALL" << "-u ALL -f" << "-u ALL -a ALL" \
           << "-u ALL -c #{TestHelper::FAKE_GCC_VER}" << "--upgrade" \
-          << "--clean" << ""
+          << "--rebuild" << "--clean" << ""
 
     lines = lines.uniq
     lines += lines.map { |l| "#{l} -d".strip }
