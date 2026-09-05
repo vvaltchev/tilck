@@ -17,20 +17,38 @@
 # A caller with a large TOTAL and a small SELF is not slow; something
 # it calls is. Only SELF says "the time is here".
 #
-# Usage: pmprof [-i SECONDS] [-n TOP] [--] [args for main.rb]
+# Usage: pmprof [-i SECONDS] [-n TOP] [-r RUNS] [--] [args for main.rb]
 #
 # With no args it profiles `-l -q`, the listing everyone waits for.
+#
+#   -i  sampling interval, default 0.0005. Ruby's sleep will not give
+#       you much better than this, and the header reports the rate
+#       that was actually ACHIEVED rather than the one asked for.
+#   -r  run the workload this many times in one process. One run of a
+#       fast command yields too few samples to say anything; repeating
+#       it is how the profile gets a population. Note that `require`
+#       happens once however many runs there are, so its share falls
+#       as -r rises -- which is the point when you want steady state
+#       rather than start-up.
+#   -n  how many frames to print. Whatever is left is reported as one
+#       "other" row with its own share, so the column always sums to
+#       100% and a reader can see how much is in the tail.
+#
+# The workload's stdout goes to /dev/null: profiling a listing that is
+# also painting a terminal measures the terminal.
 #
 set -euo pipefail
 
 TILCK_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
-INTERVAL=0.001
+INTERVAL=0.0005
 TOP=20
+RUNS=1
 
 while [ $# -gt 0 ]; do
    case "$1" in
       -i) INTERVAL="$2"; shift 2 ;;
       -n) TOP="$2"; shift 2 ;;
+      -r) RUNS="$2"; shift 2 ;;
       --) shift; break ;;
       -h|--help|help)
          sed -n '/^# Usage:/,/^#$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
@@ -53,25 +71,26 @@ find_ruby() {
    return 1
 }
 
-INTERVAL="$INTERVAL" TOP="$TOP" ROOT="$TILCK_ROOT" "$(find_ruby)" -e '
+INTERVAL="$INTERVAL" TOP="$TOP" RUNS="$RUNS" ROOT="$TILCK_ROOT" "$(find_ruby)" -e '
 interval = ENV["INTERVAL"].to_f
 top      = ENV["TOP"].to_i
+runs     = [ENV["RUNS"].to_i, 1].max
 root     = ENV["ROOT"]
 
 main_thread = Thread.current
 samples = []
 running = true
 
-# The sampler. It reads the MAIN thread, so its own work never
-# appears in the profile.
+# The sampler reads the MAIN thread, so its own work never appears in
+# the profile.
 sampler = Thread.new do
   while running
     begin
       locs = main_thread.backtrace_locations
       samples << locs if locs && !locs.empty?
     rescue StandardError
-      # A thread can be between frames; a lost sample is noise, not
-      # a reason to stop profiling.
+      # A thread can be between frames; a lost sample is noise, not a
+      # reason to stop profiling.
     end
     sleep interval
   end
@@ -81,19 +100,28 @@ t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 # Required INSIDE the measured region: loading and registering the
 # packages is part of what a run costs, and profiling only what comes
-# after it would hide a third of the answer.
-$0 = root + "/scripts/pkgmgr/main.rb"
+# after would hide a third of the answer.
+# $0 is left alone ON PURPOSE. main.rb ends with
+#
+#   if __FILE__ == $0
+#     exit Main::main(ARGV)
+#   end
+#
+# so pointing $0 at it makes the require itself run the command and
+# exit -- which silently reduced every -r to a single run.
+real_stdout = STDOUT.dup
+STDOUT.reopen(File::NULL, "w")
+
 begin
-  require $0
-  Main.main(ARGV)
+  require root + "/scripts/pkgmgr/main.rb"
+  runs.times { Main.main(ARGV.dup) }
 rescue SystemExit
 end
 
+STDOUT.reopen(real_stdout)
 elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
 running = false
 sampler.join
-
-STDOUT.reopen(STDERR.dup) if STDOUT.closed?
 
 def frame_name(loc, root)
   path = loc.path.to_s.sub(root + "/", "")
@@ -118,17 +146,34 @@ n = samples.length
 pct = ->(c) { n.zero? ? 0.0 : 100.0 * c / n }
 
 puts
-puts "samples: #{n}   wall: #{"%.2f" % elapsed}s   interval: #{interval}s"
+puts "samples: #{n}   runs: #{runs}   wall: #{"%.2f" % elapsed}s"
+puts "asked for one sample every #{interval}s, got one every " \
+     "#{n.zero? ? "-" : "%.2f" % (elapsed * 1000 / n)}ms"
 puts
 
-puts "== SELF (time spent in this frame) =="
-self_count.sort_by { |_, c| -c }.first(top).each { |name, c|
-  printf("  %5.1f%%  %5d  %s\n", pct.call(c), c, name)
+# Whatever does not fit in the top N is reported as one row rather
+# than dropped: a column of percentages that does not add up invites
+# the reader to assume the rest is nothing.
+show = ->(title, counts) {
+  puts title
+  rows = counts.sort_by { |_, c| -c }
+  head = rows.first(top)
+
+  head.each { |name, c| printf("  %5.1f%%  %5d  %s\n", pct.call(c), c, name) }
+
+  tail = rows.drop(top)
+  if !tail.empty?
+    printf("  %5.1f%%  %5d  (%d more frames)\n",
+           pct.call(tail.sum { |_, c| c }), tail.sum { |_, c| c },
+           tail.length)
+  end
+
+  printf("  %5.1f%%  %5d  TOTAL\n",
+         pct.call(rows.sum { |_, c| c }), rows.sum { |_, c| c })
 }
 
+show.call("== SELF (time spent in this frame) ==", self_count)
 puts
-puts "== TOTAL (time spent under this frame) =="
-total_count.sort_by { |_, c| -c }.first(top).each { |name, c|
-  printf("  %5.1f%%  %5d  %s\n", pct.call(c), c, name)
-}
+show.call("== TOTAL (time spent under this frame; frames nest, so " \
+          "this over-counts) ==", total_count)
 ' -- "$@"
