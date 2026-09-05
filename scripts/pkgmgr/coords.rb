@@ -59,6 +59,23 @@ class Coords
   end
   private :check
 
+  # The version in a stack NAME, written either way: "gcc-14.4.0", as
+  # it appears in a path and in the -L listing, or the bare "14.4.0"
+  # that names it just as unambiguously while there is one kind of
+  # stack. nil when it is neither.
+  #
+  # Here rather than in the option parser because the spelling of a
+  # stack is the schema's business, and stack_ver right below is the
+  # same knowledge read in the other direction.
+  def self.parse_stack(str)
+    return SafeVer(str.to_s.strip.sub(/\Agcc-/, ""))
+  end
+
+  # The name a stack version is filed under. The inverse of
+  # parse_stack, so callers that print a stack agree with callers that
+  # read one.
+  def self.stack_name(ver) = "gcc-#{ver}"
+
   # The compiler version this stack names, or nil when the stack is
   # not a GCC one -- ANY, or the clang-* the schema leaves room for.
   #
