@@ -27,8 +27,16 @@ TC_NAME="${TC_NAME:-toolchain5}"
 RUBY="$(ls "$MAIN_DIR/$TC_NAME"/linux-*/*/any/pkgs/ruby/*/bin/ruby \
            2>/dev/null | head -1 || true)"
 
+# No bootstrap Ruby means the package manager runs on the system's
+# (scripts/bash_build_toolchain takes it when it is >= 3.2), and so
+# does this.
 if [ -z "$RUBY" ]; then
-   echo "pmmutate: no bootstrap ruby under $MAIN_DIR/$TC_NAME" >&2
+   RUBY="$(command -v ruby || true)"
+fi
+
+if [ -z "$RUBY" ]; then
+   echo "pmmutate: no bootstrap ruby under $MAIN_DIR/$TC_NAME," \
+        "and none on PATH" >&2
    exit 1
 fi
 
