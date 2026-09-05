@@ -333,6 +333,14 @@ class HostGccPackage < Package
       # how GCC validates a compiler change. We are not changing GCC,
       # and it triples an already long build.
       "--disable-bootstrap",
+
+      # With no bootstrap, the system compiler builds all of it, and
+      # it has to be told which C++ that is: under GCC 16's default
+      # C++20, GCC 11's libcody stops at `S2C(u8" ")` -- a char8_t
+      # array where the code expects char. GCC's own gcc/ directory
+      # picks no dialect of its own either. See
+      # Package#host_compiler_gnu17.
+      *host_compiler_gnu17,
     ]
 
     # glibc removed libcrypt and crypt.h in 2.39; it lives in the
