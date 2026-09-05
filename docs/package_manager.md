@@ -18,6 +18,7 @@
   * [How the build system finds the toolchain](#how-the-build-system-finds-the-toolchain)
   * [Atomic installs and signal safety](#atomic-installs-and-signal-safety)
   * [Resumable downloads](#resumable-downloads)
+  * [Retried clones](#retried-clones)
   * [Package reconfiguration](#package-reconfiguration)
   * [Test infrastructure](#test-infrastructure)
     - [Unit tests](#unit-tests)
@@ -624,6 +625,20 @@ preserved in `cache/partial/` and the next attempt resumes from where it left of
 using the HTTP `Range` header. If the server doesn't support resume (returns 200
 instead of 206), the partial file is deleted and the download restarts. If the
 range is invalid (416), the partial is also deleted.
+
+## Retried clones
+
+A `git clone` has nothing to resume, so a failed one is simply attempted
+again: three times, two and then eight seconds apart. An upstream git server
+can be slow rather than broken — `git.musl-libc.org` answers a 5 KB request in
+anywhere between half a second and forty — and one failed attempt is not an
+answer about the repository. Each retry starts by removing the destination
+directory, since an attempt that died half-way leaves it behind and git
+refuses to clone into a non-empty one.
+
+The one exception is the `--branch <sha>` shot taken for a package pinned to a
+commit (tcc): git rejects the same SHA every time, so that one gets a single
+attempt and it is the full clone following it that gets retried.
 
 ## Package reconfiguration
 

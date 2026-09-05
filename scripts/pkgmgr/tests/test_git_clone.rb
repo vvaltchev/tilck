@@ -2,8 +2,10 @@
 #
 # Tests for Cache::Impl.git_clone and Cache.download_git_repo using
 # a mock git layer. The production code calls run_git/capture_git
-# (thin wrappers around system/Open3); tests replace those to
-# simulate various git scenarios without a real remote repo.
+# (thin wrappers around system/Open3) and waits between retries via
+# wait_before_retry; tests replace all three, so that every git
+# scenario can be simulated without a real remote repo and without
+# the suite ever sleeping through a backoff.
 #
 
 require_relative 'test_helper'
@@ -20,12 +22,19 @@ class MockGit
 
   attr_accessor :clone_handler, :checkout_ok, :rev_parse_ok
   attr_reader :calls  # log of [method, args] for assertions
+  attr_reader :waits  # the backoff delays the retries asked for
 
   def initialize
     @clone_handler = nil
     @checkout_ok = true
     @rev_parse_ok = true
     @calls = []
+    @waits = []
+  end
+
+  # The pause between two attempts: recorded, never slept through.
+  def wait(secs)
+    @waits << secs
   end
 
   def run(*args)
@@ -81,15 +90,18 @@ module MockGitHelper
   def with_mock_git(mock = MockGit.new)
     orig_run = Cache::Impl.method(:run_git)
     orig_cap = Cache::Impl.method(:capture_git)
+    orig_wait = Cache::Impl.method(:wait_before_retry)
 
     Cache::Impl.define_singleton_method(:run_git) { |*a| mock.run(*a) }
     Cache::Impl.define_singleton_method(:capture_git) { |*a| mock.capture(*a) }
+    Cache::Impl.define_singleton_method(:wait_before_retry) { |s| mock.wait(s) }
 
     yield mock
 
   ensure
     Cache::Impl.define_singleton_method(:run_git, orig_run)
     Cache::Impl.define_singleton_method(:capture_git, orig_cap)
+    Cache::Impl.define_singleton_method(:wait_before_retry, orig_wait)
   end
 end
 
@@ -150,21 +162,144 @@ class TestGitCloneBasic < Minitest::Test
   end
 
   def test_clone_with_non_sha_tag_failure
-    call_count = 0
+    clones = []
     mock = MockGit.new
     mock.clone_handler = ->(args, dest) {
-      call_count += 1
+      clones << args
       false  # all clones fail
     }
 
     with_mock_git(mock) do
       Dir.mktmpdir do |dir|
         FileUtils.cd(dir) do
-          # "v1.0" is not a hex SHA, so no retry
+          # "v1.0" is not a hex SHA, so there is no full-clone fallback
           ok = Cache::Impl.git_clone("https://fake/repo", "mydir", "v1.0")
           refute ok
-          # Only one clone attempt (--branch), no full-clone retry
-          assert_equal 1, call_count
+
+          # Every attempt asked for the same ref: the clone is retried
+          # (see TestGitCloneNetRetries), never widened into a full one.
+          refute_empty clones
+          assert clones.all? { |a| a.include?("--branch") }
+        end
+      end
+    end
+  end
+end
+
+# ---------------------------------------------------------------
+# The retries: an upstream git server that resets a connection or
+# times out a handshake has said nothing about the repository, so a
+# single failed attempt is not an answer.
+# ---------------------------------------------------------------
+
+class TestGitCloneNetRetries < Minitest::Test
+  include TestHelper
+  include MockGitHelper
+
+  def test_no_wait_when_the_first_attempt_works
+    with_mock_git do |mock|
+      Dir.mktmpdir do |dir|
+        FileUtils.cd(dir) do
+          assert Cache::Impl.git_clone("https://fake/repo", "mydir", "v1.0")
+          assert_empty mock.waits
+        end
+      end
+    end
+  end
+
+  def test_a_failed_attempt_is_retried
+    seen = []
+    mock = MockGit.new
+    mock.clone_handler = ->(args, dest) {
+      seen << dest
+      next false if seen.length == 1
+      FileUtils.mkdir_p(dest)
+      File.write(File.join(dest, "README"), "content")
+      true
+    }
+
+    with_mock_git(mock) do
+      Dir.mktmpdir do |dir|
+        FileUtils.cd(dir) do
+          assert Cache::Impl.git_clone("https://fake/repo", "mydir", "v1.0")
+          assert_equal 2, seen.length
+          assert_equal [Cache::Impl::NET_RETRY_DELAYS.first], mock.waits
+        end
+      end
+    end
+  end
+
+  # The retry policy itself, in one place: three attempts, two and
+  # then eight seconds apart.
+  def test_gives_up_after_the_last_attempt
+    clones = 0
+    mock = MockGit.new
+    mock.clone_handler = ->(args, dest) {
+      clones += 1
+      false
+    }
+
+    with_mock_git(mock) do
+      Dir.mktmpdir do |dir|
+        FileUtils.cd(dir) do
+          refute Cache::Impl.git_clone("https://fake/repo", "mydir", "v1.0")
+          assert_equal 3, clones
+          assert_equal [2, 8], mock.waits
+        end
+      end
+    end
+  end
+
+  def test_a_retry_starts_from_a_clean_slate
+    found = []
+    mock = MockGit.new
+    mock.clone_handler = ->(args, dest) {
+      found << Dir.exist?(dest)
+      FileUtils.mkdir_p(File.join(dest, ".git"))  # half-cloned junk
+      found.length > 1
+    }
+
+    with_mock_git(mock) do
+      Dir.mktmpdir do |dir|
+        FileUtils.cd(dir) do
+          assert Cache::Impl.git_clone("https://fake/repo", "mydir", "v1.0")
+
+          # The second attempt found the destination as empty as the
+          # first one did: git refuses to clone into a directory that
+          # a dead attempt left behind.
+          assert_equal [false, false], found
+        end
+      end
+    end
+  end
+
+  def test_the_sha_shaped_tag_is_probed_only_once
+    clones = []
+    mock = MockGit.new
+    mock.clone_handler = ->(args, dest) {
+      clones << args
+      next false if clones.length < 3
+      FileUtils.mkdir_p(dest)
+      File.write(File.join(dest, "file.c"), "code")
+      true
+    }
+
+    with_mock_git(mock) do
+      Dir.mktmpdir do |dir|
+        FileUtils.cd(dir) do
+          ok = Cache::Impl.git_clone(
+            "https://fake/repo", "mydir", "abcdef123456"
+          )
+          assert ok
+
+          # git rejects the same SHA every time, so `--branch <sha>`
+          # is asked once and once only...
+          assert_equal 1, clones.count { |a| a.include?("--branch") }
+
+          # ...while the full clone that follows it -- the request
+          # that actually matters -- is retried like any other.
+          assert_equal 3, clones.length
+          assert_equal [Cache::Impl::NET_RETRY_DELAYS.first], mock.waits
         end
       end
     end

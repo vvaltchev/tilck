@@ -199,35 +199,95 @@ module Cache
     def run_git(*args) = system("git", *args)
     def capture_git(*args) = Open3.capture2("git", *args)
 
+    # Replaced by the tests as well: a suite that really waited would
+    # pay the full backoff of every retry it exercises.
+    def wait_before_retry(secs) = sleep(secs)
+
+    # How long to wait before each retry of a network operation. The
+    # number of attempts is one more than the number of delays, so the
+    # two cannot disagree. The first pause is short because most of
+    # what it covers is a single reset; the second is longer because a
+    # server that failed us twice needs a moment, not another hit.
+    #
+    # An upstream git server can be slow rather than broken:
+    # git.musl-libc.org answers a 5 KB request in anywhere between
+    # half a second and forty, resetting the connection in between,
+    # and one failed attempt is not an answer about the repository.
+    #
+    NET_RETRY_DELAYS = [2, 8].freeze
+
+    # Run the block until it returns true, waiting NET_RETRY_DELAYS
+    # between the attempts. `what` names the operation for the user.
+    #
+    # The block receives the attempt number: only the operation knows
+    # what starting over means for itself.
+    def with_net_retries(what)
+
+      attempts = NET_RETRY_DELAYS.length + 1
+
+      for i in 1..attempts do
+
+        return true if yield(i)
+        break if i == attempts
+
+        delay = NET_RETRY_DELAYS[i - 1]
+        warning "#{what} failed (attempt #{i}/#{attempts}): " \
+                "retrying in #{delay} seconds"
+        wait_before_retry(delay)
+      end
+
+      return false
+    end
+
+    # One `git clone`, attempted more than once.
+    #
+    # An attempt that died half-way can leave its destination behind
+    # (git removes it when it fails on its own, not when it is killed)
+    # and git refuses to clone into a non-empty directory: the retry
+    # has to start from the same clean slate the first attempt had.
+    def git_clone_retrying(url, destdir, *opts)
+
+      with_net_retries("Cloning #{url}") do |attempt|
+        rm_rf(destdir) if attempt > 1
+        run_git("clone", *opts, url, destdir)
+      end
+    end
+
     def git_clone(url, destdir, tag)
 
       if tag.nil?
-        ok = run_git("clone", "--depth", "1", url, destdir)
+        ok = git_clone_retrying(url, destdir, "--depth", "1")
         raise LocalError, "Failed to clone git repo: #{url}" if !ok
         return true
       end
 
-      ok = run_git("clone", "--branch", tag, "--depth", "1", url, destdir)
-      return true if ok
+      shallow_opts = ["--branch", tag, "--depth", "1"]
 
-       # Git clone failed. There could be several reasons for that:
-       #
-       #     - The remote git server is down
-       #
-       #     - The pointed branch/tag/commit does not exist anymore because
-       #       the ref has been deleted or the history has been rewritten.
-       #
-       #     - In some corner cases, fetching individual untagged commits
-       #       is not allowed. It's worth retrying with a full clone only
-       #       if the tag looks like a hex commit SHA.
-       #       See: https://stackoverflow.com/a/51002078/2077198
-       #
-      raise LocalError, "Failed to clone git repo: #{url}" if
-        !tag.match?(/\A[0-9a-f]+\z/)
+      # A tag that is a branch or a tag name is fetched directly, and
+      # failing to do so is worth retrying: the ref either exists or
+      # it does not, so what makes the same request fail twice in a
+      # row is the remote git server, not the ref.
+      #
+      # A tag that looks like a hex commit SHA is a different story:
+      # in some corner cases, fetching individual untagged commits is
+      # not allowed, so `--branch <sha>` is expected to fail and the
+      # full clone below is the request that actually matters. It
+      # gets one optimistic shot and no retries: git refuses the same
+      # SHA every time, and making every commit-pinned package wait
+      # out the backoff would only teach the reader to ignore the
+      # warning. See: https://stackoverflow.com/a/51002078/2077198
+      #
+      if !tag.match?(/\A[0-9a-f]+\z/)
+        ok = git_clone_retrying(url, destdir, *shallow_opts)
+        raise LocalError, "Failed to clone git repo: #{url}" if !ok
+        return true
+      end
 
-      # We failed to clone the repo, but the tag is a git SHA (corner case 3),
-      # so it's worth trying a workaround.
-      ok = run_git("clone", url, destdir)
+      return true if run_git("clone", *shallow_opts, url, destdir)
+
+      # The shallow shot failed and the tag is a git SHA, so it's
+      # worth trying the workaround: a full clone.
+      ok = git_clone_retrying(url, destdir)
       raise LocalError, "Failed to clone git repo: #{url}" if !ok
 
       # OK, a regular full-clone succeeded. Now let's checkout the specific
