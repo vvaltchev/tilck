@@ -57,9 +57,12 @@ class TestShowStatus < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        # Also create an x86_64 install
-        gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(target_pkgs(ALL_ARCHS["x86_64"], gcc) / "foo" / "1.0.0")
+        # A real second install, not a bare directory: an install
+        # carries a .build_inputs record, and one without a record is
+        # a package needing a rebuild, not a healthy second arch.
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
         pkgmgr.refresh()
 
         list = pkg.get_install_list
@@ -100,29 +103,62 @@ class TestShowStatus < Minitest::Test
     end
   end
 
-  def test_show_status_broken_excluded_from_arch_list
+  # Every arch that has an install appears in the line, whichever arch
+  # the invocation is for. (Broken installs have their own test above;
+  # this one is about the arch list.)
+  def test_arch_list_covers_every_installed_arch
     with_fake_tc do |tc|
       with_stubbed_externals do
-        # Install a working version for i386
         pkg = FakePackage.new("foo")
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        # Create a broken install for riscv64 (empty dir, no expected files
-        # but FakePackage has empty expected_files so it won't be broken)
-        # Instead, create a package that IS broken on riscv64
-        gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(target_pkgs(ALL_ARCHS["riscv64"], gcc) / "foo" / "1.0.0")
+        with_context(ARCH: ALL_ARCHS["riscv64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
         pkgmgr.refresh()
 
         list = pkg.get_install_list
         output = capture_stdout {
           pkgmgr.show_status("foo", nil, list)
         }
-        # Both archs show as installed (FakePackage has empty expected_files)
         assert_match(/installed/, output)
         assert_match(/i386/, output)
         assert_match(/riscv64/, output)
+      end
+    end
+  end
+
+  # An install is judged against the recipe as it reads at ITS OWN
+  # coordinates. Asking the package about a version instead re-derives
+  # the CURRENT ones, finds nothing where it looked, and reports the
+  # install as healthy -- so a stale x86_64 tree was drawn "installed"
+  # from an i386 invocation, while --check-for-updates, which does use
+  # each install's coordinates, called the same tree stale.
+  def test_a_stale_install_of_another_arch_is_still_stale
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        # Spoil only the x86_64 record. The i386 one, which is what
+        # the current coordinates point at, stays correct.
+        other = pkg.get_install_list.find { |i|
+          i.arch == ALL_ARCHS["x86_64"]
+        }
+        refute_nil other, "no x86_64 install to spoil"
+        File.write(other.path / BuildInputs::FILE, "recipe sha256:spoiled\n")
+
+        output = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list)
+        }
+        assert_match(/stale/, output)
       end
     end
   end
