@@ -349,8 +349,9 @@ class TestShowStatusAllCompilers < Minitest::Test
         output = capture_stdout {
           pkgmgr.show_status_all(nil, true)  # all_compilers = true
         }
-        assert_match(/Packages built by GCC 12\.4\.0/, output)
-        assert_match(/Packages built by GCC #{FAKE_GCC_VER}.*CURRENT/, output)
+        assert_match(/Tilck packages built by GCC 12\.4\.0/, output)
+        assert_match(/Tilck packages built by GCC #{FAKE_GCC_VER}.*CURRENT/,
+                     output)
       end
     end
   end
