@@ -5,7 +5,6 @@ require_relative 'progress'
 
 require 'fileutils'
 require 'tmpdir'
-require 'net/http'
 require 'uri'
 require 'io/console'
 require 'open3'
@@ -83,6 +82,13 @@ module Cache
     # partial_path: path to the partial file (nil = no resume).
     def do_download_uri(uri, local_path, redirects,
                         partial_path: nil, partial_size: 0)
+
+      # Required here, not at the top: net/http drags in resolv and
+      # socket for about 10 ms, and every operation that does not
+      # fetch anything -- which is most of them, since the cache
+      # exists precisely so that builds are offline -- was paying it.
+      # 'uri' stays up there: URI::Generic is reopened at load.
+      require 'net/http'
 
       if redirects == 0
         if partial_size > 0

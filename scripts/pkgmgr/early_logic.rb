@@ -3,7 +3,6 @@
 require_relative 'arch'
 require_relative 'term'
 
-require 'power_assert'
 require 'pathname'
 require 'etc'
 require 'shellwords'
@@ -49,6 +48,11 @@ end
 # this is the path that raises anyway.
 def assert(&expr)
   return true if expr.call
+
+  # Required here, not at the top: power_assert costs about 8 ms to
+  # load -- it pulls in ripper and installs TracePoint hooks -- and a
+  # run in which no assertion fails never needs a line of it.
+  require 'power_assert'
 
   PowerAssert.start(expr, assertion_method: __method__) do |ctx|
     ctx.yield

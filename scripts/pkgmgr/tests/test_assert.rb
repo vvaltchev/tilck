@@ -16,6 +16,8 @@
 
 require_relative 'test_helper'
 require_relative '../early_logic'
+require 'open3'
+require 'rbconfig'
 
 # A plain object, on purpose. `assert` is a private method on Object,
 # but Minitest::Assertions defines one too -- so inside a test case,
@@ -44,28 +46,33 @@ class TestAssert < Minitest::Test
     assert_equal true, AssertProbe.new.holds
   end
 
-  # The expensive part must not run on the happy path.
-  def test_a_holding_assertion_does_not_render_anything
-    calls = 0
-    original = PowerAssert.method(:start)
+  # The expensive part must not run on the happy path -- and now that
+  # the require itself is deferred, "not run" can be stated as "not
+  # even loaded", which is the stronger claim and the easier one to
+  # check.
+  #
+  # In a subprocess, because the test suite is one process in random
+  # order: any other test that trips an assertion loads PowerAssert
+  # for everybody, and this would then pass or fail on the ordering.
+  def test_a_holding_assertion_does_not_load_the_renderer
+    script = <<~RUBY
+      require "#{MAIN_DIR}/scripts/pkgmgr/early_logic"
 
-    PowerAssert.define_singleton_method(:start) { |*, **, &blk|
-      calls += 1
-      true
-    }
+      class Probe
+        def holds
+          assert { 1 + 1 == 2 }
+        end
+      end
 
-    begin
-      AssertProbe.new.holds
-    ensure
-      # Put the real one BACK, not just remove the override: start is
-      # a module_function, so the override replaced the only
-      # definition there was, and removing it would leave the module
-      # without one for every test that runs after this.
-      PowerAssert.define_singleton_method(:start, original)
-    end
+      Probe.new.holds
+      puts defined?(PowerAssert) ? "loaded" : "not loaded"
+    RUBY
 
-    assert_equal 0, calls,
-                 "the renderer ran for an assertion that passed"
+    out, status = Open3.capture2(RbConfig.ruby, "-e", script)
+
+    assert status.success?, "the probe did not run"
+    assert_equal "not loaded", out.strip,
+                 "the renderer was loaded for an assertion that passed"
   end
 
   # ...and the diagnostic is intact when it does run. This is the
