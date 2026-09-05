@@ -60,11 +60,6 @@ class HostPcre2Package < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   def build_flags(ver = nil) = [
       "--disable-static",
       "--enable-jit",           # glib builds GRegex against the JIT

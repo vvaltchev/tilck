@@ -238,7 +238,10 @@ Key methods:
   * `expected_files(ver)` — files/dirs that must exist after a successful build.
     Most packages ignore `ver`; it is there so a package whose install layout
     changed between versions can return a different list
-  * `clean_build(dir)` — remove build artifacts (for recovery after interruption)
+  * `clean_build(dir)` — remove build artifacts (for recovery after interruption).
+    The base class already knows both shapes: it removes `build/` and
+    `install/`, and runs `make distclean` only if the source tree was
+    configured in place. Override only for a tree with its own idea of clean
   * `config_impl` — interactive reconfiguration (optional, e.g. make menuconfig)
   * `build_env(ver)` — what this package offers to packages that depend on it:
     include dirs, lib dirs, pkg-config dirs, extra environment. The base class
@@ -827,11 +830,6 @@ class MyPackage < Package
   def expected_files(ver = nil) = [
     ["mybin", false],             # file that must exist after build
   ]
-
-  def clean_build(dir)
-    system("make", "distclean", chdir: dir.to_s,
-           out: "/dev/null", err: "/dev/null")
-  end
 
   def install_impl_internal(install_dir)
     ok = run_command("configure.log", ["./configure", "--prefix=#{install_dir}"])

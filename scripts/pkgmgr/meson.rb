@@ -79,11 +79,6 @@ class HostMesonPackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   # The interpreter this runs on, by absolute path. Asked of the
   # package manager rather than assumed: a wrapper that silently
   # falls back to the machine's python is the thing this replaces.

@@ -33,11 +33,6 @@ class ZlibPackage < Package
     ["install/lib/libz.a", false]
   ]
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   def build_steps
 
     arch = default_arch().gcc_tc

@@ -230,12 +230,6 @@ class HostGccPackage < Package
     return ok
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   # The three decisions below were each wrong once, in the same way:
   # they asked about default_ver instead of the version being
   # installed. They live here, as functions of an explicit version,

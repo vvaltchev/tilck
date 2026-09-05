@@ -57,11 +57,6 @@ class HostMconfPackage < Package
     ["install/bin/lxdialog", false],
   ]
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   def install_impl_internal(install_dir)
 
     # The busybox tarball ships an `INSTALL` file at the top level. On

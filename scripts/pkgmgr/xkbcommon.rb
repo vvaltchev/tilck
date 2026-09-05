@@ -67,12 +67,6 @@ class HostXkbcommonPackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   def build_flags(ver = nil) = [
       "-Denable-wayland=false",
       "-Denable-xkbregistry=false",

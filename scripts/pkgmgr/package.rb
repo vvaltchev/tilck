@@ -523,9 +523,26 @@ class Package
   ]
 
   # Clean build artifacts from a staging directory, keeping the
-  # extracted source for a rebuild. Returns true if clean succeeded.
-  # Override in subclass for custom logic. Fallback: delete + re-extract.
+  # extracted source for a rebuild. Returns true if clean succeeded;
+  # the caller deletes and re-extracts otherwise.
+  #
+  # Two shapes of build, told apart by what they left. A build done
+  # out of tree wrote everything under build/ and install/, and once
+  # those are gone the source is what the tarball held: nothing to
+  # ask make to do, and no Makefile to ask with. A build done in the
+  # source tree left a Makefile there, and `make distclean` is what
+  # knows the rest. Twenty recipes used to override this with the
+  # first two lines and then call up into the third; that distclean
+  # failed every time, and every resume of gcc, glibc or qemu paid an
+  # extraction for it.
+  #
+  # Override for a tree with its own idea of clean (a shipped
+  # Makefile with only a `clean` target: dtc, lua, treecmd).
   def clean_build(dir)
+    FileUtils.rm_rf(dir / "install")
+    FileUtils.rm_rf(dir / "build")
+    return true if !(dir / "Makefile").exist?
+
     system("make", "distclean", chdir: dir.to_s,
            out: "/dev/null", err: "/dev/null")
   end
@@ -747,9 +764,16 @@ class Package
   # host_os_list and host_arch_list say where a package RUNS, which no
   # build step reads; declared as overrides by the two world roots,
   # and hidden from the digest for the same reason host_world_root? is.
+  #
+  # clean_build runs only on a resume, before the build, and only ever
+  # deletes: what the build then produces is what it would have
+  # produced from a fresh extraction. Thirty-six copies of it were
+  # removed from the recipes in one change, which would otherwise
+  # have flagged everything they built.
   NON_RECIPE_HOOKS = %i[enabled? default? default_cc
                         host_world_root? installed?
-                        host_os_list host_arch_list].freeze
+                        host_os_list host_arch_list
+                        clean_build].freeze
 
   #
   # One digest standing for "how this package is built".
