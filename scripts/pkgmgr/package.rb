@@ -504,6 +504,24 @@ class Package
     return Ver(File.basename(staging_path.to_s))
   end
 
+  # The host compiler, told the C and C++ its sources are written in.
+  #
+  # For a configure line: GCC 15 made C23 the default, under which
+  # `void g()` declares a function of no arguments, and GCC 16 made
+  # C++20 the default, under which `u8" "` is an array of char8_t.
+  # Sources from before either change fail under the new reading --
+  # gmp 6.1.0's own configure probe on the first, GCC 11's libcody on
+  # the second -- and they are not wrong, they are older. gnu17 and
+  # gnu++17 are what every GCC from 8 to 15 gave them by default: the
+  # dialect they were actually built under for years, named.
+  #
+  # On CC and CXX rather than CFLAGS: gmp replaces its ABI-tuned flags
+  # with a CFLAGS it is handed, and keeps them beside a CC.
+  def host_compiler_gnu17 = [
+    "CC=#{HOST_CC_CMD} -std=gnu17",
+    "CXX=#{HOST_CXX_CMD} -std=gnu++17",
+  ]
+
   # Clean build artifacts from a staging directory, keeping the
   # extracted source for a rebuild. Returns true if clean succeeded.
   # Override in subclass for custom logic. Fallback: delete + re-extract.
@@ -696,6 +714,7 @@ class Package
 
   BUILD_HELPERS = [
     :meson_stack_build, :autotools_stack_build, :stack_install,
+    :host_compiler_gnu17,
   ].freeze
 
   # Hooks that say what a package IS, or whether it may be asked for,

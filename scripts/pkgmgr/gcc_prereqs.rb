@@ -118,6 +118,12 @@ class GccPrereqPackage < Package
       "--disable-shared",
       "--enable-static",
       *configure_flags(ver),
+
+      # The oldest of these -- gmp 6.1.0, pinned by GCC 11 -- fails its
+      # own configure probe under C23 ("no, long long reliability test
+      # 1", then "could not find a working compiler"). See
+      # Package#host_compiler_gnu17.
+      *host_compiler_gnu17,
     ]
 
     ok = false

@@ -113,3 +113,59 @@ class TestGccPrereqsMatchUpstream < Minitest::Test
     refute_equal v11["host_mpfr"], v16["host_mpfr"]
   end
 end
+
+#
+# The C the four are compiled as. GCC 15 made C23 the default, under
+# which `void g()` takes no arguments, and gmp 6.1.0's own configure
+# probe -- "long long reliability test 1" -- is written exactly that
+# way; it failed, and configure reported no working compiler at all.
+# The recipe names the dialect on CC, and this is what says so.
+#
+class TestGccPrereqsAreCompiledAsGnu17 < Minitest::Test
+
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  # Drive the real recipe up to its configure line, and stop there.
+  def configure_argv_of(pkg)
+    seen = []
+    pkg.define_singleton_method(:run_command) { |log, argv|
+      seen << [log, argv]
+      false   # the first step fails, so nothing is moved or pruned
+    }
+
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |d|
+        staging = Pathname.new(d) / pkg.pkg_dirname / "6.1.0"
+        FileUtils.mkdir_p(staging)
+        FileUtils.cd(staging) { pkg.install_impl_internal(staging) }
+      end
+    end
+
+    assert_equal 1, seen.length, "stopped at the first step"
+    assert_equal "configure.log", seen[0][0]
+    return seen[0][1]
+  end
+
+  def test_gmp_is_configured_with_the_host_compiler_in_gnu17
+    argv = configure_argv_of(HostGmpPackage.new)
+    assert_equal "../configure", argv[0]
+    assert_includes argv, "CC=#{HOST_CC_CMD} -std=gnu17"
+    assert_includes argv, "CXX=#{HOST_CXX_CMD} -std=gnu++17"
+    assert_empty argv.grep(/\ACFLAGS=/),
+                 "a CFLAGS would replace gmp's own ABI-tuned flags"
+  end
+
+  def test_all_four_share_that_configure_line
+    # mpfr, mpc and isl add --with-gmp and friends on top of the same
+    # install_impl_internal; the dialect comes from the shared base.
+    [HostMpfrPackage, HostMpcPackage, HostIslPackage].each { |k|
+      assert_equal GccPrereqPackage.instance_method(:install_impl_internal),
+                   k.instance_method(:install_impl_internal),
+                   "#{k} builds through GccPrereqPackage"
+    }
+  end
+end
