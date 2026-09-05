@@ -330,7 +330,8 @@ class TestShowStatusAll < Minitest::Test
       with_stubbed_externals do
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
-                             arch_list: ALL_HOST_ARCHS.values)
+                             arch_list: ALL_HOST_ARCHS.values,
+                             target_arch: ARCH, libc: "musl")
         pkgmgr.register(cc)
         pkgmgr.install("gcc-#{ARCH.name}-musl")
         pkgmgr.refresh()
@@ -338,6 +339,90 @@ class TestShowStatusAll < Minitest::Test
         output = capture_stdout { pkgmgr.show_status_all }
         assert_match(/GCC toolchains/, output)
         assert_match(/gcc-#{ARCH.name}-musl/, output)
+      end
+    end
+  end
+
+  # The listing split into sections, as { title => [lines] }, with the
+  # colour stripped. Assertions can then say WHERE a package appeared,
+  # which is the whole subject of the tests below -- matching the
+  # whole output cannot tell one section from another.
+  def sections_of(output)
+    out = {}
+    title = nil
+
+    for line in output.gsub(/\e\[[0-9;]*m/, "").lines.map(&:chomp) do
+      if line.start_with?("--- ")
+        title = line.sub(/^--- /, "").sub(/ ---$/, "").strip
+        out[title] = []
+      elsif title && !line.strip.empty?
+        out[title] << line
+      end
+    end
+
+    return out
+  end
+
+  def line_for(output, section, pkgname)
+    return (sections_of(output)[section] || []).find { |l|
+      l.split.first == pkgname
+    }
+  end
+
+  # A :stack package is built by a compiler we built ourselves, and
+  # belongs to that compiler's stack. Reporting "syscc" filed QEMU
+  # beside mtools under "Packages built by system CC" -- the wrong
+  # compiler, and no sign of which of the six stacks held it.
+  def test_a_stack_package_is_filed_under_its_own_stack
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        out = capture_stdout { pkgmgr.show_status_all }
+        stack = pkgmgr.current_host_stack
+        here = "Host packages built by GCC #{stack} [ CURRENT ]"
+
+        refute_nil line_for(out, here, "host_thing"),
+                   "not under its own stack's section"
+        assert_nil line_for(out, "Packages built by system CC",
+                            "host_thing"),
+                   "still filed under the system compiler"
+      end
+    end
+  end
+
+  # Two stacks, two sections. An install belonging to another stack is
+  # not missing and not stale: it is reported under that stack, while
+  # the current one simply has nothing built yet.
+  def test_each_stack_is_its_own_section
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+
+        other = Ver("9.9.9")
+        pkgmgr.with_host_stack(other) { pkgmgr.install("host_thing") }
+        pkgmgr.refresh()
+
+        out = capture_stdout { pkgmgr.show_status_all(nil, true) }
+        here = "Host packages built by GCC " \
+               "#{pkgmgr.current_host_stack} [ CURRENT ]"
+        there = "Host packages built by GCC #{other}"
+
+        assert_match(/installed/, line_for(out, there, "host_thing").to_s,
+                     "the other stack's install is not shown as installed")
+
+        mine = line_for(out, here, "host_thing")
+        refute_nil mine, "the current stack does not list it at all"
+        refute_match(/installed|stale/, mine,
+                     "the current stack has nothing built, so neither")
       end
     end
   end

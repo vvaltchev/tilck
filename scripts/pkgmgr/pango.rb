@@ -60,7 +60,6 @@ class HostPangoPackage < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libpango-1.0.so", false],

@@ -52,7 +52,6 @@ class HostXkbcommonPackage < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   def expected_files(ver = nil) = [
     ["install/usr/lib/libxkbcommon.so", false],

@@ -128,7 +128,6 @@ class X11Package < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   def expected_files(ver = nil) = [["install/#{@check_file}", false]]
 

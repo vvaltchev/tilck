@@ -28,6 +28,8 @@
 # ANY is a reserved word in all three: no distro, board or stack may
 # be called it.
 #
+require_relative 'version'
+
 class Coords
 
   ANY = "any"
@@ -56,6 +58,17 @@ class Coords
     return s
   end
   private :check
+
+  # The compiler version this stack names, or nil when the stack is
+  # not a GCC one -- ANY, or the clang-* the schema leaves room for.
+  #
+  # Lives here because the spelling of a stack is the schema's
+  # business: everyone who needed the version was re-deriving it with
+  # a sub("gcc-", "") of their own.
+  def stack_ver
+    return nil if @stack == ANY || !@stack.start_with?("gcc-")
+    return SafeVer(@stack.sub("gcc-", ""))
+  end
 
   # The three coordinates as a path fragment, for messages.
   def to_s = "#{@machine}/#{@env}/#{@stack}"

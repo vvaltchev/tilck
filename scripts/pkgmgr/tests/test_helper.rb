@@ -224,7 +224,15 @@ module TestHelper
                    on_host: false, is_compiler: false,
                    default: false, board_list: nil,
                    host_os_list: nil, host_arch_list: nil,
-                   host_tier: :compiler, source: :default)
+                   host_tier: :compiler, source: :default,
+                   target_arch: nil, libc: nil)
+      # target_arch: makes this fake a CROSS COMPILER, the way
+      # GccPackage is one -- its installs carry the target metadata,
+      # which is what the listing reads to tell a toolchain from an
+      # ordinary package. Without it a fake with is_compiler: true
+      # still produces plain installs, so it cannot stand in for one.
+      @fake_target_arch = target_arch
+      @fake_libc = libc
       # source: :default -> auto-build a fake SourceRef from the name.
       # source: nil      -> explicit no source (for testing vendor/blob-
       #                     style packages with a custom install_impl).
@@ -251,11 +259,26 @@ module TestHelper
     def expected_files(ver = nil) = []
     def default_ver = Ver("1.0.0")
 
-    # Match the pattern of real packages: host → syscc/HOST_ARCH,
-    # noarch → nil/nil, target → pkgmgr.target_arch (respects
-    # with_target_arch scope, defaults to ARCH).
+    # The same wrap GccPackage applies, for the same reason: an
+    # install of a cross compiler has to say what it targets.
+    def get_install_list
+      return super if @fake_target_arch.nil?
+
+      super.map { |i|
+        InstallInfo.new(
+          i.pkgname, i.compiler, i.on_host, i.arch, i.ver, i.path,
+          i.pkg, i.broken, @fake_target_arch, @fake_libc,
+          default_install: i.default_install, coords: i.coords
+        )
+      }
+    end
+
+    # Match the pattern of real packages: noarch → nil, target →
+    # pkgmgr.target_arch (respects with_target_arch scope, defaults to
+    # ARCH). Host packages defer to the base, where the tier decides
+    # between the system compiler and the stack's own.
     def default_cc
-      return "syscc" if on_host
+      return super if on_host
       return nil if arch_list.nil?
       return pkgmgr.target_arch.gcc_ver
     end

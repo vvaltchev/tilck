@@ -300,7 +300,7 @@ class PackageManager
   def show_status_all(group_by = nil, all_compilers = false)
 
     curr_cc = ARCH.gcc_ver
-    banner = ->(s) { puts; puts "--- #{s.center(40)} ---" }
+    curr_host_cc = current_host_stack
 
     list_with_paths = @known_installed + @found_installed
     by_path = {}
@@ -313,6 +313,30 @@ class PackageManager
     end
 
     list = by_path.values() + @installable
+
+    # One section per compiler, for host and target alike. Sections
+    # are built the same way on both sides; what differs is which
+    # compiler counts as the current one -- ARCH's cross compiler for
+    # target packages, HOST_VER_GCC's stack for host ones -- and that
+    # a version alone does not identify a compiler. Cross GCC 13.3.0
+    # and host GCC 13.3.0 are two different programs producing two
+    # different sets of binaries, so on_host has to be part of the
+    # key or a coincidence of version numbers merges them.
+    cc_sections = ->(on_host, current, label) {
+      picked = list.select { |x|
+        Version === x.compiler && x.on_host == on_host
+      }
+
+      picked.map { |x| x.compiler }.uniq.sort.reverse
+            .select { |cc| all_compilers || cc == current }
+            .map { |cc|
+              here = cc == current ? " [ CURRENT ]" : ""
+              [
+                "#{label} #{cc}#{here}",
+                picked.select { |x| x.compiler == cc }
+              ]
+            }
+    }
 
     groups = [
       [
@@ -330,28 +354,20 @@ class PackageManager
         list.select { |x| !x.compiler && !x.arch }
       ],
 
-      *list.select { |x| Version === x.compiler }.
-        map { |x| x.compiler }.uniq.select { |cc| cc == curr_cc }.
-          map { |cc|
-            [
-              "Packages built by GCC #{cc} [ CURRENT ]",
-              list.select { |x| x.compiler == cc }
-            ]
-          },
-
-      *list.select { |x| Version === x.compiler and all_compilers }.
-        map { |x| x.compiler }.uniq.select { |cc| cc != curr_cc }.
-          map { |cc|
-            [
-              "Packages built by GCC #{cc}",
-              list.select { |x| x.compiler == cc }
-            ]
-          }
+      *cc_sections.call(true, curr_host_cc, "Host packages built by GCC"),
+      *cc_sections.call(false, curr_cc, "Packages built by GCC"),
     ]
 
     #list.each { |x| puts x }  # DEBUG
 
+    # Sized from the titles themselves: there are now as many host
+    # sections as there are stacks, and a fixed width that fitted the
+    # old ones left the longest banner sticking out of the row.
+    width = groups.map { |msg, _| msg.length }.max
+    banner = ->(s) { puts; puts "--- #{s.center(width)} ---" }
+
     for msg, l in groups do
+      next if l.empty?      # a stack with nothing in it is not news
       banner.call msg
       l.map { |x| x.pkgname }.uniq.each { |pkg|
         show_status(pkg, group_by, l.select { |x| x.pkgname == pkg })
@@ -370,7 +386,7 @@ class PackageManager
       return
     end
 
-    if list.all? { |e| e.compiler.eql? "syscc" }
+    if list.all?(&:on_host)
       atos = ->(a) { get_human_arch_name(a) }
     else
       atos = ->(a) { a.nil?? "noarch" : a.name }

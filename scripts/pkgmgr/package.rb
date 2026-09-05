@@ -923,11 +923,29 @@ class Package
     end
   end
 
-  # Default arch / compiler for a regular target package: the pkgmgr's
-  # current target_arch (ARCH unless a with_target_arch(...) override
-  # is active). Host and noarch packages override both.
+  # Default arch for a regular target package: the pkgmgr's current
+  # target_arch (ARCH unless a with_target_arch(...) override is
+  # active). Host and noarch packages override it.
   def default_arch = pkgmgr.target_arch
-  def default_cc = pkgmgr.target_arch.gcc_ver
+
+  # WHICH COMPILER PRODUCES THIS PACKAGE.
+  #
+  # A target package is built by the cross compiler for its arch. A
+  # host package in the :stack tier is built by a compiler we built
+  # ourselves, and belongs to that compiler's stack -- so the answer
+  # is that compiler's version, not the system's. Every other host
+  # tier really is built by the system compiler.
+  #
+  # It used to be the literal "syscc" for every host package, spelled
+  # out in thirty-odd files. That put QEMU -- built by our GCC 14.4.0,
+  # living in linux-x86_64/any/gcc-14.4.0 -- in the same listing
+  # section as mtools, which the distro's compiler really did build,
+  # and left the stack invisible in a listing that groups on this.
+  def default_cc
+    return pkgmgr.target_arch.gcc_ver if !on_host
+    return "syscc" if host_tier != :stack
+    return pkgmgr.current_host_stack
+  end
   def default_ver = pkgmgr.get_config_ver(pkg_dirname, host: on_host)
   def pkg_dirname = name.sub("host_", "")
 
@@ -1352,11 +1370,23 @@ class Package
       dir = c.pkgs_dir / pkg_dirname
       next if !dir.directory?
 
+      # The compiler is read off the coordinates being enumerated, not
+      # off the package: this loop walks every stack, and an install
+      # in gcc-16.2.0 was not produced by whichever stack happens to
+      # be current now.
+      #
+      # Only for :stack, and the tier is what decides -- exactly as in
+      # default_cc. A :compiler-tier package also has a gcc-* in its
+      # coordinates, but that one names the HOST's compiler, which is
+      # the system one: reading it here filed gtest under a stack of
+      # its own.
+      cc = host_tier == :stack ? (c.stack_ver || "syscc") : "syscc"
+
       for d in Dir.children(dir)
         ver = Ver(d.to_s)
         list << InstallInfo.new(
           name,                             # package name
-          "syscc",                          # compiler used
+          cc,                               # compiler used
           true,                             # runnning on host?
           HOST_ARCH,                        # arch
           ver,                              # package version

@@ -80,7 +80,6 @@ class GccPrereqPackage < Package
   include FileUtilsShortcuts
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   # The prefix a dependent passes to --with-<name>.
   def prefix_for(ver) = install_prefix(ver) / "install"

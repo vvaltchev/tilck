@@ -69,7 +69,6 @@ class HostAtSpi2CorePackage < Package
   end
 
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
   def pkg_dirname = "at_spi2_core"
 
   def expected_files(ver = nil) = [

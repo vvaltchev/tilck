@@ -86,7 +86,6 @@ class GccCompiler < Package
 
   def default_ver = @target_arch.gcc_ver
   def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
   # GCC compilers are default based on the current target ARCH:
   # x86 family needs both i386 and x86_64 (UEFI bootloader requires
