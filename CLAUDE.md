@@ -1006,6 +1006,12 @@ differently, and a code generator is exactly the kind of package where
 that matters.
 
 ## CI
-Azure DevOps Pipelines tests all commits across i386, riscv64, x86_64 with
-debug/release builds, unit tests, system tests, and coverage.
-Status: https://dev.azure.com/vkvaltchev/Tilck
+GitHub Actions tests all commits across i386, riscv64, x86_64 with
+debug/release builds, unit tests, system tests, and coverage
+(`.github/workflows/ci-{i386,riscv64,x86_64}.yml`). Six more workflows
+(`ci-tc-{arch,debian,fedora}-{i386,riscv64}.yml`) build the toolchain
+from scratch on a stock distro image, so they validate pkgmgr without
+depending on a prebuilt container.
+
+The kernel workflows skip `readme*`, `temp-*` and `exp-*` branches: on a
+topic branch they must be dispatched explicitly.
