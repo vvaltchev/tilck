@@ -125,7 +125,8 @@ class Package
   attr_reader :host_tier
 
   STATUS_LEN    = 9              # "installed", "not built"
-  COUNT_LEN     = 5              # " (99)"
+  COUNT_DIGITS  = 2              # nothing here is installed 100 times
+  COUNT_LEN     = COUNT_DIGITS + 3   # " (99)"
   STATUS_CELL   = STATUS_LEN + COUNT_LEN
 
   # One status cell: the word in its own colour, the count of matching
@@ -137,7 +138,10 @@ class Package
   # has to be absorbed here.
   def self.status_str(word, color, n = nil, width: STATUS_CELL)
 
-    tail = n.nil? ? "" : " (#{n})"
+    # Padded INSIDE the brackets, so that a two-digit count widens
+    # nothing: "( 4)" and "(10)" are the same width, and the cell
+    # needs no slack after them.
+    tail = n.nil? ? "" : " (#{n.to_s.rjust(COUNT_DIGITS)})"
     pad  = [width - word.length - tail.length, 0].max
     lpad = pad / 2
 
