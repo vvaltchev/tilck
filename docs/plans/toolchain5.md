@@ -502,3 +502,242 @@ members (142 target, 109 host) and all of u-boot but five bytes of a
 printed banner are identical. It costs a byte-for-byte comparison
 between rebuilds, which is a verification convenience and not a
 property of the toolchain.
+
+---
+
+# What was executed (2026-08-29 → 2026-09-03)
+
+Everything above is the plan. This is the record of carrying it out:
+the packages that were built, every logic bug the work hit with the
+command that showed it, and the five instruments that now stand
+between the package manager and the next one.
+
+The short version: the schema held. Not one bug below was a bug in
+the three coordinates. Every one was a question about a specific
+installation answered from ambient state instead of from that
+installation's coordinates -- the same bug, sixteen times, in
+sixteen places that each had to be found.
+
+## 1. The QEMU matrix, and what building it cost
+
+Six QEMU majors now exist, each built by a compiler from its own
+time, each in its own stack:
+
+```
+linux-x86_64/any/gcc-11.5.0/pkgs/qemu/6.2.0/     gmp 6.1.0, mpfr 3.1.6
+linux-x86_64/any/gcc-12.5.0/pkgs/qemu/7.2.0/
+linux-x86_64/any/gcc-13.4.0/pkgs/qemu/8.2.0/
+linux-x86_64/any/gcc-14.4.0/pkgs/qemu/9.2.0/
+linux-x86_64/any/gcc-15.3.0/pkgs/qemu/10.2.0/
+linux-x86_64/any/gcc-16.2.0/pkgs/qemu/11.1.0/
+```
+
+`-s host_qemu:6.2.0` pins GCC 11.5.0 and, through it, gmp 6.1.0 and
+mpfr 3.1.6, and builds that whole world. Compiling a 2021 QEMU with a
+2025 compiler tests neither of them. 338 installs, all `ok`.
+
+Package-side problems hit on the way, each fixed where it belonged:
+
+| symptom | cause | fix |
+|---|---|---|
+| `found no usable distlib` (QEMU 8+) | mkvenv needs distlib to populate the venv it creates | it was a build requirement, so the base system list -- then withdrawn, see below |
+| 3113/3351 targets, then `xkbcommon: Failed to add any default include path` | `pc-bios/keymaps/meson.build` regenerates every keymap when xkbcommon is found, which needs xkeyboard-config's data | install the keymaps the tarball ships; upstream generated them from that same data |
+| built 3316/3316, then `Build directory has been generated with Meson 1.11.1, incompatible with 1.12.0` | QEMU 11.1 creates a pyvenv and installs the meson its `pythondeps.toml` pins; `meson install` was the one step run by a different tool than the rest | `ninja install`, which runs the rules the generating meson wrote |
+| `--disable-glusterfs` refused | the option was removed upstream | `configure_flags(ver)`: options belong to a version, not to the package |
+
+### The interpreter is a package, not whatever PATH finds
+
+Two machines, two failures, neither fixable by installing a system
+package:
+
+```
+/usr/bin/python3      distlib yes, tomllib NO    (3.10)
+brew python3          distlib NO,  tomllib yes   (3.14)
+```
+
+QEMU 8+ needs both. The build was not *choosing* between them, which
+is the actual defect: every other input to a Tilck build comes from
+somewhere we chose. `host_python` is now a package -- a prebuilt
+CPython 3.11.16 from python-build-standalone, with distlib installed
+from a cached wheel -- and the `$PYTHON` token names it. The system
+dependency was withdrawn.
+
+And, so that a missed call site cannot go quiet, `scripts/pkgmgr/shims/`
+holds a `python3` (and a `python`) that prints what went wrong and
+exits 127. They sit on PATH *behind* what dependencies publish, so a
+correctly declared build never sees them. Deliberately no fallback:
+falling back to `/usr/bin/python3` is the behaviour being prevented.
+
+## 2. Every logic bug, with the command that showed it
+
+Sixteen, in the order they were found. Each row is a real invocation.
+
+| # | command | did | should | cause |
+|---|---|---|---|---|
+| 1 | `-l` after building 44 packages into gcc-16.2.0 | called 22 of them stale, ten minutes old | `ok` | the recipe names its own sysroot; judged at the current stack, not the install's |
+| 2 | `-f -s host_qemu:6.2.0` | "Force-removing", then "already installed" | rebuild | force_remove ran before the stack was resolved: removed a tree nobody was rebuilding |
+| 3 | `-f -s host_qemu:6.2.0` (again) | same, still | rebuild | `nil` passed for the compiler; the filter reads nil as "must BE nil", true only of a noarch package |
+| 4 | `-H 14.4.0 -u host_qemu:6.2.0` | nothing removed, nothing said | remove the 14.4.0-stack tree | `default_cc == "syscc"` as a proxy for "is a host package", false since `:stack` packages started answering with their own GCC |
+| 5 | `-u zlib` on riscv64 | removed qemu-virt AND licheerv-nano | the board you are on | matched `e.arch == arch`; an arch is two thirds of a coordinate |
+| 6 | `-f -s host_gcc:16.2.0` | removed all six GCC majors | remove 16.2.0 | "every version of the package" where "this version" was meant |
+| 7 | `--check-for-updates` | latent: two boards of one arch judge each other | judge at the install's board | `with_install_context` scoped arch and stack, never the board |
+| 8 | `-a riscv64 -f -s uboot` | `requires board qemu-virt` -- *after* deleting it | rebuild | `board_supported?` read the global `BOARD`, not the board of the arch being built for |
+| 9 | `--print-layout` under `-a` | could disagree with the package manager | agree | `Layout.board_of` was the board rule's second copy, and only one copy learned about scopes |
+| 10 | `-d` with no mode | installed the default packages | nothing | the one mode that never checked `-d` |
+| 11 | `-s ub:1.0.0 -f` on the wrong board | deleted the install, then refused to rebuild it | refuse first, touch nothing | the board was checked inside the install, after `-f` |
+| 12 | `-u ALL` | only target packages of the current arch and compiler | everything for this scope | the arch and compiler filters were filled in from defaults |
+| 13 | `-u multi` where the default is elsewhere | decided by whether the default is installed *anywhere* | decided by what is at THESE coordinates | -- |
+| 14 | `-C <pkg> -d` | reconfigured | nothing | `-C` ignored `-d` |
+| 15 | `dep_closure` on a cycle | returned an answer, silently | name the cycle | `seen` swallowed the second visit; detection ran once at startup, on the version-less graph |
+| 16 | six CI runs | `host_python is not installed` | pass anywhere | two tests read the developer's toolchain |
+
+Bugs 1, 7 and 9 are one sentence with the word changed: *the recipe
+is judged at the coordinates of the invocation rather than of the
+installation*. Bugs 2-6 and 12-13 are another: *the set an operation
+acts on is computed from a partial key*.
+
+## 3. The three things the bugs were made of, removed
+
+**Ambient reads.** `ARCH`, `BOARD` and the current stack were read in
+27 places. They are read in six now -- their definitions, the CLI
+boundary, and the two accessors that own the answer -- and a lint
+(below) fails the suite on a twenty-eighth.
+
+**A second identity mechanism.** `Coords` was introduced as *the*
+identity of an installation and the migration was never finished:
+`uninstall` still matched a tuple of `(ver, compiler, arch)` with
+`Coords` bolted on as a fifth clause. `InstallSelector` is now the
+whole key as one value -- a name, a version, and a union of coordinate
+filters -- and `uninstall_selector` is the single function that turns
+a command line into one, with the coordinates written out per kind of
+package so a reader can check each line against the layout table. The
+lint bans `.arch ==` and `.compiler ==` outside it; the pin that
+tracked the remaining sites is empty.
+
+**A scope with one coordinate missing.** `with_target_coords(arch,
+board)` moves both together, because a board is only meaningful for an
+arch. `PackageManager#board_for` is the one place that knows which
+board applies to which arch.
+
+## 4. Five instruments
+
+Each answers a question the others cannot. Together they are why the
+next bug of this class has to get past all five.
+
+**The lint** — `tests/lint/ambient.rb`, 157 lines, Prism. Three rules:
+a read of ambient state outside its owners (R1); an identity
+comparison on part of a coordinate (R2); a write to a scope variable
+outside its `with_*` (R3). Prism and not grep, so `"ARCH=x86"` handed
+to make is not a read and a comment is not a read. The allowlist lives
+in the test with a reason per entry, and an entry naming a method that
+no longer exists fails. It self-tests on planted violations: a lint
+that cannot see one reports nothing, and nothing reads as clean.
+
+**The model** — `tests/model/model.rb`, 794 lines. The contract as a
+program: a world is a set of `(name, version, coords, record, origin)`,
+and every command line is a pure function from (registry, world,
+invocation) to (exit code, world', output). No I/O, no packages. It is
+validated before it judges: every historical bug is a case with the
+answer written by hand, and its own laws hold (`select` is total, dry
+runs change nothing, transitions are deterministic). Five places say
+SPEC, where the model states what is right and the implementation was
+made to agree.
+
+**The laws** — `tests/laws.rb`, applied by `TestHelper#run_cli` around
+every `Main.main` the suite drives. L1 the world after equals the
+model's; L2 `-d` changed nothing; L3 every install is where its
+package says, judged at its own coordinates; L4 everything installed
+has an `:ok` record. A test about `-l` output is thereby also a test
+that `-l` changed nothing. About 1,040 command lines are judged per
+run, and the runner prints how many fell outside the model's grammar,
+so a suite that quietly stopped checking would say so.
+
+**The exhaustive lane** — `tests/exhaustive/`. Fifteen registry shapes
+(one feature each), every world of at most two installations, every
+context, every command line in the grammar. Two is not arbitrary:
+every bug in the table manifests with two of something, and a fixture
+with one cannot tell "the right one" from "the only one". The wide
+domain ran once at **318,864 cases, 0 disagreements**; the lane in CI
+is 66,426, since the multi-package shapes enumerate dependency
+structure rather than coordinates the single-package shapes already
+cover. It self-tests first (a snapshot equals a second snapshot, a
+world reads back as built, a planted disagreement is seen) and refuses
+to run otherwise. `--case ID` replays any failure.
+
+**Mutation** — `-t --mutation`, or `scripts/dev/claude/pmmutate`. Every
+site of the logic core is made wrong one way -- a comparison flipped,
+a conjunct dropped, a guard deleted, `nil` for `"ALL"`, a scope not
+opened or not restored -- and the suite must fail. The unmutated suite
+must pass first, and its time sets the per-mutant timeout. A survivor
+is a test that does not exist; a *timeout* is a walk without a bound,
+which is a defect in the code, and fails the run too.
+
+The first run: **456 mutants, 116 survivors.** Each was answered by a
+test (36 of them, `tests/test_survivors.rb`), by deleting a line that
+said something the code already knew, or by an annotated reason
+(`# mutation: equivalent -- <reason>`, checked to still sit on a
+site). Among the deletions: `Coords#own_env?`, dead, five of whose
+mutants survived because nothing could have noticed.
+
+Current: **362 mutants, 362 killed, 0 timed out, 0 survived**, in CI.
+
+### What the lane and the mutants found that the tests had not
+
+- the default install ignored `-d` (bug 10);
+- the board was checked after `-f` had removed the tree (bug 11);
+- `-u ALL` meant far less than anyone typing it means (bug 12);
+- `-u` with no version decided by what is installed elsewhere (13);
+- a dependency walk swallowed cycles and could not be bounded (15):
+  two existing tests asserted the silent behaviour. Every walk now
+  names a cycle with its path (`a -> b -> c -> a`), at whatever
+  version it appears, and is bounded exactly -- once per root plus
+  once per edge -- so nothing in the resolver can hang.
+
+## 5. The host world is x86_64 Linux, and says so
+
+`host_gcc` and `host_qemu` are the roots of a *host world*: our GCC
+with its glibc sysroot, the QEMU matrix built by it, and the fifty
+packages nothing else needs. It is a Linux userland by construction
+and has been exercised on x86_64 only. On macOS all 53 were listed as
+installable and `-s host_qemu` failed deep inside `host_linux_headers`.
+
+The roots declare where they run and `host_supported?` derives the
+rest: a package in `host_world_names` -- reachable from a root and
+from nothing else -- is supported only where every root is. Fifty
+packages hidden by two declarations and one rule, and a package both
+the world and Tilck need stays visible. Elsewhere they are not listed,
+`-s` is refused at the door with the reason, and `-L` says there are
+no stacks. Where a package runs is a `NON_RECIPE_HOOK`: declaring it
+in the constructors made twelve installs read as changed for a
+statement no build step reads.
+
+## 6. CI
+
+`.github/workflows/ci-pkgmgr.yml`, "Package manager", on a stock
+Debian image: `tests` (`-t --exhaustive`) and `mutation`
+(`-t --mutation`), on every push touching the package manager, on
+pull requests, and by dispatch, one run per branch at a time. The six
+toolchain workflows run `-t --exhaustive` before they build anything.
+
+First green run of the pipeline: `tests` 5m59s, `mutation` 42m0s,
+362/362 killed.
+
+## 7. What this proves, and what it does not
+
+Proved mechanically, every commit: for the catalogue of shapes and
+worlds of at most two installations, the implementation's effect on
+the tree and its answers equal the model's; the implementation reads
+its inputs only through their owners; every line of the logic core is
+defended by a test that fails if it is wrong.
+
+Not proved: worlds of three or more (the bound rises when a bug ever
+appears there -- none has), shapes outside the catalogue (add one when
+a package with a new feature appears), and anything about the real
+recipes or the network. A package that fails to build because upstream
+changed is not a logic bug and is not what any of this is for.
+
+The standing rule, in CLAUDE.md: **a pkgmgr logic bug is not fixed
+until its mutant dies.** The model says the right answer or is
+corrected first; a shape or a command line is added so the lane fails
+before the fix and passes after; and the mutant that reproduces the
+bug must be expressible and killed.
