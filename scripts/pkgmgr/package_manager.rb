@@ -770,17 +770,26 @@ class PackageManager
     gcc_ver ||= default_stack_cc_ver
     fragments = @packages.values.flat_map { |p| p.sysroot_fragments(gcc_ver) }
 
-    # Nothing to compose over something already composed is not a
-    # sysroot with no packages in it -- it is a question asked wrongly.
-    # Replacing it would destroy a working stack silently, which is
-    # exactly what happened when this was asked about every stack from
-    # an invocation scoped to one of them.
+    # No fragments has two very different causes, and only one of
+    # them is a bug.
+    #
+    #   the stack HAS packages installed -> we asked the wrong
+    #     question and are about to replace a working sysroot with
+    #     nothing. That is how five of them were emptied at once.
+    #
+    #   the stack has NO packages -> emptying is exactly right, and
+    #     refusing leaves a farm of symlinks pointing at things that
+    #     were just uninstalled. --clean hit precisely this.
+    #
+    # So look at the tree rather than at the fragment count alone.
     root = stack_sysroot(gcc_ver)
+    pkgs = stack_coords(gcc_ver).pkgs_dir
+    has_pkgs = pkgs.directory? && !Dir.empty?(pkgs.to_s)
 
-    if fragments.empty? && root.directory? && !Dir.empty?(root.to_s)
+    if fragments.empty? && has_pkgs
       error "Refusing to empty the composed sysroot of gcc-#{gcc_ver}: " \
-            "no stack packages were found for it, which cannot be right " \
-            "for a stack that already has one"
+            "it has packages installed, so finding no fragments for it " \
+            "means the question was asked wrongly, not that it is empty"
       return 0
     end
 
