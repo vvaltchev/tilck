@@ -583,7 +583,10 @@ module Main
       puts reformat_summary.call(p.summarize())
     }
 
-    p.on('-l', '--list', 'List all packages status [MODE]') {
+    p.on('-l', '--list',
+         'List all packages status. The host stacks are a line each,',
+         'with how many packages every one holds: the listing shows',
+         'one stack, the current one (-H picks another). [MODE]') {
       opts[:list] = true
     }
 
@@ -1079,6 +1082,7 @@ module Main
 
     if options[:list_stacks]
       pkgmgr.show_stacks
+      puts
       return 0
     end
 

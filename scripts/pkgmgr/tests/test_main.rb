@@ -1509,3 +1509,43 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
     end
   end
 end
+
+# The order of -l: Tilck's packages, then the host side -- the tools
+# the system compiler built, the stacks (every one with a count,
+# because the listing shows only the current stack's packages), and
+# the current stack's packages last.
+class TestMainListOrder < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def test_tilck_then_host_tools_then_stacks_then_the_current_stack
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("target_pkg"))
+        pkgmgr.register(FakePackage.new("host_tool", on_host: true,
+                                        arch_list: ALL_HOST_ARCHS.values))
+        pkgmgr.register(FakePackage.new("host_thing", on_host: true,
+                                        host_tier: :stack,
+                                        arch_list: ALL_HOST_ARCHS.values))
+        run_cli("-s", "target_pkg")
+        run_cli("-s", "host_tool")
+        run_cli("-s", "host_thing")
+
+        rc, out = run_cli("-l")
+        assert_equal 0, rc
+
+        at = ->(text) { out.index(text) || flunk("#{text.inspect} missing") }
+        tilck  = at.call("Tilck packages built by GCC")
+        tools  = at.call("Host packages built by system CC")
+        stacks = out.index("Host stacks") || at.call("No host stacks")
+        stack  = at.call("Host packages built by GCC")
+
+        assert tilck < tools && tools < stacks && stacks < stack,
+               "order was #{[tilck, tools, stacks, stack].inspect}"
+      end
+    end
+  end
+end
