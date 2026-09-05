@@ -590,7 +590,28 @@ class Package
   # Noarch and host packages have nothing to scope: their recipe does
   # not consult the target arch at all.
   def with_install_context(inst, &block)
-    return block.call if on_host || inst.arch.nil?
+
+    if on_host
+      # The stack is a coordinate for exactly the same reason. A
+      # :stack package's flags name their own sysroot -- x11 passes
+      # "--libdir=.../gcc-14.4.0/sysroot/usr/lib" for one install of a
+      # version and ".../gcc-16.2.0/..." for another -- so checking a
+      # 16.2.0 install from an invocation whose stack is 14.4.0
+      # rendered the wrong path and called twenty-two packages built
+      # minutes earlier stale.
+      #
+      # The tier decides which host packages have a stack to scope,
+      # as it does in default_cc: a :compiler-tier package also has a
+      # gcc-* in its coordinates, but that one names the host's own
+      # compiler and moving the stack to it would mean nothing.
+      return block.call if host_tier != :stack
+
+      stack = inst.coords&.stack_ver
+      return block.call if stack.nil?
+      return pkgmgr.with_host_stack(stack, &block)
+    end
+
+    return block.call if inst.arch.nil?
     return pkgmgr.with_target_arch(inst.arch, &block)
   end
 

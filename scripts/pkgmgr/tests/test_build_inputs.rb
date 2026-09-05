@@ -577,4 +577,44 @@ class TestMultiByteSource < Minitest::Test
     refute_empty src
     assert_includes src, "meson"
   end
+
+  # A recipe is only a recipe AT some coordinates, and the stack is
+  # one of them -- not just the arch.
+  #
+  # x11 and expat pass "--libdir=#{stack_sysroot}/usr/lib", which
+  # spells out the stack they belong to. Checking an install that
+  # lives in gcc-16.2.0 while the invocation's stack is gcc-14.4.0
+  # rendered the 14.4.0 path, compared it against a record written
+  # with the 16.2.0 one, and reported twenty-two packages built ten
+  # minutes earlier as stale.
+  def test_a_stack_packages_flags_are_read_at_its_own_stack
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+
+        pkg.define_singleton_method(:build_flags) { |ver = nil|
+          ["--libdir=#{stack_sysroot}/usr/lib"]
+        }
+
+        pkgmgr.register(pkg)
+
+        other = Ver("9.9.9")
+        pkgmgr.with_host_stack(other) { pkgmgr.install("host_thing") }
+        pkgmgr.refresh
+
+        inst = pkg.get_install_list.find { |i|
+          i.coords&.stack_ver == other
+        }
+        refute_nil inst, "the install did not land in the other stack"
+
+        # Looking from the default stack, which is not the one it was
+        # built in.
+        assert_equal :ok, pkg.build_inputs_state_of(inst),
+                     "judged with another stack's paths"
+      end
+    end
+  end
 end
