@@ -258,8 +258,4 @@ module SystemPkgs
            !ENV["CI"].to_s.strip.empty?
   end
 
-  # Render a command line the way a human would type it, so that a
-  # message telling somebody to run it can be copied verbatim.
-  def cmd_to_s(argv) = argv.map { |a| Shellwords.escape(a.to_s) }.join(" ")
-
 end

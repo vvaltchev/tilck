@@ -310,11 +310,6 @@ class TestSystemPkgsUtils < Minitest::Test
     end
   end
 
-  def test_cmd_to_s_escapes
-    assert_equal "apt install a\\ b",
-                 SystemPkgs.cmd_to_s(["apt", "install", "a b"])
-  end
-
   def test_run_capture_reads_stdout
     ok, out = SystemPkgs.run_capture(["echo", "hello"])
     assert_equal true, ok
