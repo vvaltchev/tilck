@@ -620,13 +620,34 @@ class TestMultiByteSource < Minitest::Test
 end
 
 #
-# A shared helper whose text reaches configure's argv, called by name:
-# its body has to be fingerprinted for the packages that call it, or an
-# edit to the dialect would go unnoticed by every one of them.
+# Two more lines of the fingerprint's ledger.
+#
+# clean_build is recovery, not recipe: it runs before a resumed build
+# and only deletes, so what gets built is what a fresh extraction
+# would have built. Removing thirty-six copies of it must not flag a
+# single install. host_compiler_gnu17 is the opposite case: a shared
+# helper whose text reaches configure's argv, called by name, so its
+# body has to be fingerprinted for the packages that call it.
 #
 class TestWhatTheFingerprintCounts < Minitest::Test
 
   include TestHelper
+
+  class WithCleanBuild < TestHelper::FakePackage
+    def build_flags(ver = nil) = ["--same"]
+    def clean_build(dir) = true
+  end
+
+  class WithoutCleanBuild < TestHelper::FakePackage
+    def build_flags(ver = nil) = ["--same"]
+  end
+
+  def test_a_clean_build_override_is_not_part_of_the_recipe
+    with_fake_tc do
+      assert_equal WithoutCleanBuild.new("a").build_recipe_digest,
+                   WithCleanBuild.new("b").build_recipe_digest
+    end
+  end
 
   def test_the_dialect_helper_is_fingerprinted_for_its_callers
     assert_includes Package::BUILD_HELPERS, :host_compiler_gnu17

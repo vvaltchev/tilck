@@ -61,11 +61,6 @@ class HostNinjaPackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   # configure.py --bootstrap leaves ./ninja in the source tree and has
   # no install target, so the copy is the install.
   #

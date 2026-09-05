@@ -64,12 +64,6 @@ class HostFreetypePackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   def build_flags(ver = nil) = [
       "-Dharfbuzz=disabled",   # see the cycle note above
       "-Dbrotli=disabled",

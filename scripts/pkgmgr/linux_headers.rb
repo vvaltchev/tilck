@@ -60,11 +60,6 @@ class HostLinuxHeadersPackage < Package
     ["install/usr/include/asm-generic/errno.h", false],
   ]
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   def build_steps = [
 
     # The kernel names x86_64 "x86"; both 32- and 64-bit headers come
