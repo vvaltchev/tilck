@@ -378,6 +378,14 @@ only the bare minimum.
 ./scripts/build_toolchain -u ALL -f -a ALL -c ALL   # ...compilers too
 ```
 
+**Build parallelism is bounded, not unlimited.** `-j` with no number
+means as many jobs as the graph allows, which GCC and QEMU will take
+into the hundreds. `BuildJobs.compute` (`early_logic.rb`) picks the
+lower of two ceilings — a sixth of the cores left free, and 4 GB of
+RAM per job out of five sixths of the machine — so a 24-core / 94 GB
+box gets `-j19`. `BUILD_PAR=<n>` overrides it. Recipes that are
+deliberately serial (tcc) simply do not mention `$PAR`.
+
 Versions live in two unrelated files: `other/pkg_versions`
 (`VER_<PKG>`, target side, what ends up in Tilck) and
 `other/host_pkg_versions` (`HOST_VER_<PKG>`, build-host tools). A
