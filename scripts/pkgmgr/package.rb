@@ -136,14 +136,22 @@ class Package
   end
 
   # One status cell: the word in its own colour, the count of matching
-  # installs in none, the pair centred AS A UNIT.
+  # installs in none, padded on the right to a fixed width so that the
+  # field after it starts at the same column on every line.
   #
-  # Centred as a unit rather than appended, because the field after it
-  # would otherwise start at a different column for every package --
-  # the count is the one part of the line whose width varies, so it
-  # has to be absorbed here. Within the count, the padding goes
-  # INSIDE the brackets: "( 4)" and "(10)" are the same width, and
-  # slack after them reads as a double space before the closing "]".
+  # LEFT-aligned, not centred. Centring moved the same word between
+  # adjacent lines, because a cell with a count is full and a cell
+  # without one is not:
+  #
+  #   host_binutils   [   installed   ]      centred
+  #   host_gmp        [ installed (3) ]
+  #
+  #   host_binutils   [ installed     ]      left-aligned
+  #   host_gmp        [ installed (3) ]
+  #
+  # Within the count the padding goes INSIDE the brackets -- "( 4)"
+  # and "(10)" are the same width -- because slack after them reads as
+  # a double space before the closing "]".
   #
   # A count of one is not shown. "installed (1)" is what "installed"
   # already meant, and a column of them would bury the counts that
@@ -156,10 +164,8 @@ class Package
       " (#{n.to_s.rjust(digits)})"
     end
 
-    pad  = [status_cell(digits) - word.length - tail.length, 0].max
-    lpad = pad / 2
-
-    return "#{' ' * lpad}#{Term.send(color, word)}#{tail}#{' ' * (pad - lpad)}"
+    pad = [status_cell(digits) - word.length - tail.length, 0].max
+    return "#{Term.send(color, word)}#{tail}#{' ' * pad}"
   end
 
   def self.installed_str(n, digits: 0) =
