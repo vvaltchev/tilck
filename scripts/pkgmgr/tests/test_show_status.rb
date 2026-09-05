@@ -444,7 +444,7 @@ class TestShowStatusAll < Minitest::Test
         pkgmgr.refresh()
 
         out = capture_stdout {
-          pkgmgr.show_status("foo", nil, pkg.get_install_list)
+          pkgmgr.show_status("foo", nil, pkg.get_install_list, 1)
         }
         assert_match(/installed \(\s*2\)/, out.gsub(/\e\[[0-9;]*m/, ""))
       end
@@ -459,12 +459,16 @@ class TestShowStatusAll < Minitest::Test
         pkg = FakePackage.new("foo")
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
         pkgmgr.refresh()
 
         out = capture_stdout {
-          pkgmgr.show_status("foo", nil, pkg.get_install_list)
+          pkgmgr.show_status("foo", nil, pkg.get_install_list, 1)
         }
-        assert_match(/#{Regexp.escape(Term::RESET)} \(\s*1\)/, out,
+        assert_match(/#{Regexp.escape(Term::RESET)} \(\s*2\)/, out,
                      "the count is inside the coloured span")
       end
     end
@@ -477,16 +481,69 @@ class TestShowStatusAll < Minitest::Test
   def test_every_status_cell_is_the_same_width
     plain = ->(s) { s.gsub(/\e\[[0-9;]*m/, "") }
 
-    cells = [1, 9, 10, 99].map { |n| Package.installed_str(n) } +
-            [Package.stale_str(7), Package::FOUND_STR,
-             Package::BROKEN_STR, Package::EMPTY_STR]
+    # Counts that FIT the width, because that is the contract: the
+    # pre-pass sizes the column from the largest count there is, so a
+    # 42 never arrives with room for one digit.
+    for digits, counts in { 0 => [1], 1 => [1, 2, 9], 2 => [1, 2, 42, 99] } do
+      cells = counts.map { |n|
+                Package.installed_str(n, digits: digits)
+              } +
+              [Package.stale_str(7, digits: digits),
+               Package.found_str(digits: digits),
+               Package.broken_str(digits: digits),
+               Package.empty_str(digits: digits)]
 
-    widths = cells.map { |c| plain.call(c).length }.uniq
-    assert_equal [Package::STATUS_CELL], widths,
-                 "status cells of different widths: #{widths.inspect}"
+      widths = cells.map { |c| plain.call(c).length }.uniq
+      assert_equal [Package.status_cell(digits)], widths,
+                   "digits=#{digits}: cells of widths #{widths.inspect}"
+    end
 
-    refute_match(/\s\s\z/, plain.call(Package.installed_str(4)),
+    refute_match(/\s\s\z/, plain.call(Package.installed_str(4, digits: 1)),
                  "trailing slack shows up as a double space before ]")
+  end
+
+  # The pre-pass: what the listing reserves for counts, decided once
+  # from the busiest line rather than per line.
+  def test_a_listing_with_nothing_installed_twice_shows_no_counts
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+        pkgmgr.refresh()
+
+        groups = [["only", pkg.get_install_list]]
+        assert_equal 0, pkgmgr.count_digits(groups)
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list, 0)
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/installed/, plain)
+        refute_match(/\(/, plain, "a count of one was printed")
+      end
+    end
+  end
+
+  def test_the_width_comes_from_the_busiest_line
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        # Two installs of one package: one digit, and one line of a
+        # second package with a single install must not shrink it.
+        groups = [["only", pkg.get_install_list]]
+        assert_equal 1, pkgmgr.count_digits(groups)
+      end
+    end
   end
 
   # --- -g ver -----------------------------------------------------------

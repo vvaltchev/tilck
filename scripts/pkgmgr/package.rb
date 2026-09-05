@@ -125,9 +125,15 @@ class Package
   attr_reader :host_tier
 
   STATUS_LEN    = 9              # "installed", "not built"
-  COUNT_DIGITS  = 2              # nothing here is installed 100 times
-  COUNT_LEN     = COUNT_DIGITS + 3   # " (99)"
-  STATUS_CELL   = STATUS_LEN + COUNT_LEN
+  COUNT_GAP     = 3              # the " (" and the ")" around a count
+
+  # The width of a status cell, given how many digits the widest count
+  # in the listing needs. Zero digits means no line has a count to
+  # show, and the cell is just the word -- a listing where nothing is
+  # installed twice reserves no room for a number that never comes.
+  def self.status_cell(digits)
+    return STATUS_LEN + (digits.zero? ? 0 : digits + COUNT_GAP)
+  end
 
   # One status cell: the word in its own colour, the count of matching
   # installs in none, the pair centred AS A UNIT.
@@ -135,33 +141,46 @@ class Package
   # Centred as a unit rather than appended, because the field after it
   # would otherwise start at a different column for every package --
   # the count is the one part of the line whose width varies, so it
-  # has to be absorbed here.
-  def self.status_str(word, color, n = nil, width: STATUS_CELL)
+  # has to be absorbed here. Within the count, the padding goes
+  # INSIDE the brackets: "( 4)" and "(10)" are the same width, and
+  # slack after them reads as a double space before the closing "]".
+  #
+  # A count of one is not shown. "installed (1)" is what "installed"
+  # already meant, and a column of them would bury the counts that
+  # say something.
+  def self.status_str(word, color, n = nil, digits: 0)
 
-    # Padded INSIDE the brackets, so that a two-digit count widens
-    # nothing: "( 4)" and "(10)" are the same width, and the cell
-    # needs no slack after them.
-    tail = n.nil? ? "" : " (#{n.to_s.rjust(COUNT_DIGITS)})"
-    pad  = [width - word.length - tail.length, 0].max
+    tail = if digits.zero? || n.nil? || n < 2
+      ""
+    else
+      " (#{n.to_s.rjust(digits)})"
+    end
+
+    pad  = [status_cell(digits) - word.length - tail.length, 0].max
     lpad = pad / 2
 
     return "#{' ' * lpad}#{Term.send(color, word)}#{tail}#{' ' * (pad - lpad)}"
   end
 
-  def self.installed_str(n) = status_str("installed", :makeGreen, n)
-  def self.stale_str(n) = status_str("stale", :makeYellow, n)
+  def self.installed_str(n, digits: 0) =
+    status_str("installed", :makeGreen, n, digits: digits)
 
-  FOUND_STR     = status_str("found", :makeBlue)
-  SKIPPED_STR   = status_str("skipped", :makeYellow)
-  BROKEN_STR    = status_str("broken", :makeRed)
-  EMPTY_STR     = " " * STATUS_CELL
+  def self.stale_str(n, digits: 0) =
+    status_str("stale", :makeYellow, n, digits: digits)
+
+  def self.found_str(digits: 0) = status_str("found", :makeBlue,
+                                             digits: digits)
+  def self.broken_str(digits: 0) = status_str("broken", :makeRed,
+                                              digits: digits)
+  def self.skipped_str(digits: 0) = status_str("skipped", :makeYellow,
+                                               digits: digits)
+  def self.empty_str(digits: 0) = " " * status_cell(digits)
 
   # For stacks rather than packages: a stack is BUILT when the
   # compiler that names it is installed, since that is what makes it
-  # usable as one. No count, and the narrow cell: nothing in that
-  # listing has a number to carry.
-  BUILT_STR     = status_str("built", :makeGreen, width: STATUS_LEN)
-  NOT_BUILT_STR = status_str("not built", :makeRed, width: STATUS_LEN)
+  # usable as one. No count -- nothing in that listing has one.
+  BUILT_STR     = status_str("built", :makeGreen)
+  NOT_BUILT_STR = status_str("not built", :makeRed)
 
   public
   # host_tier controls where host packages are installed:
