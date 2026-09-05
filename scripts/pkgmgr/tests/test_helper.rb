@@ -203,6 +203,10 @@ module TestHelper
     # `run_cli("-H", "7.7.7", ...)` silently moved the stack for
     # every test that ran afterwards.
     pm.instance_variable_set(:@portable_stack, nil)
+    # The resolution of the last request, which resolve_install_plan
+    # sets and nothing unsets: a test that read resolved_ver after
+    # another test's `-s` saw that test's answer.
+    pm.instance_variable_set(:@resolved_versions, nil)
     pm.instance_variable_set(:@host_world, nil)
     pm.instance_variable_set(:@known_pkgs_paths, nil)
     pm.instance_variable_set(:@known_installed, [])

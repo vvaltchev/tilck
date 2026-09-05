@@ -1221,3 +1221,291 @@ class TestMainResolvesVersions < Minitest::Test
     end
   end
 end
+
+# --rebuild: the installs --check-for-updates lists as NEEDS_REBUILD,
+# rebuilt where they are, at their version, as they were asked for.
+# --upgrade is the remedy for a bumped version and does not touch
+# these; running it and being told "up to date" while fifteen installs
+# read changed is how this mode came to exist.
+class TestMainRebuild < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # An install, then a recipe edit under it: the record reads changed.
+  def install_then_change(pkg)
+    rc, _ = run_cli("-s", pkg.name)
+    assert_equal 0, rc
+    pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+    pkgmgr.refresh
+    inst = pkg.find_install(pkg.default_ver)
+    assert_equal :changed, pkg.build_inputs_state_of(inst)
+    FakePackage.clear_log!
+    return inst
+  end
+
+  def test_nothing_stale_rebuilds_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        run_cli("-s", "foo")
+        FakePackage.clear_log!
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc
+        assert_match(/built from the sources we have/, out)
+        assert_empty FakePackage.install_log
+      end
+    end
+  end
+
+  def test_a_changed_install_is_rebuilt_where_it_is
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        before = install_then_change(foo)
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_match(/foo:#{Regexp.escape(before.ver.to_s)} at /, out)
+        assert_equal ["foo"], FakePackage.install_log
+
+        pkgmgr.refresh
+        after = foo.find_install(foo.default_ver)
+        assert_equal :ok, foo.build_inputs_state_of(after)
+        assert_equal before.coords, after.coords
+        assert_equal before.ver, after.ver
+        assert after.default_install, "a default install came back pinned"
+      end
+    end
+  end
+
+  def test_dry_run_lists_and_touches_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        install_then_change(foo)
+
+        rc, out = run_cli("--rebuild", "-d")
+        assert_equal 0, rc
+        assert_match(/Installs to rebuild/, out)
+        assert_match(/nothing rebuilt/, out)
+        assert_empty FakePackage.install_log
+        inst = foo.find_install(foo.default_ver)
+        assert_equal :changed, foo.build_inputs_state_of(inst)
+      end
+    end
+  end
+
+  def test_a_bumped_version_is_left_to_upgrade
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        install_then_change(foo)
+        # ...and its default moves on: now it is an upgrade, not a rebuild.
+        foo.define_singleton_method(:default_ver) { Ver("2.0.0") }
+        pkgmgr.refresh
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc
+        assert_match(/built from the sources we have/, out)
+        assert_empty FakePackage.install_log
+      end
+    end
+  end
+
+  def test_dependencies_are_rebuilt_first
+    with_fake_tc do
+      with_stubbed_externals do
+        base = FakePackage.new("base")
+        top = FakePackage.new("top", dep_list: [Dep("base", false)])
+        pkgmgr.register(base)
+        pkgmgr.register(top)
+        run_cli("-s", "top")
+        [top, base].each { |p|
+          p.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        }
+        pkgmgr.refresh
+        FakePackage.clear_log!
+
+        rc, _ = run_cli("--rebuild")
+        assert_equal 0, rc
+        assert_equal ["base", "top"], FakePackage.install_log
+      end
+    end
+  end
+end
+
+# What an install was built against is recorded beside it, and a
+# rebuild builds against the same: mpfr asked alone answers gmp's
+# default, while the gcc that pulled it in pinned another, and that
+# resolution is gone the moment the request is done.
+# A rebuild that does not finish leaves the old install where it was.
+# The first real --rebuild removed first and built second, and left
+# no isl and then no GCC.
+class TestMainRebuildKeepsTheOldTreeOnFailure < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # Builds once, and never again.
+  class Once < TestHelper::FakePackage
+    def install_impl_internal(install_dir)
+      @built = (@built || 0) + 1
+      return false if @built > 1
+      super
+    end
+  end
+
+  def test_the_old_install_survives_a_failed_rebuild
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = Once.new("once")
+        pkgmgr.register(pkg)
+        assert_equal 0, run_cli("-s", "once").first
+        pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        pkgmgr.refresh
+        before = pkg.find_install(pkg.default_ver)
+        assert_equal :changed, pkg.build_inputs_state_of(before)
+
+        rc, out = run_cli("--rebuild", laws: false,
+                          because: "a build that fails is outside the " \
+                                   "model, which has no failing builds")
+        assert_equal 1, rc
+        assert_match(/Could not rebuild: once/, out)
+
+        pkgmgr.refresh
+        after = pkg.find_install(pkg.default_ver)
+        refute_nil after, "the old install is gone"
+        assert_equal before.path, after.path
+        assert_equal :changed, pkg.build_inputs_state_of(after),
+                     "the old install came back as something else"
+        refute (TC_STAGING / "replaced" / "once").exist?,
+               "the tree set aside was left under staging"
+      end
+    end
+  end
+end
+
+class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # A dependency with two versions, a user of it that notes which one
+  # it saw, and a root that pins the older.
+  class Noting < TestHelper::FakePackage
+    attr_reader :saw
+    def install_impl_internal(install_dir)
+      @saw ||= []
+      @saw << pkgmgr.resolved_ver("host_gmp")
+      super
+    end
+  end
+
+  # Host packages, because only a host dependency can be pinned.
+  HOST = { on_host: true, host_tier: :distro,
+           arch_list: ALL_HOST_ARCHS.values }.freeze
+
+  def world
+    gmp = FakePackage.new("host_gmp", **HOST)
+    gmp.define_singleton_method(:default_ver) { Ver("2.0.0") }
+    gmp.define_singleton_method(:installable_versions) {
+      [Ver("1.0.0"), Ver("2.0.0")]
+    }
+    user = Noting.new("host_user", dep_list: [Dep("host_gmp", true)], **HOST)
+    root = FakePackage.new("host_root", **HOST,
+                           dep_list: [Dep("host_user", true),
+                                      Dep("host_gmp", true, ver: Ver("1.0.0"))])
+    [gmp, user, root].each { |p| pkgmgr.register(p) }
+    return [gmp, user, root]
+  end
+
+  def record_of(pkg)
+    return pkg.find_install(pkg.default_ver).path / InstallDeps::FILE
+  end
+
+  def make_stale(pkg)
+    pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+    pkgmgr.refresh
+  end
+
+  def test_the_record_names_the_version_the_request_resolved
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        assert_equal 0, run_cli("-s", "host_root").first
+        inst = user.find_install(user.default_ver)
+        assert_equal({ "host_gmp" => Ver("1.0.0") },
+                     InstallDeps.read(inst.path))
+        assert_equal [Ver("1.0.0")], user.saw
+      end
+    end
+  end
+
+  def test_a_rebuild_builds_against_what_the_record_says
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        run_cli("-s", "host_root")
+        make_stale(user)
+        FakePackage.clear_log!
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_equal ["host_user"], FakePackage.install_log
+        assert_equal [Ver("1.0.0"), Ver("1.0.0")], user.saw,
+                     "the rebuild resolved gmp to something else"
+      end
+    end
+  end
+
+  def test_without_a_record_the_one_installed_version_is_taken
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        run_cli("-s", "host_root")
+        File.delete(record_of(user))
+        make_stale(user)
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_equal Ver("1.0.0"), user.saw.last, "gmp 1.0.0 is the only one"
+      end
+    end
+  end
+
+  def test_without_a_record_and_two_installed_it_refuses_before_removing
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        run_cli("-s", "host_root")
+        run_cli("-s", "host_gmp:2.0.0")
+        File.delete(record_of(user))
+        make_stale(user)
+        FakePackage.clear_log!
+
+        # The refusal reads a per-install record the model does not
+        # carry; the model would rebuild, and rightly says so.
+        rc, out = run_cli("--rebuild", laws: false,
+                          because: "the .built_against record is not " \
+                                   "part of the model's world")
+        assert_equal 1, rc
+        assert_match(/no record of which host_gmp it was built against/, out)
+        assert_empty FakePackage.install_log
+        refute_nil user.find_install(user.default_ver), "old install removed"
+      end
+    end
+  end
+end

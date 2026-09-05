@@ -77,6 +77,10 @@ The package manager handles three categories of packages:
 # Check if anything needs upgrading or rebuilding (CMake runs this)
 ./scripts/build_toolchain --check-for-updates
 
+# Rebuild every install whose recipe or patches changed since it was built,
+# each where it is and at its own version
+./scripts/build_toolchain --rebuild
+
 # Print where installed packages live, as KEY=value (CMake runs this too)
 ./scripts/build_toolchain --print-layout
 
@@ -538,14 +542,20 @@ declared flags, the build steps, and the source of the methods the
 package itself defines, comments excluded) plus a digest of every patch
 file that applies to it.
 
+Beside it, `.built_against` records which version of each dependency the
+install was built with. That is knowable only while the request that pulled
+it in is being resolved — mpfr asked alone answers gmp's default, while the
+GCC that asked for it pinned another — and a rebuild of the install on its
+own, later, builds against the same one.
+
 `--check-for-updates` compares each record against the sources present
 now, and reports three distinguishable states:
 
 | state | meaning | remedy |
 |-------|---------|--------|
 | `ok` | built from the sources we have | — |
-| `changed` | built from something else | `-s <pkg> -f` |
-| `unknown` | no record at all | `-s <pkg> -f` |
+| `changed` | built from something else | `--rebuild` (or `-s <pkg>:<ver> -f`) |
+| `unknown` | no record at all | `--rebuild` (or `-s <pkg>:<ver> -f`) |
 
 `unknown` is reported rather than assumed benign. Every install is made
 by this mechanism, so a missing record means something went wrong while
