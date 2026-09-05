@@ -376,6 +376,55 @@ class TestUninstallVersions < Minitest::Test
     end
   end
 
+  #
+  # Naming a version that is not installed removes NOTHING.
+  #
+  # uninstall falls back to "remove whatever version IS installed"
+  # when the one it wants is absent. That is right when no version was
+  # named and the default happens not to be there; it is catastrophic
+  # when the user named one. `-u host_gcc:11.5.0` against a tree
+  # holding six GCC majors took all six -- twice, because running the
+  # same script a second time is exactly how you ask for a version
+  # that was already removed.
+  #
+  def test_uninstalling_an_absent_version_takes_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("multi"))
+        dirs = ["1.0.0", "2.0.0", "3.0.0"].to_h { |v|
+          d = target_pkgs(ARCH, FAKE_GCC_VER.to_s) / "multi" / v
+          FileUtils.mkdir_p(d)
+          [v, d]
+        }
+        pkgmgr.refresh()
+
+        n = pkgmgr.uninstall("multi", false, false, Ver("9.9.9"))
+
+        assert_equal 0, n, "it removed something"
+        for v, d in dirs do
+          assert d.directory?, "version #{v} was destroyed"
+        end
+      end
+    end
+  end
+
+  # ...but with NO version named, the fallback is still what we want:
+  # the default is absent, so take what is actually installed.
+  def test_no_version_named_still_falls_back_to_what_is_there
+    with_fake_tc do
+      with_stubbed_externals do
+        # default_ver is 1.0.0 for a FakePackage; install only 2.0.0.
+        pkgmgr.register(FakePackage.new("multi"))
+        d = target_pkgs(ARCH, FAKE_GCC_VER.to_s) / "multi" / "2.0.0"
+        FileUtils.mkdir_p(d)
+        pkgmgr.refresh()
+
+        pkgmgr.uninstall("multi", false, false)
+        refute d.directory?, "the fallback stopped working"
+      end
+    end
+  end
+
   # -f on a version that is not installed yet is just an install. It
   # must not fall through to uninstall's "remove whatever IS there".
   def test_force_remove_of_an_absent_version_removes_nothing

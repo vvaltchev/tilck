@@ -938,6 +938,11 @@ class PackageManager
     all_cc    = (compiler.eql?    "ALL")
     all_arch  = (arch.eql?        "ALL")
 
+    # Whether the CALLER named a version, which decides what "it is
+    # not installed" means further down. Recorded before the default
+    # is filled in, because afterwards the two are indistinguishable.
+    asked_for_ver = !all_ver && !ver.blank?
+
     # Downgrade an empty string to nil (= default/auto)
     ver       = nil if ver.blank?
     compiler  = nil if compiler.blank?
@@ -1011,8 +1016,21 @@ class PackageManager
       assert { pkg.nil? }
       all_ver = true
     elsif !install_list.any? { |e| e.ver == ver }
-      # The configured default version is not installed; fall back to
-      # uninstalling whatever version IS installed.
+
+      if asked_for_ver
+        #
+        # The user named a version and it is not installed. There is
+        # nothing to do, and doing "whatever IS installed" instead is
+        # catastrophic: `-u host_gcc:11.5.0` on a tree holding six GCC
+        # majors would take all six. It did.
+        #
+        warning "#{name} #{ver} is not installed: nothing to uninstall"
+        return 0
+      end
+
+      # No version was named and the DEFAULT is not installed, which
+      # is the case this fallback is for: uninstall what is actually
+      # there rather than nothing.
       all_ver = true
     end
 
