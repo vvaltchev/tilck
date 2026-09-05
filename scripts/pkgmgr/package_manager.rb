@@ -92,6 +92,22 @@ class PackageManager
     return @portable_stack || default_stack_cc_ver
   end
 
+  # Set the stack for the whole invocation, which is what -H does.
+  # with_host_stack is for internal work that looks at another stack
+  # and has to put this one back; a choice made on the command line
+  # has no "back" to return to.
+  def host_stack=(gcc_ver)
+    @portable_stack = gcc_ver
+  end
+
+  # The package that provides a stack's compiler.
+  #
+  # Named once, here. Everyone who needs to find the toolchain a stack
+  # was built with was spelling "host_gcc" out for themselves, which
+  # is one more place to edit the day the stack is built by something
+  # that is not GCC -- the schema already leaves room for it.
+  def stack_compiler = get("host_gcc")
+
   def refresh
     @known_pkgs_paths = Set.new()
     @known_installed = []
@@ -375,6 +391,50 @@ class PackageManager
     end
 
     puts
+  end
+
+  # The host stacks themselves: which compilers we have built a world
+  # with, and how much of a world is in each.
+  #
+  # -l grew a section per stack, which is the right answer to "where
+  # does this package live" and the wrong one to "which stacks do I
+  # have" -- two hundred package lines to count six headings.
+  #
+  # BUILT means the compiler that names the stack is installed, which
+  # is what makes a stack usable at all: everything else in it is
+  # built BY that compiler, so without it the directory is either
+  # empty or a leftover.
+  def show_stacks
+
+    gcc = stack_compiler
+    built = gcc.get_install_list
+               .reject { |i| i.path.nil? || i.broken }
+               .map(&:ver)
+
+    known = (gcc.installable_versions + built +
+             host_stacks.map { |v| Ver(v) }).uniq.sort
+
+    puts
+    puts "--- #{"Host stacks".center(40)} ---"
+
+    for v in known do
+      status = built.include?(v) ? Package::BUILT_STR : Package::NOT_BUILT_STR
+      here = v == current_host_stack ? "  [ CURRENT ]" : ""
+      printf("%-20s [ %s ] %3d pkgs%s\n",
+             "gcc-#{v}", status, packages_in_stack(v), here)
+    end
+
+    puts
+  end
+
+  # How many packages have been built into one stack. Package
+  # directories, not versions: the question is how much of a world is
+  # there, and two versions of zlib are still zlib.
+  def packages_in_stack(gcc_ver)
+
+    dir = stack_coords(gcc_ver).pkgs_dir
+    return 0 if !dir.directory?
+    return Dir.children(dir).count { |d| (dir / d).directory? }
   end
 
   def show_status(name, group_by, list)

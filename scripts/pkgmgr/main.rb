@@ -345,6 +345,11 @@ module Main
     ]
 
     list.each { |x| puts "#{x} = #{de.call(x)}" }
+
+    # Not a constant: -H moves it, and a run that built into another
+    # stack should say so where every other coordinate is printed.
+    puts "HOST_STACK = gcc-#{pkgmgr.current_host_stack}"
+
     for k, v in ALL_ARCHS do
       puts "GCC_VER[#{k}]: #{v.gcc_ver}"
     end
@@ -439,6 +444,7 @@ module Main
       :self_test,
       :check_for_updates,
       :clean,
+      :list_stacks,
       :print_layout,
       :upgrade,
       :config,
@@ -467,6 +473,21 @@ module Main
 
     p.on('-l', '--list', 'List all packages status [MODE]') {
       opts[:list] = true
+    }
+
+    p.on('-L', '--list-stacks',
+         'List the host stacks: which compilers a world has been',
+         'built with, and how many packages are in each [MODE]') {
+      opts[:list_stacks] = true
+    }
+
+    p.on('-H', '--host-gcc VER',
+         'Build for, and look at, the stack of the given host GCC',
+         'instead of the one HOST_VER_GCC names. Applies to every',
+         'mode: -s builds into that stack, -l and -L report on it.',
+         'The stack does not have to exist yet -- asking for it is',
+         'what builds it. [OPTION]') { |v|
+      opts[:host_gcc] = v
     }
 
     p.on('--list-installable',
@@ -734,6 +755,25 @@ module Main
     }
   end
 
+  # -H names a stack. It does not have to be built yet -- asking for
+  # one is how it gets built -- but it does have to be a version the
+  # compiler package knows how to build, or the whole run would go to
+  # coordinates nothing can ever fill.
+  def select_host_stack(str)
+
+    gcc = pkgmgr.stack_compiler
+    ver = SafeVer(str)
+
+    if ver.nil? || !gcc.installable_versions.include?(ver)
+      error "Unknown host GCC version: #{str}"
+      error "Available: #{gcc.installable_versions.map(&:to_s).join(', ')}"
+      return 1
+    end
+
+    pkgmgr.host_stack = ver
+    return 0
+  end
+
   def main(argv)
 
     early_checks
@@ -743,6 +783,14 @@ module Main
     create_toolchain_dirs
 
     options = parse_options(argv)
+
+    # Before anything reads a coordinate: -H moves the stack that
+    # every :stack package installs into, and the compiler they are
+    # built against.
+    if options[:host_gcc]
+      rc = select_host_stack(options[:host_gcc])
+      return rc if rc != 0
+    end
 
     # Printed after the options are parsed, so that -q can suppress it.
     # The flag and the QUIET environment variable mean the same thing,
@@ -827,6 +875,11 @@ module Main
     rescue PackageManager::MissingVersionError => e
       error "Version table error: #{e.message}"
       return 1
+    end
+
+    if options[:list_stacks]
+      pkgmgr.show_stacks
+      return 0
     end
 
     if options[:list]

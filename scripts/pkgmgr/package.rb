@@ -132,6 +132,12 @@ class Package
   STALE_STR     = Term.makeYellow("stale".center(STATUS_LEN))
   EMPTY_STR     = "".center(STATUS_LEN)
 
+  # For stacks rather than packages: a stack is BUILT when the
+  # compiler that names it is installed, since that is what makes it
+  # usable as one.
+  BUILT_STR     = Term.makeGreen("built".center(STATUS_LEN))
+  NOT_BUILT_STR = Term.makeRed("not built".center(STATUS_LEN))
+
   public
   # host_tier controls where host packages are installed:
   #   :portable  — needs nothing from the machine (static)
@@ -699,7 +705,7 @@ class Package
   # system libc no matter what the rest of the environment says.
   def stack_toolchain_bins
 
-    gcc = pkgmgr.get("host_gcc")
+    gcc = pkgmgr.stack_compiler
     gcc_inst = gcc&.find_install(gcc.default_ver)
 
     bu = pkgmgr.get("host_binutils")
@@ -967,6 +973,12 @@ class Package
     return pkgmgr.current_host_stack
   end
   def default_ver = pkgmgr.get_config_ver(pkg_dirname, host: on_host)
+
+  # Every version this package can install, for the ones that offer a
+  # choice. Empty means "only the default", which is almost all of
+  # them: the compilers are the exception, and a caller that wants to
+  # show what could be built has to ask rather than know.
+  def installable_versions = []
   def pkg_dirname = name.sub("host_", "")
 
   # Where patches live. Overridable so that a test can point it at a
