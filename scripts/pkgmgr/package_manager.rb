@@ -1084,21 +1084,30 @@ class PackageManager
     FileUtils.mv(inst.path, aside)
     refresh()
 
-    ok = install(pkg, ver, default_install: default_install)
+    # Restored on any way out but success: a build that raises --
+    # install_prefix on a dependency that is not there -- is not a
+    # build that returned false, and the first rebuild that raised
+    # left the tree it had set aside under staging and a hole where
+    # QEMU 6.2.0 had been.
+    ok = false
+    begin
+      ok = install(pkg, ver, default_install: default_install)
+    ensure
+      if ok
+        FileUtils.rm_rf(aside)
+      else
+        FileUtils.mv(aside, inst.path)
+        refresh()
+      end
 
-    if ok
-      FileUtils.rm_rf(aside)
-    else
-      FileUtils.mv(aside, inst.path)
-      refresh()
+      # Nothing of this stays under staging: the package's directory,
+      # then replaced/ itself -- each once empty, because a tree
+      # stranded there by an interrupted run is not ours to take.
+      [aside.dirname, aside.dirname.dirname].each { |d|
+        FileUtils.rmdir(d) if Dir.empty?(d)
+      }
     end
 
-    # Nothing of this stays under staging: the package's directory,
-    # then replaced/ itself -- each once empty, because a tree
-    # stranded there by an interrupted run is not ours to take.
-    [aside.dirname, aside.dirname.dirname].each { |d|
-      FileUtils.rmdir(d) if Dir.empty?(d)
-    }
     return ok
   end
 
