@@ -969,6 +969,37 @@ fingerprints the whole toolchain before and after. A new mode that
 writes without honouring `-d` fails that test -- and if a gap is
 found, close the gap rather than working around it.
 
+## The package manager reads its inputs through their owners
+
+`ARCH`, `BOARD` and the current host stack are read in exactly three
+places: their definitions in `early_logic.rb`, the CLI boundary in
+`main.rb`, and the accessors that own the answer --
+`pkgmgr.target_arch`, `pkgmgr.board_for(arch)`,
+`pkgmgr.current_host_stack`. Everything else asks. Likewise the
+identity of an installation is its `Coords`; nothing selects installs
+by comparing `arch` or `compiler` on their own.
+
+`scripts/pkgmgr/tests/test_lint_ambient.rb` enforces this on every
+run, by parsing the sources. **A new allowlist entry needs a written
+reason, and it must name a method that exists** -- the test checks
+both. Do not add one to make the suite pass; ask the owner instead.
+
+**The sibling sweep.** When a bug is found in one reader of some
+shared state, every other reader of that state is checked before the
+fix is committed:
+
+```bash
+grep -n '\bBOARD\b' scripts/pkgmgr/*.rb     # sixty seconds
+```
+
+**Why:** every logic bug this package manager has had was the same
+bug -- a question about one installation answered from ambient state
+-- and each was fixed where it was found while its siblings stayed.
+`with_install_context` learned to scope the board; `board_supported?`,
+four hundred lines away, kept reading the global and refused to
+rebuild the u-boot that `-f` had just deleted. The grep would have
+found it in the same minute.
+
 ## No changes without testing
 
 Never commit changes affecting build logic, package installs, or

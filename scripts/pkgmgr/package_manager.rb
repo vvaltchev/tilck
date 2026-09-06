@@ -378,7 +378,7 @@ class PackageManager
   end
 
   def with_cc(arch_name = nil, &block)
-    arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
+    arch = arch_name ? ALL_ARCHS[arch_name] : target_arch
     arch_gcc = arch.gcc_tc
     arch_dir = Coords.new("tilck-#{arch.name}", arch.default_board,
                           "gcc-#{arch.gcc_ver}").pkgs_dir
@@ -1225,7 +1225,7 @@ class PackageManager
     if default_arch
       # If the compiler is still unset, now pick up the gcc_ver for the given
       # arch, even if that is the result of a default value, not manually set.
-      compiler  ||= ALL_ARCHS[ all_arch ? ARCH : arch ].gcc_ver
+      compiler  ||= ALL_ARCHS[all_arch ? target_arch.name : arch].gcc_ver
     end
 
     if ver.nil?
