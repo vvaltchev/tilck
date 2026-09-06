@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# pmmutate: mutation testing for the package manager's logic core.
+#
+#   pmmutate sites [--file F] [--op O]      list the mutation sites
+#   pmmutate count                          sites per file and operator
+#   pmmutate run [--jobs N] [--limit N] [--file F] [--op O] [--timeout S]
+#                                           run mutants, report survivors
+#   pmmutate check-annotations              every "# mutation: equivalent"
+#                                           still sits on a site
+#
+# A mutant is one site rewritten (tests/mutation/operators.rb) in its
+# own git worktree, judged by the suite there: killed if the suite
+# fails, survived if it passes. A survivor is a test that does not
+# exist. The score to defend is zero survivors in scope.
+#
+# Dev-only: this is the instrument, not part of the product.
+#
+
+set -euo pipefail
+
+MAIN_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+TC_NAME="$(sed -n 's/^TOOLCHAIN_DIR_NAME=//p' "$MAIN_DIR/other/toolchain_conf")"
+TC_NAME="${TC_NAME:-toolchain5}"
+RUBY="$(ls "$MAIN_DIR/$TC_NAME"/linux-*/*/any/pkgs/ruby/*/bin/ruby 2>/dev/null | head -1 || true)"
+
+if [ -z "$RUBY" ]; then
+   echo "pmmutate: no bootstrap ruby under $MAIN_DIR/$TC_NAME" >&2
+   exit 1
+fi
+
+cmd="${1:-}"; shift || true
+
+exec "$RUBY" - "$MAIN_DIR" "$RUBY" "$cmd" "$@" <<'RUBY'
+main_dir, ruby, cmd, *args = ARGV
+require File.join(main_dir, "scripts/pkgmgr/tests/mutation/driver")
+
+opts = { jobs: 8, limit: nil, file: nil, op: nil, timeout: 120 }
+while !args.empty?
+  case (a = args.shift)
+  when "--jobs"    then opts[:jobs] = args.shift.to_i
+  when "--limit"   then opts[:limit] = args.shift.to_i
+  when "--file"    then opts[:file] = args.shift
+  when "--op"      then opts[:op] = args.shift
+  when "--timeout" then opts[:timeout] = args.shift.to_i
+  else abort "pmmutate: unknown option #{a}"
+  end
+end
+
+mutants = Mutation.all_mutants
+mutants.select! { |m| File.basename(m.file) == opts[:file] } if opts[:file]
+mutants.select! { |m| m.site.op == opts[:op] } if opts[:op]
+mutants = mutants.first(opts[:limit]) if opts[:limit]
+
+case cmd
+when "sites"
+  mutants.each { |m| puts m.site }
+  puts "#{mutants.length} sites"
+
+when "count"
+  by_file = mutants.group_by { |m| File.basename(m.file) }
+  ops = mutants.map { |m| m.site.op }.uniq.sort
+  printf("%-22s %s  total\n", "file", ops.map { |o| o.rjust(4) }.join)
+  by_file.sort.each { |f, ms|
+    row = ops.map { |o| ms.count { |m| m.site.op == o }.to_s.rjust(4) }
+    printf("%-22s %s  %5d\n", f, row.join, ms.length)
+  }
+  puts "#{mutants.length} sites in #{by_file.length} files"
+
+when "check-annotations"
+  bad = Mutation.check_annotations
+  bad.each { |b| puts b }
+  puts(bad.empty? ? "annotations ok" : "#{bad.length} stale annotation(s)")
+  exit(bad.empty? ? 0 : 1)
+
+when "run"
+  puts "pmmutate: #{mutants.length} mutants, #{opts[:jobs]} workers, " \
+       "timeout #{opts[:timeout]}s"
+  t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  verdicts = []
+  lock = Mutex.new
+  Mutation.run(mutants, jobs: opts[:jobs], ruby: ruby,
+               timeout: opts[:timeout]) { |v|
+    lock.synchronize {
+      verdicts << v
+      mark = { killed: "killed  ", survived: "SURVIVED", timeout: "timeout ",
+               error: "error   " }[v.status]
+      printf("  [%4d/%4d] %s  %5.1fs  %s\n", verdicts.length, mutants.length,
+             mark, v.seconds, v.mutant.site)
+      $stdout.flush
+    }
+  }
+  dt = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+  by = verdicts.group_by(&:status).transform_values(&:length)
+  puts
+  puts "pmmutate: #{verdicts.length} mutants in #{dt.round}s: " \
+       "#{by[:killed] || 0} killed, #{by[:timeout] || 0} timed out, " \
+       "#{by[:survived] || 0} survived"
+  survivors = verdicts.select { |v| v.status == :survived }
+  if !survivors.empty?
+    puts
+    puts "SURVIVORS -- each is a test that does not exist:"
+    survivors.sort_by { |v| [v.mutant.file, v.mutant.site.line] }.each { |v|
+      puts "  #{v.mutant.site}"
+    }
+  end
+  exit(survivors.empty? ? 0 : 1)
+
+else
+  abort "pmmutate: sites | count | run | check-annotations"
+end
+RUBY

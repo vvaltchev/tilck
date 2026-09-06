@@ -553,6 +553,24 @@ module Main
       (opts[:test_args] ||= []) << "--verbose-tests"
     }
 
+    p.on('--exhaustive',
+         'After unit tests: every small world x every command line, ' \
+         'against the model (use with -t) [FLAG]') {
+      (opts[:test_args] ||= []) << "--exhaustive"
+    }
+
+    p.on('--seed N', 'Seed of the sampled exhaustive lane [OPTION]') {
+      |n| (opts[:test_args] ||= []) << "--seed" << n
+    }
+
+    p.on('--case ID', 'Replay one exhaustive case by id [OPTION]') {
+      |id| (opts[:test_args] ||= []) << "--case" << id
+    }
+
+    p.on('--jobs N', 'Processes for --exhaustive [OPTION]') {
+      |n| (opts[:test_args] ||= []) << "--jobs" << n
+    }
+
     p.on('--test-packages-filter REGEX',
          'With --system-tests: install only optional packages matching REGEX') {
       |pat| (opts[:test_args] ||= []) << "--test-packages-filter" << pat
