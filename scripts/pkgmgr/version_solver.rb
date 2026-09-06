@@ -38,6 +38,22 @@ module VersionSolver
   class ConflictError < StandardError; end
   class UnstableError < StandardError; end
 
+  # A dependency that leads back to itself AT THE VERSIONS BOUND. The
+  # startup validation walks the version-less graph; a package whose
+  # dep_list_for(ver) closes a loop only for one version reaches here,
+  # and is named here.
+  class CycleError < StandardError; end
+
+  # A walk over a lambda-defined graph has no edge count to bound it
+  # by, so it is bounded two ways: by what it has seen -- a finite
+  # closure of N names is dequeued fewer than (N+1)^2 times -- and by
+  # an absolute cap on N, since a walk that keeps meeting new names
+  # grows "seen" as fast as it takes steps and no relative bound can
+  # catch it. No closure in this tree is a thousandth of the cap.
+  class NonTerminatingWalk < StandardError; end
+
+  MAX_NAMES = 10_000
+
   # A package's dependency list may itself depend on the version it is
   # built at, so binding a version can change the closure, which can
   # bind further versions. Iterate to a fixed point rather than
@@ -96,12 +112,26 @@ module VersionSolver
       queue << [name, [name]]
     end
 
+    steps = 0
+
     while !queue.empty?
       name, path = queue.shift
+      steps += 1
+
+      if seen.size > MAX_NAMES || steps > (seen.size + 1)**2 + roots.length
+        raise NonTerminatingWalk, "version walk from #{roots.map(&:first)}"
+      end
+
+      if path[0...-1].include?(name)
+        raise CycleError, "Dependency cycle at these versions: " \
+                          "#{path.join(' -> ')}"
+      end
+
       next if seen.include?(name)
       seen.add(name)
 
-      node_ver = versions[name] || bound[name] || default_of.call(name) # mutation: equivalent -- the fixpoint iteration reaches the same binding
+      # mutation: equivalent -- the fixpoint iteration reaches the same binding
+      node_ver = versions[name] || bound[name] || default_of.call(name)
 
       for dep in deps_of.call(name, node_ver)
         dep_path = path + [dep.name]
