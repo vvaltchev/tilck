@@ -404,7 +404,7 @@ class PackageManager
 
   def show_status_all(group_by = nil, all_compilers = false)
 
-    curr_cc = ARCH.gcc_ver
+    curr_cc = target_arch.gcc_ver
     curr_host_cc = current_host_stack
 
     list_with_paths = @known_installed + @found_installed
@@ -1179,8 +1179,8 @@ class PackageManager
       assert { !default_ver.nil? }
     else
       name          = pkg_or_name
-      default_arch  = ARCH
-      default_cc    = ARCH.gcc_ver
+      default_arch  = target_arch
+      default_cc    = target_arch.gcc_ver
       default_ver   = nil           # see below
 
       # For ALL: include both registered and orphan installations.

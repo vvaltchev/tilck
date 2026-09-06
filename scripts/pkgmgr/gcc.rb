@@ -87,16 +87,25 @@ class GccCompiler < Package
   def default_ver = @target_arch.gcc_ver
   def default_arch = HOST_ARCH
 
-  # GCC compilers are default based on the current target ARCH:
-  # x86 family needs both i386 and x86_64 (UEFI bootloader requires
-  # x86_64); other arches need just their own compiler.
+  # GCC compilers are default based on the target arch being built
+  # for: x86 family needs both i386 and x86_64 (UEFI bootloader
+  # requires x86_64); other arches need just their own compiler.
+  #
+  # The arch of the invocation's scope, not the global: `-a riscv64`
+  # with no mode installs riscv64's defaults, and this is what says
+  # which compiler that includes.
   def default?
+
     return false if !host_supported?
-    if ARCH.family == "generic_x86"
+
+    arch = pkgmgr.target_arch
+
+    if arch.family == "generic_x86"
       return @target_arch == ALL_ARCHS["i386"] ||
              @target_arch == ALL_ARCHS["x86_64"]
     end
-    return @target_arch == ARCH
+
+    return @target_arch == arch
   end
 
   # Called by the SourceRef's tarname Proc: the cache filename
