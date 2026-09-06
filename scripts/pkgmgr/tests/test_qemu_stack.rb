@@ -116,24 +116,37 @@ class TestQemuStack < Minitest::Test
 
   # --- which python builds it ---------------------------------------
 
-  # configure finds a python by searching PATH, which on a developer
-  # machine is whatever happens to be first -- a brew 3.14 with no
-  # distlib, while the distro's 3.10, which install_pkgs provisions
-  # distlib for, sat right there. Every other input to this build
-  # comes from somewhere we chose; the interpreter has to as well.
-  def test_the_python_is_named_and_can_import_distlib
-    py = qemu.usable_python
-
-    assert File.executable?(py), "#{py} is not executable"
-    assert system(py, "-c", "import distlib",
-                  out: File::NULL, err: File::NULL),
-           "#{py} cannot import distlib, which QEMU 8+ needs"
+  # QEMU's configure finds a python by searching PATH, and on a
+  # developer machine that is whatever happens to be first -- a brew
+  # 3.14 without distlib, or a distro 3.10 without tomllib. The
+  # interpreter is a build input like the compiler, so it comes from
+  # a package and reaches the build the way every other tool does:
+  # deps_build_env puts a dependency's bin dir at the front of PATH.
+  def test_qemu_depends_on_our_python
+    deps = qemu.dep_list.map(&:name)
+    assert_includes deps, "host_python",
+                    "the build is left to find a python on PATH"
   end
 
-  def test_the_python_reaches_the_configure_line
-    flags = qemu.configure_flags(Ver("8.2.0"))
-    assert flags.any? { |f| f.start_with?("--python=") },
-           "configure was left to search PATH for a python"
+  def test_our_python_publishes_its_bin_dir
+    py = pkg("host_python")
+    refute_nil py, "host_python is not registered"
+
+    dirs = py.build_env(py.default_ver).bin_dirs
+    refute_empty dirs, "nothing published, so nothing reaches PATH"
+    assert dirs.first.to_s.end_with?("/bin"),
+           "published #{dirs.first}, which is not a bin dir"
+  end
+
+  # 3.11 is not an arbitrary choice: it straddles the QEMU range this
+  # tree builds. tomllib is stdlib from 3.11, so the tomli backport is
+  # never needed, and distutils still exists (it went in 3.12) for the
+  # older QEMU build scripts that reach for it.
+  def test_the_python_version_straddles_the_qemu_range
+    v = pkg("host_python").default_ver
+    assert_equal 3, v.comps[0]
+    assert_equal 11, v.comps[1],
+                 "3.11 is what has tomllib AND still has distutils"
   end
 
   # --- configure options that upstream removed ---------------------
