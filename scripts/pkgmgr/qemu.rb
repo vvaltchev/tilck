@@ -158,10 +158,57 @@ class HostQemuPackage < Package
     super(dir)
   end
 
+  # QEMU stops dead on a configure option it does not recognise --
+  #
+  #   ERROR: unknown option --disable-glusterfs
+  #
+  # -- so an option that upstream removes has to stop being passed to
+  # the versions that no longer have it. glusterfs is the first: it is
+  # a feature in 10.2's and 11.0's meson_options.txt and gone from
+  # 11.1's, so the boundary falls inside series 11 and a table keyed
+  # by series could not express it.
+  #
+  # Everything else we pass is still an option in 11.1.
+  GLUSTERFS_DROPPED = Ver("11.1.0")
+
+  def configure_flags(ver)
+
+    flags = [
+      "--target-list=#{TARGETS.join(",")}",
+
+      # The GTK UI, which is what the whole closure below this package
+      # exists for. QEMU 6.2's ui/gtk.c targets GTK 3, and 11.1's
+      # still does.
+      "--enable-gtk",
+
+      # VNC's core needs nothing we do not already have; the optional
+      # encoders it can use (JPEG, PNG-over-VNC, SASL) stay out.
+      "--enable-vnc",
+
+      # SDL would be a second UI toolkit for the same job, and curses
+      # would need an ncurses inside the sysroot -- the one in the
+      # tree is a host-tier build for menuconfig, not part of this
+      # stack.
+      "--disable-sdl",
+      "--disable-curses",
+
+      # Each of these would pull in a dependency not built yet, or
+      # find one on the build machine and link it.
+      "--disable-libssh",
+      "--disable-seccomp",
+      "--disable-capstone",
+      "--disable-docs",
+    ]
+
+    flags << "--disable-glusterfs" if ver < GLUSTERFS_DROPPED
+    return flags
+  end
+
   def install_impl_internal(install_dir)
 
     prefix = final_install_prefix(install_dir)
     destdir = "#{install_dir}/destdir"
+    ver = installing_ver(install_dir)
     ok = false
 
     FileUtils.mkdir_p("build")
@@ -171,30 +218,7 @@ class HostQemuPackage < Package
         ok = run_command("configure.log", [
           "../configure",
           "--prefix=#{prefix}",
-          "--target-list=#{TARGETS.join(",")}",
-
-          # The GTK UI, which is what the whole closure below this
-          # package exists for. QEMU 6.2's ui/gtk.c targets GTK 3.
-          "--enable-gtk",
-
-          # VNC's core needs nothing we do not already have; the
-          # optional encoders it can use (JPEG, PNG-over-VNC, SASL)
-          # stay out.
-          "--enable-vnc",
-
-          # SDL would be a second UI toolkit for the same job, and
-          # curses would need an ncurses inside the sysroot -- the one
-          # in the tree is a host-tier build for menuconfig, not part
-          # of this stack.
-          "--disable-sdl",
-          "--disable-curses",
-
-          # Each of these would pull in a dependency not built yet.
-          "--disable-libssh",
-          "--disable-glusterfs",
-          "--disable-seccomp",
-          "--disable-capstone",
-          "--disable-docs",
+          *configure_flags(ver),
         ])
         next if !ok
 

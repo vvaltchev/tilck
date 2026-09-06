@@ -114,6 +114,40 @@ class TestQemuStack < Minitest::Test
     assert_equal "gcc-12.5.0", coords.stack
   end
 
+  # --- configure options that upstream removed ---------------------
+
+  # QEMU stops on an option it does not know, so an option removed
+  # upstream must stop being passed. glusterfs is a feature in 11.0
+  # and gone in 11.1, which is why the boundary is a version rather
+  # than a series.
+  def test_glusterfs_is_passed_only_while_it_exists
+    for v in ["6.2.0", "9.2.0", "10.2.0", "11.0.0"] do
+      assert_includes qemu.configure_flags(Ver(v)), "--disable-glusterfs",
+                      "QEMU #{v} still has the option"
+    end
+
+    refute_includes qemu.configure_flags(Ver("11.1.0")),
+                    "--disable-glusterfs",
+                    "11.1 removed it: passing it stops configure"
+  end
+
+  # The rest are options in every version this tree builds, and
+  # dropping one silently would let a system library in.
+  def test_the_other_options_are_passed_everywhere
+    always = [
+      "--enable-gtk", "--enable-vnc", "--disable-sdl", "--disable-curses",
+      "--disable-libssh", "--disable-seccomp", "--disable-capstone",
+      "--disable-docs",
+    ]
+
+    for v in HostQemuPackage::SUPPORTED do
+      flags = qemu.configure_flags(v)
+      for f in always do
+        assert_includes flags, f, "#{f} missing for QEMU #{v}"
+      end
+    end
+  end
+
   # Keyed by series, so a point release nobody listed still gets the
   # right compiler rather than falling back to HOST_VER_GCC.
   def test_an_unlisted_point_release_still_maps
