@@ -129,6 +129,13 @@ class Package
   # package SAID, which the model needs to say the same thing.
   def marked_default? = @default
 
+  # The three kinds, by what decides their coordinates: a target
+  # package builds for an arch (and a board); a noarch one is source
+  # only; a host one runs here. Asked by name so that the pair of
+  # tests behind each kind is written once.
+  def target? = !on_host && !arch_list.nil?
+  def noarch? = !on_host && arch_list.nil?
+
   STATUS_LEN    = 9              # "installed", "not built"
   COUNT_GAP     = 3              # the " (" and the ")" around a count
 
@@ -317,7 +324,7 @@ class Package
   #
   def coords(ver = nil)
 
-    return Coords.new("noarch", nil, nil) if !on_host && default_arch.nil?
+    return Coords.new("noarch", nil, nil) if !on_host && default_arch.nil? # mutation: equivalent -- a host package always has an arch
 
     if on_host
       case @host_tier
@@ -737,7 +744,7 @@ class Package
       return block.call if host_tier != :stack
 
       stack = inst.coords&.stack_ver
-      return block.call if stack.nil?
+      return block.call if stack.nil?  # mutation: equivalent -- a :stack install always names its stack
       return pkgmgr.with_host_stack(stack, &block)
     end
 
@@ -1596,7 +1603,7 @@ class Package
       # coordinates, but that one names the HOST's compiler, which is
       # the system one: reading it here filed gtest under a stack of
       # its own.
-      cc = host_tier == :stack ? (c.stack_ver || "syscc") : "syscc"
+      cc = host_tier == :stack ? (c.stack_ver || "syscc") : "syscc" # mutation: equivalent -- a stack's coordinates always parse
 
       for d in Dir.children(dir)
         ver = Ver(d.to_s)
@@ -1623,9 +1630,7 @@ class Package
   def all_stack_coords
 
     out = pkgmgr.host_stacks.map { |v| pkgmgr.stack_coords(Ver(v)) }
-    here = coords
-    out << here if !out.include?(here)
-    return out
+    return out | [coords]
   end
 
   # The stack directories present under one <machine>/<env>.
@@ -1643,7 +1648,7 @@ class Package
     # combination this package could have been installed under, since
     # one package may exist for several arches, boards and compilers
     # at once.
-    for arch_obj in (arch_list || [])
+    for arch_obj in arch_list
       for board in (arch_obj.boards || [nil])
         for cc_dir in stack_dirs_of("tilck-#{arch_obj.name}", board)
 

@@ -32,6 +32,16 @@ class TestCoordsRejectBlanks < Minitest::Test
     assert_equal "noarch/any/any", c.to_s
   end
 
+  # Equality is between coordinates. A string that happens to spell
+  # the same path is not one, or a filter handed a path would match.
+  def test_only_coordinates_are_equal_to_coordinates
+    c = Coords.new("tilck-i386", "pc", "gcc-13")
+    assert_equal c, Coords.new("tilck-i386", "pc", "gcc-13")
+    refute_equal c, c.to_s
+    refute_equal c, nil
+    refute c.eql?(c.to_s)
+  end
+
   def test_a_blank_env_is_refused
     assert_raises(RuntimeError) { Coords.new("tilck-i386", "", "gcc-13") }
     assert_raises(RuntimeError) { Coords.new("tilck-i386", "  ", "gcc-13") }

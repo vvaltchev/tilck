@@ -23,6 +23,7 @@
 
 require 'stringio'
 require 'tmpdir'
+require 'etc'
 require_relative 'domain'
 require_relative '../laws'
 require_relative '../model/bridge'
@@ -190,6 +191,7 @@ module Exhaustive
 
     jobs ||= [Etc.nprocessors, shapes.length].min
     dir = Dir.mktmpdir("pkgmgr-exhaustive-")
+    $stdout.sync = true       # progress reaches a log as it happens
     queue = shapes.dup
     running = {}
     all_ok = true

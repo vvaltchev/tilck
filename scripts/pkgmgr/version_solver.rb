@@ -101,7 +101,7 @@ module VersionSolver
       next if seen.include?(name)
       seen.add(name)
 
-      node_ver = versions[name] || bound[name] || default_of.call(name)
+      node_ver = versions[name] || bound[name] || default_of.call(name) # mutation: equivalent -- the fixpoint iteration reaches the same binding
 
       for dep in deps_of.call(name, node_ver)
         dep_path = path + [dep.name]
