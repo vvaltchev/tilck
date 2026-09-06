@@ -299,7 +299,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkgmgr.install("foo")               # no version named
 
         inst = pkg.find_install(Ver("1.0.0"))
-        assert_equal "default",
+        assert_equal "default manual",
                      (inst.path / InstallOrigin::FILE).read.strip
         assert inst.default_install
       end
@@ -314,7 +314,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkgmgr.install("foo", Ver("1.0.0"))  # version named explicitly
 
         inst = pkg.find_install(Ver("1.0.0"))
-        assert_equal "pinned",
+        assert_equal "pinned manual",
                      (inst.path / InstallOrigin::FILE).read.strip
         refute inst.default_install
       end
@@ -329,7 +329,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
       gcc_ver = ARCH.gcc_ver.to_s
       old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
-      InstallOrigin.write(old_dir, false)
+      InstallOrigin.write(old_dir, false, true)
 
       pkg = FakePackage.new("foo")
       pkgmgr.register(pkg)
