@@ -938,6 +938,37 @@ GIT_EDITOR=true git rebase --continue
 `--no-edit` to set them). The same pattern unblocks any editor-driven git
 command (e.g. `git commit` without `-m`). Verified working in this environment.
 
+## Dry-run first, every time
+
+**Before any destructive action, run the tool's dry-run and read what
+it says it will do.** `-d` / `--dry-run` on the package manager, and
+the equivalent wherever else one exists. This is not optional and it
+is not a judgement call: if the command can remove or overwrite
+something and the tool supports asking first, ask first.
+
+```bash
+./scripts/build_toolchain -u host_qemu:6.2.0 -d   # what would go?
+./scripts/build_toolchain -u host_qemu:6.2.0      # ...then do it
+```
+
+**Why:** a destructive command that removes the wrong thing does not
+announce itself. `-u` removed installs from a second board for as
+long as this tree has had two boards; a forced rebuild removed a
+package and then failed, leaving nothing where something had been,
+and `--check-for-updates` reported the tree as healthy because a
+package that is simply GONE reads as "not installed" rather than
+"stale". In every one of those cases the dry run would have printed
+the paths a moment before they were destroyed, and the whole class of
+"what exactly did I just delete?" would never have come up.
+
+The package manager's dry-run is expected to be **complete**: every
+mode that writes must honour `-d`, and a dry run must not add, remove
+or modify a single file. That is enforced by
+`test_every_destructive_mode_touches_nothing_in_dry_run`, which
+fingerprints the whole toolchain before and after. A new mode that
+writes without honouring `-d` fails that test -- and if a gap is
+found, close the gap rather than working around it.
+
 ## No changes without testing
 
 Never commit changes affecting build logic, package installs, or

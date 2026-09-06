@@ -355,6 +355,77 @@ class TestCliMatrix < Minitest::Test
     end
   end
 
+  # --- dry run touches nothing ----------------------------------------
+
+  # Every file under the toolchain, with its size and mtime. A dry run
+  # may create an empty directory -- the tree is laid out before the
+  # mode runs -- but it may not add, remove or modify a single file.
+  def file_fingerprint
+    Dir.glob("#{TC}/**/*", File::FNM_DOTMATCH)
+       .reject { |p| File.directory?(p) }
+       .sort
+       .map { |p| [p.sub("#{TC}/", ""), File.size(p), File.mtime(p).to_f] }
+  end
+
+  # THE rule this file exists to enforce.
+  #
+  # -d is what you run before doing something you cannot undo, so it
+  # has to be trustworthy in every mode, not most of them. -C ignored
+  # it outright until this test went looking; the others are checked
+  # here so that the next mode to grow a write is caught by the same
+  # net rather than by someone's memory.
+  def test_every_destructive_mode_touches_nothing_in_dry_run
+    modes = {
+      "install"            => ["-s", "spread"],
+      "install forced"     => ["-s", "spread", "-f"],
+      "install all arches" => ["-s", "spread", "-a", "ALL"],
+      "uninstall"          => ["-u", "spread"],
+      "uninstall version"  => ["-u", "spread:1.0.0"],
+      "uninstall all"      => ["-u", "spread", "-a", "ALL"],
+      "clean"              => ["--clean"],
+      "upgrade"            => ["--upgrade"],
+    }
+
+    for what, argv in modes do
+      with_fake_tc do
+        with_stubbed_externals do
+          reset_pkgmgr!
+          install_target_spread
+          before = file_fingerprint
+
+          rc, _ = run_cli(*argv, "-d", "-q")
+
+          assert_equal 0, rc, "#{what}: -d failed"
+          assert_equal before, file_fingerprint,
+                       "#{what} -d changed the tree"
+        end
+      end
+    end
+  end
+
+  # -C runs a package's own configuration tool and rewrites its build
+  # configuration, which is exactly the kind of thing -d is for. It
+  # ignored the flag entirely.
+  def test_reconfigure_honours_dry_run
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("confy")
+        pkg.define_singleton_method(:configurable?) { true }
+        pkg.define_singleton_method(:configure) { |ver = nil|
+          raise "configure ran during a dry run"
+        }
+        pkgmgr.register(pkg)
+        pkgmgr.install("confy")
+        pkgmgr.refresh
+
+        rc, out = run_cli("-C", "confy", "-d", "-q")
+
+        assert_equal 0, rc
+        assert_match(/Dry run/, out)
+      end
+    end
+  end
+
   # --- the host world ------------------------------------------------
 
   # The compiler we build ourselves and the QEMU built with it are

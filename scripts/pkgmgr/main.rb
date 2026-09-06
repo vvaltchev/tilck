@@ -1030,6 +1030,17 @@ module Main
         error "Package #{pkg.name} does not support reconfiguration"
         return 1
       end
+
+      # -C was the one destructive mode that ignored -d. It runs the
+      # package's own configuration tool and rewrites its .config, so
+      # "show me what this would do" has to be answerable here like
+      # everywhere else.
+      if options[:dry_run]
+        info "Dry run (-d): would reconfigure #{pkg.name} " \
+             "#{v || pkg.default_ver}, rewriting its build configuration"
+        return 0
+      end
+
       return pkg.configure(Ver(v)) ? 0 : 1
     end
 
