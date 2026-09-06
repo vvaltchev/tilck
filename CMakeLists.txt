@@ -419,12 +419,12 @@ if (_upgrade_rc EQUAL 2)
    # NEEDS_UPGRADE: a version was bumped     -> --upgrade
    # NEEDS_REBUILD: sources changed under an installed package,
    #                so what is installed no longer matches them
-   #                -> -s <pkg> -f
+   #                -> --rebuild
    message(FATAL_ERROR
       "\nSome installed toolchain packages are out of date:\n"
       "   ${_upgrade_out}\n\n"
       "For NEEDS_UPGRADE run: ${BTC_SCRIPT_REL} --upgrade\n"
-      "For NEEDS_REBUILD run: ${BTC_SCRIPT_REL} -s <pkg> -f\n")
+      "For NEEDS_REBUILD run: ${BTC_SCRIPT_REL} --rebuild\n")
 endif()
 unset(_upgrade_rc)
 unset(_upgrade_out)
