@@ -76,7 +76,10 @@ module Laws
     end
 
     if !argv.include?("-d")
-      touched = after.world - before.world
+      # A mark is a note on an install, not an install: a key that
+      # differs from before only by its mark was not built.
+      was = before.world.map { |k| k.with(mark: nil) }.to_set
+      touched = after.world.reject { |k| was.include?(k.with(mark: nil)) }
       bad = touched.reject { |k| k.record == :ok }
       if !bad.empty?
         out << Violation.new(:L4_recorded, argv,

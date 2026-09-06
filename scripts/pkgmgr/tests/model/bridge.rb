@@ -37,7 +37,9 @@ module Bridge
 
     kind = if !pkg.on_host
       pkg.arch_list.nil? ? :noarch : :target
-    elsif ta
+    elsif ta || pkg.is_compiler
+      # Both ways of being one count, as they do for -u ALL: the
+      # target metadata GCC's installs carry, or the declaration alone.
       :cross_cc
     elsif pkg.name == "host_gcc"
       :stack_cc
@@ -107,6 +109,7 @@ module Bridge
       coords: inst.coords,
       record: record,
       origin: inst.default_install ? :default : :pinned,
+      mark: inst.manual ? :manual : :auto,
     )
   end
 

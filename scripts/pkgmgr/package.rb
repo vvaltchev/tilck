@@ -30,38 +30,49 @@ def Dep(name, host, ver: nil)
 end
 
 #
-# How an installation's version was chosen, recorded in a hidden file
-# inside its version directory at install time.
+# How an installation came to be, recorded in a hidden file inside its
+# version directory at install time: two facts, two words.
 #
-# Nothing else can tell the two cases apart: on disk a default install
-# and one the user named are both just <pkg>/<ver>/, and the version
-# alone cannot say whether it was asked for or merely current at the
-# time. --upgrade needs the difference — a version somebody pinned must
-# not be replaced behind their back.
+# The first is how its VERSION was chosen. On disk a default install and
+# one the user named are both just <pkg>/<ver>/, and the version alone
+# cannot say whether it was asked for or merely current at the time.
+# --upgrade needs the difference -- a version somebody pinned must not
+# be replaced behind their back.
 #
-# Installations made before this file existed carry none, and are read
-# as :default. That is what they were: naming a version at install time
-# is newer than they are, so nothing pinned can predate the file, and
-# reading them any other way would quietly stop --upgrade from ever
-# touching an existing toolchain.
+# The second is WHY it is here: asked for by name (manual), or pulled
+# in as a dependency of something that was (auto). -u removes what it
+# is told and leaves the dependencies; --autoremove takes the auto ones
+# nothing kept still needs, and --mark-manual / --mark-auto move an
+# install between the two, as apt-mark does.
+#
+# Installations from before this file carry none of it and read as a
+# manual default install: nothing pinned can predate the file, and an
+# install whose reason nobody wrote down is nobody's to remove.
+# One-word files from before the second fact read the same way.
 #
 module InstallOrigin
 
   FILE    = ".install_origin"
   DEFAULT = "default"
   PINNED  = "pinned"
+  MANUAL  = "manual"
+  AUTO    = "auto"
 
   module_function
 
-  def write(dir, default_install)
-    File.write(dir / FILE, (default_install ? DEFAULT : PINNED) + "\n")
+  def write(dir, default_install, manual)
+    File.write(dir / FILE, "#{default_install ? DEFAULT : PINNED} " \
+                           "#{manual ? MANUAL : AUTO}\n")
   end
 
-  def default_install?(dir)
+  def words(dir)
     path = dir / FILE
-    return true if !path.file?
-    return path.read.strip != PINNED
+    return [] if !path.file?
+    return path.read.split
   end
+
+  def default_install?(dir) = words(dir).first != PINNED
+  def manual?(dir) = words(dir)[1] != AUTO
 end
 
 #
@@ -100,7 +111,7 @@ class InstallInfo
 
   attr_reader :pkgname, :compiler, :on_host, :arch, :ver, :path
   attr_reader :pkg, :broken, :target_arch, :libc, :default_install
-  attr_reader :coords
+  attr_reader :coords, :manual
 
   def initialize(
     pkgname,  # package name (string)
@@ -114,7 +125,8 @@ class InstallInfo
     target_arch = nil, # target architecture [only for compilers]
     libc        = nil, # libc (e.g. "musl") [only for compilers]
     default_install: false, # installed as the default version?
-    coords: nil             # Coords: where this installation lives
+    coords: nil,            # Coords: where this installation lives
+    manual: true            # asked for by name, not pulled in as a dep?
   )
     @pkgname = pkgname         # package name
     @compiler = compiler       # "syscc" or compiler version or nil (= noarch)
@@ -127,6 +139,7 @@ class InstallInfo
     @target_arch = target_arch
     @libc = libc
     @default_install = default_install
+    @manual = manual
     @coords = coords           # the three coordinates of the install
     assert { arch.nil? or arch.is_a? Architecture }
 
@@ -1753,6 +1766,7 @@ class Package
           self,                             # package object
           !check_install_dir(dir / d, ver), # broken?
           default_install: InstallOrigin.default_install?(dir / d),
+          manual: InstallOrigin.manual?(dir / d),
           coords: c                         # which stack it lives in
         )
       end
@@ -1807,6 +1821,7 @@ class Package
               self,                             # package object
               !check_install_dir(dir / d, ver), # broken?
               default_install: InstallOrigin.default_install?(dir / d),
+              manual: InstallOrigin.manual?(dir / d),
               coords: coords                    # this arch+board+stack
             )
           end # for ver_dir
@@ -1834,6 +1849,7 @@ class Package
           self,                             # package object
           !check_install_dir(dir / d, ver), # broken?
           default_install: InstallOrigin.default_install?(dir / d),
+          manual: InstallOrigin.manual?(dir / d),
           coords: coords                    # noarch/any/any
         )
       end

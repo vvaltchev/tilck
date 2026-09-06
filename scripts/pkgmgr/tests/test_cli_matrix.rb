@@ -366,6 +366,9 @@ class TestCliMatrix < Minitest::Test
       "clean"              => ["--clean"],
       "upgrade"            => ["--upgrade"],
       "rebuild"            => ["--rebuild"],
+      "mark manual"        => ["--mark-manual", "spread"],
+      "mark auto"          => ["--mark-auto", "spread"],
+      "autoremove"         => ["--autoremove"],
       "default install"    => [],
     }
 
@@ -374,6 +377,11 @@ class TestCliMatrix < Minitest::Test
         with_stubbed_externals do
           reset_pkgmgr!
           install_target_spread
+          # ...and one install nothing needs, marked auto, so that an
+          # --autoremove that ignored -d would have something to take.
+          pkgmgr.register(FakePackage.new("stray"))
+          pkgmgr.install("stray", manual: false)
+          pkgmgr.refresh
           before = file_fingerprint
 
           rc, _ = run_cli(*argv, "-d", "-q")
