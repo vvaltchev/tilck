@@ -427,6 +427,35 @@ class TestUninstallVersions < Minitest::Test
 
   # -f on a version that is not installed yet is just an install. It
   # must not fall through to uninstall's "remove whatever IS there".
+  # -u has to find a :stack package's install.
+  #
+  # The compiler to match defaulted through `default_cc == "syscc"`,
+  # which was the same question as "is this a host package" only while
+  # every host package answered "syscc". A :stack package now answers
+  # with the GCC whose stack it lives in, so the test stopped being
+  # true and the uninstall went looking for an install built by the
+  # i386 CROSS compiler -- matching nothing, and saying nothing.
+  def test_uninstall_finds_a_stack_packages_install
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        inst = pkg.get_install_list.find { |i| !i.path.nil? }
+        refute_nil inst, "the fixture did not install"
+
+        pkgmgr.uninstall("host_thing", false, false)
+        pkgmgr.refresh()
+
+        refute inst.path.directory?, "-u matched nothing and said nothing"
+      end
+    end
+  end
+
   # A host package's compiler is a version, not nil, and force_remove
   # passed nil for it -- which the filter reads as "the compiler must
   # BE nil", true only of a noarch package. So a forced rebuild of
