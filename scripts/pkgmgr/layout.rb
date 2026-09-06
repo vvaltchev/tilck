@@ -92,13 +92,13 @@ module Layout
     return v
   end
 
-  # Every QEMU built in a host stack, oldest first. None where the host
-  # world does not run (host_qemu is x86_64 Linux only, for now).
+  # Every QEMU built in a host stack, oldest first; a broken one is
+  # not a QEMU anybody can run. None where the host world does not run
+  # (host_qemu is x86_64 Linux only, for now).
   def qemu_installs
     q = pkgmgr.get("host_qemu")
     return [] if q.nil? || !q.host_supported?
-    return q.get_install_list.select { |i| !i.path.nil? && !i.broken }
-            .sort_by(&:ver)
+    return q.get_install_list.reject(&:broken).sort_by(&:ver)
   end
 
   def print_vars
