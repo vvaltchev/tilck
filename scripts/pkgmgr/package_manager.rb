@@ -1167,11 +1167,30 @@ class PackageManager
       all_ver = true
     end
 
+    # An arch is not a coordinate; it is two thirds of one. riscv64
+    # builds for qemu-virt AND licheerv-nano, in separate trees, and
+    # `e.arch == arch` matches both -- so `-u zlib` on riscv64 removed
+    # the licheerv-nano copy along with the one the user was looking
+    # at, and nothing said so. force_remove was fixed for exactly this
+    # and plain -u was not.
+    #
+    # The board only narrows when the caller did not ask for every
+    # arch and did not name the coordinates itself: -a ALL and --clean
+    # mean every board, and force_remove computes its own set.
+    # Target packages only: a board is a coordinate of the Tilck side.
+    # A host install's env names a distro or "any", and a noarch one
+    # has no board at all, so narrowing either by one excludes it.
+    narrow_by_board = coords.nil? && !all_arch && pkg &&
+                      !pkg.on_host && !pkg.arch_list.nil?
+
+    board = narrow_by_board ? pkg.target_board(arch) : nil
+
     to_remove = install_list.select { |e|
       (all_pkgs   || e.pkgname == name     ) &&
       (all_ver    || e.ver == ver          ) &&
       (all_arch   || e.arch == arch        ) &&
       (all_cc     || e.compiler == compiler) &&
+      (board.nil? || e.coords.nil? || e.coords.env == board) &&
       (coords.nil? || coords.include?(e.coords)) &&
       !NEVER_REMOVE.include?(e.pkgname)
     }
