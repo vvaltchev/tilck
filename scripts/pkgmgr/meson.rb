@@ -26,9 +26,23 @@ MESON_SOURCE = SourceRef.new(
 # rather than through pip, so nothing depends on the host's package
 # tooling or writes outside the toolchain.
 #
-# It does depend on the host's python3, which is the same compromise
-# the system compiler is: a build-time input that leaves no trace in
-# what is produced.
+# The interpreter it runs on is host_python, named in the wrapper by
+# absolute path rather than as bare "python3".
+#
+# It used to be the host's, "the same compromise the system compiler
+# is". That was wrong twice over. Meson is not a build-time input that
+# leaves no trace: it is a program the whole stack runs, twenty-odd
+# packages configure through it, and which interpreter it gets decided
+# what those builds could do. And bare python3 in a wrapper resolves
+# against whatever PATH the caller happens to have, which on this
+# machine meant a Homebrew 3.14 for one build and the distro's 3.10
+# for another.
+#
+# Absolute, not left to PATH, because a wrapper script is run in
+# environments we do not control -- a developer invoking meson
+# straight out of the toolchain should get the interpreter the build
+# got, and if host_python is ever removed this must break loudly
+# rather than quietly fall back to the machine's.
 #
 class HostMesonPackage < Package
 
@@ -43,7 +57,7 @@ class HostMesonPackage < Package
       is_compiler: false,
       host_tier: :distro,
       arch_list: ALL_HOST_ARCHS.values,
-      dep_list: [Dep('host_ninja', true)],
+      dep_list: [Dep('host_ninja', true), Dep('host_python', true)],
       default: false,
     )
   end
@@ -69,6 +83,11 @@ class HostMesonPackage < Package
     FileUtils.rm_rf(dir / "install")
     super(dir)
   end
+
+  # The interpreter this runs on, by absolute path. Asked of the
+  # package manager rather than assumed: a wrapper that silently
+  # falls back to the machine's python is the thing this replaces.
+  def python_bin = pkgmgr.python_interpreter
 
   def install_impl_internal(install_dir)
 
@@ -97,7 +116,7 @@ class HostMesonPackage < Package
     wrapper = "#{bindir}/meson"
     File.write(wrapper, <<~SH)
       #!/bin/sh
-      exec python3 "#{final}/lib/meson/meson.py" "$@"
+      exec "#{python_bin}" "#{final}/lib/meson/meson.py" "$@"
     SH
     FileUtils.chmod(0755, wrapper)
 

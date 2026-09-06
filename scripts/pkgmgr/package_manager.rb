@@ -108,6 +108,23 @@ class PackageManager
   # that is not GCC -- the schema already leaves room for it.
   def stack_compiler = get("host_gcc")
 
+  # The interpreter our builds run, named once here for the same
+  # reason: meson's wrapper, ninja's bootstrap and the $PYTHON token
+  # all need it, and three copies of the string "host_python" is
+  # three places to edit the day it is not CPython.
+  def python_pkg = get("host_python")
+
+  def python_interpreter
+
+    pkg = python_pkg
+    inst = pkg&.find_install(pkg.default_ver)
+
+    raise "host_python is not installed: there is no interpreter to " \
+          "run the build with" if inst.nil?
+
+    return inst.path / "bin" / "python3"
+  end
+
   def refresh
     @known_pkgs_paths = Set.new()
     @known_installed = []
