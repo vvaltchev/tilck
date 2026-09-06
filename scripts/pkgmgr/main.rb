@@ -1087,6 +1087,15 @@ module Main
             return 1
           end
 
+          # Say so when the stack is not the one the context printed.
+          # A pin moves it -- asking for QEMU 7 asks for GCC 12 -- and
+          # a run whose header says gcc-14.4.0 while it writes into
+          # gcc-12.5.0 has told the user the wrong thing about the
+          # only coordinate that decides where its work lands.
+          if stack && stack != pkgmgr.default_stack_cc_ver
+            info "Building into the #{Coords.stack_name(stack)} stack"
+          end
+
           failed = nil
 
           # Everything from here on runs inside the stack scope: what

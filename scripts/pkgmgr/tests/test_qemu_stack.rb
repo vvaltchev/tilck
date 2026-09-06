@@ -26,6 +26,13 @@ class TestQemuStack < Minitest::Test
   def pkg(name) = PACKAGES.find { |p| p.name == name }
   def qemu = pkg("host_qemu")
 
+  # The solver reads the REGISTRY, not a snapshot, and another test
+  # class's reset_pkgmgr! may have emptied it before this one runs.
+  def setup
+    reset_pkgmgr!
+    PACKAGES.each { |p| pkgmgr.register(p) }
+  end
+
   def test_every_supported_version_has_a_compiler
     missing = HostQemuPackage::SUPPORTED.reject { |v|
       HostQemuPackage::GCC_FOR.key?(v.series)
@@ -76,6 +83,35 @@ class TestQemuStack < Minitest::Test
       d.name == "host_gcc"
     }
     assert_equal 1, deps.length
+  end
+
+  # The point of the pin: HOST_VER_GCC sets the default for packages
+  # that do not care which compiler builds them. QEMU cares, so the
+  # default must not reach it -- with HOST_VER_GCC naming 14.4.0,
+  # asking for QEMU 7 still builds the gcc-12.5.0 world.
+  def test_the_pin_beats_the_default_stack
+    assert_equal Ver("14.4.0"), pkgmgr.default_stack_cc_ver,
+                 "this test assumes the tree's default is 14.4.0"
+
+    for v, want in { "7.2.0" => "12.5.0", "11.1.0" => "16.2.0" } do
+      stack = pkgmgr.resolved_versions_for([["host_qemu", Ver(v)]])["host_gcc"]
+
+      assert_equal Ver(want), stack,
+                   "QEMU #{v} resolved to the wrong compiler"
+      refute_equal pkgmgr.default_stack_cc_ver, stack,
+                   "the default reached a package that pins its own"
+    end
+  end
+
+  # ...and the stack the install lands in follows that, since it is
+  # the resolved host_gcc version the install scope is opened with.
+  def test_the_install_goes_into_the_pinned_stack
+    stack = pkgmgr.resolved_versions_for(
+      [["host_qemu", Ver("7.2.0")]]
+    )["host_gcc"]
+
+    coords = pkgmgr.with_host_stack(stack) { qemu.coords }
+    assert_equal "gcc-12.5.0", coords.stack
   end
 
   # Keyed by series, so a point release nobody listed still gets the
