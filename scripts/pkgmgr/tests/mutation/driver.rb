@@ -14,9 +14,10 @@
 # several mutants run at once. The bootstrap Ruby comes from the main
 # tree, since a worktree has no toolchain of its own.
 #
-# Judgement: killed if the suite fails or times out, survived if it
-# passes. A survivor is a missing test, and the report names the
-# line.
+# Judgement: killed if the suite fails, survived if it passes, and a
+# timeout if it hangs. A survivor is a missing test; a timeout is a
+# walk that nothing bounds, which is a defect in the code and not in
+# the tests. The report names the line either way.
 #
 
 require 'set'

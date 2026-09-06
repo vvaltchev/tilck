@@ -12,8 +12,9 @@
 #
 # A mutant is one site rewritten (tests/mutation/operators.rb) in its
 # own git worktree, judged by the suite there: killed if the suite
-# fails, survived if it passes. A survivor is a test that does not
-# exist. The score to defend is zero survivors in scope.
+# fails, survived if it passes, and a timeout if the suite hangs. A
+# survivor is a test that does not exist; a timeout is a walk without
+# a bound. The score to defend is zero of either, in scope.
 #
 # Dev-only: this is the instrument, not part of the product.
 #
@@ -105,7 +106,21 @@ when "run"
       puts "  #{v.mutant.site}"
     }
   end
-  exit(survivors.empty? ? 0 : 1)
+
+  # A mutant that hangs is not caught; it is waited out. The suite
+  # would have hung too, and a hang is the one failure nothing
+  # downstream can report. The walk it broke needs a bound that turns
+  # the hang into an exception -- so a timeout fails the run.
+  hung = verdicts.select { |v| v.status == :timeout }
+  if !hung.empty?
+    puts
+    puts "TIMEOUTS -- each is a walk without a bound:"
+    hung.sort_by { |v| [v.mutant.file, v.mutant.site.line] }.each { |v|
+      puts "  #{v.mutant.site}"
+    }
+  end
+
+  exit(survivors.empty? && hung.empty? ? 0 : 1)
 
 else
   abort "pmmutate: sites | count | run | check-annotations"
