@@ -72,7 +72,57 @@ end
 
 Package.prepend(NoRealToolchainReads)
 
+require_relative 'laws'
+require_relative 'model/bridge'
+require 'stringio'
+
 module TestHelper
+
+  # Run one command line through Main.main and return [rc, stdout].
+  #
+  # A command line can exit rather than return, and a test process
+  # must survive that: without the rescue, one `exit 1` deep inside an
+  # argument check takes the whole suite down with no output at all.
+  #
+  # The laws (tests/laws.rb) are checked around every run made inside
+  # a fake toolchain -- there is no world to read outside one. A test
+  # that must switch them off says why: `laws: false, because: "..."`.
+  def run_cli(*argv, laws: :auto, because: nil)
+
+    argv = argv.flatten.map(&:to_s)
+    checking = laws == true || (laws == :auto && TC != REAL_TC)
+
+    if laws == false && because.nil?
+      raise ArgumentError, "run_cli(laws: false) needs a because:"
+    end
+
+    require_relative '../main'
+    before = checking ? Bridge.snapshot : nil
+
+    old = $stdout
+    $stdout = StringIO.new
+
+    # A copy: parse_options consumes argv in place, and the laws need
+    # the line as it was typed.
+    begin
+      rc = Main.main(argv.dup)
+    rescue SystemExit => e
+      rc = e.status
+    ensure
+      out = $stdout.string
+      $stdout = old
+    end
+
+    if checking
+      after = Bridge.snapshot
+      broken = Laws.check(argv, before, after)
+      assert broken.empty?,
+             "the command line broke a law:\n" +
+             broken.map(&:to_s).join("\n\n")
+    end
+
+    return [rc, out]
+  end
 
   # For a test whose subject really is the installed tree.
   def with_real_tc

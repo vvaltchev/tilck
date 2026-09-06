@@ -323,7 +323,7 @@ class TestMainListMode < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("foo")
 
-        output = capture_stdout { Main.main(["-l"]) }
+        output = run_cli("-l").last
         assert_match(/foo/, output)
         assert_match(/installed/, output)
       end
@@ -336,7 +336,7 @@ class TestMainListMode < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("foo")
 
-        output = capture_stdout { Main.main(["-l", "-g", "arch"]) }
+        output = run_cli("-l", "-g", "arch").last
         assert_match(/foo/, output)
         assert_match(/i386/, output)
       end
@@ -349,7 +349,7 @@ class TestMainListMode < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("foo")
 
-        output = capture_stdout { Main.main(["-l", "-c", "ALL"]) }
+        output = run_cli("-l", "-c", "ALL").last
         assert_match(/foo/, output)
       end
     end
@@ -380,7 +380,7 @@ class TestMainDumpContext < Minitest::Test
   def test_just_context_mode
     with_fake_tc do
       with_stubbed_externals do
-        result = Main.main(["-j"])
+        result = run_cli("-j").first
         assert_equal 0, result
       end
     end
@@ -402,7 +402,7 @@ class TestMainIntegration < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        result = Main.main(["--check-for-updates"])
+        result = run_cli("--check-for-updates").first
         assert_equal 0, result
       end
     end
@@ -417,7 +417,7 @@ class TestMainIntegration < Minitest::Test
 
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["--check-for-updates"])
+        result = run_cli("--check-for-updates").first
         assert_equal 2, result
       end
     end
@@ -428,7 +428,7 @@ class TestMainIntegration < Minitest::Test
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["-s", "foo"])
+        result = run_cli("-s", "foo").first
         assert_equal 0, result
         assert_equal ["foo"], FakePackage.install_log
       end
@@ -442,7 +442,7 @@ class TestMainIntegration < Minitest::Test
           dep_list: [Dep("b", false)]))
         pkgmgr.register(FakePackage.new("b"))
 
-        result = Main.main(["-s", "a"])
+        result = run_cli("-s", "a").first
         assert_equal 0, result
         assert_equal ["b", "a"], FakePackage.install_log
       end
@@ -452,7 +452,7 @@ class TestMainIntegration < Minitest::Test
   def test_install_unknown_package
     with_fake_tc do
       with_stubbed_externals do
-        result = Main.main(["-s", "nonexistent"])
+        result = run_cli("-s", "nonexistent").first
         assert_equal 1, result
       end
     end
@@ -466,7 +466,7 @@ class TestMainIntegration < Minitest::Test
         FileUtils.mkdir_p(old_dir)
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["--upgrade"])
+        result = run_cli("--upgrade").first
         assert_equal 0, result
         assert_includes FakePackage.install_log, "foo"
       end
@@ -480,7 +480,7 @@ class TestMainIntegration < Minitest::Test
         pkgmgr.install("foo")
         FakePackage.clear_log!
 
-        result = Main.main(["--upgrade"])
+        result = run_cli("--upgrade").first
         assert_equal 0, result
         assert_empty FakePackage.install_log
       end
@@ -493,7 +493,7 @@ class TestMainIntegration < Minitest::Test
         pkgmgr.register(FakePackage.new("dflt", default: true))
         pkgmgr.register(FakePackage.new("opt"))
 
-        result = Main.main([])
+        result = run_cli().first
         assert_equal 0, result
         assert_includes FakePackage.install_log, "dflt"
         refute_includes FakePackage.install_log, "opt"
@@ -512,14 +512,7 @@ class TestMainIntegration < Minitest::Test
           dep_list: [Dep("dflt_dep", false)]))
         pkgmgr.register(FakePackage.new("dflt_dep", default: true))
 
-        old = $stdout
-        $stdout = StringIO.new
-        begin
-          result = Main.main(["--ascii"])
-          out = $stdout.string
-        ensure
-          $stdout = old
-        end
+        result, out = run_cli("--ascii")
 
         assert_equal 0, result
         assert_match(/Install plan:/, out)
@@ -537,7 +530,7 @@ class TestMainIntegration < Minitest::Test
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["-C", "foo"])
+        result = run_cli("-C", "foo").first
         assert_equal 1, result
       end
     end
@@ -546,7 +539,7 @@ class TestMainIntegration < Minitest::Test
   def test_config_unknown_package
     with_fake_tc do
       with_stubbed_externals do
-        result = Main.main(["-C", "nonexistent"])
+        result = run_cli("-C", "nonexistent").first
         assert_equal 1, result
       end
     end
@@ -576,9 +569,7 @@ class TestMainDryRunInstall < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-d", "--ascii"])
-        }
+        result, out = run_cli("-s", "foo", "-d", "--ascii")
         assert_equal 0, result
         assert_empty FakePackage.install_log
         assert_match(/Install plan:/, out)
@@ -596,9 +587,7 @@ class TestMainDryRunInstall < Minitest::Test
         pkgmgr.register(FakePackage.new("b"))
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["-s", "a", "-d", "--ascii"])
-        }
+        result, out = run_cli("-s", "a", "-d", "--ascii")
         assert_equal 0, result
         assert_empty FakePackage.install_log
         # ASCII tree: root "a" with child "b" indented.
@@ -617,9 +606,7 @@ class TestMainDryRunInstall < Minitest::Test
         FakePackage.clear_log!
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-f", "-d"])
-        }
+        result, out = run_cli("-s", "foo", "-f", "-d")
         assert_equal 0, result
         # Dry-run force message, no actual uninstall.
         assert_match(/Would force-remove: foo/, out)
@@ -640,9 +627,7 @@ class TestMainDryRunInstall < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["--upgrade", "-d"])
-        }
+        result, out = run_cli("--upgrade", "-d")
         assert_equal 0, result
         assert_empty FakePackage.install_log
         assert_match(/Packages to upgrade.*foo/, out)
@@ -800,10 +785,8 @@ class TestInstallWithTargetArch < Minitest::Test
         )
         pkgmgr.register(FakePackage.new("foo"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "riscv64", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "foo", "-a", "riscv64", "-d", "--ascii")
+        assert_equal 0, result
         # Plan should include the riscv64 compiler as a dep.
         assert_match(/gcc-riscv64-musl/, out)
         assert_match(/^foo$/, out)
@@ -819,10 +802,8 @@ class TestInstallWithTargetArch < Minitest::Test
         rv = ALL_ARCHS["riscv64"]
         pkgmgr.register(FakePackage.new("rv_only", arch_list: [rv]))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "rv_only", "-a", "x86_64"])
-          assert_equal 1, result
-        }
+        result, _out = run_cli("-s", "rv_only", "-a", "x86_64")
+        assert_equal 1, result
       end
     end
   end
@@ -841,10 +822,8 @@ class TestInstallWithTargetArch < Minitest::Test
         pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
         pkgmgr.register(FakePackage.new("universal"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "ALL", "-a", "riscv64", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "ALL", "-a", "riscv64", "-d", "--ascii")
+        assert_equal 0, result
         # rv_pkg and universal in the plan; i3_pkg excluded.
         assert_match(/rv_pkg/, out)
         assert_match(/universal/, out)
@@ -865,10 +844,8 @@ class TestInstallWithTargetArch < Minitest::Test
         end
         pkgmgr.register(FakePackage.new("foo"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "ALL", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "foo", "-a", "ALL", "-d", "--ascii")
+        assert_equal 0, result
         ALL_ARCHS.values.each do |a|
           assert_match(/Architecture: #{a.name}/, out)
         end
@@ -888,10 +865,8 @@ class TestInstallWithTargetArch < Minitest::Test
         end
         pkgmgr.register(FakePackage.new("rv_only", arch_list: [rv]))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "rv_only", "-a", "ALL", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "rv_only", "-a", "ALL", "-d", "--ascii")
+        assert_equal 0, result
         assert_match(/Architecture: riscv64/, out)
         assert_match(/^rv_only$/, out)
         assert_match(/Skipping rv_only: not supported on i386/, out)
@@ -910,10 +885,8 @@ class TestInstallWithTargetArch < Minitest::Test
         )
         pkgmgr.register(FakePackage.new("foo"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "riscv64", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "foo", "-a", "riscv64", "-d", "--ascii")
+        assert_equal 0, result
         # In ASCII tree: foo has gcc-riscv64-musl as child.
         assert_match(/^foo$/, out)
         assert_match(/^  gcc-riscv64-musl$/, out)

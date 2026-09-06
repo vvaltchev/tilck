@@ -317,6 +317,16 @@ end
 
 Minitest.after_run {
 
+  # What the laws saw. A suite whose command lines all fell outside
+  # the model's grammar would pass while checking nothing; this line
+  # is how that would be noticed.
+  if defined?(Laws)
+    puts "  #{Term::DIM}laws: #{Laws.checked} command lines judged " \
+         "against the model, #{Laws.unparsed.length} outside its " \
+         "grammar#{Term::RESET}"
+    puts
+  end
+
   if $unit_tests_passed && $system_tests
     require_relative 'system_tests'
 

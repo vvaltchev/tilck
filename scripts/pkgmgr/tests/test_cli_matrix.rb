@@ -40,25 +40,6 @@ class TestCliMatrix < Minitest::Test
     reset_pkgmgr!
   end
 
-  # A command line can exit rather than return, and a test process
-  # must survive that: without the rescue, one `exit 1` deep inside an
-  # argument check takes the whole suite down with no output at all,
-  # which is how this harness first behaved.
-  def run_cli(*argv)
-    old = $stdout
-    $stdout = StringIO.new
-
-    begin
-      rc = Main.main(argv)
-    rescue SystemExit => e
-      rc = e.status
-    end
-
-    [rc, $stdout.string]
-  ensure
-    $stdout = old
-  end
-
   # Every installation on disk, by path. The assertions below compare
   # these sets, because "what survived" is the only question that
   # matters after a removal.

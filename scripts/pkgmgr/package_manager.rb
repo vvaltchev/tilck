@@ -827,7 +827,12 @@ class PackageManager
   # uninstall() already handles them via @found_installed, but the
   # CLI's name resolution only knows registered packages.
   def orphan_names
-    return (@found_installed || []).map { |x| x.pkgname }.uniq
+    return orphan_installs.map { |x| x.pkgname }.uniq
+  end
+
+  # What the scan found that no package claims: on disk, unowned.
+  def orphan_installs
+    return @found_installed || []
   end
 
   # The version each package in `name`'s closure resolves to, with
