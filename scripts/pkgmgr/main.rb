@@ -1054,25 +1054,6 @@ module Main
           end
           next if !arch_ok
 
-          # -f in install mode: force a fresh install by uninstalling
-          # each requested package first. Transitive deps are NOT
-          # touched — only the explicitly requested packages.
-          if options[:force]
-            if options[:dry_run]
-              info "Force mode (-f): would remove requested packages"
-              for name, ver in requested do
-                info "  Would force-remove: #{name}#{ver ? ":#{ver}" : ""}"
-              end
-            else
-              info "Force mode (-f): removing requested packages"
-              for name, ver in requested do
-                info "  Force-removing: #{name}#{ver ? ":#{ver}" : ""}"
-                pkgmgr.force_remove(name, ver)
-              end
-              pkgmgr.refresh()
-            end
-          end
-
           # Which host stack this invocation builds into: the
           # host_gcc version the request resolves to. `-s
           # host_gcc:13.4.0` therefore builds the 13.4.0 stack — that
@@ -1110,6 +1091,39 @@ module Main
           done = false
 
           pkgmgr.with_host_stack(stack) do
+
+            # -f in install mode: force a fresh install by uninstalling
+            # each requested package first. Transitive deps are NOT
+            # touched — only the explicitly requested packages.
+            #
+            # INSIDE the stack scope, because force_remove asks the
+            # package where the install about to run will write, and
+            # outside the scope that is the default stack rather than
+            # this one. It removed a tree nobody was rebuilding, the
+            # plan then found the real install still present, and the
+            # run said both of these in the same breath:
+            #
+            #   INFO:   Force-removing: host_qemu:6.2.0
+            #   INFO: All requested packages are already installed
+            #
+            # -- a forced rebuild that rebuilt nothing and reported
+            # success.
+            if options[:force]
+              if options[:dry_run]
+                info "Force mode (-f): would remove requested packages"
+                for name, ver in requested do
+                  info "  Would force-remove: #{name}#{ver ? ":#{ver}" : ""}"
+                end
+              else
+                info "Force mode (-f): removing requested packages"
+                for name, ver in requested do
+                  info "  Force-removing: #{name}#{ver ? ":#{ver}" : ""}"
+                  pkgmgr.force_remove(name, ver)
+                end
+                pkgmgr.refresh()
+              end
+            end
+
             begin
               plan = pkgmgr.resolve_install_plan(requested)
             rescue VersionSolver::ConflictError,
