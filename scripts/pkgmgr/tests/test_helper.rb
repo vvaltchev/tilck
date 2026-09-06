@@ -53,6 +53,12 @@ module TestHelper
   def reset_pkgmgr!
     pm = PackageManager.instance
     pm.instance_variable_set(:@packages, {})
+
+    # -H sets this and never restores it -- correct for a one-shot
+    # command line, and a landmine for a test process, where one
+    # `run_cli("-H", "7.7.7", ...)` silently moved the stack for
+    # every test that ran afterwards.
+    pm.instance_variable_set(:@portable_stack, nil)
     pm.instance_variable_set(:@known_pkgs_paths, nil)
     pm.instance_variable_set(:@known_installed, [])
     pm.instance_variable_set(:@found_installed, [])

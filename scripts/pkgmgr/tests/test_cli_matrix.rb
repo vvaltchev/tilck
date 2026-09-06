@@ -232,6 +232,129 @@ class TestCliMatrix < Minitest::Test
     end
   end
 
+  # --- the modes that had no CLI test at all --------------------------
+
+  # -L answers "which stacks do I have", which -l cannot: -l groups
+  # BY stack and buries the question under every package in each.
+  def test_L_lists_stacks_built_and_not
+    with_fake_tc do
+      with_stubbed_externals do
+        a = Ver("7.7.7")
+        b = Ver("8.8.8")
+
+        gcc = FakePackage.new("host_gcc", on_host: true,
+                              host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        gcc.define_singleton_method(:installable_versions) { [a, b] }
+        gcc.define_singleton_method(:default_ver) { a }
+        pkgmgr.register(gcc)
+        pkgmgr.install("host_gcc", a)
+        pkgmgr.refresh
+
+        _, out = run_cli("-L", "-q")
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/gcc-7\.7\.7\s+\[\s*built\s*\]/, plain)
+        assert_match(/gcc-8\.8\.8\s+\[\s*not built\s*\]/, plain)
+      end
+    end
+  end
+
+  # --print-layout is what CMake asks at every configure. It must
+  # print KEY=value and nothing that needs interpreting.
+  def test_print_layout_is_machine_readable
+    with_fake_tc do
+      _, out = run_cli("--print-layout", "-q")
+      lines = out.lines.map(&:chomp).reject(&:empty?)
+                 .select { |l| l =~ /\A[A-Z_0-9]+=/ }
+
+      keys = lines.map { |l| l.split("=", 2).first }
+      for k in %w[ARCH BOARD TCROOT PKGS_TARGET PKGS_NOARCH] do
+        assert_includes keys, k, "#{k} is not in --print-layout"
+      end
+
+      # Every emitted path must be inside the toolchain being asked
+      # about, or CMake builds against a tree nobody created.
+      for l in lines.select { |x| x.start_with?("PKGS_") } do
+        assert_includes l.split("=", 2).last, TC.to_s
+      end
+    end
+  end
+
+  # --list-installable feeds tooling: one name per line, no decoration.
+  def test_list_installable_is_bare_names
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("alpha"))
+        pkgmgr.register(FakePackage.new("beta"))
+
+        _, out = run_cli("--list-installable", "-q")
+        names = out.lines.map { |l| l.split.first }
+
+        assert_includes names, "alpha"
+        assert_includes names, "beta"
+        refute_match(/\e\[/, out, "decoration in machine-readable output")
+      end
+    end
+  end
+
+  # -D prints the dependency tree, and the whole point is that it
+  # shows the transitive ones.
+  def test_D_shows_the_transitive_tree
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("leaf"))
+        pkgmgr.register(FakePackage.new("mid", dep_list: [Dep("leaf", false)]))
+        pkgmgr.register(FakePackage.new("top", dep_list: [Dep("mid", false)]))
+
+        _, out = run_cli("-D", "top", "--ascii", "-q")
+
+        assert_match(/top/, out)
+        assert_match(/mid/, out, "the direct dependency is missing")
+        assert_match(/leaf/, out, "the transitive dependency is missing")
+      end
+    end
+  end
+
+  # --clean takes everything a rebuild would recreate, and leaves the
+  # things a rebuild cannot: the prebuilt compilers, and Ruby, which
+  # the package manager is running on.
+  def test_clean_empties_the_tree_but_spares_ruby
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("ordinary"))
+        pkgmgr.install("ordinary")
+
+        # Ruby is not a registered package: it is the interpreter the
+        # package manager bootstrapped itself with, found on disk. It
+        # is protected by name, which is the only handle there is.
+        ruby_path = distro_pkgs / "ruby" / "3.4.7"
+        FileUtils.mkdir_p(ruby_path)
+        pkgmgr.refresh
+
+        rc, _ = run_cli("--clean", "-q")
+        assert_equal 0, rc
+
+        assert_empty snapshot.select { |p| p.include?("/ordinary/") },
+                     "--clean left an ordinary package behind"
+        assert ruby_path.directory?,
+               "--clean removed the Ruby it is running on"
+      end
+    end
+  end
+
+  # -S and -U name an ARCH, and an unknown one has to be refused
+  # rather than resolved to something nearby.
+  def test_S_and_U_refuse_an_unknown_arch
+    with_fake_tc do
+      for flag in ["-S", "-U"] do
+        rc, out = run_cli(flag, "notanarch", "-q")
+        refute_equal 0, rc, "#{flag} accepted an arch that does not exist"
+        assert_match(/rch/, out, "#{flag} did not say what was wrong")
+      end
+    end
+  end
+
   # --- -l --------------------------------------------------------------
 
   def test_l_shows_every_arch_an_install_exists_for

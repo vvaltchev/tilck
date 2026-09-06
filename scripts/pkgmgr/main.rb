@@ -799,7 +799,16 @@ module Main
     check_gcc_tc_ver
     create_toolchain_dirs
 
-    options = parse_options(argv)
+    # A bad option is a user error, and a user error is a message.
+    # `-S notanarch` printed a Ruby backtrace ending in
+    # OptionParser::InvalidArgument, which tells the reader nothing
+    # they can act on and looks like the tool crashed.
+    begin
+      options = parse_options(argv)
+    rescue OptionParser::ParseError => e
+      error e.message
+      return 1
+    end
 
     # Before anything reads a coordinate: -H moves the stack that
     # every :stack package installs into, and the compiler they are
