@@ -119,6 +119,7 @@ class HostQemuPackage < Package
         Dep('host_pixman', true),
         Dep('host_zlib', true),
         Dep('host_gtk3', true),
+        Dep('host_libslirp', true),
       ],
       default: false,
     )
@@ -200,6 +201,12 @@ class HostQemuPackage < Package
       # VNC's core needs nothing we do not already have; the optional
       # encoders it can use (JPEG, PNG-over-VNC, SASL) stay out.
       "--enable-vnc",
+
+      # The user-mode network backend, from host_libslirp: what every
+      # run_qemu script's -netdev user is. Left to auto, a QEMU from
+      # 7.2 on silently has no such backend (see libslirp.rb), and
+      # 6.2 would build the copy it carries instead of ours.
+      "--enable-slirp",
 
       # SDL would be a second UI toolkit for the same job, and curses
       # would need an ncurses inside the sysroot -- the one in the
