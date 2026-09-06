@@ -440,3 +440,28 @@ class TestModelStackCompilerNeverUpgrades < Minitest::Test
     assert_equal Set[k], o.world
   end
 end
+
+# A rebuild puts a dependency the recipe has grown in first.
+class TestModelRebuildPlansItsDependencies < Minitest::Test
+
+  include TestHelper
+
+  def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                           default_stack: Ver("14.4.0"),
+                           host_os: "linux", host_arch: "x86_64")
+  def tgt = Coords.new("tilck-i386", "pc", "gcc-#{ALL_ARCHS["i386"].gcc_ver}")
+
+  def test_a_missing_dependency_is_installed_and_the_install_rebuilt
+    r = Model::Registry.new([
+      Model::Shape.make("top", :target, arch_list: %w[i386],
+                        deps: [["base", nil]]),
+      Model::Shape.make("base", :target, arch_list: %w[i386]),
+    ])
+    k = Model.key("top", "1.0.0", tgt, record: :changed)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild]), ctx)
+    assert_equal 0, o.rc, o.out
+    assert_equal [["base", Ver("1.0.0")], ["top", Ver("1.0.0")]],
+                 o.world.map { |x| [x.name, x.ver] }.sort
+    assert o.world.all? { |x| x.record == :ok }
+  end
+end
