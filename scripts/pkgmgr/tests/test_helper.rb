@@ -147,6 +147,57 @@ module TestHelper
   # Cache::download_file / download_git_repo → return true (skip download)
   # Cache::extract_file → create the target directory, return true
   # run_command → return true (or false if in fail_commands set)
+  # Like with_stubbed_externals, but run_command is NOT stubbed.
+  #
+  # Downloads and extraction stay faked -- no network, no tarballs --
+  # while everything after them is the real thing: real subprocesses,
+  # real exit codes, the real staging directory, the real atomic move.
+  # That is the half of an install no unit test reaches, because the
+  # ordinary harness answers "did it build?" with a boolean before any
+  # of it runs.
+  def with_real_commands(&block)
+    originals = {
+      download_file: Cache.method(:download_file),
+      download_git_repo: Cache.method(:download_git_repo),
+      extract_file: Cache.method(:extract_file),
+    }
+
+    Cache.define_singleton_method(:download_file) { |url, remote, local = nil|
+      FileUtils.touch(TC_CACHE / (local || remote))
+      true
+    }
+
+    Cache.define_singleton_method(:download_git_repo) {
+      |url, tarname, tag = nil, dir_name = nil|
+      FileUtils.touch(TC_CACHE / tarname)
+      true
+    }
+
+    Cache.define_singleton_method(:extract_file) { |tarfile, newDirName = nil|
+      FileUtils.mkdir_p(newDirName || "extracted")
+      true
+    }
+
+    pm = PackageManager.instance
+    originals[:with_cc] = pm.method(:with_cc)
+    pm.define_singleton_method(:with_cc) { |arch_name = nil, &blk|
+      arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
+      dir = Coords.new("tilck-#{arch.name}", arch.default_board,
+                       "gcc-#{FAKE_GCC_VER}").pkgs_dir
+      FileUtils.mkdir_p(dir)
+      blk.call(dir)
+    }
+
+    block.call
+  ensure
+    Cache.define_singleton_method(:download_file, originals[:download_file])
+    Cache.define_singleton_method(:download_git_repo,
+                                  originals[:download_git_repo])
+    Cache.define_singleton_method(:extract_file, originals[:extract_file])
+    PackageManager.instance.define_singleton_method(:with_cc,
+                                                    originals[:with_cc])
+  end
+
   def with_stubbed_externals(fail_commands: Set.new)
     originals = {}
 
@@ -178,7 +229,11 @@ module TestHelper
     }
 
     # Stub run_command (top-level method = private method on Object)
-    Object.send(:define_method, :run_command) { |out, argv|
+    # The same signature as the real one, env: included. A stub that
+    # takes fewer arguments than what it replaces passes every test
+    # and breaks the moment production uses the argument it does not
+    # know about -- which is what a stub is supposed to prevent.
+    Object.send(:define_method, :run_command) { |out, argv, env: nil|
       cmd = argv.first.to_s
       !fail_commands.include?(cmd)
     }
