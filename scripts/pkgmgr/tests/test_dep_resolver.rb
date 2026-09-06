@@ -315,6 +315,15 @@ class TestWalksTerminate < Minitest::Test
     assert_equal %w[d b c a], DepResolver.resolve(["a"], graph)
   end
 
+  # The bound is exact: a walk that uses every edge is within it. A
+  # bound one off would refuse this chain.
+  def test_a_walk_over_every_edge_is_within_the_bound
+    graph = { "a" => ["b"], "b" => ["c"], "c" => ["d"], "d" => [] }
+    assert_equal %w[b c d], DepResolver.dep_closure("a", graph)
+    assert_equal %w[d c b a], DepResolver.resolve(["a"], graph)
+    assert_equal %w[d c b a], DepResolver.resolve(["a", "b"], graph)
+  end
+
   # A graph that invents a node for every node asked about is not
   # finite, and the walk says so rather than following it forever.
   def test_a_growing_graph_stops_the_walk
@@ -353,6 +362,25 @@ class TestWalksTerminate < Minitest::Test
     assert_raises(VersionSolver::NonTerminatingWalk) {
       VersionSolver.resolve([["a", nil]], deps_of: deps,
                             default_of: ->(_n) { Ver("1.0.0") })
+    }
+  end
+
+  # The cap is exact too: a chain of exactly MAX_NAMES names resolves,
+  # one more does not.
+  def test_the_name_cap_is_exact
+    chain = ->(len) {
+      ->(n, _v) { n.to_i + 1 < len ? [Dep((n.to_i + 1).to_s, true)] : [] }
+    }
+    one = ->(_n) { Ver("1.0.0") }
+    max = VersionSolver::MAX_NAMES
+
+    got = VersionSolver.resolve([["0", nil]], deps_of: chain.call(max),
+                                default_of: one)
+    assert_equal max, got.length
+
+    assert_raises(VersionSolver::NonTerminatingWalk) {
+      VersionSolver.resolve([["0", nil]], deps_of: chain.call(max + 1),
+                            default_of: one)
     }
   end
 end
