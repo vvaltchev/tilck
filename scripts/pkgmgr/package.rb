@@ -724,13 +724,27 @@ class Package
     return recorded == current.chomp ? :ok : :changed
   end
 
-  # The state of the install at THIS package's coordinates.
-  def build_inputs_state(ver) = build_inputs_state_of(find_install(ver))
-
   # Does this install need rebuilding? Both a changed recipe and a
   # missing record have the same remedy.
-  def build_inputs_changed?(ver)
-    return [:changed, :unknown].include?(build_inputs_state(ver))
+  #
+  # An INSTALL, never a version.
+  #
+  # There used to be build_inputs_state(ver) and
+  # build_inputs_changed?(ver) beside this, which looked up
+  # find_install(ver) -- at the CURRENT coordinates -- and asked about
+  # whatever came back. That is the shape of half this tree's bugs:
+  # a caller holding one installation asks about a version, the
+  # ambient coordinates answer about a different installation, and the
+  # answer is plausible. The listing did exactly that and called
+  # packages built minutes earlier stale.
+  #
+  # Deleting the version-keyed pair is what makes it unwritable rather
+  # than merely wrong: there is no longer a way to ask this question
+  # without saying which installation you mean. A caller that has only
+  # a version says so out loud -- find_install(ver) first, and the nil
+  # it may get back is the honest answer to "is there one here".
+  def build_inputs_changed?(inst)
+    return [:changed, :unknown].include?(build_inputs_state_of(inst))
   end
 
   # What this package needs from the HOST -- things pkgmgr does not

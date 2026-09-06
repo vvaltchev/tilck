@@ -151,6 +151,36 @@ class TestCoordinateMatrix < Minitest::Test
     end
   end
 
+  # --- the shape of the API itself -------------------------------------
+
+  # The version-keyed staleness API is gone, and must stay gone.
+  #
+  # build_inputs_state(ver) and build_inputs_changed?(ver) looked up
+  # find_install(ver) at the CURRENT coordinates and answered about
+  # whatever came back. A caller holding one installation would ask
+  # about a version and get an answer about another -- plausible,
+  # wrong, and silent. The listing did exactly that.
+  #
+  # A lint could have watched for the misuse. Deleting the method is
+  # better: it makes the question unaskable without naming the
+  # installation, so the mistake cannot be written rather than merely
+  # being caught after it is.
+  def test_staleness_cannot_be_asked_by_version
+    refute_includes Package.instance_methods, :build_inputs_state,
+                    "the version-keyed staleness API is back"
+
+    params = Package.instance_method(:build_inputs_changed?).parameters
+    assert_equal [[:req, :inst]], params,
+                 "build_inputs_changed? takes an install, not a version"
+  end
+
+  # ...and the one that survives takes the install, so it can be
+  # judged where it lives.
+  def test_the_surviving_api_takes_an_install
+    params = Package.instance_method(:build_inputs_state_of).parameters
+    assert_equal [[:req, :inst]], params
+  end
+
   # --- the operations, once per axis -----------------------------------
 
   AXES.each do |axis|

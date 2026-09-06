@@ -277,7 +277,7 @@ class TestBuildIdentity < Minitest::Test
         pkgmgr.install("foo")
         pkgmgr.refresh
 
-        refute pkg.build_inputs_changed?(Ver("1.0.0"))
+        refute pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
         assert_empty pkgmgr.get_stale_packages
       end
     end
@@ -299,7 +299,7 @@ class TestBuildIdentity < Minitest::Test
           [Pathname.new(__FILE__)]
         }
 
-        assert pkg.build_inputs_changed?(Ver("1.0.0"))
+        assert pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
         assert_includes pkgmgr.get_stale_packages.map(&:name), "foo"
       end
     end
@@ -317,7 +317,7 @@ class TestBuildIdentity < Minitest::Test
         pkg.define_singleton_method(:build_flags) { |ver = nil|
           ["--newly-added"]
         }
-        assert pkg.build_inputs_changed?(Ver("1.0.0"))
+        assert pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
       end
     end
   end
@@ -339,8 +339,8 @@ class TestBuildIdentity < Minitest::Test
         FileUtils.rm_f(pkg.find_install(Ver("1.0.0")).path /
                        BuildInputs::FILE)
 
-        assert_equal :unknown, pkg.build_inputs_state(Ver("1.0.0"))
-        assert pkg.build_inputs_changed?(Ver("1.0.0"))
+        assert_equal :unknown, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
+        assert pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
       end
     end
   end
@@ -352,14 +352,14 @@ class TestBuildIdentity < Minitest::Test
         pkg = FakePackage.new("foo")
         pkgmgr.register(pkg)
 
-        assert_equal :not_installed, pkg.build_inputs_state(Ver("1.0.0"))
+        assert_equal :not_installed, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
 
         pkgmgr.install("foo")
         pkgmgr.refresh
-        assert_equal :ok, pkg.build_inputs_state(Ver("1.0.0"))
+        assert_equal :ok, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
 
         pkg.define_singleton_method(:build_flags) { |v = nil| ["--x"] }
-        assert_equal :changed, pkg.build_inputs_state(Ver("1.0.0"))
+        assert_equal :changed, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
       end
     end
   end
