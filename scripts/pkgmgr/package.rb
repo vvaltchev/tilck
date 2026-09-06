@@ -274,6 +274,20 @@ class Package
   # is the worse failure of the two.
   def enabled? = true
 
+  # Is this package a root of the HOST WORLD -- the compiler we build
+  # ourselves and the QEMU we build with it?
+  #
+  # Only the roots say so. Everything else that belongs to that world
+  # is derived from the dependency graph, because there are fifty-odd
+  # of them and a list of fifty is fifty chances to forget one. See
+  # PackageManager#host_world_names.
+  #
+  # The distinction matters because that world is expensive and rarely
+  # wanted: a developer or a CI run needs the packages Tilck itself is
+  # built from, which is what the system tests are for. Building a GCC
+  # and a GTK-enabled QEMU is a thing one does deliberately.
+  def host_world_root? = false
+
   # Should this package be auto-installed for the current config?
   # Subclasses (e.g. GccCompiler) can override for richer logic.
   def default?

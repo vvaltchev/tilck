@@ -11,6 +11,7 @@ require 'pathname'
 require 'fileutils'
 require_relative '../term'
 require_relative '../early_logic'   # DEFAULT_TC_NAME
+require_relative '../package_manager'
 
 module SystemTests
 
@@ -148,54 +149,39 @@ module SystemTests
 
   # --- Compound actions ---
 
+  # Remove everything this test is about to reinstall, and nothing
+  # else.
+  #
+  # Through the package manager, not by walking directories. The hand
+  # rolled version kept a child called "host" and deleted the rest --
+  # which was the toolchain4 layout. Under toolchain5 the children are
+  # linux-x86_64, noarch, tilck-*, and there is no "host", so the
+  # branch that preserved the bootstrap Ruby never ran and the wipe
+  # deleted the interpreter it was running on. A second copy of the
+  # layout in a place that is not Coords, exactly like the one CMake
+  # had before it started asking --print-layout.
+  #
+  # The HOST WORLD is kept: our own GCC, the QEMU built with it, and
+  # the fifty-odd packages nothing else needs. This test exists to
+  # prove that the packages Tilck is built FROM build on this machine,
+  # which is the package manager's daily job. Rebuilding a compiler
+  # and a GTK stack to answer that question costs hours and answers
+  # nothing about it.
   def wipe_toolchain
-    step("Wipe toolchain (keep cache + Ruby)")
+    step("Wipe toolchain (keep cache, Ruby and the host world)")
 
     if $dry_run
       return dry
     end
 
     t0 = now
-    Dir.children(TC).each { |child|
-      next if child == "cache"
 
-      if child == "host"
-        # Preserve only the Ruby bootstrap installation inside host/.
-        # Delete all other host tools (mtools, gtest, compilers) so
-        # they get cleanly reinstalled.
-        wipe_host_except_ruby(TC / child)
-      else
-        FileUtils.rm_rf(TC / child)
-      end
-    }
+    # force: the cross compilers come back too -- installing them is
+    # part of what this test checks. Ruby is protected by name inside
+    # the package manager, which is the only handle it has.
+    pkgmgr.refresh
+    pkgmgr.clean(false, except: pkgmgr.host_world_names, force: true)
     ok(now - t0)
-  end
-
-  # Walk the host/ tree and delete everything except ruby/<ver>/.
-  # Structure: host/<os-arch>/{portable/..., <distro>/ruby/..., <distro>/<host-cc>/...}
-  def wipe_host_except_ruby(host_dir)
-    return if !host_dir.directory?
-
-    Dir.children(host_dir).each { |os_arch|
-      os_arch_dir = host_dir / os_arch
-      next if !os_arch_dir.directory?
-
-      # portable/ — all cross-compilers, delete entirely
-      portable = os_arch_dir / "portable"
-      FileUtils.rm_rf(portable) if portable.directory?
-
-      # <distro>/ dirs — delete everything except ruby/
-      Dir.children(os_arch_dir).each { |sub|
-        next if sub == "portable"
-        distro_dir = os_arch_dir / sub
-        next if !distro_dir.directory?
-
-        Dir.children(distro_dir).each { |entry|
-          next if entry == "ruby"
-          FileUtils.rm_rf(distro_dir / entry)
-        }
-      }
-    }
   end
 
   def install_packages(arch_name, packages_filter: nil)
@@ -206,6 +192,11 @@ module SystemTests
       re = Regexp.new(packages_filter)
       installable = installable.select { |name, _| name.match?(re) }
     end
+
+    # The host world is skipped, not installed and not removed: see
+    # wipe_toolchain. --list-installable tags it, so this is one
+    # comparison rather than a list to keep in step.
+    installable = installable.reject { |_, tag| tag == "host-world" }
 
     installable.each { |name, tag|
       suffix = (tag == "default") ? " (default)" : ""

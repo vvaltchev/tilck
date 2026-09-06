@@ -140,6 +140,7 @@ class HostGccPackage < Package
   end
 
   def default_arch = HOST_ARCH
+  def host_world_root? = true
   def pkg_dirname = "gcc"
 
   # A compiler belongs to ITS OWN stack, not to whichever one

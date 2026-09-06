@@ -114,6 +114,31 @@ class PackageManager
   # three places to edit the day it is not CPython.
   def python_pkg = get("host_python")
 
+  # The packages that exist ONLY to build the host world: our own
+  # compiler, the QEMU built with it, and everything nothing else
+  # needs -- glibc, the GTK closure, meson, ninja, binutils, the maths
+  # libraries GCC wants.
+  #
+  # Derived from the graph, not tagged package by package. Fifty-odd
+  # names is fifty chances to forget one, and the day something Tilck
+  # builds starts depending on glib2 the answer has to change by
+  # itself rather than by someone noticing.
+  #
+  # Reachable from a root AND from nothing else. host_zlib would be in
+  # the world by the first half and out of it the moment a target
+  # package wanted it, which is the behaviour we want.
+  def host_world_names
+
+    roots = all_packages.select(&:host_world_root?).map(&:name)
+    return [] if roots.empty?
+
+    world = roots.flat_map { |r| dep_closure(r) + [r] }.uniq
+    outside = all_packages.map(&:name) - world
+    reachable = outside.flat_map { |n| dep_closure(n) + [n] }.uniq
+
+    return world - reachable
+  end
+
   def python_interpreter
 
     pkg = python_pkg
@@ -1072,12 +1097,16 @@ class PackageManager
   # way a rebuild would fix. Ruby and the cache stay by the rule
   # above.
   #
-  def clean(dry)
-    return uninstall("ALL", dry, false, "ALL", "ALL", "ALL")
+  # `except` names packages to leave alone. --clean itself passes
+  # none; the system tests pass the host world, because wiping a GCC
+  # and a GTK-enabled QEMU to prove that busybox builds is hours of
+  # rebuilding for a question neither answers.
+  def clean(dry, except: [], force: false)
+    return uninstall("ALL", dry, force, "ALL", "ALL", "ALL", except: except)
   end
 
   def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
-                arch = nil, coords: nil)
+                arch = nil, coords: nil, except: [])
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
@@ -1209,6 +1238,7 @@ class PackageManager
       (all_cc     || e.compiler == compiler) &&
       (board.nil? || e.coords.nil? || e.coords.env == board) &&
       (coords.nil? || coords.include?(e.coords)) &&
+      !except.include?(e.pkgname) &&
       !NEVER_REMOVE.include?(e.pkgname)
     }
 
