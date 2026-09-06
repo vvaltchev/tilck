@@ -86,7 +86,29 @@ class TestHostWorld < Minitest::Test
         with_context(HOST_OS: "macos") do
           rc, out = run_cli("-s", "host_qemu", "-q")
           assert_equal 1, rc
-          assert_match(/requires a linux x86_64 host/, out)
+          assert_match(/host_qemu requires a linux x86_64 host/, out)
+          refute_match(/needs host_qemu/, out, "it is the root itself")
+        end
+      end
+    end
+  end
+
+  # A package that would run here, but needs one that would not: the
+  # refusal names the dependency and says the requirement is its.
+  def test_the_refusal_names_the_dependency_that_requires_it
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkgmgr.register(Root.new("host_r", host_os_list: ["linux"]))
+        pkgmgr.register(FakePackage.new("host_p", on_host: true,
+                                        host_tier: :distro,
+                                        arch_list: ALL_HOST_ARCHS.values,
+                                        dep_list: [Dep("host_r", true)]))
+        with_context(HOST_OS: "macos") do
+          rc, out = run_cli("-s", "host_p", "-q")
+          assert_equal 1, rc
+          assert_match(/host_p requires a linux host/, out)
+          assert_match(/needs host_r, which requires it/, out)
         end
       end
     end
