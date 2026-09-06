@@ -169,19 +169,22 @@ class TestSurvivors < Minitest::Test
   end
 
   # package.rb:1155,1156  the two guards of default_cc
-  # Each kind of package names its compiler its own way.
+  # Each kind of package names its compiler its own way. Asked of the
+  # BASE method: FakePackage overrides default_cc, and the fake's
+  # answer for a target package says nothing about Package's.
   def test_default_cc_per_kind
     with_fake_tc do
+      base = Package.instance_method(:default_cc)
       target = FakePackage.new("t")
       distro = FakePackage.new("host_d", on_host: true, host_tier: :distro,
                                arch_list: ALL_HOST_ARCHS.values)
       stack = FakePackage.new("host_s", on_host: true, host_tier: :stack,
                               arch_list: ALL_HOST_ARCHS.values)
 
-      assert_equal FAKE_GCC_VER, target.default_cc
-      assert_equal "syscc", distro.default_cc
+      assert_equal FAKE_GCC_VER, base.bind(target).call
+      assert_equal "syscc", base.bind(distro).call
       pkgmgr.with_host_stack(Ver("9.9.9")) {
-        assert_equal Ver("9.9.9"), stack.default_cc
+        assert_equal Ver("9.9.9"), base.bind(stack).call
       }
     end
   end
@@ -310,15 +313,25 @@ class TestSurvivors < Minitest::Test
     return [by_arch, by_board, by_host]
   end
 
+  # package.rb  supported?  -- each conjunct decides alone.
+  def test_supported_needs_all_three
+    with_fake_tc do
+      unsupported_trio.each { |p| refute p.supported?, p.name }
+      assert FakePackage.new("plain").supported?
+    end
+  end
+
+  # Each install sits where the CURRENT scope would look for it, so
+  # that nothing but the support filter can be what excludes it. The
+  # arch case cannot be built: a package's own scan visits only the
+  # arches it supports, so an unsupported arch never has an install
+  # to be asked about -- which is the same answer, reached earlier.
   def test_an_unsupported_package_is_not_upgradable_here
     with_fake_tc do
-      for p in unsupported_trio do
+      for p in unsupported_trio.reject { |x| x.name == "rv_only" } do
         p.define_singleton_method(:default_ver) { V2 }
         pkgmgr.register(p)
-        at = p.on_host ? p.coords : p.coords(V1)
-        at = Coords.new("tilck-riscv64", "qemu-virt", "gcc-#{FAKE_GCC_VER}") \
-          if p.name == "rv_only"
-        fake_install(p, V1, at: at)
+        fake_install(p, V1)
       end
       assert_empty pkgmgr.get_upgradable_packages.map(&:name)
     end
@@ -635,6 +648,26 @@ class TestSurvivorsToo < Minitest::Test
         assert_match(/installed at tilck-riscv64/, out)
         refute_match(/x86_64/, out, "another package's coordinates listed")
       end
+    end
+  end
+
+  # package_manager.rb:291  `x.pkg&.is_compiler && x.ver == gcc_ver`
+  # An installed cross compiler counts only at the version the arch is
+  # configured to use; another version of it on disk is not "the"
+  # compiler with_cc puts on PATH.
+  def test_an_installed_compiler_is_one_at_the_configured_version
+    with_fake_tc do
+      cc = FakePackage.new("gcc-i386-musl", on_host: true, is_compiler: true,
+                           host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values, target_arch: I386)
+      pkgmgr.register(cc)
+
+      fake_install(cc, V1)
+      assert_empty pkgmgr.get_installed_compilers, "1.0.0 is not 13.3.0"
+
+      fake_install(cc, FAKE_GCC_VER)
+      assert_equal [FAKE_GCC_VER],
+                   pkgmgr.get_installed_compilers.map(&:ver)
     end
   end
 
