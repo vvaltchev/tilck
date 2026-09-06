@@ -59,6 +59,9 @@ module Bridge
       default: pkg.marked_default?,
       install_archs: ia&.map(&:name),
       target_arch: ta&.name,
+      host_os: pkg.host_os_list,
+      host_arch: pkg.host_arch_list,
+      world_root: pkg.host_world_root?,
     )
   end
 
@@ -113,7 +116,8 @@ module Bridge
   # run, or an earlier -H -- which is what the implementation reads.
   def inv
     return Model::Inv.new(env_arch: ARCH, env_board: BOARD,
-                          default_stack: pkgmgr.current_host_stack)
+                          default_stack: pkgmgr.current_host_stack,
+                          host_os: HOST_OS, host_arch: HOST_ARCH.name)
   end
 
   # Every installation that is not where its package says an install

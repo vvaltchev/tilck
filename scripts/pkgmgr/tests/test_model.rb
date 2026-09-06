@@ -41,8 +41,9 @@ class TestModel < Minitest::Test
   def stack(v) = Coords.new(HOST_OS_ARCH, nil, "gcc-#{v}")
   def distro   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
 
-  def inv(arch: I386, board: nil, stack: A)
-    Model::Inv.new(env_arch: arch, env_board: board, default_stack: stack)
+  def inv(arch: I386, board: nil, stack: A, os: "linux", host: "x86_64")
+    Model::Inv.new(env_arch: arch, env_board: board, default_stack: stack,
+                   host_os: os, host_arch: host)
   end
 
   def reg(*shapes) = Model::Registry.new(shapes)

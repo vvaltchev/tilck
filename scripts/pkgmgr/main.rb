@@ -770,6 +770,28 @@ module Main
   # non-compiler package for the pkgmgr's current target_arch. Called
   # inside the with_target_arch scope so arch_supported? sees the
   # right arch. Compilers are reached via -S ALL or as implicit deps.
+  # Why `name` cannot be installed here, or nil. Asked of the package
+  # AND its closure, before -f removes anything: a root whose
+  # dependency the host cannot build fails at the door, not after the
+  # old install is gone. Host first (a package inherits its world's
+  # host), then, for a target package, the arch and the board.
+  def unsupported_reason(name)
+
+    for n in [name] + pkgmgr.dep_closure(name) do
+      pkg = pkgmgr.get(n)
+      next if pkg.nil? || pkg.host_supported?
+      who = n == name ? "" : " (needs #{n}, which requires it)"
+      return "host: #{name} requires #{pkg.host_requirement}#{who}"
+    end
+
+    pkg = pkgmgr.get(name)
+    return nil if !pkg || !pkg.target?
+    return "arch #{pkgmgr.target_arch.name}" if !pkg.arch_supported?
+    return "board #{pkgmgr.board_for(pkgmgr.target_arch)}" \
+      if !pkg.board_supported?
+    return nil
+  end
+
   # The arch an invocation is about: `-a <arch>` when given, else the
   # shell's. This is the one place the CLI turns ARCH into a scope;
   # everything below the boundary reads pkgmgr.target_arch.
@@ -1112,13 +1134,7 @@ module Main
           # deleted the install and then refused to rebuild it.
           arch_ok = true
           for name, _ver in requested do
-            pkg = pkgmgr.get(name)
-            next if !pkg || pkg.on_host || pkg.arch_list.nil?
-            where = if !pkg.arch_supported?
-              "arch #{pkgmgr.target_arch.name}"
-            elsif !pkg.board_supported?
-              "board #{pkgmgr.board_for(pkgmgr.target_arch)}"
-            end
+            where = unsupported_reason(name)
             next if where.nil?
 
             if targets.length > 1
