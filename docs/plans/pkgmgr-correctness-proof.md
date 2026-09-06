@@ -1,7 +1,26 @@
 # Package manager: zero logic bugs, with proof
 
-Status: PLAN (2026-09-03). Nothing below is implemented yet except
-where marked DONE.
+Status: IMPLEMENTED (2026-09-03). Steps 0-7 are in the tree; the
+numbers below were the plan's estimates, and the sections that
+follow record what was found on the way.
+
+  step 0  three ambient readers fixed, Layout.board_of deleted
+  step 1  lint: tests/lint/ambient.rb, test_lint_ambient.rb
+  step 2  model: tests/model/model.rb, test_model.rb (19 cases)
+  step 3  InstallSelector, uninstall_selector / uninstall_where,
+          gnuefi on coordinates; R2 pin empty
+  step 4  laws: tests/laws.rb, run_cli in the helper, ~1,030
+          command lines judged per run
+  step 5  exhaustive: tests/exhaustive/, 66,426 cases (the
+          multi-package shapes enumerate dependency structure, not
+          coordinates -- see NARROW in domain.rb); found two
+          implementation bugs on its first sample (the default
+          install ignoring -d; the board checked after -f)
+  step 6  pmmutate: 456 sites at first, 116 survivors, each answered
+          by a test (test_survivors.rb), a simpler line, or an
+          annotated reason; 318 sites now
+  step 7  the six toolchain workflows run -t --exhaustive;
+          docs/package_manager.md "Correctness guarantees"; CLAUDE.md
 
 ## 0. The claim to be established
 
