@@ -1601,6 +1601,16 @@ class Package
   # alone, however old it is — which is why the two cases have to be
   # distinguishable on disk at all (see InstallOrigin).
   def needs_upgrade?
+
+    # The stack compiler never does. Each of its installs IS the stack
+    # it names, and its default version is whichever stack the call is
+    # scoped to -- so a gcc 12.5.0 installed as the default of the
+    # 12.5.0 stack, seen from the 14.4.0 one, read as a default whose
+    # default had moved on, and CMake refused to build until --upgrade
+    # "fixed" it. HOST_VER_GCC moving means a new stack beside this
+    # one, never this one moving.
+    return false if pkgmgr.stack_compiler.equal?(self)
+
     want = coords()
     list = get_install_list.select { |x| x.coords == want && !x.broken }
     list.any? { |x| x.default_install && x.ver != default_ver }
