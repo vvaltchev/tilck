@@ -23,6 +23,7 @@ $system_tests        = ARGV.delete("--system-tests")
 $all_build_types     = ARGV.delete("--all-build-types")
 $run_tilck_tests     = ARGV.delete("--run-also-tilck-tests")
 $exhaustive          = ARGV.delete("--exhaustive")
+$mutation            = ARGV.delete("--mutation")
 $test_filter         = nil
 $test_arch           = nil
 $test_packages_filter = nil
@@ -77,6 +78,8 @@ end
 # --- Custom reporter with pretty output ---
 
 require 'minitest'
+require 'etc'
+require 'rbconfig'
 require 'stringio'
 require_relative '../term'
 
@@ -359,6 +362,26 @@ Minitest.after_run {
     puts ok ? "  #{Term::GREEN256}#{Term::BOLD}EXHAUSTIVE: ALL AGREE" \
               "#{Term::RESET}"
             : "  #{Term::RED256}#{Term::BOLD}EXHAUSTIVE: DISAGREEMENTS" \
+              "#{Term::RESET}"
+    puts
+    exit 1 if !ok
+  end
+
+  # Mutation: every site of the logic core made wrong one way, and
+  # the whole suite run against each. Tens of minutes; a flag.
+  if $unit_tests_passed && $mutation
+    require_relative 'mutation/driver'
+    puts Term::HLINE
+    puts "#{Term::BOLD}  Mutation#{Term::RESET}"
+    puts Term::HLINE
+    puts
+    jobs = $exhaustive_jobs || Etc.nprocessors
+    ok = Mutation.certify(Mutation.all_mutants, jobs: jobs,
+                          ruby: RbConfig.ruby)
+    puts
+    puts ok ? "  #{Term::GREEN256}#{Term::BOLD}MUTATION: NONE SURVIVE" \
+              "#{Term::RESET}"
+            : "  #{Term::RED256}#{Term::BOLD}MUTATION: SURVIVORS OR HANGS" \
               "#{Term::RESET}"
     puts
     exit 1 if !ok

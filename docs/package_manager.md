@@ -721,20 +721,23 @@ fifteen registry shapes -- one feature each -- it enumerates every
 world of at most two installations, every invocation context, and
 every command line in the grammar, and hands each case to the laws.
 About sixty-six thousand cases; `-t --exhaustive` runs them all,
-one process per shape, in every toolchain workflow, and every `-t`
-runs a fixed-seed sample of a thousand. It self-tests first (a
+one process per shape, in every toolchain workflow and in the
+package manager's own workflow (`ci-pkgmgr.yml`, which also runs the
+mutation job), and every `-t` runs a fixed-seed sample of a thousand. It self-tests first (a
 snapshot equals a second snapshot, a world reads back as built, a
 planted disagreement is seen) and refuses to run otherwise. A failure
 prints its id, the world, the argv and both worlds; `--case ID`
 replays it.
 
-**Mutation** (`scripts/dev/claude/pmmutate`) is the certificate that
-the above is enough. Each of ~450 sites in the logic core is
+**Mutation** (`-t --mutation`, or `scripts/dev/claude/pmmutate` to
+run a subset) is the certificate that the above is enough. Each of ~450 sites in the logic core is
 rewritten one way it could be wrong -- a comparison flipped, a
 conjunct dropped, a guard deleted, `nil` for `"ALL"`, a scope not
 opened or not restored, the ways this tree has actually been wrong --
 and the suite must fail. A survivor is a test that does not exist,
-named to the line. The score to defend is zero survivors in scope.
+named to the line; a mutant that hangs is a walk without a bound,
+which is a defect in the code. The score to defend is zero of either.
+The unmutated suite must pass first, or nothing is judged.
 
 What this proves, mechanically, on every commit: for the catalogue of
 shapes and worlds of two, the implementation's effect on the tree and
