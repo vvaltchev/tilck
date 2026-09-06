@@ -106,12 +106,6 @@ class HostQemuPackage < Package
   def initialize
     super(
       name: 'host_qemu',
-      # A root of the host world, and where that world runs: x86_64
-      # Linux, for now. Everything only this world needs follows
-      # (Package#host_supported?). Other host arches join once every
-      # package of the world has been built and exercised there.
-      host_os_list: ["linux"],
-      host_arch_list: ["x86_64"],
       source: QEMU_SOURCE,
       on_host: true,
       is_compiler: false,
@@ -132,6 +126,14 @@ class HostQemuPackage < Package
 
   def default_arch = HOST_ARCH
   def host_world_root? = true
+
+  # Where the host world runs: x86_64 Linux, for now. Everything only
+  # this world needs follows (Package#host_supported?). Other host
+  # arches join once every package of the world has been built and
+  # exercised there. Overrides, not constructor arguments: a statement
+  # about where the world runs is not part of any recipe.
+  def host_os_list = ["linux"]
+  def host_arch_list = ["x86_64"]
   def installable_versions = SUPPORTED
 
   # The compiler this version of QEMU is built by, pinned rather than
