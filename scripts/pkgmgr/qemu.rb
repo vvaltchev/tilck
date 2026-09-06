@@ -153,8 +153,20 @@ class HostQemuPackage < Package
     return base + [Dep('host_gcc', true, ver: gcc)]
   end
 
-  # Nothing is built against QEMU.
-  def sysroot_fragments(gcc_ver = nil) = []
+  # Nothing is built against QEMU, and it is in the sysroot anyway:
+  # the sysroot is the stack's merged prefix, and a QEMU that is not in
+  # it is the one thing a reader looks for there first. Its own prefix
+  # stays where it is -- two releases of one series can share a stack
+  # -- and the whole install is grafted at usr/, so usr/bin/qemu-* is
+  # real. When two versions share a stack, usr/bin means the newest.
+  def sysroot_fragments(gcc_ver = nil)
+    gcc_ver ||= pkgmgr.default_stack_cc_ver
+    here = get_install_list.select { |i|
+      !i.path.nil? && !i.broken && i.coords&.stack_ver == gcc_ver
+    }
+    newest = here.max_by(&:ver)
+    return newest.nil? ? [] : [[newest.path / "install", "usr"]]
+  end
 
   def expected_files(ver = nil) = [
     ["install/bin/qemu-system-i386", false],
