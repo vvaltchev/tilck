@@ -719,3 +719,43 @@ class TestSurvivorsToo < Minitest::Test
     end
   end
 end
+
+# --print-layout names every QEMU built in a host stack, one key per
+# version, so the run_*qemu launchers can offer -q <version> without
+# knowing where a stack keeps its packages.
+class TestLayoutNamesTheQemus < Minitest::Test
+
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def test_a_key_per_installed_qemu_oldest_first
+    with_fake_tc do
+      q = HostQemuPackage.new
+      pkgmgr.register(q)
+      for ver in %w[7.2.0 6.2.0] do
+        pkgmgr.with_host_stack(Ver("13.4.0")) do
+          bin = q.coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" / "bin"
+          FileUtils.mkdir_p(bin)
+          inst = bin.parent.parent
+          q.expected_files.each { |f, _| FileUtils.touch(inst / f) }
+        end
+      end
+      pkgmgr.refresh
+
+      v = Layout.vars
+      keys = v.keys.grep(/\AQEMU_/)
+      assert_equal %w[QEMU_6.2.0 QEMU_7.2.0], keys
+      assert v["QEMU_6.2.0"].to_s.end_with?("/qemu/6.2.0/install/bin")
+    end
+  end
+
+  def test_no_key_when_none_is_built
+    with_fake_tc do
+      pkgmgr.register(HostQemuPackage.new)
+      assert_empty Layout.vars.keys.grep(/\AQEMU_/)
+    end
+  end
+end

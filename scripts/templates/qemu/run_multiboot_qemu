@@ -1,11 +1,16 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+MAIN_DIR="@CMAKE_SOURCE_DIR@"
+QEMU_ARCH="@ARCH@"
+source "$MAIN_DIR/scripts/bash_includes/qemu_select"
+qemu_select "$@"
+set -- "${QEMU_ARGS[@]}"
 FATPART="$BUILD_DIR/fatpart"
 
 if [ -z "$GDB_PORT" ]; then
    GDB_PORT=1234
 fi
 
-qemu-system-@ARCH@ @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT \
+"$QEMU" @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT \
    @QEMU_RAM_OPT@ -kernel "@KERNEL_FILE@" -initrd "$FATPART" "$@"

@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# The QEMU a launcher runs: the system's, or one built in a host stack.
+#
+# Sourced by the run_*qemu scripts CMake generates from
+# scripts/templates/qemu/. A script sets MAIN_DIR and QEMU_ARCH, sources
+# this, and calls:
+#
+#    qemu_select "$@"
+#    set -- "${QEMU_ARGS[@]}"
+#
+# after which $QEMU is the binary to run and the arguments below are
+# taken out of "$@". Everything else goes to QEMU untouched.
+#
+#    -q VER   run the QEMU of that version from a host stack: the full
+#             version (6.2.0), or a prefix that names exactly one of
+#             the versions built (6.2, 6). Fails, naming what there is,
+#             when none or more than one match.
+#    -ql      list the QEMU versions built in the host stacks, and exit.
+#
+# Which QEMUs exist is the package manager's knowledge, not this
+# file's: --print-layout emits a QEMU_<ver>=<bin dir> line for each one
+# installed, and this reads those. Nothing here knows where a stack
+# keeps its packages, so the next layout change is not a hunt through
+# the launchers.
+
+# "<version> <bin dir>" per installed QEMU, oldest first.
+qemu_installed() {
+   "$MAIN_DIR/scripts/build_toolchain" -q --print-layout 2>/dev/null |
+      sed -n 's/^QEMU_\([^=]*\)=\(.*\)$/\1 \2/p'
+}
+
+qemu_list() {
+   local found
+   found="$(qemu_installed)"
+   if [ -z "$found" ]; then
+      echo "No QEMU built in any host stack" \
+           "(./scripts/build_toolchain -s host_qemu:<ver> builds one)"
+      return
+   fi
+   echo "QEMU versions built in the host stacks:"
+   echo "$found" | while read -r ver dir; do
+      printf '  %-10s %s\n' "$ver" "$dir/qemu-system-$QEMU_ARCH"
+   done
+}
+
+# Resolve a version, or a prefix of one, to a binary; fail with the list.
+qemu_resolve() {
+   local want="$1" found ver dir exact="" prefixed=() n
+   found="$(qemu_installed)"
+
+   while read -r ver dir; do
+      [ -z "$ver" ] && continue
+      if [ "$ver" = "$want" ]; then
+         exact="$dir"
+      elif [[ "$ver" == "$want".* ]]; then
+         prefixed+=("$ver $dir")
+      fi
+   done <<< "$found"
+
+   if [ -n "$exact" ]; then
+      QEMU_VER="$want"
+      QEMU="$exact/qemu-system-$QEMU_ARCH"
+   elif [ "${#prefixed[@]}" = 1 ]; then
+      read -r QEMU_VER dir <<< "${prefixed[0]}"
+      QEMU="$dir/qemu-system-$QEMU_ARCH"
+   else
+      n="${#prefixed[@]}"
+      if [ "$n" = 0 ]; then
+         echo "ERROR: no QEMU $want built in any host stack" >&2
+      else
+         echo "ERROR: QEMU $want names $n versions; say which one" >&2
+      fi
+      qemu_list >&2
+      exit 1
+   fi
+
+   if ! [ -x "$QEMU" ]; then
+      echo "ERROR: QEMU $QEMU_VER has no qemu-system-$QEMU_ARCH at $QEMU" >&2
+      exit 1
+   fi
+}
+
+# Take -q VER and -ql out of the arguments; set QEMU and QEMU_ARGS.
+qemu_select() {
+   local want=""
+   QEMU="qemu-system-$QEMU_ARCH"
+   QEMU_ARGS=()
+
+   while [ $# -gt 0 ]; do
+      case "$1" in
+         -ql)
+            qemu_list
+            exit 0
+            ;;
+         -q)
+            if [ $# -lt 2 ]; then
+               echo "ERROR: -q needs a version (or a prefix of one)" >&2
+               exit 1
+            fi
+            want="$2"
+            shift 2
+            ;;
+         *)
+            QEMU_ARGS+=("$1")
+            shift
+            ;;
+      esac
+   done
+
+   if [ -n "$want" ]; then
+      qemu_resolve "$want"
+      echo "INFO: using QEMU $QEMU_VER from the host stack: $QEMU"
+   fi
+}
