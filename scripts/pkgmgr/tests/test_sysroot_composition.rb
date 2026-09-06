@@ -186,3 +186,88 @@ class TestSysrootCompositionAcrossStacks < Minitest::Test
     end
   end
 end
+
+# The programs, not only the libraries: the sysroot is the stack's
+# merged prefix, and usr/bin holds the QEMU built in that stack, the
+# gcc that names it and the binutils it builds through.
+class TestSysrootHoldsThePrograms < Minitest::Test
+
+  include TestHelper
+
+  STACK = "13.4.0"
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  # A QEMU install in one stack, at its own prefix, with a binary.
+  def qemu_install(pkg, ver)
+    pkgmgr.with_host_stack(Ver(STACK)) do
+      bin = pkg.coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" / "bin"
+      FileUtils.mkdir_p(bin)
+      pkg.expected_files.each { |f, _| FileUtils.touch(bin.parent.parent / f) }
+      File.write(bin / "qemu-system-i386", ver)
+      pkgmgr.refresh()
+    end
+  end
+
+  def test_qemu_is_grafted_whole_at_usr
+    with_fake_tc do
+      q = HostQemuPackage.new
+      pkgmgr.register(q)
+      qemu_install(q, "9.2.0")
+
+      frags = q.sysroot_fragments(Ver(STACK))
+      assert_equal 1, frags.length
+      dir, at = frags.first
+      assert_equal "usr", at
+      assert dir.to_s.end_with?("/qemu/9.2.0/install"), dir.to_s
+      assert_empty q.sysroot_fragments(Ver("9.9.9")),
+                   "a fragment for a stack it is not in"
+    end
+  end
+
+  def test_two_qemus_in_one_stack_publish_the_newest
+    with_fake_tc do
+      q = HostQemuPackage.new
+      pkgmgr.register(q)
+      qemu_install(q, "6.1.0")
+      qemu_install(q, "6.2.0")
+
+      dir, = q.sysroot_fragments(Ver(STACK)).first
+      assert dir.to_s.include?("/6.2.0/"), "usr/bin means the newest"
+    end
+  end
+
+  def test_gcc_and_binutils_binaries_are_grafted_at_usr_bin
+    with_fake_tc do
+      gcc = HostGccPackage.new
+      bu = HostBinutilsPackage.new
+      [gcc, bu].each { |p| pkgmgr.register(p) }
+      fake_install(gcc, Ver(STACK))
+      fake_install(bu)
+
+      gf = gcc.sysroot_fragments(Ver(STACK))
+      assert_includes gf.map(&:last), "usr/bin"
+      assert gf.any? { |d, at| at == "usr/bin" && d.to_s.end_with?("/bin") }
+
+      bf = bu.sysroot_fragments(Ver(STACK))
+      assert_equal ["usr/bin"], bf.map(&:last)
+    end
+  end
+
+  def test_the_composed_sysroot_has_the_programs
+    with_fake_tc do
+      q = HostQemuPackage.new
+      bu = HostBinutilsPackage.new
+      [q, bu].each { |p| pkgmgr.register(p) }
+      qemu_install(q, "9.2.0")
+      fake_install(bu)
+
+      pkgmgr.compose_stack_sysroot(Ver(STACK))
+      bin = pkgmgr.stack_sysroot(Ver(STACK)) / "usr" / "bin"
+      assert (bin / "qemu-system-i386").symlink?, "no qemu in usr/bin"
+      assert (bin / "ld").symlink?, "no ld in usr/bin"
+    end
+  end
+end
