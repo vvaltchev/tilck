@@ -481,3 +481,43 @@ class TestHostCcCommand < Minitest::Test
                  host_cc_cmds_with({ "CC" => "cc", "CXX" => "c++" })
   end
 end
+
+# The same, in the implementation: --check-for-updates must not ask
+# for a gcc 12.5.0 to be "upgraded" because HOST_VER_GCC says 14.4.0.
+class TestStackCompilerNeverUpgrades < Minitest::Test
+
+  include TestHelper
+
+  class StackGcc < TestHelper::FakePackage
+    def default_ver = pkgmgr.current_host_stack
+    def installable_versions = [Ver("12.5.0"), Ver("14.4.0")]
+  end
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def test_a_default_gcc_of_another_stack_is_not_upgradable
+    with_fake_tc do
+      with_stubbed_externals do
+        gcc = StackGcc.new("host_gcc", on_host: true, host_tier: :distro,
+                           arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(gcc)
+        # Installed as the default OF THE 12.5.0 STACK, as a plan for a
+        # QEMU pinned to it does: no version named, inside that scope.
+        pkgmgr.with_host_stack(Ver("12.5.0")) { run_cli("-s", "host_gcc") }
+        pkgmgr.refresh
+
+        inst = gcc.find_install(Ver("12.5.0"))
+        refute_nil inst
+        assert inst.default_install, "the premise: recorded as a default"
+
+        pkgmgr.with_host_stack(Ver("14.4.0")) do
+          refute gcc.needs_upgrade?, "a stack compiler read as upgradable"
+          rc, out = run_cli("--check-for-updates")
+          assert_equal 0, rc, out
+        end
+      end
+    end
+  end
+end
