@@ -370,8 +370,8 @@ module Main
     # misspelled BOARD on riscv64.
     bsp_root = MAIN_DIR / "other" / "bsp" / ARCH.name
 
-    if BOARD && bsp_root.directory? && !BOARD_BSP.exist?
-      error "BOARD_BSP: #{BOARD_BSP} not found!"
+    if BOARD && bsp_root.directory? && !board_bsp.exist?
+      error "BOARD_BSP: #{board_bsp} not found!"
       exit 1
     end
   end
@@ -769,6 +769,15 @@ module Main
 
     gcc = pkgmgr.stack_compiler
     ver = Coords.parse_stack(str)
+
+    # Nil only when no compiler package is registered at all, which
+    # is a broken registry rather than a user error -- but saying so
+    # beats a NoMethodError from inside an option handler.
+    if gcc.nil?
+      error "no host compiler package is registered: -H has nothing " \
+            "to name a stack with"
+      return 1
+    end
 
     if ver.nil? || !gcc.installable_versions.include?(ver)
       names = gcc.installable_versions.map { |v| Coords.stack_name(v) }

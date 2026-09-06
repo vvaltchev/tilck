@@ -41,7 +41,7 @@ class UbootPackage < Package
     ["tools/mkimage", false],
   ]
 
-  def uboot_config = BOARD_BSP / "u-boot.config"
+  def uboot_config = board_bsp / "u-boot.config"
 
   def install_impl_internal(install_dir)
     cp uboot_config, ".config"
