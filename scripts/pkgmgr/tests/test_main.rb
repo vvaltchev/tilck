@@ -869,7 +869,7 @@ class TestInstallWithTargetArch < Minitest::Test
         assert_equal 0, result
         assert_match(/Architecture: riscv64/, out)
         assert_match(/^rv_only$/, out)
-        assert_match(/Skipping rv_only: not supported on i386/, out)
+        assert_match(/Skipping rv_only: not supported on arch i386/, out)
       end
     end
   end

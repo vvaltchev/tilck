@@ -1081,24 +1081,30 @@ module Main
             [name, Ver(ver)]
           }
 
-          # Validate arch support for each explicitly-requested
-          # package (deps are checked later by pkgmgr.install).
+          # Validate arch AND board support for each explicitly
+          # requested package, here, before -f has removed anything.
+          # The board used to be checked only inside the install,
+          # after the forced removal: `-s ub -f` on the wrong board
+          # deleted the install and then refused to rebuild it.
           arch_ok = true
           for name, _ver in requested do
             pkg = pkgmgr.get(name)
             next if !pkg || pkg.on_host || pkg.arch_list.nil?
-            if !pkg.arch_supported?
-              if targets.length > 1
-                # -a ALL: skip this arch gracefully.
-                info "Skipping #{name}: not supported on " +
-                     "#{pkgmgr.target_arch.name}"
-                arch_ok = false
-                break
-              else
-                error "Package #{name} is not supported " +
-                      "for arch #{pkgmgr.target_arch.name}"
-                return 1
-              end
+            where = if !pkg.arch_supported?
+              "arch #{pkgmgr.target_arch.name}"
+            elsif !pkg.board_supported?
+              "board #{pkgmgr.board_for(pkgmgr.target_arch)}"
+            end
+            next if where.nil?
+
+            if targets.length > 1
+              # -a ALL: skip this arch gracefully.
+              info "Skipping #{name}: not supported on #{where}"
+              arch_ok = false
+              break
+            else
+              error "Package #{name} is not supported for #{where}"
+              return 1
             end
           end
           next if !arch_ok
@@ -1339,6 +1345,13 @@ module Main
                              ascii: options[:ascii])
     lines.each { |l| puts l }
     puts if !options[:ascii]
+
+    # The one mode that never checked -d. Found by the exhaustive
+    # lane: `-d` with no mode installed the defaults.
+    if options[:dry_run]
+      info "Dry run (-d): nothing installed"
+      return 0
+    end
 
     for name, ver in plan do
       if !pkgmgr.install(name, ver)

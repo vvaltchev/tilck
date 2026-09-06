@@ -22,6 +22,7 @@ $dry_run             = ARGV.delete("--dry-run")
 $system_tests        = ARGV.delete("--system-tests")
 $all_build_types     = ARGV.delete("--all-build-types")
 $run_tilck_tests     = ARGV.delete("--run-also-tilck-tests")
+$exhaustive          = ARGV.delete("--exhaustive")
 $test_filter         = nil
 $test_arch           = nil
 $test_packages_filter = nil
@@ -39,6 +40,23 @@ end
 if (idx = ARGV.index("--test-packages-filter"))
   ARGV.delete_at(idx)
   $test_packages_filter = ARGV.delete_at(idx)
+end
+
+# The exhaustive lane's knobs: a sample seed, one case to replay, and
+# how many shapes run at once in the full lane.
+if (idx = ARGV.index("--seed"))
+  ARGV.delete_at(idx)
+  $exhaustive_seed = ARGV.delete_at(idx)
+end
+
+if (idx = ARGV.index("--case"))
+  ARGV.delete_at(idx)
+  $exhaustive_case = ARGV.delete_at(idx)
+end
+
+if (idx = ARGV.index("--jobs"))
+  ARGV.delete_at(idx)
+  $exhaustive_jobs = ARGV.delete_at(idx).to_i
 end
 
 if $coverage_enabled
@@ -325,6 +343,25 @@ Minitest.after_run {
          "against the model, #{Laws.unparsed.length} outside its " \
          "grammar#{Term::RESET}"
     puts
+  end
+
+  # The full enumeration: every shape, every world of at most two
+  # installations, every context, every command line -- one process
+  # per shape. Minutes, not seconds, which is why it is a flag.
+  if $unit_tests_passed && $exhaustive
+    require_relative 'exhaustive/runner'
+    puts Term::HLINE
+    puts "#{Term::BOLD}  Exhaustive lane#{Term::RESET}"
+    puts Term::HLINE
+    puts
+    ok = Exhaustive.run_all(jobs: $exhaustive_jobs)
+    puts
+    puts ok ? "  #{Term::GREEN256}#{Term::BOLD}EXHAUSTIVE: ALL AGREE" \
+              "#{Term::RESET}"
+            : "  #{Term::RED256}#{Term::BOLD}EXHAUSTIVE: DISAGREEMENTS" \
+              "#{Term::RESET}"
+    puts
+    exit 1 if !ok
   end
 
   if $unit_tests_passed && $system_tests
