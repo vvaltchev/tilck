@@ -100,13 +100,14 @@ class GnuefiPackage < Package
     archs
   end
 
+  # Installed means every arch it builds for is there -- each at its
+  # own coordinates, board included. Matching on the arch alone
+  # accepted any board's copy for any other.
   def installed?(ver)
     list = get_install_list()
     archs_needed.all? do |arch|
-      list.any? { |x|
-        x.ver == ver && x.arch == arch &&
-        x.compiler == arch.gcc_ver && !x.broken
-      }
+      want = pkgmgr.with_target_arch(arch) { coords(ver) }
+      list.any? { |x| x.ver == ver && x.coords == want && !x.broken }
     end
   end
 

@@ -268,11 +268,14 @@ class TestModel < Minitest::Test
     assert_equal Model.world(k("ruby", "3.4.7", distro)), forced.world
   end
 
-  # An orphan -- on disk, no package -- goes everywhere it is.
+  # An orphan -- on disk, no package -- goes everywhere it is, unless
+  # -a names the arch.
   def test_an_orphan_is_removed_wherever_it_is
     r = reg
     w = Model.world(k("gone", "1.0.0", tgt(I386)), k("gone", "1.0.0", tgt(RV)))
     assert_equal Model.world, go(r, w, "-u gone", inv).world
+    assert_equal Model.world(k("gone", "1.0.0", tgt(I386))),
+                 go(r, w, "-u gone -a riscv64", inv).world
   end
 
   # --- the model's own laws ------------------------------------------------

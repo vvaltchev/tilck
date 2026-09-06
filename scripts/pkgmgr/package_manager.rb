@@ -8,6 +8,7 @@ require_relative 'package'
 require_relative 'dep_resolver'
 require_relative 'version_solver'
 require_relative 'sysroot'
+require_relative 'install_selector'
 require_relative 'portability'
 
 require 'singleton'
@@ -1145,6 +1146,137 @@ class PackageManager
     return uninstall("ALL", dry, force, "ALL", "ALL", "ALL", except: except)
   end
 
+  #
+  # WHICH installations `-u` means, as one value.
+  #
+  # This is the argument-computing layer -- the one every -u bug lived
+  # in -- so it is one function, with the coordinates written out per
+  # kind of package, and uninstall then asks each installation
+  # `matches?` and nothing else.
+  #
+  #   ver       nil = the default version if it is HERE, else every
+  #             version here; "ALL" = every version; a Version = that
+  #             one, and if it is not here, nothing (and a warning).
+  #   compiler  nil = the compiler these coordinates imply; "ALL" =
+  #             any; a version = the stack "gcc-<ver>".
+  #   arch      nil = the scoped arch; "ALL" = every arch and board;
+  #             a name = that arch at its board.
+  #   coords    an explicit list of coordinates, which beats all of the
+  #             above (force_remove knows exactly what it will rewrite).
+  #
+  # Returns nil, having said why, when a named version is not there.
+  #
+  def uninstall_selector(pkg, name, install_list, ver: nil, compiler: nil,
+                         arch: nil, coords: nil)
+
+    all_pkgs = name.eql?("ALL")
+    cc = compiler.eql?("ALL") ? :any : (compiler.blank? ? nil : compiler)
+    ver = nil if ver.blank?
+
+    where = if coords
+      coords.map { |c| CoordsFilter.exact(c) }
+    else
+      uninstall_where(pkg, all_pkgs, cc, arch)
+    end
+
+    at_where = install_list.select { |e|
+      (all_pkgs || e.pkgname == name) &&
+      where.any? { |f| f.include?(e.coords) }
+    }
+
+    picked = if ver.eql?("ALL") || (ver.nil? && pkg.nil?)
+      :all
+    elsif ver
+      if at_where.none? { |e| e.ver == ver }
+        warning "#{name} #{ver} is not installed: nothing to uninstall"
+        return nil
+      end
+      ver
+    else
+      # No version named: the default if it is here, else everything
+      # that is. Decided by what is at THESE coordinates -- the default
+      # being installed somewhere else says nothing about here.
+      d = pkg.default_ver
+      at_where.any? { |e| e.ver == d } ? d : :all
+    end
+
+    return InstallSelector.new(name: all_pkgs ? :all : name, ver: picked,
+                               where: where)
+  end
+
+  # The coordinates an uninstall of `pkg` is about. Written out per
+  # kind rather than derived, so that a reader can check each line
+  # against the layout table in docs/package_manager.md.
+  def uninstall_where(pkg, all_pkgs, cc, arch)
+
+    stack_of = ->(default) {
+      next :any    if cc == :any
+      next default if cc.nil?
+      Coords.stack_name(cc)
+    }
+
+    arch_of = ->(a) {
+      x = a.is_a?(Architecture) ? a : ALL_ARCHS[a]
+      raise ArgumentError, "Unknown arch: #{a}" if x.nil?
+      x
+    }
+
+    target_at = ->(a, board, default_stack) {
+      CoordsFilter.new(machine: "tilck-#{a.name}", env: board,
+                       stack: stack_of.call(default_stack))
+    }
+
+    # ALL: everything installed for this scope -- the target arch at
+    # its current coordinates, and every host and noarch package --
+    # or every arch and board with -a ALL. -c narrows to one stack.
+    if all_pkgs
+      st = stack_of.call(:any)
+      return [CoordsFilter.new(machine: :any, env: :any, stack: st)] \
+        if arch.eql?("ALL")
+
+      a = arch.nil? ? target_arch : arch_of.call(arch)
+      return [
+        CoordsFilter.new(machine: "noarch", env: :any, stack: st),
+        CoordsFilter.new(machine: HOST_OS_ARCH, env: :any, stack: st),
+        target_at.call(a, board_for(a), :any),
+      ]
+    end
+
+    # An orphan has no package to say where it lives, so -a and -c are
+    # read directly as coordinates: an arch's machine, a stack. With
+    # neither, every copy goes.
+    if pkg.nil?
+      st = stack_of.call(:any)
+      return [CoordsFilter.new(machine: :any, env: :any, stack: st)] \
+        if arch.nil? || arch.eql?("ALL")
+      a = arch_of.call(arch)
+      return [CoordsFilter.new(machine: "tilck-#{a.name}", env: :any,
+                               stack: st)]
+    end
+
+    # Noarch: one place, and neither -a nor -c can mean anything.
+    if !pkg.on_host && pkg.arch_list.nil?
+      return [] if !arch.nil? || (!cc.nil? && cc != :any)
+      return [CoordsFilter.exact(pkg.coords)]
+    end
+
+    # Host: -a means nothing. -c selects a stack, for a :stack package.
+    if pkg.on_host
+      return [] if !arch.nil?
+      return [CoordsFilter.exact(pkg.coords)] if cc.nil? || cc == :any
+      return [] if pkg.host_tier != :stack
+      return [CoordsFilter.exact(stack_coords(cc))]
+    end
+
+    # Target.
+    if arch.eql?("ALL")
+      return ALL_ARCHS.values.map { |a| target_at.call(a, :any, :any) }
+    end
+
+    a = arch.nil? ? target_arch : arch_of.call(arch)
+    return [target_at.call(a, board_for(a), "gcc-#{a.gcc_ver}")]
+  end
+
   def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
                 arch = nil, coords: nil, except: [])
 
@@ -1152,132 +1284,26 @@ class PackageManager
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
     end
 
-    all_pkgs  = (pkg_or_name.eql? "ALL")
-    all_ver   = (ver.eql?         "ALL")
-    all_cc    = (compiler.eql?    "ALL")
-    all_arch  = (arch.eql?        "ALL")
+    all_pkgs = pkg_or_name.eql?("ALL")
+    pkg = all_pkgs ? nil : get_smart(pkg_or_name)
+    name = all_pkgs ? "ALL" : (pkg ? pkg.name : pkg_or_name)
 
-    # Whether the CALLER named a version, which decides what "it is
-    # not installed" means further down. Recorded before the default
-    # is filled in, because afterwards the two are indistinguishable.
-    asked_for_ver = !all_ver && !ver.blank?
-
-    # Downgrade an empty string to nil (= default/auto)
-    ver       = nil if ver.blank?
-    compiler  = nil if compiler.blank?
-    arch      = nil if arch.blank?
-
-    pkg = !all_pkgs ? get_smart(pkg_or_name) : nil
     if pkg
-      name          = pkg.name
-      default_cc    = pkg.default_cc
-      default_ver   = pkg.default_ver
-      default_arch  = pkg.default_arch
-      install_list  = pkg.get_install_list
-
-      assert { default_cc.nil? == default_arch.nil? }
-      assert { !default_ver.nil? }
+      install_list = pkg.get_install_list
     else
-      name          = pkg_or_name
-      default_arch  = target_arch
-      default_cc    = target_arch.gcc_ver
-      default_ver   = nil           # see below
-
-      # For ALL: include both registered and orphan installations.
-      # For an unrecognized single name: only orphans (best effort).
-      install_list  = all_pkgs ? @known_installed + @found_installed
-                               : @found_installed
+      # An orphan (on disk, no package) or ALL: the scan is what knows.
+      install_list = all_pkgs ? @known_installed + @found_installed
+                              : @found_installed
       warning "Not recognized package name: #{name}" unless all_pkgs
-
-      if !all_pkgs
-        # A single unrecognized name matches only orphans, and there is
-        # no package object to ask which compiler and arch they were
-        # built for — that is what makes them orphans. The defaults
-        # above describe the current target, which a host-side orphan
-        # never matches, so without this the selection below silently
-        # removes nothing. Unless the user narrowed it explicitly,
-        # match every installation of that name. ALL keeps its own
-        # semantics: default compiler and arch unless asked otherwise.
-        all_cc    = true if compiler.nil?
-        all_arch  = true if arch.nil?
-      end
     end
 
-    # A host package's compiler is whatever the package says it is,
-    # and never the cross compiler for ARCH -- which is what the
-    # fall-through below would otherwise pick, since arch defaults to
-    # i386 when nobody named one.
-    #
-    # The test used to be `default_cc == "syscc"`, which was the same
-    # question while every host package answered "syscc". A :stack
-    # package now answers with the GCC whose stack it lives in, so the
-    # proxy stopped being true and `-u host_qemu:6.2.0` quietly
-    # matched nothing: it was looking for an install built by the
-    # i386 cross compiler. on_host is what was being asked all along.
-    if pkg&.on_host && (!arch || all_arch)
-      compiler  ||= default_cc
-    end
-
-    # Set arch and ver to their defaults for this package, if they're unset.
-    arch      ||= default_arch
-    ver       ||= default_ver
-
-    if default_arch
-      # If the compiler is still unset, now pick up the gcc_ver for the given
-      # arch, even if that is the result of a default value, not manually set.
-      compiler  ||= ALL_ARCHS[all_arch ? target_arch.name : arch].gcc_ver
-    end
-
-    if ver.nil?
-      # The version can still be `nil` here if a package name was provided,
-      # and we didn't recognize the package. In this case, the default_ver
-      # is `nil` and if `ver` is nil as well, we end up here.
-      assert { pkg.nil? }
-      all_ver = true
-    elsif !install_list.any? { |e| e.ver == ver }
-
-      if asked_for_ver
-        #
-        # The user named a version and it is not installed. There is
-        # nothing to do, and doing "whatever IS installed" instead is
-        # catastrophic: `-u host_gcc:11.5.0` on a tree holding six GCC
-        # majors would take all six. It did.
-        #
-        warning "#{name} #{ver} is not installed: nothing to uninstall"
-        return 0
-      end
-
-      # No version was named and the DEFAULT is not installed, which
-      # is the case this fallback is for: uninstall what is actually
-      # there rather than nothing.
-      all_ver = true
-    end
-
-    # An arch is not a coordinate; it is two thirds of one. riscv64
-    # builds for qemu-virt AND licheerv-nano, in separate trees, and
-    # `e.arch == arch` matches both -- so `-u zlib` on riscv64 removed
-    # the licheerv-nano copy along with the one the user was looking
-    # at, and nothing said so. force_remove was fixed for exactly this
-    # and plain -u was not.
-    #
-    # The board only narrows when the caller did not ask for every
-    # arch and did not name the coordinates itself: -a ALL and --clean
-    # mean every board, and force_remove computes its own set.
-    # Target packages only: a board is a coordinate of the Tilck side.
-    # A host install's env names a distro or "any", and a noarch one
-    # has no board at all, so narrowing either by one excludes it.
-    narrow_by_board = coords.nil? && !all_arch && pkg &&
-                      !pkg.on_host && !pkg.arch_list.nil?
-
-    board = narrow_by_board ? pkg.target_board(arch) : nil
+    sel = uninstall_selector(pkg, name, install_list,
+                             ver: ver, compiler: compiler, arch: arch,
+                             coords: coords)
+    return 0 if sel.nil?
 
     to_remove = install_list.select { |e|
-      (all_pkgs   || e.pkgname == name     ) &&
-      (all_ver    || e.ver == ver          ) &&
-      (all_arch   || e.arch == arch        ) &&
-      (all_cc     || e.compiler == compiler) &&
-      (board.nil? || e.coords.nil? || e.coords.env == board) &&
-      (coords.nil? || coords.include?(e.coords)) &&
+      sel.matches?(e) &&
       !except.include?(e.pkgname) &&
       !NEVER_REMOVE.include?(e.pkgname)
     }
