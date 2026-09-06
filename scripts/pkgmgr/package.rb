@@ -613,11 +613,18 @@ class Package
   # A safety mechanism that charges hours for edits it can see are
   # inert is one people learn to switch off.
   #
+  # host_world_root? is the newest of them and the clearest case: it
+  # says whether a package is the root of the world we build a
+  # compiler and an emulator in, which decides what the system tests
+  # skip. It cannot reach a produced byte, and leaving it out cost
+  # twelve rebuilds of GCC and QEMU before anyone noticed.
+  #
   # Deliberately short, and deliberately not "everything the build
   # does not obviously use". default_arch stays IN: zlib's build step
   # names "#{default_arch.gcc_tc}-linux-ar", so an override of it
   # really does change the command that runs.
-  NON_RECIPE_HOOKS = %i[enabled? default? default_cc].freeze
+  NON_RECIPE_HOOKS = %i[enabled? default? default_cc
+                        host_world_root?].freeze
 
   #
   # One digest standing for "how this package is built".
