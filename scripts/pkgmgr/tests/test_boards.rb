@@ -119,4 +119,42 @@ class TestInstallsAreBoardSpecific < Minitest::Test
       end
     end
   end
+
+  # A package restricted to a board is asked about the board of the
+  # arch it would be built FOR, not the one the shell happens to be
+  # set to -- the same rule arch_supported? follows for the arch.
+  #
+  # `-a riscv64 -f -s uboot` from an i386 shell answered "uboot
+  # requires board qemu-virt" while BOARD was "pc", refusing to
+  # rebuild an install that -f had already removed a second earlier.
+  def test_a_board_package_is_reachable_through_the_arch_flag
+    p = FakePackage.new("boardpkg", arch_list: [RV],
+                        board_list: ["qemu-virt"])
+
+    with_context(ARCH: ALL_ARCHS["i386"], BOARD: "pc") do
+      refute p.board_supported?,
+             "an i386 shell does not build riscv64 boards by itself"
+
+      pkgmgr.with_target_arch(RV) do
+        assert p.board_supported?,
+               "-a riscv64 must ask about riscv64's board, not pc"
+      end
+    end
+  end
+
+  # A scope opened for one installation names its board, and names it
+  # only for that install's arch: another arch inside the same scope
+  # still gets its own default, or a board would appear in a path
+  # under an arch that has never heard of it.
+  def test_a_scoped_board_applies_only_to_its_own_arch
+    with_context(ARCH: RV, BOARD: "qemu-virt") do
+      pkgmgr.with_target_coords(RV, "licheerv-nano") do
+        assert_equal "licheerv-nano", pkgmgr.board_for(RV)
+        assert_equal "pc", pkgmgr.board_for(ALL_ARCHS["i386"])
+      end
+
+      assert_equal "qemu-virt", pkgmgr.board_for(RV),
+                   "the scope has to close"
+    end
+  end
 end

@@ -31,6 +31,7 @@ class PackageManager
     @installable = nil
     @resolved_versions = nil
     @target_arch = nil    # nil = fall back to the global ARCH
+    @target_board = nil   # nil = fall back to the global BOARD
     @portable_stack = nil # nil = fall back to HOST_VER_GCC
   end
 
@@ -62,6 +63,45 @@ class PackageManager
     ensure
       @target_arch = prev
     end
+  end
+
+  # Which board applies to `arch`.
+  #
+  # The rule lives here, in one place, because three different things
+  # need the same answer: an install's coordinates (the board is the
+  # `env` level of a target install's path), a recipe that reads its
+  # board's BSP, and the scope that judges an installation.
+  #
+  # BOARD is a single global and cannot mean two things at once, so it
+  # applies to the arch it was set for; another arch reached through
+  # `-a` gets its own default. An explicit scope beats both, and only
+  # for the arch it was opened with -- see with_target_coords.
+  def board_for(arch)
+    return @target_board if @target_board && arch == target_arch
+    return BOARD if arch == ARCH && BOARD
+    return arch.default_board
+  end
+
+  # Run `block` at one installation's target coordinates.
+  #
+  # The arch and the board move TOGETHER because they are one
+  # coordinate, not two: a board is only meaningful for an arch
+  # (other/bsp/<arch>/<board>, and "qemu-virt" names nothing under
+  # i386), and BOARD as a global already means "the board of ARCH".
+  # Scoping them apart would let one arch's board answer for another
+  # arch's install, which is the same mistake one level down.
+  def with_target_coords(arch, board, &block)
+
+    return with_target_arch(arch) {
+      prev = @target_board
+      @target_board = board
+
+      begin
+        block.call
+      ensure
+        @target_board = prev
+      end
+    }
   end
 
   # The host stack this invocation is building into.
