@@ -45,6 +45,20 @@ class TestExhaustive < Minitest::Test
                  failed.first(5).map(&:to_s).join("\n\n")
   end
 
+  # The tables are the same whatever stack the process is in when they
+  # are first asked for: the stack compiler's default version follows
+  # the stack in effect, and the tables used to follow it too, so the
+  # lane's size depended on which test had run before.
+  def test_the_tables_do_not_depend_on_the_stack_in_effect
+    sizes = [Exhaustive::STACK_B, Ver("14.4.0")].map { |v|
+      Exhaustive.forget_tables!
+      pkgmgr.with_host_stack(v) { Exhaustive.tables_for("stack").worlds.length }
+    }
+    Exhaustive.forget_tables!
+    assert_equal sizes.uniq, [sizes.first]
+    assert_equal sizes.first, Exhaustive.tables_for("stack").worlds.length
+  end
+
   # Every id the sampler hands out decodes to the case it names.
   def test_ids_round_trip
     for id in Exhaustive.sample_ids(20, seed: 7) do

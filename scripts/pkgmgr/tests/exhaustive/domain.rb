@@ -272,14 +272,22 @@ module Exhaustive
   # The per-shape tables, built once per process.
   Tables = Struct.new(:worlds, :argvs)
 
+  # Built under the lane's own context -- the stack every case runs
+  # with -- because the candidates read it: the stack compiler's
+  # default version IS the stack in effect, and which of its versions
+  # counts as pinned follows. Built under whatever stack the process
+  # happened to be in, the tables held 233 worlds for `stack` in one
+  # run and 165 in another, by test order alone.
   def tables_for(shape)
     @tables ||= {}
-    @tables[shape] ||= begin
+    @tables[shape] ||= pkgmgr.with_host_stack(STACK_A) {
       pkgs = SHAPES.fetch(shape).call
       cands = candidates(pkgs, narrow: NARROW.include?(shape))
       Tables.new(worlds(cands), argv_lines(pkgs))
-    end
+    }
   end
+
+  def forget_tables! = @tables = nil
 
   def count(shape)
     t = tables_for(shape)
