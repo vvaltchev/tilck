@@ -1395,6 +1395,52 @@ class TestMainRebuildKeepsTheOldTreeOnFailure < Minitest::Test
   end
 end
 
+# ...and when it raises rather than returns false, which is how a
+# recipe reports a dependency it cannot find.
+class TestMainRebuildKeepsTheOldTreeOnARaise < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  class Raising < TestHelper::FakePackage
+    def install_impl_internal(install_dir)
+      @built = (@built || 0) + 1
+      raise "host_nothing version 1.0.0 is not installed" if @built > 1
+      super
+    end
+  end
+
+  def test_the_old_install_survives_and_the_run_ends_cleanly
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = Raising.new("raisy")
+        pkgmgr.register(pkg)
+        assert_equal 0, run_cli("-s", "raisy").first
+        pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        pkgmgr.refresh
+        before = pkg.find_install(pkg.default_ver)
+
+        rc, out = run_cli("--rebuild", laws: false,
+                          because: "a build that raises is outside the " \
+                                   "model, which has no failing builds")
+        assert_equal 1, rc
+        assert_match(/host_nothing version 1.0.0 is not installed/, out)
+        assert_match(/Could not rebuild: raisy/, out)
+
+        pkgmgr.refresh
+        after = pkg.find_install(pkg.default_ver)
+        refute_nil after, "the old install is gone"
+        assert_equal before.path, after.path
+        refute (TC_STAGING / "replaced").exist?,
+               "the tree set aside was left under staging"
+      end
+    end
+  end
+end
+
 class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
   include TestHelper
 

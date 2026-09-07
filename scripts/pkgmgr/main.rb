@@ -1280,6 +1280,13 @@ module Main
           error "Could not rebuild: #{pkg.name}:#{inst.ver}"
           return 1
         end
+      rescue RuntimeError => e
+        # A recipe that raises mid-build -- a dependency it cannot
+        # find -- has said what is wrong; the run ends on that, not on
+        # a traceback, and replace has put the old tree back.
+        error e.message
+        error "Could not rebuild: #{pkg.name}:#{inst.ver}"
+        return 1
       end
       return 0
     end
