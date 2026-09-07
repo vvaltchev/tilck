@@ -170,9 +170,11 @@ module Mutation
       runner = File.join(@dir, "scripts", "pkgmgr", "tests", "run_all.rb")
       out = File.join(@dir, "mutant.log")
       # Traced, so that a suite killed at the timeout names the test
-      # it was in: the one fact a timeout report is otherwise without.
+      # it was in, and watched, so that its stack is in the log before
+      # the kill: the two facts a timeout report is otherwise without.
       pid = Process.spawn(
-        { "MUTATION_RUN" => "1", "PKGMGR_TRACE" => "1" },
+        { "MUTATION_RUN" => "1", "PKGMGR_TRACE" => "1",
+          "PKGMGR_WATCHDOG" => (timeout * 0.8).to_i.to_s },
         @ruby, runner, "--seed", "1",
         chdir: @dir, out: out, err: out
       )
@@ -180,10 +182,6 @@ module Mutation
       begin
         Timeout.timeout(timeout) { Process.wait(pid) }
       rescue Timeout::Error
-        # Where is it? Asked first, answered into the log (run_all.rb
-        # traps QUIT with a backtrace), and only then killed.
-        Process.kill("QUIT", pid) rescue nil
-        sleep 2
         Process.kill("KILL", pid) rescue nil
         Process.wait(pid) rescue nil
         return [:timeout, tail(out, 45)]
