@@ -344,6 +344,7 @@ class TestShowStatusAllCompilers < Minitest::Test
         other_dir = target_pkgs(ARCH, other_gcc) / "foo" / "1.0.0"
         FileUtils.mkdir_p(other_dir)
 
+        pkgmgr.installs_changed!
         pkgmgr.refresh()
 
         output = capture_stdout {

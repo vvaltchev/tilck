@@ -42,6 +42,7 @@ class TestSysrootCompositionAcrossStacks < Minitest::Test
       dir = pkg.coords.pkgs_dir / pkg.pkg_dirname / "1.0.0" / "install"
       FileUtils.mkdir_p(File.dirname(dir / rel))
       File.write(dir / rel, "x")
+      pkgmgr.installs_changed!
       pkgmgr.refresh()
     end
   end
@@ -207,6 +208,7 @@ class TestSysrootHoldsThePrograms < Minitest::Test
       FileUtils.mkdir_p(bin)
       pkg.expected_files.each { |f, _| FileUtils.touch(bin.parent.parent / f) }
       File.write(bin / "qemu-system-i386", ver)
+      pkgmgr.installs_changed!
       pkgmgr.refresh()
     end
   end

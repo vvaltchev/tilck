@@ -351,8 +351,10 @@ class TestInstallMvGuard < Minitest::Test
         assert (final / "marker.txt").file?
         refute pkg.get_install_list.any?(&:broken)
 
-        # Simulate corruption (e.g. make distclean in the install dir).
+        # Simulate corruption (e.g. make distclean in the install dir)
+        # -- from outside, so the tree is told it changed.
         FileUtils.rm(final / "marker.txt")
+        pkgmgr.installs_changed!
         assert pkg.get_install_list.any?(&:broken),
                "install should now look broken"
 

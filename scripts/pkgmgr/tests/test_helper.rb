@@ -309,6 +309,9 @@ module TestHelper
     pm.instance_variable_set(:@known_installed, [])
     pm.instance_variable_set(:@found_installed, [])
     pm.instance_variable_set(:@installable, [])
+    # A new world: whatever a package remembered of the tree is of the
+    # one before.
+    pm.installs_changed!
   end
 
   # Create a temp toolchain directory tree and run the block with TC
@@ -370,6 +373,7 @@ module TestHelper
     end
 
     InstallOrigin.write(dir, origin == :default, mark == :manual)
+    pkgmgr.installs_changed!
     pkgmgr.refresh
 
     case record

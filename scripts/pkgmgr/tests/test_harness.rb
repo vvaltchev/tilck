@@ -91,6 +91,66 @@ class TestNoRealInstallers < Minitest::Test
   end
 end
 
+# A package's install list is read from the tree once per change to
+# it: no change, the same list; a change announced with
+# installs_changed!, a new one; and a change nobody announced is what
+# the fifth law is for.
+class TestInstallListsFollowTheTree < Minitest::Test
+
+  include TestHelper
+
+  def setup = reset_pkgmgr!
+
+  def test_unchanged_tree_same_list
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        pkgmgr.install("foo")
+        once = foo.get_install_list
+        assert_same once, foo.get_install_list, "walked the tree again"
+        assert once.frozen?
+
+        pkgmgr.installs_changed!
+        refute_same once, foo.get_install_list, "the change went unread"
+      end
+    end
+  end
+
+  def test_a_different_tree_is_read_afresh
+    foo = FakePackage.new("foo")
+    pkgmgr.register(foo)
+    with_fake_tc do
+      with_stubbed_externals { pkgmgr.install("foo") }
+      assert_equal 1, foo.get_install_list.length
+    end
+    with_fake_tc do
+      assert_empty foo.get_install_list, "a list from the tree before"
+    end
+  end
+
+  # The law: what the manager holds is what the disk says. A removal
+  # that says nothing leaves a list that lies, and the snapshot names
+  # the key it lied about.
+  def test_a_change_nobody_announced_is_caught
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        pkgmgr.install("foo")
+        assert_empty Bridge.snapshot.stale
+
+        inst = foo.get_install_list.first
+        FileUtils.rm_rf(inst.path)          # behind the manager's back
+        stale = Bridge.snapshot.stale
+        assert_equal 1, stale.length
+        assert_match(/held, not on disk: \["foo@1.0.0/, stale.first)
+        assert_empty Bridge.snapshot.stale, "the re-read did not settle it"
+      end
+    end
+  end
+end
+
 class TestTheRealWorldIsHandedBack < Minitest::Test
 
   include TestHelper

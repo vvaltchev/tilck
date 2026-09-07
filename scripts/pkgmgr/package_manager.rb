@@ -30,6 +30,7 @@ class PackageManager
     @known_installed = nil
     @found_installed = nil
     @installable = nil
+    @tree_generation = 0
     @resolved_versions = nil
     @target_arch = nil    # nil = fall back to the global ARCH
     @target_board = nil   # nil = fall back to the global BOARD
@@ -194,6 +195,23 @@ class PackageManager
           "run the build with" if inst.nil?
 
     return inst.path / "bin" / "python3"
+  end
+
+  # The tree's generation. Whatever moves, removes or rewrites an
+  # installation bumps it, and every package's install list re-walks
+  # its directories only when the generation has moved since it last
+  # did: no change, same generation, no re-read; a change, one re-read
+  # by each package asked, however often it is asked. What changes the
+  # tree from outside this process is not this tool's to notice.
+  #
+  # refresh does NOT bump it: refresh rebuilds what the manager holds
+  # across packages from the packages' lists, which is cheap when
+  # nothing changed and is what every defensive refresh used to pay a
+  # full walk for. The writers announce; refresh follows.
+  attr_reader :tree_generation
+
+  def installs_changed!
+    @tree_generation += 1
   end
 
   def refresh
@@ -748,6 +766,7 @@ class PackageManager
       if inst
         InstallOrigin.write(inst.path, default_install, manual)
         InstallDeps.write(inst.path, built_against(pkg, ver))
+        installs_changed!
       end
 
       # ...and what it was built FROM, in the same place and for the
@@ -1105,7 +1124,10 @@ class PackageManager
     end
 
     # mutation: equivalent -- rereading what a dry run did not write
-    refresh() if !dry
+    if !dry
+      installs_changed!
+      refresh()
+    end
     return picked.length
   end
 
@@ -1135,7 +1157,10 @@ class PackageManager
     end
 
     # mutation: equivalent -- rereading what a dry run did not write
-    refresh() if !dry
+    if !dry
+      installs_changed!
+      refresh()
+    end
   end
 
   # The installations one install needs: its dependencies at the
@@ -1245,6 +1270,7 @@ class PackageManager
     FileUtils.rm_rf(aside)
     FileUtils.mkdir_p(aside.dirname)
     FileUtils.mv(inst.path, aside)
+    installs_changed!
     refresh()
 
     # Restored on any way out but success: a build that raises --
@@ -1261,6 +1287,7 @@ class PackageManager
         FileUtils.rm_rf(aside)
       else
         FileUtils.mv(aside, inst.path)
+        installs_changed!
         refresh()
       end
 
@@ -1673,6 +1700,7 @@ class PackageManager
     # way that looks nothing like the cause.
     # mutation: equivalent -- composing after removing nothing changes nothing
     if removed > 0
+      installs_changed!
       refresh()
       # Every stack, not just the default: an uninstall can invalidate
       # any of them, and a stale symlink is the failure mode hardest to

@@ -1263,8 +1263,24 @@ class Package
     return list
   end
 
-  # Default implementations
+  # Every installation of this package on disk, remembered per tree
+  # generation (PackageManager#tree_generation): the directories are
+  # walked again only after something moved, removed or rewrote an
+  # installation, and then once, however many times the list is
+  # asked. A different TC is a different tree -- the tests swap it --
+  # and empties the memo as a change would.
   def get_install_list
+    gen = pkgmgr.tree_generation
+    if @installs.nil? || @installs_gen != gen || !@installs_tc.equal?(TC)
+      @installs = read_install_list.freeze
+      @installs_gen = gen
+      @installs_tc = TC
+    end
+    return @installs
+  end
+
+  # Default implementations
+  def read_install_list
     if on_host
       return syscc_package_get_install_list()
     else
@@ -1546,6 +1562,7 @@ class Package
     end
 
     FileUtils.mv(staging.to_s, final_ver_dir.to_s)
+    pkgmgr.installs_changed!
 
     # Clean up the empty staging/pkg_dirname/ directory
     staging_pkg = TC_STAGING / pkg_dirname

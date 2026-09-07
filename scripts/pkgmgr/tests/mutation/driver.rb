@@ -48,7 +48,7 @@ module Mutation
       needs_upgrade? syscc_package_get_install_list
       regular_target_package_get_install_list
       noarch_package_get_install_list all_stack_coords stack_gcc_ver
-      default_cc install_archs
+      default_cc install_archs get_install_list read_install_list
     ],
     "package_manager.rb" => %w[
       target_arch board_for with_target_arch with_target_coords
@@ -59,7 +59,7 @@ module Mutation
       get_stale_packages get_stale_installs get_upgradable_packages
       built_against deps_of_install with_resolved_versions replace
       mark mark_requested_manual needs_of_install coords_of_install_for
-      autoremove
+      autoremove refresh installs_changed!
       build_dep_graph clean get_installed_compilers
     ],
     "main.rb" => %w[expand_install_all select_host_stack requested_arch

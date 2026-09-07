@@ -80,9 +80,13 @@ module Bridge
   # Every installation on disk, as keys. Broken installs (expected
   # files missing) are left out: the model has no such state, and the
   # implementation hides them from find_install for the same reason.
-  def world
+  # `fresh` reads the tree again whatever the lists remember of it.
+  def world(fresh: true)
 
-    pkgmgr.refresh
+    if fresh
+      pkgmgr.installs_changed!
+      pkgmgr.refresh
+    end
 
     keys = pkgmgr.all_packages.flat_map { |p|
       p.get_install_list
@@ -142,12 +146,22 @@ module Bridge
     return out
   end
 
-  # Everything the laws need, at one instant.
-  Snapshot = Struct.new(:registry, :world, :inv, :misplaced,
+  # Everything the laws need, at one instant. `stale` is what the
+  # package manager's install lists held that the disk does not say,
+  # and the reverse: the trace of a writer that moved, removed or
+  # rewrote an installation and did not say installs_changed!.
+  Snapshot = Struct.new(:registry, :world, :inv, :misplaced, :stale,
                         keyword_init: true)
 
   def snapshot
-    return Snapshot.new(registry: registry, world: world, inv: inv,
-                        misplaced: misplaced)
+    held = world(fresh: false)
+    fresh = world
+    stale = if held == fresh then []
+            else ["the install lists disagree with the disk:\n" \
+                  "  held, not on disk: #{(held - fresh).map(&:to_s).sort}\n" \
+                  "  on disk, not held: #{(fresh - held).map(&:to_s).sort}"]
+            end
+    return Snapshot.new(registry: registry, world: fresh, inv: inv,
+                        misplaced: misplaced, stale: stale)
   end
 end

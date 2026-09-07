@@ -795,7 +795,10 @@ dry-run changes nothing, determinism) hold.
 suite drives, inside `TestHelper#run_cli`: the world after equals what
 the model computes (L1); `-d` changed nothing (L2); every installation
 sits where its package says, judged at its own coordinates (L3);
-everything installed carries a record that reads ok (L4). A test about
+everything installed carries a record that reads ok (L4); what the
+package manager holds about the tree is what the tree says (L5 -- the
+install lists are re-read once per announced change, and a change
+nobody announced is a list that lies). A test about
 `-l`'s output is thereby also a test that `-l` changed nothing. The
 runner prints how many lines were judged and how many fell outside
 the model's grammar.
