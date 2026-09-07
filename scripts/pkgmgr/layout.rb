@@ -31,6 +31,12 @@
 #       x86 UEFI bootloader needs this: an x86_64 build has to link
 #       the ia32 loader against the i386 gnuefi.
 #
+#   QEMU_<version>
+#       The bin/ directory of each QEMU built in a host stack. The
+#       run_*qemu launchers read these for their -q option, which runs
+#       Tilck under one of our QEMUs instead of the system's; they ask
+#       rather than glob, for the same reason CMake does.
+#
 
 require_relative 'early_logic'
 require_relative 'arch'
@@ -79,7 +85,20 @@ module Layout
       v["PKGS_TARGET_#{arch.name}"] = p if p
     end
 
+    for inst in qemu_installs do
+      v["QEMU_#{inst.ver}"] = inst.path / "install" / "bin"
+    end
+
     return v
+  end
+
+  # Every QEMU built in a host stack, oldest first. None where the host
+  # world does not run (host_qemu is x86_64 Linux only, for now).
+  def qemu_installs
+    q = pkgmgr.get("host_qemu")
+    return [] if q.nil? || !q.host_supported?
+    return q.get_install_list.select { |i| !i.path.nil? && !i.broken }
+            .sort_by(&:ver)
   end
 
   def print_vars
