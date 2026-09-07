@@ -731,24 +731,56 @@ class TestLayoutNamesTheQemus < Minitest::Test
     reset_pkgmgr!
   end
 
+  # A QEMU on disk, complete or -- missing what expected_files names
+  # -- broken.
+  def put_qemu(q, ver, broken: false)
+    pkgmgr.with_host_stack(Ver("13.4.0")) do
+      bin = q.coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" / "bin"
+      FileUtils.mkdir_p(bin)
+      inst = bin.parent.parent
+      q.expected_files.each { |f, _| FileUtils.touch(inst / f) } if !broken
+    end
+  end
+
   def test_a_key_per_installed_qemu_oldest_first
     with_fake_tc do
       q = HostQemuPackage.new
       pkgmgr.register(q)
-      for ver in %w[7.2.0 6.2.0] do
-        pkgmgr.with_host_stack(Ver("13.4.0")) do
-          bin = q.coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" / "bin"
-          FileUtils.mkdir_p(bin)
-          inst = bin.parent.parent
-          q.expected_files.each { |f, _| FileUtils.touch(inst / f) }
-        end
-      end
+      %w[7.2.0 6.2.0].each { |ver| put_qemu(q, ver) }
       pkgmgr.refresh
 
       v = Layout.vars
       keys = v.keys.grep(/\AQEMU_/)
       assert_equal %w[QEMU_6.2.0 QEMU_7.2.0], keys
       assert v["QEMU_6.2.0"].to_s.end_with?("/qemu/6.2.0/install/bin")
+    end
+  end
+
+  # A broken install is a directory with a hole where qemu-system
+  # should be; a launcher handed it fails somewhere unrelated.
+  def test_a_broken_qemu_gets_no_key
+    with_fake_tc do
+      q = HostQemuPackage.new
+      pkgmgr.register(q)
+      put_qemu(q, "7.2.0")
+      put_qemu(q, "6.2.0", broken: true)
+      pkgmgr.refresh
+
+      assert_equal %w[QEMU_7.2.0], Layout.vars.keys.grep(/\AQEMU_/)
+    end
+  end
+
+  # Where the host world does not run, what is on disk is not asked
+  # about: a tree copied from another machine is not a QEMU here.
+  def test_no_key_where_the_host_world_does_not_run
+    with_fake_tc do
+      q = HostQemuPackage.new
+      q.define_singleton_method(:host_supported?) { false }
+      pkgmgr.register(q)
+      put_qemu(q, "7.2.0")
+      pkgmgr.refresh
+
+      assert_empty Layout.vars.keys.grep(/\AQEMU_/)
     end
   end
 
