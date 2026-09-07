@@ -821,10 +821,17 @@ class Package
   # read after the build, never by it. Teaching QEMU to publish its
   # binaries would otherwise have condemned every stack's QEMU to a
   # rebuild for the sake of a symlink.
+  #
+  # get_install_list and get_installable_list read what is on disk
+  # and what could be; the GCC package wraps the first to attach its
+  # target metadata, and teaching that wrapper one more field
+  # (.install_origin's second word) flagged all four prebuilt cross
+  # compilers as rebuilt from something else.
   NON_RECIPE_HOOKS = %i[enabled? default? default_cc
                         host_world_root? installed?
                         host_os_list host_arch_list
-                        clean_build sysroot_fragments].freeze
+                        clean_build sysroot_fragments
+                        get_install_list get_installable_list].freeze
 
   #
   # One digest standing for "how this package is built".
