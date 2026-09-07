@@ -43,7 +43,7 @@ module CargoBuild
 
   # Where the host's cargo and rustc are, or nil if either is absent.
   def rust_tools
-    env = SystemDeps::Env.new
+    env = SystemDeps.env
     cargo = env.which("cargo")
     rustc = env.which("rustc")
     return nil if cargo.nil? || rustc.nil?

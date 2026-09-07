@@ -21,6 +21,7 @@ require_relative '../package'
 require_relative '../dep_resolver'
 require_relative '../cache'
 require_relative '../package_manager'
+require_relative '../system_deps'
 
 #
 # A TEST MAY NOT READ THE DEVELOPER'S TOOLCHAIN.
@@ -71,6 +72,102 @@ module NoRealToolchainReads
 end
 
 Package.prepend(NoRealToolchainReads)
+
+# The other thing a test must never touch: the machine's package
+# manager and the installers that download and run code. The stubbed
+# world stands on a machine of its own (with_stubbed_externals); the
+# real one refuses to run anything inside a test, since a test that
+# reaches it has forgotten the stub -- and on CI, where cargo is
+# present and cargo-c is not, `cargo install cargo-c` is what it did.
+module NoRealInstallers
+  def run(argv)
+    raise "a test would run `#{argv.join(' ')}` on this machine. Wrap " \
+          "it in with_stubbed_externals, which hands SystemDeps a " \
+          "machine on which everything is already installed."
+  end
+end
+
+SystemDeps::Env.prepend(NoRealInstallers)
+
+# --- the outside world, faked --------------------------------------------
+#
+# SystemDeps::Env is the only thing in system_deps.rb that runs
+# commands, reads PATH or talks to a terminal, so replacing it makes
+# every decision there testable without a package manager, a network
+# or a tty.
+
+class FakeSysBackend
+
+  attr_reader :id, :queried
+
+  # installed: the packages that are, or :all.
+  def initialize(id: :apt, installed: [])
+    @id = id
+    @installed = installed
+    @queried = []
+  end
+
+  def name = @id.to_s
+
+  def installed?(pkg)
+    @queried << pkg
+    return @installed == :all || @installed.include?(pkg)
+  end
+
+  def full_install_argv(pkgs, assume_yes: false)
+    return ["fakepm", "install", *(assume_yes ? ["-y"] : []), *pkgs]
+  end
+end
+
+class FakeSysEnv
+
+  attr_accessor :tools, :backend, :answers, :interactive, :ci, :flags,
+                :run_result, :on_run
+  attr_reader :ran, :asked
+
+  # tools: { "rustc" => { path: "/usr/bin/rustc", ver: "1.66.1" } }
+  #        a nil :ver means the binary is there but won't say what it is
+  def initialize(tools: {}, backend: nil, answers: [], interactive: true,
+                 ci: false, flags: {}, run_result: true)
+    @tools = tools
+    @backend = backend
+    @answers = answers
+    @interactive = interactive
+    @ci = ci
+    @flags = flags
+    @run_result = run_result
+    @ran = []
+    @asked = []
+    @on_run = nil
+  end
+
+  def which(cmd)
+    t = @tools[cmd]
+    return t ? t[:path] : nil
+  end
+
+  def probe_version(path, flag, re)
+    t = @tools.values.find { |v| v[:path] == path }
+    return nil if t.nil? || t[:ver].nil?
+    return SafeVer(t[:ver])
+  end
+
+  def run(argv)
+    @ran << argv
+    @on_run&.call(argv, self)
+    return @run_result
+  end
+
+  def ask(q, default: true)
+    @asked << q
+    return @answers.empty? ? default : @answers.shift
+  end
+
+  def interactive? = @interactive
+  def in_ci? = @ci
+  def env_flag(name) = !!@flags[name]
+end
+
 
 #
 # THE REAL PACKAGE SET, AND THE ONLY MOMENT IT IS ALL THERE.
@@ -440,6 +537,13 @@ module TestHelper
       !fail_commands.include?(cmd)
     }
 
+    # The machine: every tool present at a version nothing asks
+    # beyond, every package installed, and nothing ever run. What a
+    # plan needs from the host is the host's business, not the
+    # stubbed world's.
+    originals[:sys_env] = SystemDeps.env
+    SystemDeps.env = satisfied_sys_env
+
     # Stub PackageManager#with_cc — yield the arch dir without
     # requiring a real compiler to be installed.
     pm = PackageManager.instance
@@ -461,9 +565,19 @@ module TestHelper
                                   originals[:download_git_repo])
     Cache.define_singleton_method(:extract_file, originals[:extract_file])
     Object.send(:define_method, :run_command, originals[:run_command])
+    SystemDeps.env = originals[:sys_env] if originals.key?(:sys_env)
     pm = PackageManager.instance
     pm.define_singleton_method(:with_cc, originals[:with_cc]) if
       originals[:with_cc]
+  end
+
+  def satisfied_sys_env
+    tools = Hash.new { |h, cmd|
+      h[cmd] = { path: "/stub/bin/#{cmd}", ver: "999.0.0" }
+    }
+    return FakeSysEnv.new(tools: tools,
+                          backend: FakeSysBackend.new(installed: :all),
+                          interactive: false, ci: false)
   end
 
   # A minimal Package subclass for testing. The only overrides are:
