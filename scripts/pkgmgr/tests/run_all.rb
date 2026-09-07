@@ -29,6 +29,17 @@ $mutation            = ARGV.delete("--mutation")
 # with it: unbuffered, or the last lines -- the ones that matter --
 # are the ones lost.
 $stdout.sync = true if ENV["PKGMGR_TRACE"]
+
+# Asked where it is -- SIGQUIT, which the mutation driver sends before
+# killing a suite at its budget -- the suite answers with the stack it
+# was interrupted in and carries on. A suite that has printed nothing
+# yet is somewhere in its loading, and that is a place the trace
+# above cannot name. On the process's own stderr, not $stderr: a test
+# in progress has swapped that for a buffer nobody will read.
+Signal.trap("QUIT") {
+  STDERR.puts "=== SIGQUIT: the suite is in:"
+  STDERR.puts caller.first(30).map { |l| "    #{l}" }
+}
 $test_filter         = nil
 $test_arch           = nil
 $test_packages_filter = nil
