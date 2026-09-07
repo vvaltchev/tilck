@@ -492,31 +492,9 @@ module Main
     end
   end
 
-  def parse_options(argv = ARGV.dup)
-
-    is_option = ->(line) { line.lstrip.start_with?("-") }
-    highlight = ->(line) {
-      return line if not STDOUT.tty?
-      line.sub!("[MODE]", "[#{Term.makeGreen("MODE")}]")
-      line.sub!("[FLAG]", "[#{Term.makeYellow("FLAG")}]")
-      line.sub!("[OPTION]", "[#{Term.makeYellow("OPTION")}]")
-      line.sub!("ALL", Term.makeRed("ALL"))
-      line
-    }
-    reformat_summary = ->(summary) {
-      blocks = []
-      curr = []
-      summary.each { |line|
-        if is_option.(line) && !curr.empty?
-          blocks << curr; curr = []
-        end
-        curr << highlight.call(line)
-      }
-      blocks << curr unless curr.empty?
-      blocks.map { |b| b.join }.join("\n") + "\n"
-    }
-
-    opts = {
+  # The defaults every parse starts from.
+  def option_defaults
+    return {
       help: false,
       skip_install_pkgs: false,
       just_context: false,
@@ -549,42 +527,78 @@ module Main
       group_by: nil,
       quiet: 0,
     }
+  end
 
-    mode_opts = [
-      :help,
-      :just_context,
-      :list,
-      :list_installable,
-      :deps,
-      :self_test,
-      :check_for_updates,
-      :clean,
-      :list_stacks,
-      :print_layout,
-      :upgrade,
-      :rebuild,
-      :config,
-      :install,
-      :install_compiler,
-      :uninstall,
-      :uninstall_compiler,
-      :mark_manual,
-      :mark_auto,
-      :autoremove,
-    ]
+  # The options that are modes: at most one per command line.
+  MODE_OPTS = [
+    :help,
+    :just_context,
+    :list,
+    :list_installable,
+    :deps,
+    :self_test,
+    :check_for_updates,
+    :clean,
+    :list_stacks,
+    :print_layout,
+    :upgrade,
+    :rebuild,
+    :config,
+    :install,
+    :install_compiler,
+    :uninstall,
+    :uninstall_compiler,
+    :mark_manual,
+    :mark_auto,
+    :autoremove,
+  ].freeze
+
+  # The parser is a table of switches, built once when the module
+  # loads. What changes from one parse to the next is where the
+  # handlers write and which argv the multi-word ones read, so those
+  # two are the parse's state (@opts, @argv), not the parser's. One
+  # process, one main: the same cost as before. One process, ten
+  # thousand mains -- the test suite, the exhaustive lane, every
+  # mutant judged by them -- and building ~45 switches per main was
+  # a fifth of a case.
+  def build_parser
+
+    is_option = ->(line) { line.lstrip.start_with?("-") }
+    highlight = ->(line) {
+      return line if not STDOUT.tty?
+      line.sub!("[MODE]", "[#{Term.makeGreen("MODE")}]")
+      line.sub!("[FLAG]", "[#{Term.makeYellow("FLAG")}]")
+      line.sub!("[OPTION]", "[#{Term.makeYellow("OPTION")}]")
+      line.sub!("ALL", Term.makeRed("ALL"))
+      line
+    }
+    reformat_summary = ->(summary) {
+      blocks = []
+      curr = []
+      summary.each { |line|
+        if is_option.(line) && !curr.empty?
+          blocks << curr; curr = []
+        end
+        curr << highlight.call(line)
+      }
+      blocks << curr unless curr.empty?
+      blocks.map { |b| b.join }.join("\n") + "\n"
+    }
+
+
 
     get_multiple_args = ->(first, sym) {
       list = [first]
-      while argv.first && argv.first !~ /\A-/
-        list << argv.shift
+      while @argv.first && @argv.first !~ /\A-/
+        list << @argv.shift
       end
-      opts[sym] += list
+      @opts[sym] += list
     }
 
     p = OptionParser.new('./scripts/build_toolchain [-n] [OPTIONS]')
 
     p.on('-h', '--help', 'Show this help message [MODE]') {
-      opts[:help] = true
+      @opts[:help] = true
       puts p.banner
       puts
       puts reformat_summary.call(p.summarize())
@@ -594,13 +608,13 @@ module Main
          'List all packages status. The host stacks are a line each,',
          'with how many packages every one holds: the listing shows',
          'one stack, the current one (-H picks another). [MODE]') {
-      opts[:list] = true
+      @opts[:list] = true
     }
 
     p.on('-L', '--list-stacks',
          'List the host stacks: which compilers a world has been',
          'built with, and how many packages are in each [MODE]') {
-      opts[:list_stacks] = true
+      @opts[:list_stacks] = true
     }
 
     p.on('-H', '--host-gcc STACK',
@@ -610,7 +624,7 @@ module Main
          'Written either way: "gcc-14.4.0", as -L prints it, or the',
          'bare "14.4.0". The stack does not have to exist yet --',
          'asking for it is what builds it. [OPTION]') { |v|
-      opts[:host_gcc] = v
+      @opts[:host_gcc] = v
     }
 
     p.on('--list-installable',
@@ -618,7 +632,7 @@ module Main
          'one per line, no decoration. Machine-readable output for',
          'tooling (e.g. system tests that need to filter per-arch',
          'supported packages) [MODE]') {
-      opts[:list_installable] = true
+      @opts[:list_installable] = true
     }
 
     p.on('-D', '--deps PKG',
@@ -633,87 +647,87 @@ module Main
          'Machine-friendly alternative to the fancy box-drawing',
          'format. Applies to --deps, -s install plans, and the',
          'default-install plan. [FLAG]') {
-      opts[:ascii] = true
+      @opts[:ascii] = true
     }
 
     p.on('-j', '--just-context', 'Just show the context and quit [MODE]') {
-      opts[:just_context] = true
+      @opts[:just_context] = true
     }
 
     p.on('-t', '--self-test', 'Run internal unit tests [MODE]') {
-      opts[:self_test] = true
+      @opts[:self_test] = true
     }
 
     p.on('--coverage',
          'Collect code coverage data + HTML report (use with -t) [FLAG]') {
-      opts[:coverage] = true
+      @opts[:coverage] = true
     }
 
     p.on('--system-tests',
          'After unit tests: install all pkgs, build for all archs [FLAG]') {
-      opts[:system_tests] = true
+      @opts[:system_tests] = true
     }
 
     p.on('--all-build-types',
          'With --system-tests: build all generator configs too [FLAG]') {
-      opts[:all_build_types] = true
+      @opts[:all_build_types] = true
     }
 
     p.on('--run-also-tilck-tests',
          'With --system-tests: run gtests + system tests (i386/riscv64) [FLAG]') {
-      opts[:run_tilck_tests] = true
+      @opts[:run_tilck_tests] = true
     }
 
     p.on('-F', '--filter REGEX',
          'Run only tests matching REGEX (use with -t) [OPTION]') {
-      |pat| (opts[:test_args] ||= []) << "--filter" << pat
+      |pat| (@opts[:test_args] ||= []) << "--filter" << pat
     }
 
     p.on('-V', '--verbose-tests',
          'Show stdout/stderr even for passing tests (use with -t) [FLAG]') {
-      (opts[:test_args] ||= []) << "--verbose-tests"
+      (@opts[:test_args] ||= []) << "--verbose-tests"
     }
 
     p.on('--exhaustive',
          'After unit tests: every small world x every command line, ' \
          'against the model (use with -t) [FLAG]') {
-      (opts[:test_args] ||= []) << "--exhaustive"
+      (@opts[:test_args] ||= []) << "--exhaustive"
     }
 
     p.on('--mutation',
          'After unit tests: every mutant of the logic core must die ' \
          '(use with -t) [FLAG]') {
-      (opts[:test_args] ||= []) << "--mutation"
+      (@opts[:test_args] ||= []) << "--mutation"
     }
 
     p.on('--seed N', 'Seed of the sampled exhaustive lane [OPTION]') {
-      |n| (opts[:test_args] ||= []) << "--seed" << n
+      |n| (@opts[:test_args] ||= []) << "--seed" << n
     }
 
     p.on('--case ID', 'Replay one exhaustive case by id [OPTION]') {
-      |id| (opts[:test_args] ||= []) << "--case" << id
+      |id| (@opts[:test_args] ||= []) << "--case" << id
     }
 
     p.on('--jobs N', 'Processes for --exhaustive [OPTION]') {
-      |n| (opts[:test_args] ||= []) << "--jobs" << n
+      |n| (@opts[:test_args] ||= []) << "--jobs" << n
     }
 
     p.on('--test-packages-filter REGEX',
          'With --system-tests: install only optional packages matching REGEX') {
-      |pat| (opts[:test_args] ||= []) << "--test-packages-filter" << pat
+      |pat| (@opts[:test_args] ||= []) << "--test-packages-filter" << pat
     }
 
     p.on(
       '-C', '--config PKG[:VER]',
       'Reconfigure the given version (optional) of a package',
       'interactively (e.g. make menuconfig) [MODE]'
-    ) { |pkg| opts[:config] = pkg }
+    ) { |pkg| @opts[:config] = pkg }
 
     p.on(
       '--upgrade',
       'Upgrade installed packages whose version was bumped in',
       'pkg_versions. Does not install new packages. [MODE]'
-    ) { opts[:upgrade] = true }
+    ) { @opts[:upgrade] = true }
 
     p.on(
       '--rebuild',
@@ -721,7 +735,7 @@ module Main
       'changed (a patch, a flag, the recipe), each where it is and at',
       'its own version. What --check-for-updates lists as',
       'NEEDS_REBUILD; a bumped version is --upgrade\'s. [MODE]'
-    ) { opts[:rebuild] = true }
+    ) { @opts[:rebuild] = true }
 
     p.on(
       '--check-for-updates',
@@ -729,7 +743,7 @@ module Main
       'and exits 0 if up to date, or prints the list and exits 2 if',
       'upgrades are needed. Lightweight: meant to be called directly',
       'by CMake without the bash wrapper. [MODE]'
-    ) { opts[:check_for_updates] = true }
+    ) { @opts[:check_for_updates] = true }
 
     p.on(
       '--clean',
@@ -737,7 +751,7 @@ module Main
       'bootstrap Ruby and the download cache. What is left is what a',
       'fresh checkout would download anyway, so the rebuild after it',
       'is a real one. Combine with -d to see what would go. [MODE]'
-    ) { opts[:clean] = true }
+    ) { @opts[:clean] = true }
 
     p.on(
       '--print-layout',
@@ -746,7 +760,7 @@ module Main
       'the layout schema. Reads ARCH, BOARD and GCC_TC_VER from the',
       'environment like every other mode. Lightweight: meant to be',
       'called directly by CMake without the bash wrapper. [MODE]'
-    ) { opts[:print_layout] = true }
+    ) { @opts[:print_layout] = true }
 
     p.on('-s', '--install PKG',
          'Install the given package. Use ALL to install every',
@@ -793,7 +807,7 @@ module Main
       'Remove every installation that was pulled in as a dependency',
       'and that nothing still installed needs, like apt. Combine it',
       'with -d to see what would go. [MODE]'
-    ) { opts[:autoremove] = true }
+    ) { @opts[:autoremove] = true }
 
     p.on(
       '-U', '--uninstall-compiler ARCH',
@@ -806,12 +820,12 @@ module Main
     p.on('-d', '--dry-run',
          'Dry run: show what would be done and exit without touching',
          'the filesystem. Applies to -s, -S, -u, -U. [FLAG]') {
-      opts[:dry_run] = true
+      @opts[:dry_run] = true
     }
 
     p.on('-g', '--group-by WHAT', ['ver', 'arch'],
          'Group packages by "ver" or "arch" [OPTION]') { |what|
-      opts[:group_by] = what
+      @opts[:group_by] = what
     }
 
     p.on(
@@ -827,7 +841,7 @@ module Main
         Ver(value) # check that the version can be parsed
       end
 
-      opts[:compiler] = value
+      @opts[:compiler] = value
     end
 
     p.on(
@@ -845,12 +859,12 @@ module Main
         end
       end
 
-      opts[:arch] = value
+      @opts[:arch] = value
     end
 
     p.on(
       '-q', 'Be quiet: skip the bootstrap logging [FLAG]'
-    ) { opts[:quiet] = 1 }
+    ) { @opts[:quiet] = 1 }
 
     p.on(
       '-f', '--force',
@@ -858,7 +872,7 @@ module Main
       'the cross-compilers, when the package name is ALL. In install mode',
       '(-s), this forces an uninstall+install cycle for each requested',
       'package even if already installed. [FLAG]'
-    ) { opts[:force] = true }
+    ) { @opts[:force] = true }
 
     p.on(
       '-n', '--skip-install-pkgs',
@@ -869,7 +883,7 @@ module Main
       'improves the speed, but it is generally discouraged, unless this script',
       'is run on a *unsupported* Linux distribution or the user is experienced',
       'with Tilck\'s package manager and prepared to handle a failure. [FLAG]'
-    ) { opts[:skip_install_pkgs] = true }
+    ) { @opts[:skip_install_pkgs] = true }
 
     p.on(
       '--contrib',
@@ -879,9 +893,19 @@ module Main
       './scripts/build_toolchain --contrib. Packages listed in',
       'CONTRIB_EXTRA_PACKAGES are appended to the normal default',
       'set before the plan is resolved. [FLAG]'
-    ) { opts[:contrib] = true }
+    ) { @opts[:contrib] = true }
 
-    p.parse!(argv)
+    return p
+  end
+
+  PARSER = build_parser
+
+  def parse_options(argv = ARGV.dup)
+    @opts = option_defaults
+    @argv = argv
+    PARSER.parse!(argv)
+    opts = @opts
+    mode_opts = MODE_OPTS
     mods = opts.slice(*mode_opts)
     mods = mods.select { |k,v| !v.blank? }
 
