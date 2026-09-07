@@ -30,16 +30,25 @@ $mutation            = ARGV.delete("--mutation")
 # are the ones lost.
 $stdout.sync = true if ENV["PKGMGR_TRACE"]
 
-# Asked where it is -- SIGQUIT, which the mutation driver sends before
-# killing a suite at its budget -- the suite answers with the stack it
-# was interrupted in and carries on. A suite that has printed nothing
-# yet is somewhere in its loading, and that is a place the trace
-# above cannot name. On the process's own stderr, not $stderr: a test
-# in progress has swapped that for a buffer nobody will read.
-Signal.trap("QUIT") {
-  STDERR.puts "=== SIGQUIT: the suite is in:"
-  STDERR.puts caller.first(30).map { |l| "    #{l}" }
-}
+# PKGMGR_WATCHDOG=N: after N seconds, and every ten thereafter, the
+# main thread's stack goes to the process's own stderr -- not $stderr,
+# which a test in progress has swapped for a buffer nobody reads. The
+# mutation driver sets it just under its budget, so a suite killed at
+# the budget has already said where it was. A thread rather than a
+# signal: a main thread blocked in a subprocess wait answers no signal
+# until the wait ends, and never ending is the case that matters.
+if (budget = ENV["PKGMGR_WATCHDOG"].to_i) > 0
+  Thread.new {
+    sleep budget
+    loop {
+      STDERR.puts "=== watchdog: #{budget}s; the main thread is in:"
+      stack = Thread.main.backtrace.to_a.first(30)
+      STDERR.puts stack.map { |l| "    #{l}" }
+      STDERR.flush
+      sleep 10
+    }
+  }
+end
 $test_filter         = nil
 $test_arch           = nil
 $test_packages_filter = nil
