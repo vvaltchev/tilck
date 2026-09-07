@@ -169,8 +169,10 @@ module Mutation
 
       runner = File.join(@dir, "scripts", "pkgmgr", "tests", "run_all.rb")
       out = File.join(@dir, "mutant.log")
+      # Traced, so that a suite killed at the timeout names the test
+      # it was in: the one fact a timeout report is otherwise without.
       pid = Process.spawn(
-        { "MUTATION_RUN" => "1" },
+        { "MUTATION_RUN" => "1", "PKGMGR_TRACE" => "1" },
         @ruby, runner, "--seed", "1",
         chdir: @dir, out: out, err: out
       )
@@ -180,12 +182,13 @@ module Mutation
       rescue Timeout::Error
         Process.kill("KILL", pid) rescue nil
         Process.wait(pid) rescue nil
-        return [:timeout, ""]
+        return [:timeout, tail(out)]
       end
 
-      text = File.read(out).lines.last(12).join
-      return [$?.success? ? :survived : :killed, text]
+      return [$?.success? ? :survived : :killed, tail(out)]
     end
+
+    def tail(log) = File.read(log).lines.last(12).join
 
     def remove
       FileUtils.rm_rf(@dir)
@@ -258,12 +261,18 @@ module Mutation
 
     # A mutant that hangs is not caught; it is waited out. The suite
     # would have hung too, and a hang is the one failure nothing
-    # downstream can report: the walk it broke needs a bound.
+    # downstream can report. Whether the walk it broke has no bound
+    # or merely a far one is what the tail says: the test the suite
+    # was in when it was killed is its last line.
     if !hung.empty?
       out.puts
-      out.puts "TIMEOUTS -- each is a walk without a bound:"
+      out.puts "TIMEOUTS -- the suite was killed at the budget; the test " \
+               "it was in is the last line of each:"
       hung.sort_by { |v| [v.mutant.file, v.mutant.site.line] }
-          .each { |v| out.puts "  #{v.mutant.site}" }
+          .each { |v|
+            out.puts "  #{v.mutant.site}"
+            v.tail.lines.each { |l| out.puts "      #{l.rstrip}" }
+          }
     end
 
     return survivors.empty? && hung.empty?
