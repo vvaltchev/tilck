@@ -69,7 +69,12 @@ module Exhaustive
                            origin: cand.origin, mark: cand.mark)
           end
 
-          before = Bridge.snapshot
+          # The world before the command is the world just built. The
+          # self-test asserts that a built world reads back exactly as
+          # built, so reading it back here would only pay for a scan.
+          before = Bridge::Snapshot.new(registry: Bridge.registry,
+                                        world: keys_of(c.world),
+                                        inv: Bridge.inv, misplaced: [])
           run_main(c.argv)
           after = Bridge.snapshot
 
@@ -80,6 +85,15 @@ module Exhaustive
         end
       end
     end
+  end
+
+  # The candidates of a world as the model's keys: what the tree built
+  # from them reads back as.
+  def keys_of(cands)
+    return cands.map { |x|
+      Model::Key.new(name: x.name, ver: x.ver, coords: x.coords,
+                     record: x.record, origin: x.origin, mark: x.mark)
+    }.to_set
   end
 
   def run_main(argv)
@@ -123,11 +137,7 @@ module Exhaustive
 
           one = Bridge.snapshot
           two = Bridge.snapshot
-          want = c.world.map { |x|
-            Model::Key.new(name: x.name, ver: x.ver, coords: x.coords,
-                           record: x.record, origin: x.origin,
-                           mark: x.mark)
-          }.to_set
+          want = keys_of(c.world)
 
           if one.world != two.world
             problems << "two snapshots of one tree differ"
