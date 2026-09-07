@@ -212,6 +212,27 @@ class TestUninstallALL < Minitest::Test
     end
   end
 
+  # The exclusion is for ALL, and only for ALL: a compiler asked for by
+  # name goes without -f. Found as a surviving mutant -- `all_pkgs &&
+  # !force` read as `!force` and no test noticed.
+  def test_a_named_compiler_is_removed_without_force
+    with_fake_tc do
+      with_stubbed_externals do
+        cc = FakePackage.new("gcc-i386-musl", on_host: true,
+                             is_compiler: true, host_tier: :portable,
+                             arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(cc)
+        assert_equal 0, run_cli("-s", "gcc-i386-musl").first
+        pkgmgr.refresh
+        refute_nil cc.find_install(cc.default_ver)
+
+        assert_equal 0, run_cli("-u", "gcc-i386-musl").first
+        pkgmgr.refresh
+        assert_nil cc.find_install(cc.default_ver), "a named compiler stayed"
+      end
+    end
+  end
+
   def test_uninstall_all_excludes_compilers_without_force
     with_fake_tc do |tc|
       with_stubbed_externals do
