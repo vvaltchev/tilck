@@ -24,8 +24,8 @@ LIBSECCOMP_SOURCE = SourceRef.new(
 # C. libglycin/meson.build requires libseccomp >= 2.5.0 on Linux and
 # will not configure without it.
 #
-# Pure C with no dependencies of its own, so it is an ordinary leaf
-# here even though what sits on top of it is not.
+# Pure C with no library dependencies of its own; what it needs is a
+# build tool, gperf, to generate its syscall table with.
 #
 class HostLibseccompPackage < Package
 
@@ -40,7 +40,7 @@ class HostLibseccompPackage < Package
       is_compiler: false,
       host_tier: :stack,
       arch_list: ALL_HOST_ARCHS.values,
-      dep_list: [Dep('host_gcc', true)],
+      dep_list: [Dep('host_gcc', true), Dep('host_gperf', true)],
       default: false,
     )
   end
