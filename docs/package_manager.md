@@ -211,7 +211,10 @@ asked to keep it.
 
 A composed sysroot sits beside `pkgs/`, not inside it: a sysroot is a
 *view* over installed packages rather than an installation, and putting
-packages one level down means no scanner has to be taught to skip it.
+packages one level down means no scanner has to be taught to skip it. It
+is the stack's merged prefix, programs included: `sysroot/usr/bin` holds
+the QEMU built in that stack, the gcc that names it and the binutils it
+builds through, so one PATH entry is the whole stack.
 
 #### The host world runs on x86_64 Linux only
 

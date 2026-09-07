@@ -167,7 +167,11 @@ class HostGccPackage < Package
 
   # The stack's compiler runtime comes from the gcc that NAMES the
   # stack, so composing gcc-11.5.0 grafts 11.5.0's libstdc++ even when
-  # another gcc is the default.
+  # another gcc is the default. Its binaries go in beside, at usr/bin:
+  # gcc is a :distro package and lives outside the stack, but it is
+  # the stack's compiler, and a sysroot is the stack's merged prefix.
+  # A link is enough -- gcc finds its own pieces through the binary's
+  # real location, not the name it was invoked by.
   def sysroot_fragments(gcc_ver = nil)
 
     gcc_ver ||= default_ver
@@ -175,7 +179,9 @@ class HostGccPackage < Package
     return [] if inst.nil?
 
     lib64 = inst.path / "install" / "lib64"
-    return lib64.directory? ? [[lib64, "usr/lib"]] : []
+    frags = [[inst.path / "install" / "bin", "usr/bin"]]
+    frags << [lib64, "usr/lib"] if lib64.directory?
+    return frags
   end
 
   def expected_files(ver = nil) = [

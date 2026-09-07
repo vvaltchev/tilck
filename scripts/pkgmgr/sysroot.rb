@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 #
-# The composed composed sysroot: one directory tree that every portable
-# package's headers and libraries appear in, built as a symlink farm
-# over the packages' own install directories.
+# The composed sysroot: one directory tree that every portable
+# package's headers, libraries and programs appear in -- the stack's
+# merged prefix, QEMU and the compiler included -- built as a symlink
+# farm over the packages' own install directories.
 #
 # Packages keep installing into <pkg>/<ver>/install/ the way every
 # other package in the tree does, so versions stay independently
