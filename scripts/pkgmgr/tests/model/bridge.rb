@@ -51,7 +51,7 @@ module Bridge
     return Model::Shape.new(
       name: pkg.name,
       kind: kind,
-      versions: [pkg.default_ver],
+      versions: pkg.installable_versions,
       default_ver: pkg.default_ver,
       deps: pkg.dep_list.map { |d| [d.name, d.ver] },
       arch_list: arch_names(pkg.arch_list),

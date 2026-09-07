@@ -1154,3 +1154,70 @@ class TestMainPlanShowsTheFlatList < Minitest::Test
     end
   end
 end
+
+# The same rule, in the implementation, at the door where the package
+# name is resolved: a version is one the package declares, exactly or
+# by a series that picks one, or the request is refused with the list.
+class TestMainResolvesVersions < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def choosy
+    q = FakePackage.new("choosy")
+    q.define_singleton_method(:installable_versions) {
+      [Ver("6.2.0"), Ver("7.2.0")]
+    }
+    q
+  end
+
+  def test_a_series_installs_the_one_release_it_has
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(choosy)
+        rc, out = run_cli("-s", "choosy:6", "-d", "--ascii")
+        assert_equal 0, rc, out
+        assert_match(/^choosy$/, out)
+        refute_match(/not a version/, out)
+      end
+    end
+  end
+
+  def test_a_version_nobody_offers_is_refused_with_the_list
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(choosy)
+        rc, out = run_cli("-s", "choosy:9.9.9", "-d")
+        assert_equal 1, rc
+        assert_match(/choosy:9.9.9 is not a version choosy can install/, out)
+        assert_match(/Available: 6.2.0, 7.2.0/, out)
+        refute_match(/Install plan/, out)
+      end
+    end
+  end
+
+  def test_a_package_declaring_nothing_takes_the_version_as_written
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("plain"))
+        rc, out = run_cli("-s", "plain:3.3.3")
+        assert_equal 0, rc, out
+        assert_match(/Install plain version: 3.3.3/, out)
+      end
+    end
+  end
+
+  def test_uninstall_resolves_the_same_way
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(choosy)
+        rc, out = run_cli("-u", "choosy:9.9.9")
+        assert_equal 1, rc
+        assert_match(/not a version choosy can install/, out)
+      end
+    end
+  end
+end

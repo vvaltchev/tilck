@@ -144,6 +144,36 @@ module Main
     return nil
   end
 
+  # A requested version, against what the package can install.
+  #
+  # Most packages install one version, their default, and a request
+  # for another is taken as written: nothing here knows the answer
+  # before the download does. The few that offer a choice declare it
+  # in installable_versions, and there a request has to name one of
+  # them -- exactly, or by a series that picks one: `host_qemu:6` is
+  # 6.2.0. Anything else is refused here, at the door.
+  #
+  # `host_qemu:6` used to pass this point as the version "6", choose
+  # the right compiler out of its series, build that compiler and the
+  # whole GTK stack beneath it, and then ask for qemu-6.tar.xz.
+  #
+  # Returns the version, nil for "the default", or :refused, having
+  # said why.
+  def resolve_version(name, ver_str)
+    return nil if ver_str.nil?
+
+    ver = Ver(ver_str)
+    choices = pkgmgr.get(name).installable_versions
+    return ver if choices.empty? || choices.include?(ver)
+
+    hits = choices.select { |v| v.to_s.start_with?("#{ver_str}.") }
+    return hits.first if hits.length == 1
+
+    error "#{name}:#{ver_str} is not a version #{name} can install"
+    error "Available: #{choices.join(', ')}"
+    return :refused
+  end
+
   # -----------------------------------------------------------
   # Dependency tree renderer — used by the install plan display
   # and by the --deps introspection mode.
@@ -1170,6 +1200,8 @@ module Main
         error "Package #{pkg.name} does not support reconfiguration"
         return 1
       end
+      v = resolve_version(name, v)
+      return 1 if v == :refused
 
       # -C was the one destructive mode that ignored -d. It runs the
       # package's own configuration tool and rewrites its .config, so
@@ -1181,7 +1213,7 @@ module Main
         return 0
       end
 
-      return pkg.configure(Ver(v)) ? 0 : 1
+      return pkg.configure(v) ? 0 : 1
     end
 
     if !options[:install].blank?
@@ -1211,7 +1243,9 @@ module Main
             raw, ver = s.split(":")
             name = resolve_pkg_name(raw)
             return 1 if !name
-            [name, Ver(ver)]
+            ver = resolve_version(name, ver)
+            return 1 if ver == :refused
+            [name, ver]
           }
 
           # Validate arch AND board support for each explicitly
@@ -1411,6 +1445,8 @@ module Main
         else
           name = resolve_pkg_name(raw)
           return 1 if !name
+          v = resolve_version(name, v) if v != 'ALL'
+          return 1 if v == :refused
         end
         pkgmgr.uninstall(
           name,

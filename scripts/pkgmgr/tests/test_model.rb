@@ -338,3 +338,46 @@ class TestModel < Minitest::Test
     assert_equal :default, Model.parse([]).mode
   end
 end
+
+# A version is resolved against what the package declares, or refused
+# at the door -- so that `host_qemu:6` means 6.2.0 rather than a
+# two-hour build of the compiler for a tarball that does not exist.
+class TestModelResolvesVersions < Minitest::Test
+
+  include TestHelper
+
+  def reg(*shapes) = Model::Registry.new(shapes)
+  def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                           default_stack: Ver("14.4.0"),
+                           host_os: "linux", host_arch: "x86_64")
+
+  def install(r, argv)
+    Model.step(r, Set.new, Model.parse(argv), ctx)
+  end
+
+  def test_a_series_names_the_one_release_it_has
+    r = reg(Model::Shape.make("q", :stack, versions: %w[6.2.0 7.2.0]))
+    o = install(r, %w[-s q:6])
+    assert_equal 0, o.rc, o.inspect
+    assert_equal [Ver("6.2.0")], o.world.map(&:ver)
+  end
+
+  def test_a_version_nobody_offers_is_refused_and_nothing_changes
+    r = reg(Model::Shape.make("q", :stack, versions: %w[6.2.0 7.2.0]))
+    o = install(r, %w[-s q:9.9.9])
+    assert_equal 1, o.rc
+    assert_empty o.world
+  end
+
+  def test_a_series_with_two_releases_is_refused
+    r = reg(Model::Shape.make("q", :stack, versions: %w[6.1.0 6.2.0]))
+    assert_equal 1, install(r, %w[-s q:6]).rc
+  end
+
+  def test_a_package_declaring_nothing_takes_the_version_as_written
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    o = install(r, %w[-s t:3.3.3])
+    assert_equal 0, o.rc, o.inspect
+    assert_equal [Ver("3.3.3")], o.world.map(&:ver)
+  end
+end

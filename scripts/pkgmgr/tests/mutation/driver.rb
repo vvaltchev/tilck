@@ -60,7 +60,7 @@ module Mutation
       build_dep_graph clean get_installed_compilers
     ],
     "main.rb" => %w[expand_install_all select_host_stack requested_arch
-                    unsupported_reason],
+                    unsupported_reason resolve_version],
   }.freeze
 
   Mutant = Struct.new(:site, :file) do
