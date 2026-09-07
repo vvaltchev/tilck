@@ -208,6 +208,156 @@ class TestModel < Minitest::Test
     assert_equal pinned, go(r, pinned, "--upgrade", inv).world
   end
 
+  # --- marks: manual and auto -------------------------------------------
+
+  # -s marks what it was asked for manual and what it brought in auto;
+  # asking for the dependency later makes it manual with nothing built.
+  def test_install_marks_the_roots_manual_and_the_rest_auto
+    r = reg(Model::Shape.make("a", :target, deps: [["b", nil]],
+                              arch_list: %w[i386]),
+            Model::Shape.make("b", :target, arch_list: %w[i386]))
+
+    o = go(r, Model.world, "-s a", inv)
+    assert_equal Model.world(k("a", "1.0.0", tgt(I386)),
+                             k("b", "1.0.0", tgt(I386), mark: :auto)),
+                 o.world
+
+    again = go(r, o.world, "-s b", inv)
+    assert_equal "already installed", again.out
+    assert_equal Model.world(k("a", "1.0.0", tgt(I386)),
+                             k("b", "1.0.0", tgt(I386))), again.world
+
+    dry = go(r, o.world, "-s b -d", inv)
+    assert_equal o.world, dry.world
+  end
+
+  # The version a request means is the bound one: asked for beside
+  # the root that pins it, the dependency is claimed at the pin.
+  def test_asking_for_a_pinned_dependency_claims_the_pinned_version
+    r = reg(Model::Shape.make("host_a", :distro,
+                              deps: [["host_x", "2.0.0"]]),
+            Model::Shape.make("host_x", :distro,
+                              versions: %w[1.0.0 2.0.0]))
+    w = Model.world(k("host_x", "2.0.0", distro, origin: :pinned,
+                                                 mark: :auto))
+    o = go(r, w, "-s host_a host_x", inv)
+    assert_equal Model.world(k("host_a", "1.0.0", distro),
+                             k("host_x", "2.0.0", distro,
+                               origin: :pinned)), o.world
+  end
+
+  # --upgrade: the new version is the user's exactly as much as the
+  # old one was.
+  def test_upgrade_keeps_the_mark
+    r = reg(Model::Shape.make("multi", :target, versions: %w[2.0.0 1.0.0],
+                              arch_list: %w[i386]))
+    w = Model.world(k("multi", "1.0.0", tgt(I386), mark: :auto))
+    assert_equal Model.world(k("multi", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "2.0.0", tgt(I386), mark: :auto)),
+                 go(r, w, "--upgrade", inv).world
+  end
+
+  # The default install claims the default set -- one already here as
+  # a dependency becomes the user's -- and upgrades what is beside it
+  # the way --upgrade does, mark included.
+  def test_the_default_install_claims_the_defaults_and_upgrades_the_rest
+    r = reg(Model::Shape.make("dflt", :target, default: true,
+                              arch_list: %w[i386]),
+            Model::Shape.make("multi", :target, versions: %w[2.0.0 1.0.0],
+                              arch_list: %w[i386]))
+    w = Model.world(k("dflt", "1.0.0", tgt(I386), mark: :auto),
+                    k("multi", "1.0.0", tgt(I386), mark: :auto))
+
+    o = go(r, w, "", inv)
+    assert_equal Model.world(k("dflt", "1.0.0", tgt(I386)),
+                             k("multi", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "2.0.0", tgt(I386), mark: :auto)),
+                 o.world
+
+    # ...and --upgrade alone claims nothing.
+    assert_equal Model.world(k("dflt", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "2.0.0", tgt(I386), mark: :auto)),
+                 go(r, w, "--upgrade", inv).world
+  end
+
+  # --mark-* selects what -u selects: -a narrows to an arch, ALL
+  # leaves the compilers alone unless -f, ruby is never touched, and
+  # -d changes nothing.
+  def test_mark_follows_the_selection_of_uninstall
+    r = reg(Model::Shape.make("zlib", :target, arch_list: %w[i386 riscv64]),
+            Model::Shape.make("gcc-i386-musl", :cross_cc, target_arch: "i386"),
+            Model::Shape.make("ruby", :distro))
+    cc = Coords.new(HOST_OS_ARCH, nil, nil)
+    w = Model.world(k("zlib", "1.0.0", tgt(I386)),
+                    k("zlib", "1.0.0", tgt(RV)),
+                    k("gcc-i386-musl", "13.3.0", cc),
+                    k("ruby", "3.4.7", distro))
+
+    o = go(r, w, "--mark-auto zlib -a riscv64", inv)
+    assert_equal Model.world(k("zlib", "1.0.0", tgt(I386)),
+                             k("zlib", "1.0.0", tgt(RV), mark: :auto),
+                             k("gcc-i386-musl", "13.3.0", cc),
+                             k("ruby", "3.4.7", distro)), o.world
+
+    plain = go(r, w, "--mark-auto ALL -a ALL", inv)
+    assert_equal Model.world(k("zlib", "1.0.0", tgt(I386), mark: :auto),
+                             k("zlib", "1.0.0", tgt(RV), mark: :auto),
+                             k("gcc-i386-musl", "13.3.0", cc),
+                             k("ruby", "3.4.7", distro)), plain.world
+
+    forced = go(r, w, "--mark-auto ALL -a ALL -f", inv)
+    assert_equal Model.world(k("zlib", "1.0.0", tgt(I386), mark: :auto),
+                             k("zlib", "1.0.0", tgt(RV), mark: :auto),
+                             k("gcc-i386-musl", "13.3.0", cc, mark: :auto),
+                             k("ruby", "3.4.7", distro)), forced.world
+
+    assert_equal w, go(r, w, "--mark-auto ALL -a ALL -f -d", inv).world
+    assert_equal 1, go(r, w, "--mark-auto nothing", inv).rc
+  end
+
+  # --autoremove keeps the manual installs and what they need, at the
+  # version they need it; an auto install two manual ones could mean
+  # is kept both ways.
+  def test_autoremove_keeps_the_manual_installs_and_what_they_need
+    r = reg(Model::Shape.make("a", :target, deps: [["b", nil]],
+                              arch_list: %w[i386]),
+            Model::Shape.make("b", :target, arch_list: %w[i386]),
+            Model::Shape.make("c", :target, deps: [["d", nil]],
+                              arch_list: %w[i386]),
+            Model::Shape.make("d", :target, arch_list: %w[i386]))
+    w = Model.world(k("a", "1.0.0", tgt(I386)),
+                    k("b", "1.0.0", tgt(I386), mark: :auto),
+                    k("c", "1.0.0", tgt(I386), mark: :auto),
+                    k("d", "1.0.0", tgt(I386), mark: :auto))
+
+    o = go(r, w, "--autoremove", inv)
+    assert_equal Model.world(k("a", "1.0.0", tgt(I386)),
+                             k("b", "1.0.0", tgt(I386), mark: :auto)),
+                 o.world
+    assert_equal w, go(r, w, "--autoremove -d", inv).world
+    assert_equal "nothing to remove", go(r, o.world, "--autoremove", inv).out
+  end
+
+  def test_autoremove_keeps_every_version_a_dependency_could_mean
+    r = reg(Model::Shape.make("host_a", :distro, deps: [["host_x", nil]]),
+            Model::Shape.make("host_x", :distro, versions: %w[1.0.0 2.0.0]))
+    w = Model.world(k("host_a", "1.0.0", distro),
+                    k("host_x", "1.0.0", distro, mark: :auto),
+                    k("host_x", "2.0.0", distro, origin: :pinned,
+                                                 mark: :auto))
+    assert_equal w, go(r, w, "--autoremove", inv).world
+
+    pinned = reg(Model::Shape.make("host_a", :distro,
+                                   deps: [["host_x", "2.0.0"]]),
+                 Model::Shape.make("host_x", :distro,
+                                   versions: %w[1.0.0 2.0.0]))
+    assert_equal Model.world(k("host_a", "1.0.0", distro),
+                             k("host_x", "2.0.0", distro, origin: :pinned,
+                                                          mark: :auto)),
+                 go(pinned, w, "--autoremove", inv).world
+  end
+
   # A version conflict installs nothing -- and with -f, removes nothing.
   # SPEC: the conflict is found before the tree is touched.
   def test_a_conflict_touches_nothing_even_with_force
@@ -247,7 +397,7 @@ class TestModel < Minitest::Test
     o = go(r, Model.world, "-s host_a", inv)
     assert_equal Model.world(k("host_a", "1.0.0", distro),
                              k("host_shared", "2.0.0", distro,
-                               origin: :pinned)),
+                               origin: :pinned, mark: :auto)),
                  o.world
   end
 

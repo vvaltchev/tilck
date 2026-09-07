@@ -66,7 +66,7 @@ module Exhaustive
           for cand in c.world do
             h.fake_install(by_name.fetch(cand.name), cand.ver,
                            at: cand.coords, record: cand.record,
-                           origin: cand.origin)
+                           origin: cand.origin, mark: cand.mark)
           end
 
           before = Bridge.snapshot
@@ -118,14 +118,15 @@ module Exhaustive
           c.world.each { |cand|
             h.fake_install(by_name.fetch(cand.name), cand.ver,
                            at: cand.coords, record: cand.record,
-                           origin: cand.origin)
+                           origin: cand.origin, mark: cand.mark)
           }
 
           one = Bridge.snapshot
           two = Bridge.snapshot
           want = c.world.map { |x|
             Model::Key.new(name: x.name, ver: x.ver, coords: x.coords,
-                           record: x.record, origin: x.origin)
+                           record: x.record, origin: x.origin,
+                           mark: x.mark)
           }.to_set
 
           if one.world != two.world

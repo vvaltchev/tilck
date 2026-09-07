@@ -44,11 +44,13 @@ module Model
 
   # One installation, entire. `record` is what .build_inputs says about
   # it (:ok built from the sources we have, :changed built from
-  # something else, :missing no record); `origin` is what
-  # .install_origin says (:default installed as the default version,
-  # :pinned asked for by name).
-  Key = Data.define(:name, :ver, :coords, :record, :origin) do
-    def to_s = "#{name}@#{ver} #{coords} #{record}/#{origin}"
+  # something else, :missing no record); `origin` and `mark` are what
+  # .install_origin says: how the version was chosen (:default
+  # installed as the default version, :pinned asked for by name), and
+  # why it is here (:manual asked for by name, :auto pulled in as a
+  # dependency -- what --autoremove may take).
+  Key = Data.define(:name, :ver, :coords, :record, :origin, :mark) do
+    def to_s = "#{name}@#{ver} #{coords} #{record}/#{origin}/#{mark}"
     def same_install?(o) = name == o.name && ver == o.ver && coords == o.coords
   end
 
@@ -376,7 +378,7 @@ module Model
       [n, bound[n], origin]
     }
 
-    return [entries, scope]
+    return [entries, scope, bound]
   end
 
   # --- transitions ----------------------------------------------------------
@@ -411,13 +413,20 @@ module Model
     return [out, nil]
   end
 
-  def install(registry, world, req, scope)
+  # `claimed` names the roots the request speaks for: what -s was
+  # given, or the default set. Those are the user's -- :manual when
+  # installed, and re-marked :manual when already here as somebody's
+  # dependency. A root that is not claimed is an upgrade, and inherits
+  # the mark of the default install it replaces. Everything the plan
+  # brings in besides is :auto.
+  def install(registry, world, req, scope, claimed: nil)
 
     roots, refused = resolve_versions(registry,
                                       expand_all(registry, req.targets,
                                                  scope))
     return Outcome.new(1, world, refused) if refused
     names = roots.map(&:first)
+    claimed ||= names                  # ALL expanded: every one of them
 
     if (bad = names.find { |n| !registry.key?(n) })
       return Outcome.new(1, world, "Package not found: #{bad}")
@@ -436,8 +445,9 @@ module Model
 
     # SPEC: a version conflict is found before -f removes anything.
     begin
-      entries, scope = plan(registry, force_removed(registry, world, req,
-                                                    scope), roots, scope)
+      entries, scope, bound = plan(registry,
+                                   force_removed(registry, world, req, scope),
+                                   roots, scope)
     rescue Conflict => e
       return Outcome.new(1, world, "Version conflict: #{e.message}")
     end
@@ -452,14 +462,33 @@ module Model
 
     return Outcome.new(0, world, "dry run") if req.dry
 
+    # SPEC: a package asked for by name is the user's from now on, even
+    # when it was already here as somebody's dependency -- at the
+    # version the request means, which a pin beside it may have moved.
+    for name, _ in roots do
+      next if !claimed.include?(name)
+      v = bound[name]
+      here = keys_of(world, name).select { |k|
+        k.ver == v && k.mark == :auto &&
+          install_coords(registry[name], scope).include?(k.coords)
+      }
+      world = remarked(world, here, :manual) if !here.empty?
+    end
+
     world = force_removed(registry, world, req, scope) if req.force
 
     if entries.empty?
       return Outcome.new(0, world, "already installed")
     end
 
+    asked = roots.map(&:first).to_set
     for name, ver, origin in entries do
-      world = with_installed(registry, world, name, ver, origin, scope)
+      mark = if claimed.include?(name) then :manual
+             elsif asked.include?(name) then inherited_mark(world, name)
+             else :auto
+             end
+      world = with_installed(registry, world, name, ver, origin, scope,
+                             mark: mark)
     end
 
     return Outcome.new(0, world, "installed")
@@ -486,15 +515,26 @@ module Model
     return out
   end
 
-  def with_installed(registry, world, name, ver, origin, scope)
+  def with_installed(registry, world, name, ver, origin, scope,
+                     mark: :manual)
     s = registry[name]
     out = world.dup
     for c in install_coords(s, scope) do
       out = out.reject { |k| k.name == name && k.ver == ver && k.coords == c }
       out << Key.new(name: name, ver: ver, coords: c, record: :ok,
-                     origin: origin)
+                     origin: origin, mark: mark)
     end
     return out.to_set
+  end
+
+  # The same key, marked. Every install of the name at the version and
+  # coordinates, since a key stands for one of them.
+  def remarked(world, keys, mark)
+    fresh = keys.map { |k|
+      Key.new(name: k.name, ver: k.ver, coords: k.coords, record: k.record,
+              origin: k.origin, mark: mark)
+    }
+    return (world - keys + fresh).to_set
   end
 
   # What `-u` names. Total: a subset of the world, always.
@@ -502,6 +542,7 @@ module Model
 
     name, ver = req.targets.first
     return select_all(registry, world, req, scope) if name == :all
+    return Set.new if NEVER_REMOVE.include?(name)   # by name, as for ALL
 
     shape = registry[name]
 
@@ -615,6 +656,62 @@ module Model
     return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
   end
 
+  # SPEC: --mark-manual / --mark-auto mark exactly what -u would remove
+  # -- the same selection, the same modifiers -- and -d marks nothing.
+  def mark(registry, world, req, scope, mark)
+    name, _ = req.targets.first
+    if name != :all && !registry.key?(name) && keys_of(world, name).empty?
+      return Outcome.new(1, world, "Package not found: #{name}")
+    end
+    targets, refused = resolve_versions(registry, req.targets)
+    return Outcome.new(1, world, refused) if refused
+    req = Request.new(mode: req.mode, targets: targets, force: req.force,
+                      dry: req.dry, arch: req.arch, cc: req.cc,
+                      stack: req.stack)
+    picked = select(registry, world, req, scope)
+    return Outcome.new(0, world, "dry run") if req.dry
+    return Outcome.new(0, remarked(world, picked, mark), "marked")
+  end
+
+  # What one install needs: each dependency at the version it was built
+  # against -- the pin, else the one version present, else the default;
+  # every version present when there are two, since the one meant is
+  # not knowable -- at the coordinates it is found at from the
+  # install's own context. deps_of includes the cross compiler a target
+  # is built by.
+  def needed_by(registry, world, key, scope)
+    sc = scope_at(key, scope)
+    return [] if registry[key.name].nil?
+    registry.deps_of(key.name, sc).flat_map { |d, pin|
+      next [] if registry[d].nil?
+      present = keys_of(world, d).map(&:ver).uniq
+      vers = if pin then [pin]
+             elsif present.length > 1 then present
+             else [present.first || default_of(registry, d, sc)]
+             end
+      at = install_coords(registry[d], sc)
+      world.select { |x| x.name == d && vers.include?(x.ver) &&
+                         at.include?(x.coords) }
+    }
+  end
+
+  # SPEC: --autoremove removes every :auto install that nothing kept
+  # needs, kept being the :manual installs and, transitively, what they
+  # need. -d removes nothing.
+  def autoremove(registry, world, req, scope)
+    kept = world.select { |k| k.mark == :manual }.to_set
+    queue = kept.to_a
+    while (k = queue.shift)
+      for d in needed_by(registry, world, k, scope) do
+        queue << d if kept.add?(d)
+      end
+    end
+    gone = world.reject { |k| kept.include?(k) }
+    return Outcome.new(0, world, "nothing to remove") if gone.empty?
+    return Outcome.new(0, world, "dry run") if req.dry
+    return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
+  end
+
   def clean(registry, world, req, scope)
     all = Request.new(mode: :uninstall, targets: [[:all, :all]],
                       force: req.force, dry: req.dry, arch: :all, cc: nil,
@@ -644,7 +741,19 @@ module Model
     return Outcome.new(0, world, "up to date") if roots.empty?
     plain = Request.new(mode: :install, targets: roots, force: false,
                         dry: req.dry, arch: nil, cc: nil, stack: nil)
-    return install(registry, world, plain, scope)
+    # An upgrade claims nothing: the new version is the user's exactly
+    # as much as the old was.
+    return install(registry, world, plain, scope, claimed: [])
+  end
+
+  # The mark an upgrade inherits: :manual if any default install of
+  # the name is the user's, since that is what the new version
+  # replaces.
+  def inherited_mark(world, name)
+    manual = keys_of(world, name).any? { |k|
+      k.origin == :default && k.mark == :manual
+    }
+    return manual ? :manual : :auto
   end
 
   # SPEC: every install whose record does not read :ok is rebuilt
@@ -709,10 +818,11 @@ module Model
       end
       for name, ver, origin in entries do
         next if name == k.name
-        world = with_installed(registry, world, name, ver, origin, sc)
+        world = with_installed(registry, world, name, ver, origin, sc,
+                               mark: :auto)
       end
       fresh = Key.new(name: k.name, ver: k.ver, coords: k.coords,
-                      record: :ok, origin: k.origin)
+                      record: :ok, origin: k.origin, mark: k.mark)
       world = (world - [k] + [fresh]).to_set
     end
 
@@ -725,12 +835,15 @@ module Model
       s.default && supported?(s, scope, registry)
     }
                     .map(&:name)
+    # The default set is claimed -- being a default is being wanted --
+    # and the upgrades beside it are upgrades.
+    claimed = names.dup
     names |= upgradable(registry, world, scope)
     return Outcome.new(0, world, "nothing to do") if names.empty?
     plain = Request.new(mode: :install, targets: names.map { |n| [n, nil] },
                         force: false, dry: req.dry, arch: nil, cc: nil,
                         stack: nil)
-    return install(registry, world, plain, scope)
+    return install(registry, world, plain, scope, claimed: claimed)
   end
 
   # Nothing the model knows is configurable, so -C never changes the
@@ -801,6 +914,9 @@ module Model
     when :uninstall then uninstall(registry, world, req, sc)
     when :upgrade   then upgrade(registry, world, req, sc)
     when :rebuild   then rebuild(registry, world, req, sc)
+    when :mark_manual then mark(registry, world, req, sc, :manual)
+    when :mark_auto   then mark(registry, world, req, sc, :auto)
+    when :autoremove  then autoremove(registry, world, req, sc)
     when :clean     then clean(registry, world, req, sc)
     when :configure then configure(registry, world, req, sc)
     when :default   then default_install(registry, world, req, sc)
@@ -854,14 +970,21 @@ module Model
       [n == "ALL" ? :all : n, v.nil? ? nil : (v == "ALL" ? :all : Ver(v))]
     }
 
+    # A mode that names packages takes every bare word that follows:
+    # `-s a b` is two targets, as main.rb's get_multiple_args reads it.
+    named = ->() {
+      targets << split.call(a.shift)
+      targets << split.call(a.shift) while a.first && !a.first.start_with?("-")
+    }
+
     while !a.empty?
       t = a.shift
       case t
-      when "-s" then mode = :install;   targets << split.call(a.shift)
-      when "-u" then mode = :uninstall; targets << split.call(a.shift)
+      when "-s" then mode = :install;   named.call
+      when "-u" then mode = :uninstall; named.call
       when "-S" then mode = :install;   targets << ["gcc-#{a.shift}-musl", nil]
       when "-U" then mode = :uninstall; targets << ["gcc-#{a.shift}-musl", nil]
-      when "-C" then mode = :configure; targets << split.call(a.shift)
+      when "-C" then mode = :configure; named.call
       when "-f" then force = true
       when "-d" then dry = true
       when "-a"
@@ -873,6 +996,9 @@ module Model
       when "-H" then stack = Coords.parse_stack(a.shift)
       when "--upgrade"           then mode = :upgrade
       when "--rebuild"           then mode = :rebuild
+      when "--autoremove"        then mode = :autoremove
+      when "--mark-manual"       then mode = :mark_manual; named.call
+      when "--mark-auto"         then mode = :mark_auto;   named.call
       when "--clean"             then mode = :clean
       when "-l"                  then mode = :list
       when "--check-for-updates" then mode = :check_updates
@@ -891,9 +1017,9 @@ module Model
 
   # --- worlds ---------------------------------------------------------------
 
-  def key(name, ver, coords, record: :ok, origin: :default)
+  def key(name, ver, coords, record: :ok, origin: :default, mark: :manual)
     Key.new(name: name, ver: Ver(ver), coords: coords, record: record,
-            origin: origin)
+            origin: origin, mark: mark)
   end
 
   def world(*keys) = keys.to_set

@@ -72,6 +72,13 @@ The package manager handles three categories of packages:
 ./scripts/build_toolchain -s host_ncurses:6.4
 ./scripts/build_toolchain -u host_ncurses:6.4
 
+# Remove the installs that came in as dependencies and that nothing still
+# installed needs (like apt); mark an install as asked for by name, or not,
+# with the modifiers -u takes
+./scripts/build_toolchain --autoremove
+./scripts/build_toolchain --mark-manual host_glib2
+./scripts/build_toolchain --mark-auto host_qemu:8.2.0 -c 12.5.0
+
 # Upgrade packages after a version bump in one of the version files
 ./scripts/build_toolchain --upgrade
 
@@ -527,6 +534,32 @@ are indistinguishable from the directory tree alone — both are just
 `<pkg>/<ver>/` — so each install records which it was in a hidden
 `.install_origin` file. Installs predating that file read as default, which is
 what they were: naming a version at install time is newer than they are.
+
+## Manual and automatic installs
+
+The same file records a second thing, as apt does: whether the install was
+asked for by name (`manual`) or came in as somebody's dependency (`auto`).
+`-s host_qemu` marks qemu manual and the forty packages it pulls in auto;
+`-s host_glib2` afterwards marks glib2 manual without building anything,
+because a package asked for by name is the user's from then on. `--upgrade`
+and `--rebuild` give the new install the mark of the one it replaces; a
+one-word record predates the mark and reads as manual, which every install
+was until there was a way to say otherwise.
+
+`--autoremove` removes every auto install that nothing kept needs — kept
+being the manual installs and, transitively, what they need, each
+dependency at the version it was built against (`.built_against`, else the
+one version present, else the default; every version present when there are
+two and no record says which). Dependents go before their dependencies, and
+`-d` lists without removing. So `-u host_qemu:8.2.0` followed by
+`--autoremove` takes the QEMU and then whatever only that QEMU needed,
+leaving what another QEMU or the user still wants.
+
+`--mark-manual PKG[:VER]` and `--mark-auto PKG[:VER]` move an install from
+one side to the other. They select exactly what `-u` would with the same
+arguments — the same `-a`, `-c`, version and `ALL` rules, the cross
+compilers left out of `ALL` unless `-f` — and `-d` shows the selection
+without writing it.
 
 CMake detects stale packages at configure time via `--check-for-updates` and
 fails the build with a clear message telling the user to run `--upgrade`.

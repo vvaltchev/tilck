@@ -143,9 +143,10 @@ module Exhaustive
   end
 
   # One installation that could exist: what fake_install needs.
-  Candidate = Struct.new(:name, :ver, :coords, :record, :origin) do
+  Candidate = Struct.new(:name, :ver, :coords, :record, :origin,
+                         :mark) do
     def same_place?(o) = name == o.name && ver == o.ver && coords == o.coords
-    def to_s = "#{name}@#{ver} #{coords} #{record}/#{origin}"
+    def to_s = "#{name}@#{ver} #{coords} #{record}/#{origin}/#{mark}"
   end
 
   # Each shape enumerates the axis it is about. A single-package shape
@@ -165,10 +166,13 @@ module Exhaustive
         origins = v == p.default_ver ? [:default] : [:default, :pinned]
         coords = narrow ? coords_for(p).first(1) : coords_for(p)
         records = narrow ? [:ok] : [:ok, :changed]
+        marks = [:manual, :auto]
         for c in coords do
           for r in records do
             for o in origins do
-              out << Candidate.new(p.name, v, c, r, o)
+              for m in marks do
+                out << Candidate.new(p.name, v, c, r, o, m)
+              end
             end
           end
         end
@@ -216,10 +220,16 @@ module Exhaustive
       vers = p.installable_versions.empty? ? [p.default_ver]
                                            : p.installable_versions
       lines << "-s #{n}" << "-s #{n} -f" << "-u #{n}" << "-u #{n}:ALL" \
-            << "-u #{n} -a riscv64" << "-u #{n} -a ALL" << "-C #{n}"
+            << "-u #{n} -a riscv64" << "-u #{n} -a ALL" << "-C #{n}" \
+            << "--mark-auto #{n}" << "--mark-manual #{n}" \
+            << "--mark-auto #{n} -a riscv64" << "--mark-auto #{n}:ALL"
       vers.each { |v|
-        lines << "-s #{n}:#{v}" << "-s #{n}:#{v} -f" << "-u #{n}:#{v}"
+        lines << "-s #{n}:#{v}" << "-s #{n}:#{v} -f" << "-u #{n}:#{v}" \
+              << "--mark-auto #{n}:#{v}"
       }
+      # The dependency asked for beside the root that pins it: the
+      # request means the pinned version, not the default.
+      p.dep_list.select(&:ver).each { |d| lines << "-s #{n} #{d.name}" }
       # A version the package does not offer, and a series alone.
       # Every package here declares its versions, so the first is
       # refused at the door and the second names the one release of
@@ -234,13 +244,14 @@ module Exhaustive
       end
       if p.on_host && p.host_tier == :stack
         lines << "-s #{n} -H #{STACK_B}" << "-u #{n} -c #{STACK_B}" \
-              << "-u #{n} -H #{STACK_B}"
+              << "-u #{n} -H #{STACK_B}" << "--mark-auto #{n} -c #{STACK_B}"
       end
     end
 
     lines << "-s ALL" << "-u ALL" << "-u ALL -f" << "-u ALL -a ALL" \
           << "-u ALL -c #{TestHelper::FAKE_GCC_VER}" << "--upgrade" \
-          << "--rebuild" << "--clean" << ""
+          << "--rebuild" << "--autoremove" << "--mark-auto ALL" \
+          << "--mark-manual ALL" << "--mark-auto ALL -f" << "--clean" << ""
 
     lines = lines.uniq
     lines += lines.map { |l| "#{l} -d".strip }

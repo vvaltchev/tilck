@@ -253,7 +253,8 @@ module TestHelper
   #            does not), :missing (none)
   #   origin:  :default or :pinned, what .install_origin says
   #
-  def fake_install(pkg, ver = nil, at: nil, record: :ok, origin: :default)
+  def fake_install(pkg, ver = nil, at: nil, record: :ok, origin: :default,
+                   mark: :manual)
 
     ver ||= pkg.default_ver
     dir = at ? pkg.pkg_dir_at(at) / pkg.ver_dirname(ver) : pkg.install_dir(ver)
@@ -271,7 +272,7 @@ module TestHelper
       end
     end
 
-    InstallOrigin.write(dir, origin == :default)
+    InstallOrigin.write(dir, origin == :default, mark == :manual)
     pkgmgr.refresh
 
     case record
@@ -530,7 +531,8 @@ module TestHelper
         InstallInfo.new(
           i.pkgname, i.compiler, i.on_host, i.arch, i.ver, i.path,
           i.pkg, i.broken, @fake_target_arch, @fake_libc,
-          default_install: i.default_install, coords: i.coords
+          default_install: i.default_install, manual: i.manual,
+          coords: i.coords
         )
       }
     end

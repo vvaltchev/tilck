@@ -698,7 +698,7 @@ class PackageManager
   #                        package. Changes over time. It might not be possible
   #                        to install older versions of the package that were
   #                        supported before
-  def install(pkg, ver = nil, default_install: nil)
+  def install(pkg, ver = nil, default_install: nil, manual: true)
 
     name = pkg.is_a?(String) ? pkg : pkg.name
     pkg = get_smart(pkg)
@@ -746,7 +746,7 @@ class PackageManager
       inst = pkg.find_install(ver)
 
       if inst
-        InstallOrigin.write(inst.path, default_install)
+        InstallOrigin.write(inst.path, default_install, manual)
         InstallDeps.write(inst.path, built_against(pkg, ver))
       end
 
@@ -1064,6 +1064,166 @@ class PackageManager
   # the whole closure and therefore the only place that can answer.
   def resolved_ver(name) = @resolved_versions&.[](name)
 
+  # Move installations between manual and auto, as apt-mark does.
+  #
+  # WHICH installations is -u's question, answered -u's way: the same
+  # selector, the same -a / -c / version modifiers, so that whatever
+  # `-u X:V -a A` would remove, `--mark-auto X:V -a A` marks. Returns
+  # how many were marked; says so when nothing matched, for the same
+  # reason uninstall does.
+  def mark(name, manual, dry, force, ver = nil, compiler = nil, arch = nil)
+
+    all_pkgs = name.eql?("ALL")
+    pkg = all_pkgs ? nil : get_smart(name)
+    install_list = pkg ? pkg.get_install_list
+                       : @known_installed + @found_installed
+
+    sel = uninstall_selector(pkg, name, install_list, ver: ver,
+                             compiler: compiler, arch: arch)
+    return 0 if sel.nil?
+
+    # ...and -u's two exceptions with it: what is never removed is not
+    # worth marking, and ALL leaves the cross compilers alone unless -f
+    # says otherwise, here as there.
+    picked = install_list.select { |e|
+      sel.matches?(e) &&
+        !NEVER_REMOVE.include?(e.pkgname) &&
+        !(all_pkgs && !force && (e.compiler? || e.pkg&.is_compiler))
+    }
+
+    if picked.empty?
+      warning "#{name}: nothing matched, so nothing was marked"
+      return 0
+    end
+
+    p = "[DRY RUN] " if dry
+    how = manual ? "manually installed" : "automatically installed"
+
+    for inst in picked do
+      puts "#{p}Mark #{inst.pkgname}:#{inst.ver} at #{inst.coords} as #{how}"
+      InstallOrigin.write(inst.path, inst.default_install, manual) if !dry
+    end
+
+    # mutation: equivalent -- rereading what a dry run did not write
+    refresh() if !dry
+    return picked.length
+  end
+
+  # The mark an upgrade inherits: manual if any default install of the
+  # package is the user's, since that is what the new version replaces.
+  def upgrade_inherits_manual?(pkg)
+    pkg.get_install_list.any? { |i|
+      i.default_install && !i.broken && i.manual
+    }
+  end
+
+  # A package asked for by name is the user's from now on, even when
+  # it was already here as somebody's dependency: `-s host_glib2`
+  # after `-s host_qemu` must leave glib2 standing when qemu goes. At
+  # the version the plan bound it to -- what was asked for, or what a
+  # pin beside it decided -- so only after resolve_install_plan.
+  def mark_requested_manual(names, dry)
+
+    for name in names do
+      pkg = get(name)
+      inst = pkg.find_install(resolved_ver(name))
+      next if inst.nil? || inst.manual
+
+      info "#{dry ? 'Would set' : 'Set'} #{name}:#{inst.ver} to " \
+           "manually installed"
+      InstallOrigin.write(inst.path, inst.default_install, true) if !dry
+    end
+
+    # mutation: equivalent -- rereading what a dry run did not write
+    refresh() if !dry
+  end
+
+  # The installations one install needs: its dependencies at the
+  # versions it was built against, each at the coordinates it would be
+  # found at from this install's own context, plus the cross compiler
+  # a target install is built by. A dependency whose version cannot be
+  # known -- no record, two present -- keeps every version present:
+  # --autoremove must never take the one that was meant.
+  def needs_of_install(pkg, inst)
+
+    pkg.with_install_context(inst) do
+      versions, ambiguous = deps_of_install(pkg, inst)
+
+      wanted = versions.flat_map { |n, v|
+        dep = get(n)
+        vers = ambiguous.include?(n) ? dep.get_install_list.map(&:ver).uniq
+                                     : [v]
+        vers.map { |dv| [n, dv, coords_of_install_for(dep, dv)] }
+      }
+
+      if pkg.target? && (a = pkg.default_arch) &&
+         (cc = get("gcc-#{a.name}-musl"))
+        wanted << [cc.name, cc.default_ver,
+                   coords_of_install_for(cc, cc.default_ver)]
+      end
+
+      wanted
+    end
+  end
+
+  # Where an install of `pkg` at `ver` would write, from the current
+  # context: force_remove's question, asked for a dependency.
+  def coords_of_install_for(pkg, ver)
+    pkg.install_archs(ver).map { |a|
+      a ? with_target_arch(a) { pkg.coords(ver) } : pkg.coords(ver)
+    }
+  end
+
+  # Remove every automatically installed installation that nothing
+  # kept still needs -- apt's autoremove. Kept: the manual installs,
+  # and whatever they need, and whatever that needs; a broken install
+  # is kept or taken by the same rule, since what it is worth is not
+  # what decides. Dependents go before their dependencies, and -d
+  # lists without removing.
+  def autoremove(dry)
+
+    installs = @packages.values.flat_map(&:get_install_list)
+    by_key = installs.group_by { |i| [i.pkgname, i.ver] }
+
+    needs = installs.to_h { |i|
+      [i, needs_of_install(i.pkg, i).flat_map { |n, v, coords|
+        (by_key[[n, v]] || []).select { |d| coords.include?(d.coords) }
+      }]
+    }
+
+    kept = installs.select(&:manual).to_set
+    queue = kept.to_a
+    while (i = queue.shift)
+      for d in needs[i] do
+        queue << d if kept.add?(d)
+      end
+    end
+
+    removable = installs.reject { |i| kept.include?(i) }
+    if removable.empty?
+      info "Nothing to remove: every automatic install is still needed"
+      return 0
+    end
+
+    # Dependents first: an install goes after everything that needs it.
+    ordered = []
+    pending = removable.dup
+    while !pending.empty?
+      free = pending.select { |i|
+        pending.none? { |o| needs[o].include?(i) }
+      }
+      free = [pending.first] if free.empty?    # a cycle: any order will do
+      ordered += free
+      pending -= free
+    end
+
+    for i in ordered do
+      uninstall(i.pkgname, dry, false, i.ver, coords: [i.coords])
+    end
+
+    return ordered.length
+  end
+
   # Replace an install with a fresh build of the same version.
   #
   # The old tree is set aside first -- under staging, where nothing
@@ -1073,10 +1233,13 @@ class PackageManager
   # rebuild that removed first and built second left holes exactly
   # where the build failed: an isl with nothing to link, and a GCC
   # that took thirty minutes to make and could not be put back.
-  def replace(pkg, ver, default_install:)
+  def replace(pkg, ver, default_install:, manual: true)
 
     inst = pkg.find_install(ver)
-    return install(pkg, ver, default_install: default_install) if inst.nil?
+    if inst.nil?
+      return install(pkg, ver, default_install: default_install,
+                               manual: manual)
+    end
 
     aside = TC_STAGING / "replaced" / pkg.pkg_dirname / File.basename(inst.path)
     FileUtils.rm_rf(aside)
@@ -1091,7 +1254,8 @@ class PackageManager
     # QEMU 6.2.0 had been.
     ok = false
     begin
-      ok = install(pkg, ver, default_install: default_install)
+      ok = install(pkg, ver, default_install: default_install,
+                             manual: manual)
     ensure
       if ok
         FileUtils.rm_rf(aside)
@@ -1320,7 +1484,7 @@ class PackageManager
       :all
     elsif ver
       if at_where.none? { |e| e.ver == ver }
-        warning "#{name} #{ver} is not installed: nothing to uninstall"
+        warning "#{name} #{ver} is not installed at these coordinates"
         return nil
       end
       ver

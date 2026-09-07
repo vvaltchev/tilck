@@ -69,7 +69,7 @@ class GccCompiler < Package
         info.pkgname, info.compiler, info.on_host, info.arch,
         info.ver, info.path, info.pkg, info.broken,
         @target_arch, @libc,
-        default_install: info.default_install,
+        default_install: info.default_install, manual: info.manual,
         coords: info.coords
       )
     }

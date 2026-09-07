@@ -538,6 +538,9 @@ module Main
       rebuild: false,
       config: nil,
       install: [],
+      mark_manual: [],
+      mark_auto: [],
+      autoremove: false,
       install_compiler: [],
       uninstall: [],
       uninstall_compiler: [],
@@ -565,6 +568,9 @@ module Main
       :install_compiler,
       :uninstall,
       :uninstall_compiler,
+      :mark_manual,
+      :mark_auto,
+      :autoremove,
     ]
 
     get_multiple_args = ->(first, sym) {
@@ -763,6 +769,31 @@ module Main
     ) do |first|
       get_multiple_args.call(first, :uninstall)
     end
+
+    p.on(
+      '--mark-manual PKG[:VER]',
+      'Mark the given installation as asked for by name, so that it',
+      'survives --autoremove. Takes the modifiers -u takes: -a, -c, a',
+      'version. [MODE]'
+    ) do |first|
+      get_multiple_args.call(first, :mark_manual)
+    end
+
+    p.on(
+      '--mark-auto PKG[:VER]',
+      'Mark the given installation as installed only as a dependency,',
+      'so that --autoremove may take it once nothing needs it. Takes',
+      'the modifiers -u takes: -a, -c, a version. [MODE]'
+    ) do |first|
+      get_multiple_args.call(first, :mark_auto)
+    end
+
+    p.on(
+      '--autoremove',
+      'Remove every installation that was pulled in as a dependency',
+      'and that nothing still installed needs, like apt. Combine it',
+      'with -d to see what would go. [MODE]'
+    ) { opts[:autoremove] = true }
 
     p.on(
       '-U', '--uninstall-compiler ARCH',
@@ -1197,8 +1228,13 @@ module Main
         return 0
       end
 
+      # The new version is the user's exactly as much as the old one
+      # was; whatever else the plan brings in is a dependency.
+      manual = upgrades.to_h { |p|
+        [p.name, pkgmgr.upgrade_inherits_manual?(p)]
+      }
       for name, ver in plan do
-        if !pkgmgr.install(name, ver)
+        if !pkgmgr.install(name, ver, manual: manual.fetch(name, false))
           error "Could not install: #{name}"
           return 1
         end
@@ -1270,9 +1306,12 @@ module Main
             plan = pkgmgr.resolve_install_plan([[pkg.name, inst.ver],
                                                 *versions.to_a])
             deps = plan.reject { |n, _| n == pkg.name }
-            deps.all? { |n, v| pkgmgr.install(n, v) != false } &&
+            deps.all? { |n, v|
+              pkgmgr.install(n, v, manual: false) != false
+            } &&
               pkgmgr.replace(pkg, inst.ver,
-                             default_install: inst.default_install)
+                             default_install: inst.default_install,
+                             manual: inst.manual)
           end
         end
 
@@ -1442,6 +1481,8 @@ module Main
 
             begin
               plan = pkgmgr.resolve_install_plan(requested)
+              pkgmgr.mark_requested_manual(requested.map(&:first),
+                                           options[:dry_run])
             rescue VersionSolver::ConflictError,
                    VersionSolver::UnstableError => e
               conflict = e.message
@@ -1507,8 +1548,12 @@ module Main
               next
             end
 
+            # What was asked for by name is manual; what came with it
+            # is auto, and --autoremove may take it once nothing needs
+            # it.
+            asked = requested.map(&:first)
             for name, ver in plan do
-              if !pkgmgr.install(name, ver)
+              if !pkgmgr.install(name, ver, manual: asked.include?(name))
                 failed = name
                 break
               end
@@ -1528,6 +1573,32 @@ module Main
           end
         end
       end
+      return 0
+    end
+
+    for manual, key in [[true, :mark_manual], [false, :mark_auto]] do
+      next if options[key].blank?
+      for entry in options[key] do
+        raw, v = entry.split(":")
+        if raw == "ALL"
+          name = raw
+        else
+          name = resolve_pkg_name(raw)
+          return 1 if !name
+          v = resolve_version(name, v) if v != 'ALL'
+          return 1 if v == :refused
+        end
+        pkgmgr.mark(name, manual, options[:dry_run], options[:force],
+                    v == 'ALL' ? v : Ver(v),
+                    options[:compiler], options[:arch])
+      end
+      return 0
+    end
+
+    if options[:autoremove]
+      n = pkgmgr.autoremove(options[:dry_run])
+      info "#{options[:dry_run] ? "Would remove" : "Removed"}: " \
+           "#{n} installation(s)" if n > 0
       return 0
     end
 
@@ -1582,6 +1653,13 @@ module Main
       all.map { |p| [p.name, nil] }
     )
 
+    # The default set (and what --contrib adds to it) is claimed --
+    # being a default is being wanted -- so one of them already here
+    # as a dependency becomes the user's; the upgrades beside it are
+    # upgrades, and inherit the mark of what they replace.
+    claimed = all.map(&:name) - (upgrades.map(&:name) - defaults.map(&:name))
+    pkgmgr.mark_requested_manual(claimed, options[:dry_run])
+
     if plan.empty?
       info "All default packages are installed and up to date"
       return 0
@@ -1621,8 +1699,12 @@ module Main
       return 0
     end
 
+    inherit = upgrades.to_h { |p|
+      [p.name, pkgmgr.upgrade_inherits_manual?(p)]
+    }
     for name, ver in plan do
-      if !pkgmgr.install(name, ver)
+      manual = claimed.include?(name) || inherit.fetch(name, false)
+      if !pkgmgr.install(name, ver, manual: manual)
         error "Could not install: #{name}"
         return 1
       end
