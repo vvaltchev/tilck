@@ -286,9 +286,13 @@ module InitOnly
     exit 1
   end
 
-  # Determine the host compiler family+version from $CC (defaults to "gcc").
-  # If $CXX is also set, require that it points to the same family+version.
-  # If only $CXX is set, fail with a clear message.
+  # Determine the host compiler from $CC (defaults to "gcc"): the
+  # command itself, and its family+version. Both are published, because
+  # a recipe that has to tell the compiler which C its sources are
+  # written in needs the command -- and a recipe that guessed "cc" or
+  # "gcc" for itself would be a second answer to a question with one
+  # owner. If $CXX is also set, require that it points to the same
+  # family+version. If only $CXX is set, fail with a clear message.
   def get_host_cc
     cc  = ENV["CC"].to_s
     cxx = ENV["CXX"].to_s
@@ -303,18 +307,23 @@ module InitOnly
     cc = "gcc" if cc.empty?
     cc_family, cc_ver = detect_cc_info(cc)
 
-    if !cxx.empty?
-      cxx_family, cxx_ver = detect_cc_info(cxx)
-      if cxx_family != cc_family || cxx_ver != cc_ver
-        error "CC and CXX refer to different compilers:"
-        error "  CC  = #{cc} -> #{cc_family} #{cc_ver}"
-        error "  CXX = #{cxx} -> #{cxx_family} #{cxx_ver}"
-        error "They must point to the same family and version."
-        exit 1
-      end
+    # A CXX nobody named is the family's own: g++ beside gcc, clang++
+    # beside clang. A CC named by version ("gcc-13") with no CXX gets
+    # the family's default and then fails the comparison below, which
+    # names both and asks for CXX -- better than silently pairing a
+    # gcc-13 with whatever g++ is.
+    cxx = (cc_family == "clang" ? "clang++" : "g++") if cxx.empty?
+    cxx_family, cxx_ver = detect_cc_info(cxx)
+
+    if cxx_family != cc_family || cxx_ver != cc_ver
+      error "CC and CXX refer to different compilers:"
+      error "  CC  = #{cc} -> #{cc_family} #{cc_ver}"
+      error "  CXX = #{cxx} -> #{cxx_family} #{cxx_ver}"
+      error "They must point to the same family and version."
+      exit 1
     end
 
-    return "#{cc_family}-#{cc_ver}"
+    return [cc, cxx, "#{cc_family}-#{cc_ver}"]
   end
 
 end
@@ -330,6 +339,9 @@ HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 # HOST_OS      = "linux" | "macos" | "freebsd"
 # HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
 # HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
+# HOST_CC_CMD  = "gcc" | "clang" | whatever $CC named: the command
+#                behind HOST_CC, for a recipe that must pass it on.
+# HOST_CXX_CMD = its C++ counterpart: $CXX, or the family's own.
 #
 # Every installed package sits at exactly three coordinates:
 #
@@ -348,7 +360,7 @@ HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 # links something outside the toolchain, fails its install.
 HOST_OS      = InitOnly.get_host_os()
 HOST_DISTRO  = InitOnly.get_host_distro(HOST_OS)
-HOST_CC      = InitOnly.get_host_cc()
+HOST_CC_CMD, HOST_CXX_CMD, HOST_CC = InitOnly.get_host_cc()
 HOST_OS_ARCH = "#{HOST_OS}-#{HOST_ARCH.name}"
 
 

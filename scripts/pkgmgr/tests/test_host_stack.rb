@@ -449,3 +449,35 @@ class TestNoCompilerPackageAmbiguity < Minitest::Test
     end
   end
 end
+
+# HOST_CC_CMD is the command behind HOST_CC: what $CC named, or gcc.
+# A recipe that must hand the compiler on (gcc_prereqs.rb passes it
+# with the C dialect its sources are written in) reads this rather
+# than guessing "cc" or "gcc" for itself. Computed at load from the
+# environment, so it is observed from a fresh interpreter.
+class TestHostCcCommand < Minitest::Test
+
+  EARLY = File.expand_path("../early_logic.rb", __dir__)
+
+  def host_cc_cmds_with(env)
+    out = IO.popen([env, RbConfig.ruby, "-e",
+                    "require #{EARLY.inspect}; " \
+                    "print [HOST_CC_CMD, HOST_CXX_CMD].join(' ')",
+                    err: File::NULL], &:read)
+    assert $?.success?, "early_logic did not load under #{env.inspect}"
+    return out.split(" ")
+  end
+
+  def test_defaults_to_gcc_and_g_plus_plus
+    assert_equal %w[gcc g++], host_cc_cmds_with({ "CC" => nil, "CXX" => nil })
+  end
+
+  def test_is_what_cc_names_and_cxx_follows_the_family
+    assert_equal %w[cc g++], host_cc_cmds_with({ "CC" => "cc", "CXX" => nil })
+  end
+
+  def test_a_named_cxx_is_kept
+    assert_equal %w[cc c++],
+                 host_cc_cmds_with({ "CC" => "cc", "CXX" => "c++" })
+  end
+end

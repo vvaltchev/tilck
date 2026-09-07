@@ -618,3 +618,19 @@ class TestMultiByteSource < Minitest::Test
     end
   end
 end
+
+#
+# A shared helper whose text reaches configure's argv, called by name:
+# its body has to be fingerprinted for the packages that call it, or an
+# edit to the dialect would go unnoticed by every one of them.
+#
+class TestWhatTheFingerprintCounts < Minitest::Test
+
+  include TestHelper
+
+  def test_the_dialect_helper_is_fingerprinted_for_its_callers
+    assert_includes Package::BUILD_HELPERS, :host_compiler_gnu17
+    params = Package.instance_method(:host_compiler_gnu17).parameters
+    assert_equal [], params, "an argument could go unrecorded"
+  end
+end
