@@ -93,6 +93,17 @@ class HostAtSpi2CorePackage < Package
       "-Ddocs=false",
       "-Duse_systemd=false",
 
+      # Which bus, and where. Left to find_program, the build searches
+      # the machine's PATH: on a host running dbus-broker it finds
+      # dbus-broker-launch, concludes the default bus needs systemd,
+      # and refuses because use_systemd is off -- while on a host
+      # without one it found the machine's /usr/bin/dbus-daemon and
+      # wrote that path into the service files of a stack that builds
+      # its own dbus. Both answered from the wrong place. The bus is
+      # ours, by path.
+      "-Ddefault_bus=dbus-daemon",
+      "-Ddbus_daemon=#{stack_sysroot}/usr/bin/dbus-daemon",
+
       # Defaults to TRUE, and would want gtk+-2.0: the adaptor that
       # bridges GTK 2 widgets is still built by default two major
       # versions later.
