@@ -417,3 +417,26 @@ class TestModelRebuild < Minitest::Test
     assert_equal Set[k], o.world, "an upgrade candidate was rebuilt in place"
   end
 end
+
+# A gcc installed as the default of its own stack is not an upgrade
+# candidate from another stack's scope: it is that stack.
+class TestModelStackCompilerNeverUpgrades < Minitest::Test
+
+  include TestHelper
+
+  def test_a_default_gcc_of_another_stack_is_left_alone
+    r = Model::Registry.new([Model::Shape.make("host_gcc", :stack_cc,
+                                               versions: %w[12.5.0 14.4.0],
+                                               default_ver: "14.4.0")])
+    inv = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                         default_stack: Ver("14.4.0"),
+                         host_os: "linux", host_arch: "x86_64")
+    c = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
+    k = Model.key("host_gcc", "12.5.0", c, origin: :default)
+
+    o = Model.step(r, Set[k], Model.parse(%w[--check-for-updates]), inv)
+    assert_equal 0, o.rc, o.out
+    o = Model.step(r, Set[k], Model.parse(%w[--upgrade]), inv)
+    assert_equal Set[k], o.world
+  end
+end

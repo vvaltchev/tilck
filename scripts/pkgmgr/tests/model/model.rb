@@ -624,10 +624,13 @@ module Model
 
   # Which installed packages want a newer default: one installed AS the
   # default, at the coordinates the default would take, whose version
-  # is no longer the default. A pinned install is left alone.
+  # is no longer the default. A pinned install is left alone -- and so
+  # is the stack compiler, every install of which is the stack it
+  # names: a bumped HOST_VER_GCC is a new stack, not an old one moving.
   def upgradable(registry, world, scope)
     return registry.shapes.select { |s|
       next false if !supported?(s, scope, registry)
+      next false if s.kind == :stack_cc
       c = coords_of(s, scope)
       world.any? { |k|
         k.name == s.name && k.coords == c && k.origin == :default &&
