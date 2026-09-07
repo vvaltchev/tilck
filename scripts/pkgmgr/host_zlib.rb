@@ -73,11 +73,6 @@ class HostZlibPackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   # zlib's configure is hand-written rather than autotools, but it
   # takes --prefix and its compiler from $CC, so the shared helper
   # drives it unchanged -- and this way the flags are declared and

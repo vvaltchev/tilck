@@ -92,12 +92,6 @@ class GlycinPackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   # The 2.2 prerelease tarballs ship no po/ directory at all, while
   # glycin-loaders/meson.build merges translations unconditionally
   # through i18n.merge_file -- so every one of them fails with

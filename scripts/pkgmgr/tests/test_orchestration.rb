@@ -229,3 +229,58 @@ class TestOrchestration < Minitest::Test
     $stdout = old
   end
 end
+
+# ---------------------------------------------------------------
+# What clean_build does with what a build left behind. Two shapes:
+# a build done out of tree, whose every artifact is under build/ and
+# install/, and one done in the source tree, which left a Makefile
+# there. The base class tells them apart by that Makefile; twenty
+# recipes used to override it with the first shape and then call up
+# into the second, and the distclean that could not run made every
+# resume re-extract the tarball.
+# ---------------------------------------------------------------
+
+class TestCleanBuild < Minitest::Test
+
+  include TestHelper
+
+  def pkg = FakePackage.new("cleaned")
+
+  def test_out_of_tree_leftovers_are_removed_and_the_source_is_kept
+    Dir.mktmpdir do |d|
+      dir = Pathname.new(d)
+      FileUtils.mkdir_p(dir / "build" / "deep")
+      FileUtils.mkdir_p(dir / "install" / "bin")
+      File.write(dir / "configure", "#!/bin/sh\n")
+      File.write(dir / "src.c", "int main(void){return 0;}\n")
+
+      assert pkg.clean_build(dir), "nothing to ask make: still a clean"
+      refute (dir / "build").exist?
+      refute (dir / "install").exist?
+      assert (dir / "configure").exist?
+      assert (dir / "src.c").exist?
+    end
+  end
+
+  def test_in_tree_build_is_asked_to_distclean
+    Dir.mktmpdir do |d|
+      dir = Pathname.new(d)
+      FileUtils.mkdir_p(dir / "install")
+      File.write(dir / "Makefile", "distclean:\n\ttouch distcleaned\n")
+
+      assert pkg.clean_build(dir)
+      refute (dir / "install").exist?
+      assert (dir / "distcleaned").exist?, "make distclean ran in the tree"
+    end
+  end
+
+  def test_a_makefile_without_distclean_reports_failure
+    # The caller's fallback -- delete and re-extract -- is the right
+    # answer for a tree nobody knows how to clean, and it must be told.
+    Dir.mktmpdir do |d|
+      dir = Pathname.new(d)
+      File.write(dir / "Makefile", "all:\n\t@true\n")
+      refute pkg.clean_build(dir)
+    end
+  end
+end

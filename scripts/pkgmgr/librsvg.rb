@@ -103,12 +103,6 @@ class HostLibrsvgPackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   # Unlike glycin, librsvg needs no cross file: it takes the cargo
   # target from its own `triplet` option. Everything else about
   # driving cargo is the same, and lives in CargoBuild.

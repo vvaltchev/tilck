@@ -162,12 +162,6 @@ class HostQemuPackage < Package
     ["install/bin/qemu-system-riscv64", false],
   ]
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   # QEMU stops dead on a configure option it does not recognise --
   #
   #   ERROR: unknown option --disable-glusterfs

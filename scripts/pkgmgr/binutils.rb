@@ -67,18 +67,6 @@ class HostBinutilsPackage < Package
     ["install/bin/strip", false],
   ]
 
-  # Everything the build wrote is under build/ and install/: the source
-  # tree is never configured in place (see below), so once those two
-  # are gone it is exactly what the tarball held. The base class's
-  # `make distclean` in the source tree has nothing to clean and no
-  # Makefile to do it with -- it fails, and a resume that reported the
-  # failure went on to re-extract the whole tarball for nothing.
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    return true
-  end
-
   def install_impl_internal(install_dir)
 
     # Configure with the path this will live at once installed, NOT the

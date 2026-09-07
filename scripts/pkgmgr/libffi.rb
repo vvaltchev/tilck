@@ -53,11 +53,6 @@ class HostLibffiPackage < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
   def build_flags(ver = nil) = [
       "--disable-static",       # the sysroot ships shared libraries
       "--libdir=#{stack_sysroot}/usr/lib",

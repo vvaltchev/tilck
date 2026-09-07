@@ -84,12 +84,6 @@ class GccPrereqPackage < Package
   # The prefix a dependent passes to --with-<name>.
   def prefix_for(ver) = install_prefix(ver) / "install"
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   # Where a named dependency of THIS package was installed.
   #
   # From the resolution of the request being installed, NOT from this

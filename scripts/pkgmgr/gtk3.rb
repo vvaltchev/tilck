@@ -106,12 +106,6 @@ class HostGtk3Package < Package
     )
   end
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   def build_flags(ver = nil) = [
       "-Dx11_backend=true",
       "-Dwayland_backend=false",

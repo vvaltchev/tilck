@@ -90,12 +90,6 @@ class HostGlibcPackage < Package
     ["install/usr/include/stdio.h", false],
   ]
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    FileUtils.rm_rf(dir / "build")
-    super(dir)
-  end
-
   # Absolute path of the installed kernel headers, which glibc compiles
   # against. Taken from the package rather than the sysroot: the farm
   # has not composed the sysroot yet at this point in the build order.
