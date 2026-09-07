@@ -51,7 +51,8 @@ The package manager handles three categories of packages:
 # First-time setup (installs default packages for the current ARCH)
 ./scripts/build_toolchain
 
-# List all packages and their install status
+# List all packages and their install status: the host stacks first, one
+# line each with how many packages it holds, then the current stack's list
 ./scripts/build_toolchain -l
 
 # Install specific packages (dependencies resolved automatically)

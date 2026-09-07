@@ -318,9 +318,33 @@ class TestShowStatusAll < Minitest::Test
         pkgmgr.refresh()
 
         output = capture_stdout { pkgmgr.show_status_all }
-        assert_match(/Packages built by system CC/, output)
+        assert_match(/Host packages built by system CC/, output)
         assert_match(/Source-only packages/, output)
-        assert_match(/Packages built by GCC/, output)
+        assert_match(/Tilck packages built by GCC/, output)
+      end
+    end
+  end
+
+  # Tilck's packages come before the host stacks, and say whose they
+  # are: the stacks are the longest sections and the least often the
+  # reason anyone runs -l.
+  def test_tilck_packages_are_listed_before_the_host_stacks
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("target_pkg"))
+        pkgmgr.register(FakePackage.new("host_thing", on_host: true,
+                                        host_tier: :stack,
+                                        arch_list: ALL_HOST_ARCHS.values))
+        pkgmgr.install("target_pkg")
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        out = capture_stdout { pkgmgr.show_status_all }
+        tilck = out.index("Tilck packages built by GCC")
+        host = out.index("Host packages built by GCC")
+        refute_nil tilck
+        refute_nil host
+        assert_operator tilck, :<, host, "the host stacks came first"
       end
     end
   end
@@ -371,7 +395,7 @@ class TestShowStatusAll < Minitest::Test
 
   # A :stack package is built by a compiler we built ourselves, and
   # belongs to that compiler's stack. Reporting "syscc" filed QEMU
-  # beside mtools under "Packages built by system CC" -- the wrong
+  # beside mtools under "Host packages built by system CC" -- the wrong
   # compiler, and no sign of which of the six stacks held it.
   def test_a_stack_package_is_filed_under_its_own_stack
     with_fake_tc do
@@ -389,7 +413,7 @@ class TestShowStatusAll < Minitest::Test
 
         refute_nil line_for(out, here, "host_thing"),
                    "not under its own stack's section"
-        assert_nil line_for(out, "Packages built by system CC",
+        assert_nil line_for(out, "Host packages built by system CC",
                             "host_thing"),
                    "still filed under the system compiler"
       end

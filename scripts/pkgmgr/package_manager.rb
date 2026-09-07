@@ -445,15 +445,18 @@ class PackageManager
             }
     }
 
-    groups = [
+    # Tilck's own packages before anything of the host's: they are
+    # what the toolchain is for. Said in the label too -- a reader saw
+    # "Packages built by GCC 13.3.0" under "Host packages built by GCC
+    # 14.4.0" and asked which of them Tilck was. Then the host side,
+    # all of it labelled as such: the tools the system compiler built,
+    # the stacks report, and last the stacks themselves -- a compiler,
+    # a libc and a GTK beneath a QEMU, the longest sections and the
+    # least often the reason anyone runs -l.
+    front = [
       [
         "GCC toolchains",
         list.select { |x| !x.target_arch.nil? }
-      ],
-
-      [
-        "Packages built by system CC",
-        list.select { |x| !x.target_arch and x.compiler.eql? "syscc" }
       ],
 
       [
@@ -461,9 +464,16 @@ class PackageManager
         list.select { |x| !x.compiler && !x.arch }
       ],
 
-      *cc_sections.call(true, curr_host_cc, "Host packages built by GCC"),
-      *cc_sections.call(false, curr_cc, "Packages built by GCC"),
+      *cc_sections.call(false, curr_cc, "Tilck packages built by GCC"),
+
+      [
+        "Host packages built by system CC",
+        list.select { |x| !x.target_arch and x.compiler.eql? "syscc" }
+      ],
     ]
+
+    back = cc_sections.call(true, curr_host_cc, "Host packages built by GCC")
+    groups = front + back
 
     #list.each { |x| puts x }  # DEBUG
 
@@ -471,7 +481,6 @@ class PackageManager
     # sections as there are stacks, and a fixed width that fitted the
     # old ones left the longest banner sticking out of the row.
     width = groups.map { |msg, _| msg.length }.max
-    banner = ->(s) { puts; puts "--- #{s.center(width)} ---" }
 
     # A pre-pass, so that the counts are one column down the whole
     # listing and cost nothing when there is nothing to count: how
@@ -479,13 +488,26 @@ class PackageManager
     # count is, and whether there is one at all.
     digits = count_digits(groups)
 
-    for msg, l in groups do
-      next if l.empty?      # a stack with nothing in it is not news
-      banner.call msg
-      l.map { |x| x.pkgname }.uniq.each { |pkg|
-        show_status(pkg, group_by, l.select { |x| x.pkgname == pkg }, digits)
-      }
-    end
+    dump = ->(sections) {
+      for msg, l in sections do
+        next if l.empty?      # a stack with nothing in it is not news
+        puts
+        puts "--- #{msg.center(width)} ---"
+        l.map { |x| x.pkgname }.uniq.each { |pkg|
+          show_status(pkg, group_by, l.select { |x| x.pkgname == pkg },
+                      digits)
+        }
+      end
+    }
+
+    # The stacks, every one with a count, between the host tools and
+    # the one stack the listing shows: the listing shows the current
+    # stack only, and a reader who saw nothing of a QEMU built into
+    # another one asked, reasonably, how they were to know there was
+    # more.
+    dump.call(front)
+    show_stacks(width: width)
+    dump.call(back)
 
     puts
   end
@@ -501,7 +523,7 @@ class PackageManager
   # is what makes a stack usable at all: everything else in it is
   # built BY that compiler, so without it the directory is either
   # empty or a leftover.
-  def show_stacks
+  def show_stacks(width: 40)
 
     gcc = stack_compiler
 
@@ -522,7 +544,7 @@ class PackageManager
              host_stacks.map { |v| Ver(v) }).uniq.sort
 
     puts
-    puts "--- #{"Host stacks".center(40)} ---"
+    puts "--- #{"Host stacks".center(width)} ---"
 
     for v in known do
       status = built.include?(v) ? Package::BUILT_STR : Package::NOT_BUILT_STR
@@ -530,8 +552,6 @@ class PackageManager
       printf("%-20s [ %s ] %3d pkgs%s\n",
              Coords.stack_name(v), status, packages_in_stack(v), here)
     end
-
-    puts
   end
 
   # How many packages have been built into one stack. Package
