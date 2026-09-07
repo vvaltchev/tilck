@@ -12,10 +12,19 @@ require 'fileutils'
 require_relative '../term'
 require_relative '../early_logic'   # DEFAULT_TC_NAME
 require_relative '../package_manager'
+require_relative 'test_helper'      # real_world!
 
 module SystemTests
 
   include Term
+
+  # The harness as an object, so its helpers can be called from a
+  # module rather than from inside a Minitest::Test. Same handle the
+  # exhaustive lane uses (tests/exhaustive/runner.rb).
+  class Harness
+    include TestHelper
+  end
+
   module_function
 
   DRY_TAG = "#{CYAN256}[ DRY ]#{RESET}"
@@ -332,6 +341,12 @@ module SystemTests
 
   def run(run_tilck: false, all_build_types: false,
           arch: nil, packages_filter: nil)
+
+    # Everything below drives `build_toolchain` as a subprocess, which
+    # gets a world of its own -- except wipe_toolchain, which asks this
+    # process. The unit lane ran first and left it holding its own
+    # fakes; this takes the real one back. See TestHelper#real_world!.
+    Harness.new.real_world!
 
     grand_t0 = now
     FileUtils.mkdir_p(BUILDS_DIR) if !$dry_run
