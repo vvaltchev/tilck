@@ -9,7 +9,11 @@ require_relative 'package_manager'
 
 FREETYPE_SOURCE = SourceRef.new(
   name: 'freetype',
-  url:  'https://download.savannah.gnu.org/releases/freetype',
+  # Savannah's mirror alias, not its download front-end: the front-end
+  # answered 502 to every request for an afternoon while the alias,
+  # which picks a mirror and serves from it, kept working. Same host,
+  # same bytes -- checked against SourceForge's copy of the release.
+  url:  'https://download-mirror.savannah.gnu.org/releases/freetype',
   tarname: ->(ver) { "freetype-#{ver}.tar.xz" },
   fetch_via_git: false,
 )
