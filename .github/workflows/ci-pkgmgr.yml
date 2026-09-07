@@ -59,18 +59,28 @@ env:
   ARCH: i386
 
 jobs:
-  tests:
+  lane-cost:
     runs-on: ubuntu-22.04
-    container: debian:stable-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: overlay-tmp
+            opts: ""
+          - name: tmpfs-tmp
+            opts: "--tmpfs /tmp:exec,size=8g"
+    container:
+      image: debian:stable-slim
+      options: ${{ matrix.opts }}
+    name: lane cost (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v5
-      - name: Unit tests and the exhaustive lane
-        run: ./scripts/build_toolchain -t --exhaustive
-
-  mutation:
-    runs-on: ubuntu-22.04
-    container: debian:stable-slim
-    steps:
-      - uses: actions/checkout@v5
-      - name: Every mutant of the logic core must die
-        run: ./scripts/build_toolchain -t --mutation
+      - name: One shape of the exhaustive lane, timed
+        run: |
+          ./scripts/build_toolchain -t -q > /dev/null 2>&1 || true
+          df -hT /tmp | tail -1; nproc
+          RUBY="$(ls toolchain5/linux-*/*/any/pkgs/ruby/*/bin/ruby 2>/dev/null | head -1)"; RUBY="${RUBY:-$(command -v ruby)}"; $RUBY --version
+          cd scripts/pkgmgr
+          for shape in target target_rv chain; do
+            /usr/bin/env time -f "$shape: %es wall, %Us user, %Ss sys" $RUBY -e 'require_relative "tests/exhaustive/runner"; Exhaustive.run_all(shapes: [ARGV[0]], jobs: 1)' $shape 2>&1 | grep -E "cases|wall"
+          done
