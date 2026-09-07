@@ -1549,3 +1549,39 @@ class TestMainListOrder < Minitest::Test
     end
   end
 end
+
+# A rebuild plans the install as it was made: a dependency the recipe
+# has grown since is put in first. QEMU learned libslirp after four of
+# it had been built, and the first --rebuild died asking for it.
+class TestMainRebuildPlansItsDependencies < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_a_dependency_grown_since_the_install_is_installed_first
+    with_fake_tc do
+      with_stubbed_externals do
+        top = FakePackage.new("top")
+        pkgmgr.register(top)
+        run_cli("-s", "top")
+
+        # The recipe grows a dependency, which is also a change.
+        base = FakePackage.new("base")
+        pkgmgr.register(base)
+        top.define_singleton_method(:dep_list) { [Dep("base", false)] }
+        top.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        pkgmgr.refresh
+        assert_nil base.find_install(base.default_ver)
+        FakePackage.clear_log!
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_equal ["base", "top"], FakePackage.install_log
+        refute_nil base.find_install(base.default_ver)
+      end
+    end
+  end
+end

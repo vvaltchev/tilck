@@ -1262,8 +1262,17 @@ module Main
         # is exactly that.
         ok = pkg.with_install_context(inst) do
           pkgmgr.with_resolved_versions(versions) do
-            pkgmgr.replace(pkg, inst.ver,
-                           default_install: inst.default_install)
+            # Planned as the install itself was, with what it was
+            # built against asked for by name so nothing already there
+            # moves: a recipe can have grown a dependency since the
+            # install was made -- QEMU learned libslirp -- and the
+            # rebuild has to have it before the old tree goes.
+            plan = pkgmgr.resolve_install_plan([[pkg.name, inst.ver],
+                                                *versions.to_a])
+            deps = plan.reject { |n, _| n == pkg.name }
+            deps.all? { |n, v| pkgmgr.install(n, v) != false } &&
+              pkgmgr.replace(pkg, inst.ver,
+                             default_install: inst.default_install)
           end
         end
 

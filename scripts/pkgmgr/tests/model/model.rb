@@ -664,6 +664,24 @@ module Model
   # SPEC: ...and only where the package can build it. An install at a
   # board the package does not build for is stale and stays as it is:
   # the implementation used to remove it first and find out second.
+  # What a stale install was built against, as far as anyone can know
+  # without its record: the dependency's pin, else the one version of
+  # it present, else its default. Two present and no pin is unknowable,
+  # and nil says so.
+  def built_against(registry, world, key, scope)
+    registry.deps_of(key.name, scope).map { |d, pin|
+      next [d, pin] if pin
+      here = keys_of(world, d).map(&:ver).uniq
+      return nil if here.length > 1
+      [d, here.first || default_of(registry, d, scope)]
+    }
+  end
+
+  # SPEC: ...planned as the install itself was, with what it was built
+  # against asked for by name: a dependency the recipe has grown since
+  # the install was made is put in first, and nothing already there
+  # moves. An install whose dependencies cannot be known refuses the
+  # whole run, before anything moves.
   def rebuild(registry, world, req, scope)
     bumped = upgradable(registry, world, scope)
     stale = world.select { |k|
@@ -673,10 +691,32 @@ module Model
         supported?(s, scope_at(k, scope), registry)
     }
     return Outcome.new(0, world, "nothing stale") if stale.empty?
+
+    against = stale.map { |k|
+      built_against(registry, world, k, scope_at(k, scope))
+    }
+    if (i = against.index(nil))
+      return Outcome.new(1, world, "#{stale[i].name}: built against what?")
+    end
     return Outcome.new(0, world, "dry run") if req.dry
-    fresh = stale.map { |k| Key.new(name: k.name, ver: k.ver, coords: k.coords,
-                                    record: :ok, origin: k.origin) }
-    return Outcome.new(0, (world - stale + fresh).to_set, "rebuilt")
+
+    stale.zip(against).each do |k, deps|
+      sc = scope_at(k, scope)
+      begin
+        entries, sc = plan(registry, world, [[k.name, k.ver], *deps], sc)
+      rescue Conflict => e
+        return Outcome.new(1, world, "Version conflict: #{e.message}")
+      end
+      for name, ver, origin in entries do
+        next if name == k.name
+        world = with_installed(registry, world, name, ver, origin, sc)
+      end
+      fresh = Key.new(name: k.name, ver: k.ver, coords: k.coords,
+                      record: :ok, origin: k.origin)
+      world = (world - [k] + [fresh]).to_set
+    end
+
+    return Outcome.new(0, world, "rebuilt")
   end
 
   # No mode at all: the defaults, plus whatever wants upgrading.
