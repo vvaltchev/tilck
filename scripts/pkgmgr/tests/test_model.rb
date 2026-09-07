@@ -381,3 +381,39 @@ class TestModelResolvesVersions < Minitest::Test
     assert_equal [Ver("3.3.3")], o.world.map(&:ver)
   end
 end
+
+# --rebuild in the model: a record that does not read :ok is made to,
+# in place; a bumped version is --upgrade's; -d moves nothing.
+class TestModelRebuild < Minitest::Test
+
+  include TestHelper
+
+  def reg(*shapes) = Model::Registry.new(shapes)
+  def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                           default_stack: Ver("14.4.0"),
+                           host_os: "linux", host_arch: "x86_64")
+  def tgt = Coords.new("tilck-i386", "pc", "gcc-#{ALL_ARCHS["i386"].gcc_ver}")
+
+  def test_a_changed_record_is_rebuilt_in_place_as_it_was_asked_for
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    k = Model.key("t", "1.0.0", tgt, record: :changed, origin: :pinned)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild]), ctx)
+    assert_equal 0, o.rc
+    assert_equal [Model.key("t", "1.0.0", tgt, origin: :pinned)], o.world.to_a
+  end
+
+  def test_dry_run_moves_nothing
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    k = Model.key("t", "1.0.0", tgt, record: :missing)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild -d]), ctx)
+    assert_equal Set[k], o.world
+  end
+
+  def test_a_bumped_version_is_not_a_rebuild
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386],
+                              versions: %w[2.0.0], default_ver: "2.0.0"))
+    k = Model.key("t", "1.0.0", tgt, record: :changed, origin: :default)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild]), ctx)
+    assert_equal Set[k], o.world, "an upgrade candidate was rebuilt in place"
+  end
+end

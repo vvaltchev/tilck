@@ -644,6 +644,38 @@ module Model
     return install(registry, world, plain, scope)
   end
 
+  # SPEC: every install whose record does not read :ok is rebuilt
+  # where it is, at its version, as it was asked for, and its record
+  # then reads :ok. Exactly what --check-for-updates lists as
+  # NEEDS_REBUILD: a package whose version was bumped is --upgrade's.
+  # Nothing else moves, and -d moves nothing.
+  # The scope an install's own coordinates describe: its arch and its
+  # board for a target install, the invocation's otherwise.
+  def scope_at(key, scope)
+    m = key.coords.machine
+    return scope if !m.start_with?("tilck-")
+    a = ALL_ARCHS[m.delete_prefix("tilck-")]
+    return Scope.new(**scope.to_h.merge(arch: a, board: key.coords.env))
+  end
+
+  # SPEC: ...and only where the package can build it. An install at a
+  # board the package does not build for is stale and stays as it is:
+  # the implementation used to remove it first and find out second.
+  def rebuild(registry, world, req, scope)
+    bumped = upgradable(registry, world, scope)
+    stale = world.select { |k|
+      s = registry[k.name]
+      !s.nil? && supported?(s, scope, registry) &&
+        !bumped.include?(k.name) && state_of(k) != :ok &&
+        supported?(s, scope_at(k, scope), registry)
+    }
+    return Outcome.new(0, world, "nothing stale") if stale.empty?
+    return Outcome.new(0, world, "dry run") if req.dry
+    fresh = stale.map { |k| Key.new(name: k.name, ver: k.ver, coords: k.coords,
+                                    record: :ok, origin: k.origin) }
+    return Outcome.new(0, (world - stale + fresh).to_set, "rebuilt")
+  end
+
   # No mode at all: the defaults, plus whatever wants upgrading.
   def default_install(registry, world, req, scope)
     names = registry.shapes.select { |s|
@@ -725,6 +757,7 @@ module Model
       end
     when :uninstall then uninstall(registry, world, req, sc)
     when :upgrade   then upgrade(registry, world, req, sc)
+    when :rebuild   then rebuild(registry, world, req, sc)
     when :clean     then clean(registry, world, req, sc)
     when :configure then configure(registry, world, req, sc)
     when :default   then default_install(registry, world, req, sc)
@@ -796,6 +829,7 @@ module Model
         cc = x == "ALL" ? :all : Ver(x)
       when "-H" then stack = Coords.parse_stack(a.shift)
       when "--upgrade"           then mode = :upgrade
+      when "--rebuild"           then mode = :rebuild
       when "--clean"             then mode = :clean
       when "-l"                  then mode = :list
       when "--check-for-updates" then mode = :check_updates

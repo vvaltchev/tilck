@@ -222,19 +222,31 @@ class PackageManager
   # Installed, but not from the sources we have now: a patch was
   # added, a flag changed, or the code that drives the build did.
   # Reported separately from a version bump because the remedy
-  # differs -- a rebuild rather than a new version.
-  def get_stale_packages
-    @packages.values.select { |p|
-      next false if !p.supported?
-      # Every install, each judged against the recipe as it reads at
-      # ITS coordinates -- not the current one's recipe applied to all
-      # of them, which reported the whole set as stale from whichever
-      # arch happened not to be selected.
-      p.get_install_list.any? { |i|
-        !i.broken && [:changed, :unknown].include?(p.build_inputs_state_of(i))
-      }
+  # differs -- a rebuild rather than a new version -- and a package
+  # whose version was bumped is left to --upgrade, which rebuilds it
+  # anyway, at the new version.
+  #
+  # Every install, each judged against the recipe as it reads at ITS
+  # coordinates -- not the current one's recipe applied to all of
+  # them, which reported the whole set as stale from whichever arch
+  # happened not to be selected. [package, install] pairs, with the
+  # dependencies first: a stale glibc is rebuilt before the gcc that
+  # links it.
+  def get_stale_installs
+
+    pairs = @packages.values.flat_map { |p|
+      next [] if !p.supported? || p.needs_upgrade?
+      p.get_install_list.select { |i|
+        !i.broken && p.build_inputs_changed?(i)
+      }.map { |i| [p, i] }
     }
+
+    order = DepResolver.resolve(pairs.map { |p, _| p.name }.uniq,
+                                build_dep_graph)
+    return pairs.sort_by { |p, _| order.index(p.name) }
   end
+
+  def get_stale_packages = get_stale_installs.map(&:first).uniq
 
   # Remove exactly what a forced reinstall is about to recreate.
   #
@@ -666,7 +678,7 @@ class PackageManager
   #                        package. Changes over time. It might not be possible
   #                        to install older versions of the package that were
   #                        supported before
-  def install(pkg, ver = nil)
+  def install(pkg, ver = nil, default_install: nil)
 
     name = pkg.is_a?(String) ? pkg : pkg.name
     pkg = get_smart(pkg)
@@ -700,8 +712,10 @@ class PackageManager
     # Whether the caller named a version is the only moment this is
     # knowable: from here on, `ver` is a version either way. Deps that
     # the resolver pulled in arrive with ver = nil, which is right —
-    # nobody pinned them.
-    default_install = ver.nil?
+    # nobody pinned them. A rebuild is the one caller that knows
+    # better: it names the version, because the install has one, and
+    # says how that install was asked for, because the record does.
+    default_install = ver.nil? if default_install.nil?
 
     ver ||= pkg.default_ver()
     ok = pkg.install_impl(ver)
@@ -713,6 +727,7 @@ class PackageManager
 
       if inst
         InstallOrigin.write(inst.path, default_install)
+        InstallDeps.write(inst.path, built_against(pkg, ver))
       end
 
       # ...and what it was built FROM, in the same place and for the
@@ -1028,6 +1043,88 @@ class PackageManager
   # Set by resolve_install_plan, which is the only place that knows
   # the whole closure and therefore the only place that can answer.
   def resolved_ver(name) = @resolved_versions&.[](name)
+
+  # Replace an install with a fresh build of the same version.
+  #
+  # The old tree is set aside first -- under staging, where nothing
+  # looks for installs -- so that the build sees no install and the
+  # move finds no directory; then the new tree is built and moved in;
+  # and if the build does not finish, the old tree comes back. A
+  # rebuild that removed first and built second left holes exactly
+  # where the build failed: an isl with nothing to link, and a GCC
+  # that took thirty minutes to make and could not be put back.
+  def replace(pkg, ver, default_install:)
+
+    inst = pkg.find_install(ver)
+    return install(pkg, ver, default_install: default_install) if inst.nil?
+
+    aside = TC_STAGING / "replaced" / pkg.pkg_dirname / File.basename(inst.path)
+    FileUtils.rm_rf(aside)
+    FileUtils.mkdir_p(aside.dirname)
+    FileUtils.mv(inst.path, aside)
+    refresh()
+
+    ok = install(pkg, ver, default_install: default_install)
+
+    if ok
+      FileUtils.rm_rf(aside)
+    else
+      FileUtils.mv(aside, inst.path)
+      refresh()
+    end
+
+    # Nothing of this stays under staging: the package's directory,
+    # then replaced/ itself -- each once empty, because a tree
+    # stranded there by an interrupted run is not ours to take.
+    [aside.dirname, aside.dirname.dirname].each { |d|
+      FileUtils.rmdir(d) if Dir.empty?(d)
+    }
+    return ok
+  end
+
+  # Run `block` with the resolution a rebuild restores from an
+  # install's record, in place of the one a request would compute.
+  def with_resolved_versions(versions, &block)
+    prev = @resolved_versions
+    @resolved_versions = versions
+    begin
+      return block.call
+    ensure
+      @resolved_versions = prev
+    end
+  end
+
+  # The version of each dependency `pkg` at `ver` is built against:
+  # the one the request resolved, else the dependency's own pin, else
+  # its default. What InstallDeps records.
+  def built_against(pkg, ver)
+    pkg.dep_list_for(ver).to_h { |d|
+      [d.name, resolved_ver(d.name) || d.ver || get(d.name)&.default_ver]
+    }.compact
+  end
+
+  # What an install was built against, for a rebuild to build against
+  # again. Recorded at install time; an install from before the record
+  # is asked the only other way there is -- which version of each
+  # dependency is present -- and cannot be answered when more than one
+  # is. Returns [versions, ambiguous], the second naming the
+  # dependencies with two installs and no record.
+  def deps_of_install(pkg, inst)
+
+    recorded = InstallDeps.read(inst.path)
+    ambiguous = []
+
+    versions = pkg.dep_list_for(inst.ver).to_h { |d|
+      next [d.name, recorded[d.name]] if recorded.key?(d.name)
+      next [d.name, d.ver] if d.ver
+      dep = get(d.name)
+      here = dep ? dep.get_install_list.reject(&:broken).map(&:ver).uniq : []
+      ambiguous << d.name if here.length > 1
+      [d.name, here.first || dep&.default_ver]
+    }.compact
+
+    return [versions, ambiguous]
+  end
 
   def dep_closure(name)
     return DepResolver.dep_closure(name, build_dep_graph)

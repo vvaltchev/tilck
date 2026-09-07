@@ -534,6 +534,7 @@ module Main
       clean: false,
       print_layout: false,
       upgrade: false,
+      rebuild: false,
       config: nil,
       install: [],
       install_compiler: [],
@@ -557,6 +558,7 @@ module Main
       :list_stacks,
       :print_layout,
       :upgrade,
+      :rebuild,
       :config,
       :install,
       :install_compiler,
@@ -702,6 +704,14 @@ module Main
       'Upgrade installed packages whose version was bumped in',
       'pkg_versions. Does not install new packages. [MODE]'
     ) { opts[:upgrade] = true }
+
+    p.on(
+      '--rebuild',
+      'Rebuild every install made from sources that have since',
+      'changed (a patch, a flag, the recipe), each where it is and at',
+      'its own version. What --check-for-updates lists as',
+      'NEEDS_REBUILD; a bumped version is --upgrade\'s. [MODE]'
+    ) { opts[:rebuild] = true }
 
     p.on(
       '--check-for-updates',
@@ -1185,6 +1195,75 @@ module Main
       for name, ver in plan do
         if !pkgmgr.install(name, ver)
           error "Could not install: #{name}"
+          return 1
+        end
+      end
+      return 0
+    end
+
+    if options[:rebuild]
+      stale = pkgmgr.get_stale_installs
+      if stale.empty?
+        info "Every install was built from the sources we have"
+        return 0
+      end
+
+      # Only where the package can build it. An install at a board the
+      # package does not build for is stale and stays as it is -- said
+      # here, because this used to remove it first and find out second.
+      stale, elsewhere = stale.partition { |pkg, inst|
+        pkg.with_install_context(inst) { pkg.supported? }
+      }
+      for pkg, inst in elsewhere do
+        where = pkg.with_install_context(inst) { unsupported_reason(pkg.name) }
+        info "Left as it is: #{pkg.name}:#{inst.ver} at #{inst.coords} " \
+             "(#{pkg.name} does not build for #{where})"
+      end
+      return 0 if stale.empty?
+
+      info "Installs to rebuild, dependencies first:"
+      for pkg, inst in stale do
+        info "  #{pkg.name}:#{inst.ver} at #{inst.coords}"
+      end
+
+      # What each was built against, all of it settled before anything
+      # is removed: a rebuild that cannot know which gmp its isl linked
+      # must say so now, not after it has taken the old isl away.
+      against = stale.map { |pkg, inst|
+        versions, ambiguous = pkgmgr.deps_of_install(pkg, inst)
+        if !ambiguous.empty?
+          error "#{pkg.name}:#{inst.ver} has no record of which " \
+                "#{ambiguous.join(', ')} it was built against, and " \
+                "more than one is installed. Rebuild it through the " \
+                "package that pinned it: -s <that package>:<ver> -f"
+          return 1
+        end
+        versions
+      }
+
+      if options[:dry_run]
+        info "Dry run (-d): nothing rebuilt"
+        return 0
+      end
+
+      stale.zip(against).each do |(pkg, inst), versions|
+        # At the install's own coordinates -- its stack, its arch and
+        # board -- at its own version, against the dependency versions
+        # it was built with, and as it was asked for: a version nobody
+        # named stays a default install, so --upgrade keeps following
+        # it. Both said outright, because passing nil to keep the
+        # origin would install the default version, and a default
+        # install of an older version, seen from another arch's scope,
+        # is exactly that.
+        ok = pkg.with_install_context(inst) do
+          pkgmgr.with_resolved_versions(versions) do
+            pkgmgr.replace(pkg, inst.ver,
+                           default_install: inst.default_install)
+          end
+        end
+
+        if !ok
+          error "Could not rebuild: #{pkg.name}:#{inst.ver}"
           return 1
         end
       end

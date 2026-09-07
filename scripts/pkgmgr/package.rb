@@ -64,6 +64,38 @@ module InstallOrigin
   end
 end
 
+#
+# Which version of each dependency an installation was built against,
+# recorded in a hidden file beside it.
+#
+# A package cannot work this out for itself later: mpfr's own dep list
+# names host_gmp with no version, and asked alone it answers gmp's
+# default -- while the gcc that pulled all of this in pinned 6.1.0.
+# That resolution exists only while that request is being installed.
+# A rebuild of the install, months on and on its own, has to build
+# against the same gmp, and this is the only place that still knows
+# which one that was. Kept apart from .build_inputs on purpose: that
+# file is compared to decide whether an install is stale, and what it
+# was built against is not a change to what it was built from.
+#
+module InstallDeps
+
+  FILE = ".built_against"
+
+  module_function
+
+  def write(dir, versions)
+    File.write(dir / FILE, versions.map { |n, v| "#{n} #{v}\n" }.join)
+  end
+
+  # {name => Version}; empty for an install from before the record.
+  def read(dir)
+    path = dir / FILE
+    return {} if !path.file?
+    return path.read.lines.to_h { |l| n, v = l.split; [n, Ver(v)] }
+  end
+end
+
 class InstallInfo
 
   attr_reader :pkgname, :compiler, :on_host, :arch, :ver, :path
