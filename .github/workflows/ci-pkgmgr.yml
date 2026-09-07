@@ -82,5 +82,5 @@ jobs:
           RUBY="$(ls toolchain5/linux-*/*/any/pkgs/ruby/*/bin/ruby 2>/dev/null | head -1)"; RUBY="${RUBY:-$(command -v ruby)}"; $RUBY --version
           cd scripts/pkgmgr
           for shape in target target_rv chain; do
-            /usr/bin/env time -f "$shape: %es wall, %Us user, %Ss sys" $RUBY -e 'require_relative "tests/exhaustive/runner"; Exhaustive.run_all(shapes: [ARGV[0]], jobs: 1)' $shape 2>&1 | grep -E "cases|wall"
+            $RUBY -e 'require_relative "tests/exhaustive/runner"; Exhaustive.run_all(shapes: [ARGV[0]], jobs: 1)' $shape 2>&1 | grep -E "cases"
           done
