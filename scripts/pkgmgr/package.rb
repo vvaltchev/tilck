@@ -802,10 +802,16 @@ class Package
   # produced from a fresh extraction. Thirty-six copies of it were
   # removed from the recipes in one change, which would otherwise
   # have flagged everything they built.
+  #
+  # sysroot_fragments says what an install publishes into the composed
+  # sysroot -- a view, recomposed from the installs at will -- and is
+  # read after the build, never by it. Teaching QEMU to publish its
+  # binaries would otherwise have condemned every stack's QEMU to a
+  # rebuild for the sake of a symlink.
   NON_RECIPE_HOOKS = %i[enabled? default? default_cc
                         host_world_root? installed?
                         host_os_list host_arch_list
-                        clean_build].freeze
+                        clean_build sysroot_fragments].freeze
 
   #
   # One digest standing for "how this package is built".
