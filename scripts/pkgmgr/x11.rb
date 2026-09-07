@@ -35,8 +35,14 @@ X11_LIBS = [
   { name: "xtrans", upstream: "xtrans", dir: "lib",
     check: "usr/include/X11/Xtrans/Xtrans.h", deps: [] },
 
+  # xcb-proto installs xcbgen, a Python package, so its configure
+  # wants an interpreter; libxcb then runs that package to generate
+  # its C from the XML. Both name the Python they mean: an undeclared
+  # one is refused by the shim behind the dependencies' PATH, which is
+  # how this was found -- "no suitable Python interpreter" on a host
+  # with three of them.
   { name: "xcb_proto", upstream: "xcb-proto", dir: "proto",
-    check: "usr/share/xcb/xproto.xml", deps: [] },
+    check: "usr/share/xcb/xproto.xml", deps: ["host_python"] },
 
   # The bottom of the client stack.
   { name: "libxau", upstream: "libXau", dir: "lib",
@@ -47,7 +53,8 @@ X11_LIBS = [
 
   { name: "libxcb", upstream: "libxcb", dir: "lib",
     check: "usr/lib/libxcb.so",
-    deps: ["host_xcb_proto", "host_libxau", "host_libxdmcp"] },
+    deps: ["host_xcb_proto", "host_libxau", "host_libxdmcp",
+           "host_python"] },
 
   { name: "libx11", upstream: "libX11", dir: "lib",
     check: "usr/lib/libX11.so",

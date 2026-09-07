@@ -172,7 +172,8 @@ class TestQemuStack < Minitest::Test
   # packages configure through it, and its wrapper used to exec a
   # bare "python3" -- resolved against whatever PATH the caller had.
   def test_everything_that_needs_python_declares_it
-    for name in ["host_qemu", "host_meson", "host_ninja"] do
+    for name in ["host_qemu", "host_meson", "host_ninja",
+                 "host_xcb_proto", "host_libxcb"] do
       deps = pkg(name).dep_list.map(&:name)
       assert_includes deps, "host_python",
                       "#{name} runs python without declaring which"
