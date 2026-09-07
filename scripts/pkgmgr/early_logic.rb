@@ -469,6 +469,31 @@ ensure
   saved&.each { |k,v| ENV[k] = v }
 end
 
+# One word of a command line, written the way a person would type it:
+# bare when it needs nothing, single-quoted when it needs anything.
+#
+# Shellwords.escape is the wrong tool here, and was used for years.
+# It is written for a string about to be handed to a shell, so it
+# backslashes every character that is not plainly safe -- `=` among
+# them -- and prints `make V\=1 -j20` for a command nobody would ever
+# type that way. These lines are read far more often than they are
+# pasted, and they have to survive both.
+SHELL_BARE_WORD = /\A[\w@%+=:,.\/-]+\z/
+
+def shell_word(w)
+  w = w.to_s
+  return w if w.match?(SHELL_BARE_WORD)
+
+  # Inside single quotes every character is itself, which leaves only
+  # the quote to place: close, an escaped one, open again.
+  return "'" + w.gsub("'") { "'\\''" } + "'"
+end
+
+# A whole command line: what somebody could paste into a shell to run
+# exactly this. The log's record of what ran, and the hint that tells
+# a user what to run, are the same sentence and are written once.
+def cmd_to_s(argv) = argv.map { |a| shell_word(a) }.join(" ")
+
 # `env` adds variables for this command only, and is logged with it:
 # a build step that behaves differently because of one has to say so,
 # or the log stops being a record of what ran.
@@ -477,8 +502,8 @@ def run_command(out, argv, env: nil)
   assert { argv.length > 0 }
   assert { env.nil? || env.is_a?(Hash) }
 
-  cmd_str = argv.map { |a| Shellwords.escape(a.to_s) }.join(" ")
-  cmd_str = env.map { |k, v| "#{k}=#{Shellwords.escape(v.to_s)}" }
+  cmd_str = cmd_to_s(argv)
+  cmd_str = env.map { |k, v| "#{k}=#{shell_word(v)}" }
                .join(" ") + " " + cmd_str if env
   info "Run: #{cmd_str}"
 

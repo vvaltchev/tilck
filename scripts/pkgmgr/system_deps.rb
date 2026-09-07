@@ -494,7 +494,7 @@ module SystemDeps
     # it by hand wants to see what their package manager proposes to
     # do before agreeing to it.
     info "These can be installed with #{backend.name}:"
-    info "  #{SystemPkgs.cmd_to_s(backend.full_install_argv(names))}"
+    info "  #{cmd_to_s(backend.full_install_argv(names))}"
 
     if !env.interactive? && !env.in_ci?
       error "Not running interactively: refusing to install packages."
