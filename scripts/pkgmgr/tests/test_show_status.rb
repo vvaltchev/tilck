@@ -331,6 +331,62 @@ class TestShowStatusAll < Minitest::Test
     end
   end
 
+  # Two numbers a stack: what is in it, and what its compiler holds --
+  # and a table for the package that asks for one, with what each of
+  # its installs holds in its stack.
+  def test_a_stack_says_what_is_in_it_and_what_its_compiler_holds
+    with_fake_tc do
+      with_stubbed_externals do
+        a = Ver("11.5.0")
+        libc = FakePackage.new("host_libc", on_host: true, host_tier: :stack,
+                               arch_list: ALL_HOST_ARCHS.values)
+        gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values,
+                              dep_list: [Dep("host_libc", true)])
+        # The stack compiler as the real one: its default version is
+        # the stack in effect, which is what a stack package's
+        # dependency on it resolves to and records.
+        gcc.define_singleton_method(:default_ver) { pkgmgr.current_host_stack }
+        gcc.define_singleton_method(:installable_versions) { [a] }
+        gcc.define_singleton_method(:stack_gcc_ver) { |v = nil|
+          v || pkgmgr.current_host_stack
+        }
+        gcc.define_singleton_method(:stack_of_install) { |i| i.ver }
+        emu = FakePackage.new("host_emu", on_host: true, host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values,
+                              dep_list: [Dep("host_gcc", true),
+                                         Dep("host_lib", true)])
+        emu.define_singleton_method(:own_table) { "Emulators" }
+        lib = FakePackage.new("host_lib", on_host: true, host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        [libc, gcc, emu, lib].each { |x| pkgmgr.register(x) }
+
+        pkgmgr.with_host_stack(a) {
+          pkgmgr.install("host_libc", manual: false)
+          pkgmgr.install("host_gcc", a, manual: false)
+          pkgmgr.install("host_lib", manual: false)
+          pkgmgr.install("host_emu")
+        }
+        pkgmgr.host_stack = a
+
+        out = capture_stdout { pkgmgr.show_status_all }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+        # the stack holds libc, lib and emu; its compiler holds libc
+        assert_match(/^gcc-11\.5\.0\s+\[ built\s+\]\s+3 pkgs,\s+1 held/, plain)
+        assert_match(/Emulators/, plain)
+        # the emulator holds gcc's libc and lib: two, itself not counted
+        assert_match(/^emu 1\.0\.0\s+gcc-11\.5\.0\s+\[ installed \]\s+2 held/,
+                     plain)
+        assert_operator plain.index("Host stacks"), :<, plain.index("Emulators")
+      end
+    end
+  end
+
+  def test_qemu_asks_for_its_own_table
+    assert_equal "QEMU versions", HostQemuPackage.new.own_table
+    assert_nil FakePackage.new("plain").own_table
+  end
+
   def test_show_all_groups_by_type
     with_fake_tc do
       with_stubbed_externals do

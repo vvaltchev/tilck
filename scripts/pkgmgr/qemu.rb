@@ -135,6 +135,10 @@ class HostQemuPackage < Package
   # about where the world runs is not part of any recipe.
   def host_os_list = ["linux"]
   def host_arch_list = ["x86_64"]
+
+  # A table of its own in the listing: a QEMU is the heaviest thing a
+  # stack is built for, and most of a stack is there because of it.
+  def own_table = "QEMU versions"
   def installable_versions = SUPPORTED
 
   # The compiler this version of QEMU is built by, pinned rather than

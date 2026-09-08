@@ -834,13 +834,14 @@ class Package
   # compilers as rebuilt from something else.
   #
   # stack_of_install says which stack an install is judged at, and is
-  # read by the judging, never by the build.
+  # read by the judging, never by the build; own_table is read by the
+  # listing alone.
   NON_RECIPE_HOOKS = %i[enabled? default? default_cc
                         host_world_root? installed?
                         host_os_list host_arch_list
                         clean_build sysroot_fragments
                         get_install_list get_installable_list
-                        stack_of_install].freeze
+                        stack_of_install own_table].freeze
 
   #
   # One digest standing for "how this package is built".
@@ -871,6 +872,12 @@ class Package
       build_flags(ver).join(" "), steps, own, *helpers
     )[0, 32]
   end
+
+  # The title of a table of this package's installs in the listing,
+  # after the host stacks, or nil for the packages that get a line in
+  # their section and no more. Asked of the package because it is the
+  # package that knows it is the reason a stack exists.
+  def own_table = nil
 
   # The host stack an install of this package belongs to, or nil for
   # one with no stack to scope. The tier decides, as it does in
