@@ -608,6 +608,7 @@ module Main
 
       out = []
       blocks.each { |b|
+        out << "" if !out.empty?      # a blank line between options
         lines = []
         row = +""
         b[:words].each { |w|
