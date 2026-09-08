@@ -306,6 +306,31 @@ class TestShowStatusAll < Minitest::Test
     end
   end
 
+  # The same word in two greens: an install asked for by name is
+  # bright, one pulled in as a dependency is dark, and a line for
+  # several installs is dark only when every one of them is. The
+  # legend at the end says so.
+  def test_a_dependency_install_is_dark_green_and_the_legend_says_so
+    with_fake_tc do
+      with_stubbed_externals do
+        asked = FakePackage.new("asked")
+        pulled = FakePackage.new("pulled")
+        pkgmgr.register(asked)
+        pkgmgr.register(pulled)
+        fake_install(asked, mark: :manual)
+        fake_install(pulled, mark: :auto)
+
+        output = capture_stdout { pkgmgr.show_status_all }
+        rows = output.lines.to_h { |l| [l.split.first, l] }
+        assert_includes rows["asked"], Term::GREEN + "installed"
+        assert_includes rows["pulled"], Term::DARK_GREEN256 + "installed"
+        tail = output.lines.last(2).join
+        assert_match(/Legend: .*installed.* asked for by name/, tail)
+        assert_match(/dependency/, tail)
+      end
+    end
+  end
+
   def test_show_all_groups_by_type
     with_fake_tc do
       with_stubbed_externals do
