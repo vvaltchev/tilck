@@ -178,10 +178,17 @@ class PackageManager
 
   def compute_host_world_names
 
+    # Without the Tilck stacks: a stack's members are outside packages
+    # of their own, so it adds no edge this derivation needs -- and
+    # asking it for its members asks whether each is supported, which
+    # asks about the world, which is what is being computed.
+    graph = build_dep_graph(stacks: false)
+    closure = ->(n) { DepResolver.dep_closure(n, graph) }
+
     roots = host_world_roots.map(&:name)
-    world = roots.flat_map { |r| dep_closure(r) + [r] }.uniq
+    world = roots.flat_map { |r| closure.(r) + [r] }.uniq
     outside = all_packages.map(&:name) - world
-    reachable = outside.flat_map { |n| dep_closure(n) + [n] }.uniq
+    reachable = outside.flat_map { |n| closure.(n) + [n] }.uniq
 
     return world - reachable
   end
@@ -229,9 +236,15 @@ class PackageManager
     @found_installed = scan_toolchain()
   end
 
+  # Declared default and supported here: the members of this target's
+  # Tilck stack, which is what its meta-package depends on.
   def get_default_packages
     @packages.values.select(&:default?)
   end
+
+  # The Tilck stacks, every target's: what the no-mode run installs
+  # where it applies, and what the listing opens with.
+  def tilck_stacks = @packages.values.select(&:metapackage?)
 
   def get_upgradable_packages
     @packages.values.select { |p| p.supported? && p.needs_upgrade? }
@@ -437,7 +450,11 @@ class PackageManager
       end
     end
 
-    list = by_path.values() + @installable
+    # The stacks' meta-packages have a table of their own at the top
+    # and would be a line saying nothing in a section.
+    list = (by_path.values() + @installable).reject { |x|
+      x.pkg&.metapackage?
+    }
 
     # One section per compiler, for host and target alike. Sections
     # are built the same way on both sides; what differs is which
@@ -523,8 +540,10 @@ class PackageManager
     # stack only, and a reader who saw nothing of a QEMU built into
     # another one asked, reasonably, how they were to know there was
     # more.
+    installs, needs = install_graph
+    show_tilck_stacks(width: width, needs: needs)
     dump.call(front)
-    show_stacks(width: width)
+    show_stacks(width: width, needs: needs)
     dump.call(back)
 
     puts
@@ -542,7 +561,28 @@ class PackageManager
   # is what makes a stack usable at all: everything else in it is
   # built BY that compiler, so without it the directory is either
   # empty or a leftover.
-  def show_stacks(width: 40)
+  # The Tilck stacks, one line each: built when its meta-package is
+  # installed, with how many packages it holds, and which one this
+  # invocation's ARCH and BOARD name.
+  def show_tilck_stacks(width: 40, needs: nil)
+
+    stacks = tilck_stacks
+    return if stacks.empty?
+    needs ||= install_graph.last
+
+    puts
+    puts "--- #{"Tilck stacks".center(width)} ---"
+
+    for m in stacks do
+      inst = m.get_install_list.find { |i| !i.path.nil? && !i.broken }
+      status = inst ? Package::BUILT_STR : Package::NOT_BUILT_STR
+      held = inst ? held_by([inst], needs).length - 1 : 0
+      here = m.supported? ? "  [ CURRENT ]" : ""
+      printf("%-28s [ %s ] %3d pkgs%s\n", m.name, status, held, here)
+    end
+  end
+
+  def show_stacks(width: 40, needs: nil)
 
     gcc = stack_compiler
 
@@ -561,7 +601,7 @@ class PackageManager
     known = (gcc.installable_versions + built +
              host_stacks.map { |v| Ver(v) }).uniq.sort
 
-    installs, needs = install_graph
+    needs ||= install_graph.last
 
     puts
     puts "--- #{"Host stacks".center(width)} ---"
@@ -885,11 +925,14 @@ class PackageManager
   # to be installed. Using target_arch (not ARCH) lets this respect
   # the `-s <pkg> -a <arch>` scope: when installing for a different
   # arch, the dep points at that arch's compiler automatically.
-  def build_dep_graph
+  # stacks: false leaves the Tilck stacks' meta-packages with no
+  # dependencies, for the one derivation that must not ask them.
+  def build_dep_graph(stacks: true)
     cc_name = "gcc-#{target_arch.name}-musl"
     has_cc = @packages.key?(cc_name)
 
     @packages.transform_values { |pkg|
+      next [] if !stacks && pkg.metapackage?
       deps = pkg.dep_list.map { |d| d.name }
       if has_cc && pkg.target?
         deps << cc_name if !deps.include?(cc_name)

@@ -575,6 +575,16 @@ module TestHelper
       originals[:with_cc]
   end
 
+  # The Tilck stack of the fake world's arch and board, as the real
+  # meta-package: what the no-mode run installs, with the fake
+  # packages declared default as its members.
+  def register_tilck_stack!
+    require_relative '../tilck_stack'
+    stack = TilckStackPackage.new(FAKE_ARCH, FAKE_ARCH.default_board)
+    pkgmgr.register(stack)
+    return stack
+  end
+
   def satisfied_sys_env
     tools = Hash.new { |h, cmd|
       h[cmd] = { path: "/stub/bin/#{cmd}", ver: "999.0.0" }

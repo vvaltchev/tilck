@@ -533,16 +533,35 @@ class TestMainIntegration < Minitest::Test
     end
   end
 
+  # The no-mode run installs the Tilck stack of this target: the
+  # meta-package, and with it what is declared default, as its
+  # dependencies.
   def test_default_install_mode
     with_fake_tc do
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("dflt", default: true))
         pkgmgr.register(FakePackage.new("opt"))
+        stack = register_tilck_stack!
 
         result = run_cli().first
         assert_equal 0, result
         assert_includes FakePackage.install_log, "dflt"
         refute_includes FakePackage.install_log, "opt"
+        assert stack.installed?(stack.default_ver), "the stack itself"
+      end
+    end
+  end
+
+  # A target without a Tilck stack gets nothing installed by default,
+  # and is told so.
+  def test_default_install_without_a_stack_installs_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("dflt", default: true))
+        result, out = run_cli()
+        assert_equal 0, result
+        assert_match(/No Tilck stack is defined for i386\/pc/, out)
+        assert_empty FakePackage.install_log
       end
     end
   end
@@ -557,14 +576,17 @@ class TestMainIntegration < Minitest::Test
           default: true,
           dep_list: [Dep("dflt_dep", false)]))
         pkgmgr.register(FakePackage.new("dflt_dep", default: true))
+        register_tilck_stack!
 
         result, out = run_cli("--ascii")
 
         assert_equal 0, result
         assert_match(/Install plan:/, out)
-        # ASCII tree: root "dflt_root" with child "dflt_dep" indented.
-        assert_match(/^dflt_root$/, out)
-        assert_match(/^  dflt_dep$/, out)
+        # ASCII tree: the stack is the root, dflt_root its child,
+        # dflt_dep the child's child.
+        assert_match(/^tilck-i386-pc$/, out)
+        assert_match(/^  dflt_root$/, out)
+        assert_match(/^    dflt_dep$/, out)
         # Old linear format must be gone.
         refute_match(/Install order:/, out)
       end

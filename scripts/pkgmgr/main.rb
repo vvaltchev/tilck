@@ -91,6 +91,7 @@ require_relative 'micropython'
 require_relative 'tcc'
 require_relative 'vim'
 require_relative 'tfblib'
+require_relative 'tilck_stack'
 
 require 'pathname'
 require 'fileutils'
@@ -1711,10 +1712,16 @@ module Main
       return 0
     end
 
-    # No mode flag specified: install default packages AND upgrade any
-    # installed packages whose version was bumped in pkg_versions.
-    defaults = pkgmgr.get_default_packages
+    # No mode flag specified: install the Tilck stack of this target --
+    # the meta-package whose dependencies are the default set -- AND
+    # upgrade any installed package whose version was bumped.
+    defaults = pkgmgr.tilck_stacks.select(&:supported?)
     upgrades = pkgmgr.get_upgradable_packages
+    if defaults.empty?
+      info "No Tilck stack is defined for #{pkgmgr.target_arch.name}/" \
+           "#{pkgmgr.board_for(pkgmgr.target_arch)}: nothing to install " \
+           "by default"
+    end
     all = (defaults + upgrades).uniq(&:name)
 
     # --contrib: append the contributor-only extras (host_mconf)

@@ -260,16 +260,20 @@ class TestModel < Minitest::Test
   # The default install claims the default set -- one already here as
   # a dependency becomes the user's -- and upgrades what is beside it
   # the way --upgrade does, mark included.
-  def test_the_default_install_claims_the_defaults_and_upgrades_the_rest
+  def test_the_default_install_installs_the_stack_over_its_members
     r = reg(Model::Shape.make("dflt", :target, default: true,
                               arch_list: %w[i386]),
             Model::Shape.make("multi", :target, versions: %w[2.0.0 1.0.0],
-                              arch_list: %w[i386]))
+                              arch_list: %w[i386]),
+            Model::Shape.make("tilck-i386-pc", :target, versions: %w[1],
+                              arch_list: %w[i386], board_list: %w[pc],
+                              meta: true))
     w = Model.world(k("dflt", "1.0.0", tgt(I386), mark: :auto),
                     k("multi", "1.0.0", tgt(I386), mark: :auto))
 
     o = go(r, w, "", inv)
-    assert_equal Model.world(k("dflt", "1.0.0", tgt(I386)),
+    assert_equal Model.world(k("tilck-i386-pc", "1", tgt(I386)),
+                             k("dflt", "1.0.0", tgt(I386), mark: :auto),
                              k("multi", "1.0.0", tgt(I386), mark: :auto),
                              k("multi", "2.0.0", tgt(I386), mark: :auto)),
                  o.world
@@ -343,7 +347,8 @@ class TestModel < Minitest::Test
   # stack is in effect.
   def test_autoremove_asks_a_stack_compiler_at_its_own_stack
     r = reg(Model::Shape.make("host_libc", :stack),
-            Model::Shape.make("host_gcc", :stack_cc, versions: %w[14.4.0 16.2.0],
+            Model::Shape.make("host_gcc", :stack_cc,
+                              versions: %w[14.4.0 16.2.0],
                               deps: [["host_libc", nil]]))
     w = Model.world(k("host_gcc", "16.2.0", distro, origin: :pinned),
                     k("host_libc", "1.0.0", stack(B), mark: :auto),
