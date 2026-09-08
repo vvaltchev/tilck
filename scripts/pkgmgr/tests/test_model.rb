@@ -339,6 +339,21 @@ class TestModel < Minitest::Test
     assert_equal "nothing to remove", go(r, o.world, "--autoremove", inv).out
   end
 
+  # The stack compiler needs its libc in the stack it defines, whatever
+  # stack is in effect.
+  def test_autoremove_asks_a_stack_compiler_at_its_own_stack
+    r = reg(Model::Shape.make("host_libc", :stack),
+            Model::Shape.make("host_gcc", :stack_cc, versions: %w[14.4.0 16.2.0],
+                              deps: [["host_libc", nil]]))
+    w = Model.world(k("host_gcc", "16.2.0", distro, origin: :pinned),
+                    k("host_libc", "1.0.0", stack(B), mark: :auto),
+                    k("host_libc", "1.0.0", stack(A), mark: :auto))
+    o = go(r, w, "--autoremove", inv)
+    assert_equal Model.world(k("host_gcc", "16.2.0", distro, origin: :pinned),
+                             k("host_libc", "1.0.0", stack(B), mark: :auto)),
+                 o.world
+  end
+
   def test_autoremove_keeps_every_version_a_dependency_could_mean
     r = reg(Model::Shape.make("host_a", :distro, deps: [["host_x", nil]]),
             Model::Shape.make("host_x", :distro, versions: %w[1.0.0 2.0.0]))

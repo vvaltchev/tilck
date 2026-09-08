@@ -680,7 +680,7 @@ module Model
   # install's own context. deps_of includes the cross compiler a target
   # is built by.
   def needed_by(registry, world, key, scope)
-    sc = scope_at(key, scope)
+    sc = scope_at(registry, key, scope)
     return [] if registry[key.name].nil?
     registry.deps_of(key.name, sc).flat_map { |d, pin|
       next [] if registry[d].nil?
@@ -763,7 +763,10 @@ module Model
   # Nothing else moves, and -d moves nothing.
   # The scope an install's own coordinates describe: its arch and its
   # board for a target install, the invocation's otherwise.
-  def scope_at(key, scope)
+  def scope_at(registry, key, scope)
+    # The stack compiler's install belongs to the stack it defines:
+    # what it needs is looked for there, not in the stack in effect.
+    return scope.with(stack: key.ver) if registry[key.name]&.kind == :stack_cc
     m = key.coords.machine
     return scope if !m.start_with?("tilck-")
     a = ALL_ARCHS[m.delete_prefix("tilck-")]
@@ -797,12 +800,12 @@ module Model
       s = registry[k.name]
       !s.nil? && supported?(s, scope, registry) &&
         !bumped.include?(k.name) && state_of(k) != :ok &&
-        supported?(s, scope_at(k, scope), registry)
+        supported?(s, scope_at(registry, k, scope), registry)
     }
     return Outcome.new(0, world, "nothing stale") if stale.empty?
 
     against = stale.map { |k|
-      built_against(registry, world, k, scope_at(k, scope))
+      built_against(registry, world, k, scope_at(registry, k, scope))
     }
     if (i = against.index(nil))
       return Outcome.new(1, world, "#{stale[i].name}: built against what?")
@@ -810,7 +813,7 @@ module Model
     return Outcome.new(0, world, "dry run") if req.dry
 
     stale.zip(against).each do |k, deps|
-      sc = scope_at(k, scope)
+      sc = scope_at(registry, k, scope)
       begin
         entries, sc = plan(registry, world, [[k.name, k.ver], *deps], sc)
       rescue Conflict => e

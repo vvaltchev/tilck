@@ -319,6 +319,46 @@ class TestMarks < Minitest::Test
     end
   end
 
+  # The stack compiler lives in the distro's env and needs a package
+  # in the stack it defines. Asked at the stack in effect instead, the
+  # 11.5.0 compiler needed 14.4.0's glibc, and --autoremove offered to
+  # take the glibc of every stack but the current one.
+  def test_autoremove_asks_a_stack_compiler_at_its_own_stack
+    with_fake_tc do
+      with_stubbed_externals do
+        a, b = Ver("11.5.0"), Ver("14.4.0")
+        libc = FakePackage.new("host_libc", on_host: true, host_tier: :stack,
+                               arch_list: ALL_HOST_ARCHS.values)
+        gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values,
+                              dep_list: [Dep("host_libc", true)])
+        gcc.define_singleton_method(:installable_versions) { [a, b] }
+        gcc.define_singleton_method(:stack_gcc_ver) { |v = nil|
+          v || pkgmgr.current_host_stack
+        }
+        gcc.define_singleton_method(:stack_of_install) { |i| i.ver }
+        pkgmgr.register(libc)
+        pkgmgr.register(gcc)
+
+        # gcc A, asked for by name, with its libc in stack A; a libc in
+        # stack B that nothing needs. The stack in effect is B.
+        pkgmgr.with_host_stack(a) {
+          pkgmgr.install("host_libc", manual: false)
+          pkgmgr.install("host_gcc", a)
+        }
+        pkgmgr.with_host_stack(b) { pkgmgr.install("host_libc", manual: false) }
+        pkgmgr.host_stack = b
+
+        rc, out = run_cli("--autoremove", "-q")
+        assert_equal 0, rc
+        gone = out.scan(/Remove pkg 'host_libc' install at (\S+)/).flatten
+        assert_equal 1, gone.length, out
+        assert_includes gone.first, "gcc-#{b}", "stack B's libc goes"
+        assert_equal 1, libc.get_install_list.length, "stack A's libc stays"
+      end
+    end
+  end
+
   def test_autoremove_with_nothing_to_take_says_so
     with_fake_tc do
       with_stubbed_externals do
