@@ -521,3 +521,38 @@ class TestStackCompilerNeverUpgrades < Minitest::Test
     end
   end
 end
+
+# A request that binds no compiler builds into the stack in effect --
+# the one -H named -- not the default. glibc is the real case: a :stack
+# package that names no host_gcc, and `-H 11.5.0 -s host_glibc` went
+# into 14.4.0.
+class TestTheStackInEffectHoldsWithoutACompilerBound < Minitest::Test
+
+  include TestHelper
+
+  def setup = reset_pkgmgr!
+
+  def test_a_stack_package_naming_no_compiler_lands_in_the_named_stack
+    with_fake_tc do
+      with_stubbed_externals do
+        libc = FakePackage.new("host_libc", on_host: true, host_tier: :stack,
+                               arch_list: ALL_HOST_ARCHS.values)
+        gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        gcc.define_singleton_method(:installable_versions) {
+          [Ver("7.7.7"), Ver("8.8.8")]
+        }
+        gcc.define_singleton_method(:stack_gcc_ver) { |v = nil|
+          v || pkgmgr.current_host_stack
+        }
+        pkgmgr.register(libc)
+        pkgmgr.register(gcc)
+
+        rc, _ = run_cli("-H", "8.8.8", "-s", "host_libc", "-q")
+        assert_equal 0, rc
+        assert_equal ["gcc-8.8.8"],
+                     libc.get_install_list.map { |i| i.coords.stack }
+      end
+    end
+  end
+end
