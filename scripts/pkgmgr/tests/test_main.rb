@@ -71,6 +71,52 @@ class TestParseOptionsBasic < Minitest::Test
   end
 end
 
+# -h fits the terminal: 80 columns when stdout is not one, else its
+# width up to 120, the descriptions re-flowed beside their switches.
+class TestHelpFitsTheTerminal < Minitest::Test
+
+  include TestHelper
+
+  def help_lines(columns)
+    out = StringIO.new
+    old = $stdout
+    $stdout = out
+    Term.stub(:columns, columns) { Main.parse_options(["-h"]) }
+    return out.string.lines.map(&:chomp)
+  ensure
+    $stdout = old
+  end
+
+  def test_eighty_columns_when_stdout_is_not_a_terminal
+    lines = help_lines(80)
+    assert lines.length > 100, "the help lost its options"
+    assert_equal 80, lines.map(&:length).max
+    assert lines.any? { |l| l.start_with?("    -l, --list") }
+    # the description column is one column, every continuation on it
+    col = lines.find { |l| l =~ /\A\s+-l, --list\s+\S/ }.index("List")
+    conts = lines.select { |l| l.start_with?(" " * col) && l[col] != " " }
+    assert conts.length > 50
+  end
+
+  def test_a_wider_terminal_gets_wider_lines_up_to_the_cap
+    wide = help_lines(100)
+    assert_equal 100, wide.map(&:length).max
+    assert wide.length < help_lines(80).length, "not re-flowed"
+  end
+
+  # A description line beginning with a dash is read by OptionParser
+  # as another switch of the option -- "-d to see what would go" made
+  # -d an argument-taking alias, and "-a <arch> for cross-arch queries"
+  # gave -D an argument spec of prose. No switch may carry one.
+  def test_no_switch_was_made_out_of_a_description
+    Main::PARSER.top.list.each { |sw|
+      next if !sw.respond_to?(:arg)
+      refute_match(/\s\S+\s/, sw.arg.to_s,
+                   "#{sw.long.first || sw.short.first}: #{sw.arg.inspect}")
+    }
+  end
+end
+
 class TestParseOptionsInstall < Minitest::Test
 
   def test_single_package

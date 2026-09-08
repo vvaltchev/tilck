@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
+require 'io/console'
+
 module Term
 
   # Basic ANSI colors (used by package status display)
@@ -27,6 +29,15 @@ module Term
   HLINE = "#{DIM}#{"─" * 72}#{RESET}"
 
   module_function
+
+  # How wide a line may be on `io`: 80 unless io is a terminal whose
+  # width is known, then that width, capped -- a line of prose does
+  # not get better past 120 columns, however wide the window.
+  def columns(io = $stdout, default: 80, max: 120)
+    return default if !io.tty?
+    cols = (io.winsize[1] rescue 0)
+    return cols > 0 ? [cols, max].min : default
+  end
 
   # Ask a yes/no question on the terminal.
   #
