@@ -572,17 +572,62 @@ module Main
       line.sub!("ALL", Term.makeRed("ALL"))
       line
     }
-    reformat_summary = ->(summary) {
+    # The summary as OptionParser writes it -- the switch in a column,
+    # the description beside it, a line per string given to on() --
+    # re-flowed so that every line fits the terminal: 80 columns, or
+    # the terminal's own width up to 120 (Term.columns). The strings
+    # in the source are wrapped for the source's sake, not the
+    # screen's; the column stays where OptionParser put it, and the
+    # words of each description are laid out again to the right of it.
+    reformat_summary = ->(parser, summary) {
+      col = parser.summary_indent.length + parser.summary_width + 1
+      room = [Term.columns - col, 20].max
       blocks = []
-      curr = []
+      curr = nil
       summary.each { |line|
-        if is_option.(line) && !curr.empty?
-          blocks << curr; curr = []
+        line = line.chomp
+        if is_option.(line)
+          blocks << curr if curr
+          head, desc = line[0, col], line[col..].to_s
+          # A switch too long for its column: OptionParser puts the
+          # description on the next line, and so do we.
+          if head.length == col && head.end_with?(" ")
+            curr = { head: head, words: desc.split }
+          else
+            curr = { head: line, words: [] }
+          end
+        elsif curr && line.start_with?(" " * col)
+          curr[:words] += line.split
+        else
+          blocks << curr if curr
+          curr = nil
+          blocks << { head: line, words: [] }
         end
-        curr << highlight.call(line)
       }
-      blocks << curr unless curr.empty?
-      blocks.map { |b| b.join }.join("\n") + "\n"
+      blocks << curr if curr
+
+      out = []
+      blocks.each { |b|
+        lines = []
+        row = +""
+        b[:words].each { |w|
+          if !row.empty? && row.length + 1 + w.length > room
+            lines << row
+            row = +""
+          end
+          row << (row.empty? ? w : " #{w}")
+        }
+        lines << row if !row.empty?
+        if lines.empty?
+          out << b[:head]
+        else
+          first = b[:head]
+          first += "\n" + " " * col if first.length != col
+          out << first + lines.first
+          lines.drop(1).each { |l| out << " " * col + l }
+        end
+      }
+      out.map { |l| highlight.call(l) }.join("\n") + "\n"
     }
 
 
@@ -601,7 +646,7 @@ module Main
       @opts[:help] = true
       puts p.banner
       puts
-      puts reformat_summary.call(p.summarize())
+      puts reformat_summary.call(p, p.summarize())
     }
 
     p.on('-l', '--list',
@@ -635,10 +680,13 @@ module Main
       @opts[:list_installable] = true
     }
 
+    # No description line may begin with a dash: OptionParser reads
+    # such a string as one more switch of the option, and "-a <arch>
+    # for cross-arch queries" gave -D an argument spec of prose.
     p.on('-D', '--deps PKG',
          'Show the dependency tree for the given package(s).',
-         'Already-installed deps are shown in gray. Respects',
-         '-a <arch> for cross-arch queries. [MODE]') do |first|
+         'Already-installed deps are shown in gray. Respects the',
+         'arch given with -a, for cross-arch queries. [MODE]') do |first|
       get_multiple_args.call(first, :deps)
     end
 
