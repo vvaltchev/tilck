@@ -49,6 +49,7 @@ class Coords
     @machine = check("machine", machine)
     @env = env.nil? ? ANY : check("env", env)
     @stack = stack.nil? ? ANY : check("stack", stack)
+    @key = "#{@machine}/#{@env}/#{@stack}"
     freeze
   end
 
@@ -88,7 +89,7 @@ class Coords
   end
 
   # The three coordinates as a path fragment, for messages.
-  def to_s = "#{@machine}/#{@env}/#{@stack}"
+  def to_s = @key
 
   def ==(other)
     return false if !other.is_a?(Coords)
@@ -96,17 +97,44 @@ class Coords
   end
 
   def eql?(other) = self == other
-  def hash = to_s.hash
+  def hash = @key.hash
 
-  # Resolved against TC at call time, never at load time: the tests
-  # override TC to a temporary tree.
-  def root = TC / @machine / @env / @stack
+  # Paths are resolved against TC at call time, never at load time --
+  # the tests override TC to a temporary tree -- and remembered per
+  # tree: a scan asks the same coordinates for the same path thousands
+  # of times, and Pathname arithmetic was a third of an exhaustive
+  # case. A different TC is a different tree and empties the memo,
+  # which is what keeps the tests' override honest.
+  @@paths = {}
+  # mutation: equivalent -- anything that is not a tree means no tree yet
+  @@paths_tc = nil
+
+  def self.remembered(key)
+    if !@@paths_tc.equal?(TC)
+      @@paths_tc = TC
+      @@paths.clear
+    end
+    return @@paths[key] ||= yield
+  end
+
+  def root = Coords.remembered([:root, @key]) { TC / @machine / @env / @stack }
 
   # Installations. Packages are one level below their stack so that a
   # sysroot -- a view, not an installation -- can sit beside them
   # without any scanner having to be taught to skip it.
-  def pkgs_dir = root / "pkgs"
+  def pkgs_dir = Coords.remembered([:pkgs, @key]) { root / "pkgs" }
+
+  # One package's directory under pkgs/, by its directory name.
+  def pkg_dir(dirname)
+    return Coords.remembered([:pkg, @key, dirname]) { pkgs_dir / dirname }
+  end
 
   # The composed sysroot of this stack, when we built the environment.
-  def sysroot = root / "sysroot"
+  def sysroot = Coords.remembered([:sysroot, @key]) { root / "sysroot" }
+
+  # <machine>/<env>: the directory the stacks are listed from.
+  def self.env_dir(machine, env)
+    e = env || ANY
+    return remembered([:env, machine, e]) { TC / machine / e }
+  end
 end

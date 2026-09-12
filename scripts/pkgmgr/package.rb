@@ -515,7 +515,7 @@ class Package
   # since pkg_dirname drops the "host_" prefix -- and created an
   # install directory that nothing could see. The layout of an
   # installation is the package's to state, once.
-  def pkg_dir_at(c) = c.pkgs_dir / pkg_dirname
+  def pkg_dir_at(c) = c.pkg_dir(pkg_dirname)
   def install_dir(ver) = pkg_dir_at(coords(ver)) / ver_dirname(ver)
 
   # Staging path for this package version.
@@ -1792,7 +1792,7 @@ class Package
 
   # The stack directories present under one <machine>/<env>.
   def stack_dirs_of(machine, env)
-    dir = TC / machine / (env || Coords::ANY)
+    dir = Coords.env_dir(machine, env)
     return [] if !dir.directory?
     return Dir.children(dir).select { |d| d.start_with?("gcc-") }
   end
