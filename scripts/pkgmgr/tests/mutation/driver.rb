@@ -180,15 +180,19 @@ module Mutation
       begin
         Timeout.timeout(timeout) { Process.wait(pid) }
       rescue Timeout::Error
+        # Where is it? Asked first, answered into the log (run_all.rb
+        # traps QUIT with a backtrace), and only then killed.
+        Process.kill("QUIT", pid) rescue nil
+        sleep 2
         Process.kill("KILL", pid) rescue nil
         Process.wait(pid) rescue nil
-        return [:timeout, tail(out)]
+        return [:timeout, tail(out, 45)]
       end
 
       return [$?.success? ? :survived : :killed, tail(out)]
     end
 
-    def tail(log) = File.read(log).lines.last(12).join
+    def tail(log, lines = 12) = File.read(log).lines.last(lines).join
 
     def remove
       FileUtils.rm_rf(@dir)
