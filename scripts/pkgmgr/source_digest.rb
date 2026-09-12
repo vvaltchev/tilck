@@ -179,9 +179,18 @@ module SourceDigest
     node.compact_child_nodes.each { |c| collect_defs(c, scope, &block) }
   end
 
-  # Where a class was defined. Ruby records this per method, so the
-  # file is taken from any method the class defines itself.
+  # Where a class was defined: Ruby records it for the constant. It
+  # used to be taken from the class's first method, and a method
+  # table's first entry is whatever the table's order makes it --
+  # symbol ids, which follow the order files were loaded in -- so a
+  # require moved elsewhere in the harness changed the answer on one
+  # Ruby and not another. A class without a name has no constant and
+  # keeps the old answer.
   def source_file_of(klass)
+    if klass.name
+      loc = Object.const_source_location(klass.name)
+      return loc[0] if loc
+    end
     m = klass.instance_methods(false).first ||
         klass.private_instance_methods(false).first
     return nil if m.nil?
