@@ -1489,19 +1489,26 @@ module Main
           # borrowing another compiler's sysroot. HOST_VER_GCC only
           # supplies a version when none was named.
           begin
-            stack = pkgmgr.resolved_versions_for(requested)["host_gcc"]
+            bound = pkgmgr.resolved_versions_for(requested)["host_gcc"]
           rescue VersionSolver::ConflictError,
                  VersionSolver::UnstableError => e
             error "Version conflict: #{e.message}"
             return 1
           end
 
+          # A request that binds no compiler builds into the stack in
+          # effect: the one -H named, else the default. Handing nil to
+          # the scope meant the default over -H's head, and
+          # `-H 11.5.0 -s host_glibc` -- glibc names no compiler --
+          # installed into 14.4.0.
+          stack = bound || pkgmgr.current_host_stack
+
           # Say so when the stack is not the one the context printed.
           # A pin moves it -- asking for QEMU 7 asks for GCC 12 -- and
           # a run whose header says gcc-14.4.0 while it writes into
           # gcc-12.5.0 has told the user the wrong thing about the
           # only coordinate that decides where its work lands.
-          if stack && stack != pkgmgr.default_stack_cc_ver
+          if bound && bound != pkgmgr.current_host_stack
             info "Building into the #{Coords.stack_name(stack)} stack"
           end
 
