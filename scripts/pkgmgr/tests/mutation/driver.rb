@@ -49,6 +49,7 @@ module Mutation
       regular_target_package_get_install_list
       noarch_package_get_install_list all_stack_coords stack_gcc_ver
       default_cc install_archs get_install_list read_install_list
+      stack_of_install
     ],
     "package_manager.rb" => %w[
       target_arch board_for with_target_arch with_target_coords

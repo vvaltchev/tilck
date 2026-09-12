@@ -832,11 +832,15 @@ class Package
   # target metadata, and teaching that wrapper one more field
   # (.install_origin's second word) flagged all four prebuilt cross
   # compilers as rebuilt from something else.
+  #
+  # stack_of_install says which stack an install is judged at, and is
+  # read by the judging, never by the build.
   NON_RECIPE_HOOKS = %i[enabled? default? default_cc
                         host_world_root? installed?
                         host_os_list host_arch_list
                         clean_build sysroot_fragments
-                        get_install_list get_installable_list].freeze
+                        get_install_list get_installable_list
+                        stack_of_install].freeze
 
   #
   # One digest standing for "how this package is built".
@@ -868,6 +872,19 @@ class Package
     )[0, 32]
   end
 
+  # The host stack an install of this package belongs to, or nil for
+  # one with no stack to scope. The tier decides, as it does in
+  # default_cc: a :stack install's is in its coordinates; a
+  # :compiler-tier package also has a gcc-* there, but that one names
+  # the host's own compiler and moving the stack to it would mean
+  # nothing. The stack compiler overrides this: its install lives in
+  # the distro's env, and the stack it belongs to is the one it
+  # defines.
+  def stack_of_install(inst)
+    return nil if host_tier != :stack
+    return inst.coords&.stack_ver
+  end
+
   # Evaluate `block` as the recipe reads AT one install's coordinates.
   #
   # A recipe is not one text: build_steps and build_flags may vary by
@@ -889,16 +906,9 @@ class Package
       # version and ".../gcc-16.2.0/..." for another -- so checking a
       # 16.2.0 install from an invocation whose stack is 14.4.0
       # rendered the wrong path and called twenty-two packages built
-      # minutes earlier stale.
-      #
-      # The tier decides which host packages have a stack to scope,
-      # as it does in default_cc: a :compiler-tier package also has a
-      # gcc-* in its coordinates, but that one names the host's own
-      # compiler and moving the stack to it would mean nothing.
-      return block.call if host_tier != :stack
-
-      stack = inst.coords&.stack_ver
-      # mutation: equivalent -- a :stack install always names its stack
+      # minutes earlier stale. Which stack an install has to scope is
+      # the package's to say (stack_of_install).
+      stack = stack_of_install(inst)
       return block.call if stack.nil?
       return pkgmgr.with_host_stack(stack, &block)
     end

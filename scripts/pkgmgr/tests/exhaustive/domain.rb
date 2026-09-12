@@ -50,9 +50,9 @@ module Exhaustive
   # through. Mirrors HostGccPackage in the two things that matter.
   class FakeHostGcc < TestHelper::FakePackage
 
-    def initialize
+    def initialize(dep_list: [])
       super("host_gcc", on_host: true, host_tier: :distro,
-            arch_list: ALL_HOST_ARCHS.values)
+            arch_list: ALL_HOST_ARCHS.values, dep_list: dep_list)
     end
 
     def default_ver = pkgmgr.current_host_stack
@@ -88,6 +88,12 @@ module Exhaustive
     "distro"       => -> { [host("host_d", :distro)] },
     "compiler"     => -> { [host("host_c", :compiler)] },
     "stack"        => -> { [stack_pkg("host_s"), FakeHostGcc.new] },
+    # The relation the real stack compiler has with its glibc: the
+    # compiler lives in the distro's env and needs a package that
+    # lives in the stack the compiler itself defines.
+    "stack_cc_dep" => -> { [host("host_libc", :stack),
+                            FakeHostGcc.new(dep_list: [Dep("host_libc",
+                                                           true)])] },
     "stack_pin"    => -> { [stack_pkg("host_s",
                                       dep_list: [Dep("host_x", true,
                                                      ver: Ver("2.0.0"))]),
@@ -156,7 +162,8 @@ module Exhaustive
   # every package as well multiplies cases by twenty for questions the
   # single-package shapes already ask, and made one shape (diamond)
   # cost more than the other fourteen together.
-  NARROW = %w[stack_pin cross_cc chain diamond conflict default].freeze
+  NARROW = %w[stack_pin stack_cc_dep cross_cc chain diamond conflict
+              default].freeze
 
   def candidates(pkgs, narrow: false)
     out = []

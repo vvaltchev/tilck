@@ -165,6 +165,13 @@ class HostGccPackage < Package
   # detecting the disagreement.
   def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_host_stack
 
+  # An install of the stack compiler belongs to the stack it defines,
+  # although it lives in the distro's env: what it needs -- its glibc,
+  # its binutils -- is in that stack, and asked about at the current
+  # one, host_gcc 11.5.0 needed the glibc of 14.4.0 and --autoremove
+  # offered to take the glibc of every other stack.
+  def stack_of_install(inst) = stack_gcc_ver(inst.ver)
+
   # The stack's compiler runtime comes from the gcc that NAMES the
   # stack, so composing gcc-11.5.0 grafts 11.5.0's libstdc++ even when
   # another gcc is the default. Its binaries go in beside, at usr/bin:
