@@ -33,7 +33,15 @@ find_ruby() {
    for r in "$pkgs"/ruby/*/bin/ruby; do
       [ -x "$r" ] && { echo "$r"; return 0; }
    done
-   echo "restamp: no pkgmgr ruby under $pkgs" >&2
+   # ...and the system's, when the bootstrap decided it was good
+   # enough to run the package manager with. This tool has to work
+   # wherever the package manager does.
+   if command -v ruby > /dev/null; then
+      command -v ruby
+      return 0
+   fi
+
+   echo "restamp: no ruby under $pkgs and none on PATH" >&2
    return 1
 }
 

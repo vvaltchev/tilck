@@ -27,6 +27,23 @@ module BuildInputs
 
   FILE = ".build_inputs"
 
+  #
+  # Which scheme computed the `recipe` digest in a record.
+  #
+  #   1  the recipe was the SOURCE of the Ruby that built the package
+  #   2  the recipe is the STEPS, and the steps are data
+  #
+  # Recorded but NOT compared. A record written under 1 for a package
+  # whose recipe was already a step list is still valid -- the digest
+  # has not moved -- and comparing the number would call every such
+  # install stale for no reason. It is read only to explain a
+  # mismatch: a digest computed one way cannot disagree with one
+  # computed the other, it can only be incomparable, and "rebuild
+  # because your sources changed" is the wrong thing to say about
+  # that.
+  #
+  FORMAT = 2
+
   # Absolute paths are rewritten to tokens before being recorded, so
   # that the file is stable across machines and still diffable by eye.
   # The parallelism goes too: -j is a property of the machine, not of
@@ -59,21 +76,47 @@ module BuildInputs
       lines << "file   #{normalize(path.to_s)} #{digest_file(path)}"
     end
 
+    lines << "format #{FORMAT}"
     lines << "argv   #{normalize(argv)}" if argv
     return lines.join("\n") + "\n"
   end
 
-  # Read back the comparable lines only, so that adding an
-  # informational field later cannot make every install look stale.
+  # Which scheme wrote this record. A record from before the line
+  # existed is a 1, which is what it was; no record is no scheme,
+  # and nil says so rather than a number.
+  def format_of(dir)
+
+    path = dir / FILE
+    return nil if !path.file?
+
+    line = path.read.lines.find { |l| l.start_with?("format ") }
+    return line ? line.split[1].to_i : 1
+  end
+
+  # The lines that decide whether an install matches its sources.
+  # Everything else in the file is for a human to read.
+  COMPARABLE = ["recipe ", "file   "].freeze
+
+  # BOTH sides of the comparison go through this, which is what makes
+  # the promise true: adding an informational field cannot make every
+  # install look stale. Only the recorded side was filtered, and the
+  # `format` line -- the first informational line that is always
+  # written -- promptly made eight healthy installs read changed.
+  def comparable_lines(text)
+
+    return text.lines
+               .map(&:chomp)
+               .select { |l| l.start_with?(*COMPARABLE) }
+               .join("\n")
+  end
+
+  # Read back the comparable lines only.
   def comparable(dir)
 
     path = dir / FILE
     return nil if !File.file?(path)
 
-    return File.read(path).lines
-               .map(&:chomp)
-               .select { |l| l.start_with?("recipe ", "file   ") }
-               .join("\n")
+    return comparable_lines(File.read(path))
   end
 
   def write(dir, recipe:, files:, argv: nil)

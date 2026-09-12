@@ -414,7 +414,12 @@ class TestCoordinateMatrix < Minitest::Test
                      "#{axis}: both installs recorded the same recipe, so " \
                      "a record read from the wrong one cannot be seen"
 
-        File.write(rec_a, "recipe sha256:not-what-it-was-built-from\n")
+        # A record from THIS scheme with the wrong digest: the
+        # sources moved, which is what :changed means. Without the
+        # format line it would be a record this scheme cannot read,
+        # which is a different complaint.
+        File.write(rec_a, "recipe sha256:not-what-it-was-built-from\n" \
+                          "format #{BuildInputs::FORMAT}\n")
 
         for scope in [p.scope_a, p.scope_b] do
           assert_equal :changed,

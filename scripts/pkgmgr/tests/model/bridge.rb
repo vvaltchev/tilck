@@ -102,8 +102,12 @@ module Bridge
   def key_of(pkg, inst)
 
     record = if pkg
-      { ok: :ok, changed: :changed, unknown: :missing }
-        .fetch(pkg.build_inputs_state_of(inst))
+      # :old_format is :changed to the model: what moved is how a
+      # recipe is fingerprinted rather than the recipe, but every
+      # decision downstream -- rebuild, report stale, refuse to build
+      # against it -- is the same one.
+      { ok: :ok, changed: :changed, old_format: :changed,
+        unknown: :missing }.fetch(pkg.build_inputs_state_of(inst))
     else
       BuildInputs.comparable(inst.path).nil? ? :missing : :ok
     end
