@@ -233,8 +233,13 @@ class Package
     return "#{Term.send(color, word)}#{tail}#{' ' * pad}"
   end
 
-  def self.installed_str(n, digits: 0) =
-    status_str("installed", :makeGreen, n, digits: digits)
+  # The same word in two greens: bright for an install somebody asked
+  # for by name, dark for one that came in as a dependency -- what
+  # --autoremove may take. A line standing for several installs is
+  # dark only when every one of them is.
+  def self.installed_str(n, digits: 0, auto: false) =
+    status_str("installed", auto ? :makeDarkGreen : :makeGreen, n,
+               digits: digits)
 
   def self.stale_str(n, digits: 0) =
     status_str("stale", :makeYellow, n, digits: digits)

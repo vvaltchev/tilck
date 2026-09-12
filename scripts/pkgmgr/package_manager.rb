@@ -528,6 +528,7 @@ class PackageManager
     dump.call(back)
 
     puts
+    puts legend
   end
 
   # The host stacks themselves: which compilers we have built a world
@@ -570,6 +571,18 @@ class PackageManager
       printf("%-20s [ %s ] %3d pkgs%s\n",
              Coords.stack_name(v), status, packages_in_stack(v), here)
     end
+  end
+
+  # What the colours of the listing say, for the reader who has not
+  # learnt them: the two greens above all, since the words are the
+  # same.
+  def legend
+    return "Legend: #{Term.makeGreen('installed')} asked for by name   " \
+           "#{Term.makeDarkGreen('installed')} pulled in as a " \
+           "dependency\n" \
+           "        #{Term.makeYellow('stale')} built from other sources   " \
+           "#{Term.makeRed('broken')} incomplete   " \
+           "#{Term.makeBlue('found')} no package claims it"
   end
 
   # How many packages have been built into one stack. Package
@@ -688,8 +701,9 @@ class PackageManager
           [:changed, :unknown].include?(e.pkg.build_inputs_state_of(e))
         }
         n = installed.length
+        auto = installed.none?(&:manual)
         status = stale ? Package.stale_str(n, digits: digits)
-                       : Package.installed_str(n, digits: digits)
+                       : Package.installed_str(n, digits: digits, auto: auto)
       elsif !broken.empty?
         status = Package.broken_str(digits: digits)
       else

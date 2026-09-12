@@ -13,6 +13,7 @@ module Term
 
   # xterm-256 colors (used by test runner and system tests)
   GREEN256 = "\e[38;5;40m"
+  DARK_GREEN256 = "\e[38;5;28m"
   RED256   = "\e[38;5;196m"
   YELLOW256 = "\e[38;5;220m"
   CYAN256  = "\e[38;5;75m"
@@ -45,6 +46,7 @@ module Term
   def makeWhite(s) = "#{WHITE}#{s}#{RESET}"
   def makeRed(s) = "#{RED}#{s}#{RESET}"
   def makeGreen(s) = "#{GREEN}#{s}#{RESET}"
+  def makeDarkGreen(s) = "#{DARK_GREEN256}#{s}#{RESET}"
   def makeYellow(s) = "#{YELLOW}#{s}#{RESET}"
   def makeBlue(s) = "#{BLUE}#{s}#{RESET}"
   def makeMagenta(s) = "#{MAGENTA}#{s}#{RESET}"
