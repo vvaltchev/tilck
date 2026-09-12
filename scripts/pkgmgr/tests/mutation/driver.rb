@@ -60,7 +60,8 @@ module Mutation
       get_stale_packages get_stale_installs get_upgradable_packages
       built_against deps_of_install with_resolved_versions replace
       mark mark_requested_manual needs_of_install coords_of_install_for
-      autoremove refresh installs_changed!
+      autoremove install_graph held_by held_in_stack refresh
+      installs_changed!
       build_dep_graph clean get_installed_compilers
     ],
     "main.rb" => %w[expand_install_all select_host_stack requested_arch

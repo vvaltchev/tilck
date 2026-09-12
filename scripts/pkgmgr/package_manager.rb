@@ -555,21 +555,63 @@ class PackageManager
       return
     end
 
-    built = gcc.get_install_list
-               .reject { |i| i.path.nil? || i.broken }
-               .map(&:ver)
+    compilers = gcc.get_install_list.reject { |i| i.path.nil? || i.broken }
+    built = compilers.map(&:ver)
 
     known = (gcc.installable_versions + built +
              host_stacks.map { |v| Ver(v) }).uniq.sort
 
+    installs, needs = install_graph
+
     puts
     puts "--- #{"Host stacks".center(width)} ---"
 
+    # Two numbers a stack: how many packages are in it, and how many
+    # of them its compiler holds -- a glibc and a kernel's headers,
+    # typically; the rest are there for whatever else was built into
+    # the stack, which the next table says.
     for v in known do
       status = built.include?(v) ? Package::BUILT_STR : Package::NOT_BUILT_STR
       here = v == current_host_stack ? "  [ CURRENT ]" : ""
-      printf("%-20s [ %s ] %3d pkgs%s\n",
-             Coords.stack_name(v), status, packages_in_stack(v), here)
+      cc = compilers.find { |i| i.ver == v }
+      held = cc ? held_in_stack(v, held_by([cc], needs)) : 0
+      printf("%-20s [ %s ] %3d pkgs, %3d held%s\n",
+             Coords.stack_name(v), status, packages_in_stack(v), held, here)
+    end
+
+    show_held_tables(width: width, needs: needs)
+  end
+
+  # The installs of a stack among `held`, the root itself not counted:
+  # what a stack's row and a QEMU's row call "held".
+  def held_in_stack(gcc_ver, held)
+    stack = Coords.stack_name(gcc_ver)
+    return held.count { |i| i.coords.stack == stack }
+  end
+
+  # A table per package that asks for one (Package#own_table): its
+  # installs, each with the stack it is in and how much of that stack
+  # it holds. QEMU asks, being the heaviest thing a stack is built
+  # for and the reason most of a stack is there.
+  def show_held_tables(width:, needs:)
+
+    for pkg in @packages.values do
+      title = pkg.own_table
+      next if title.nil?
+      rows = pkg.get_install_list.reject { |i| i.path.nil? || i.broken }
+                .sort_by(&:ver)
+      next if rows.empty?
+
+      puts
+      puts "--- #{title.center(width)} ---"
+
+      for i in rows do
+        stack = i.coords.stack_ver
+        held = stack ? held_in_stack(stack, held_by([i], needs)) - 1 : 0
+        status = Package.installed_str(1, auto: !i.manual)
+        printf("%-14s %-13s [ %s ] %3d held\n",
+               "#{pkg.pkg_dirname} #{i.ver}", i.coords.stack, status, held)
+      end
     end
   end
 
@@ -1219,8 +1261,11 @@ class PackageManager
   # is kept or taken by the same rule, since what it is worth is not
   # what decides. Dependents go before their dependencies, and -d
   # lists without removing.
-  def autoremove(dry)
-
+  # Every installation, and what each one needs among them: the graph
+  # --autoremove walks and the listing counts. Built from the records
+  # once per question, since a question about one root is a question
+  # about every install it can reach.
+  def install_graph
     installs = @packages.values.flat_map(&:get_install_list)
     by_key = installs.group_by { |i| [i.pkgname, i.ver] }
 
@@ -1230,14 +1275,27 @@ class PackageManager
       }]
     }
 
-    kept = installs.select(&:manual).to_set
-    queue = kept.to_a
+    return [installs, needs]
+  end
+
+  # What `roots` hold: everything they need, transitively, roots
+  # included. The set --autoremove keeps is what the manual installs
+  # hold; what a stack's compiler or a QEMU holds is this for one.
+  def held_by(roots, needs)
+    held = roots.to_set
+    queue = roots.to_a
     while (i = queue.shift)
       for d in needs[i] do
-        queue << d if kept.add?(d)
+        queue << d if held.add?(d)
       end
     end
+    return held
+  end
 
+  def autoremove(dry)
+
+    installs, needs = install_graph
+    kept = held_by(installs.select(&:manual), needs)
     removable = installs.reject { |i| kept.include?(i) }
     if removable.empty?
       info "Nothing to remove: every automatic install is still needed"

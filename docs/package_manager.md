@@ -51,8 +51,10 @@ The package manager handles three categories of packages:
 # First-time setup (installs default packages for the current ARCH)
 ./scripts/build_toolchain
 
-# List all packages and their install status: the host stacks first, one
-# line each with how many packages it holds, then the current stack's list
+# List all packages and their install status: Tilck's packages, the host
+# tools, the host stacks (packages in each, and how many its compiler
+# holds), the QEMUs (and how much of their stack each holds), then the
+# current stack's own list
 ./scripts/build_toolchain -l
 
 # Install specific packages (dependencies resolved automatically)
