@@ -90,67 +90,46 @@ class HostGlibcPackage < Package
     ["install/usr/include/stdio.h", false],
   ]
 
-  # Absolute path of the installed kernel headers, which glibc compiles
-  # against. Taken from the package rather than the sysroot: the farm
-  # has not composed the sysroot yet at this point in the build order.
-  def linux_headers_include
-    pkg = pkgmgr.get("host_linux_headers")
-    return pkg.install_prefix(pkg.default_ver) / "install/usr/include"
-  end
-
-  def install_impl_internal(install_dir)
-
-    # Paths as they will be once the sysroot is composed, not as they
-    # are in staging.
-    sysroot_usr = "#{stack_sysroot}/usr"
-    destdir = "#{install_dir}/destdir"
+  def build_steps(ver = nil) = [
 
     # glibc refuses to be configured in its own source tree.
-    FileUtils.mkdir_p("build")
+    Mkdir(path: "build"),
 
-    conf = [
-      "../configure",
-      "--prefix=#{sysroot_usr}",
-      "--with-headers=#{linux_headers_include}",
-      "--enable-kernel=#{GLIBC_MIN_KERNEL}",
+    Within(dir: "build", steps: [
+      Run(log: "configure.log", argv: [
+        "../configure",
 
-      # Everything in one directory: the loader included. The default
-      # splits it into /lib, which would leave the sysroot with two
-      # library directories for no benefit here.
-      "libc_cv_slibdir=#{sysroot_usr}/lib",
+        # Paths as they will be once the sysroot is composed, not as
+        # they are in staging.
+        "--prefix=$SYSROOT/usr",
+        "--with-headers=$host_linux_headers/install/usr/include",
+        "--enable-kernel=#{GLIBC_MIN_KERNEL}",
 
-      # Recent GCC finds things to warn about in glibc's own sources
-      # that are not ours to fix.
-      "--disable-werror",
+        # Everything in one directory: the loader included. The
+        # default splits it into /lib, which would leave the sysroot
+        # with two library directories for no benefit here.
+        "libc_cv_slibdir=$SYSROOT/usr/lib",
 
-      # Neither is wanted, and both would add host dependencies.
-      "--disable-nscd",
-      "--without-selinux",
-    ]
+        # Recent GCC finds things to warn about in glibc's own sources
+        # that are not ours to fix.
+        "--disable-werror",
 
-    ok = false
-    chdir("build") do
-      ok = run_command("configure.log", conf)
-      next if !ok
-
-      ok = run_command("build.log", ["make", "-j#{BUILD_PAR}"])
-      next if !ok
-
-      ok = run_command("install.log",
-                       ["make", "install", "DESTDIR=#{destdir}"])
-    end
-
-    return false if !ok
+        # Neither is wanted, and both would add host dependencies.
+        "--disable-nscd",
+        "--without-selinux",
+      ]),
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+      Run(log: "install.log",
+          argv: ["make", "install", "DESTDIR=$DESTDIR"]),
+    ]),
 
     # DESTDIR reproduces the whole absolute prefix beneath it. Lift the
     # sysroot fragment out: what remains under install/ is a miniature
     # sysroot (usr/lib, usr/include) the farm can compose directly.
-    FileUtils.mkdir_p("#{install_dir}/install")
-    FileUtils.mv("#{destdir}#{sysroot_usr}", "#{install_dir}/install/usr")
-
-    prune_build_tree
-    return true
-  end
+    Mkdir(path: "$INSTALL/install"),
+    Move(from: "$DESTDIR$SYSROOT/usr", to: "$INSTALL/install/usr"),
+    Prune(),
+  ]
 end
 
 pkgmgr.register(HostGlibcPackage.new())

@@ -39,16 +39,9 @@ class NcursesPackage < Package
     ["install/lib/libncurses.a", false]
   ]
 
-  def install_impl_internal(install_dir)
+  def build_steps(ver = nil)
 
     arch = default_arch().gcc_tc
-
-    # The ncurses tarball ships an `INSTALL` documentation file that, on
-    # case-insensitive filesystems (e.g. APFS on macOS), collides with the
-    # `install/` prefix directory `make install` wants to create. The file
-    # is documentation only — no Makefile target depends on it — so just
-    # remove it to make `mkdir install` work.
-    File.delete("INSTALL") if File.exist?("INSTALL")
 
     # Pass --build so configure sets cross_compiling=yes immediately
     # (when both --host and --build are set and differ).  Without it,
@@ -62,29 +55,36 @@ class NcursesPackage < Package
     host_cc = "cc"
     build_triple = "#{HOST_ARCH.name}-unknown-#{HOST_OS}"
 
-    ok = run_command("configure.log", [
-      "./configure",
-      "--host=#{arch}-pc-linux-gnu",
-      "--build=#{build_triple}",
-      "--prefix=#{install_dir}/install",
-      "--datarootdir=/usr/share",
-      "--disable-db-install",
-      "--disable-widec",
-      "--without-progs",
-      "--without-cxx",
-      "--without-cxx-binding",
-      "--without-ada",
-      "--without-manpages",
-      "--without-dlsym",
-      "BUILD_CC=#{host_cc}",
-    ])
-    return false if !ok
+    return [
 
-    ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
-    return false if !ok
+      # The ncurses tarball ships an `INSTALL` documentation file
+      # that, on case-insensitive filesystems (e.g. APFS on macOS),
+      # collides with the `install/` prefix directory `make install`
+      # wants to create. The file is documentation only -- no Makefile
+      # target depends on it -- so remove it to make `mkdir install`
+      # work. Remove never minds a file that is not there.
+      Remove(paths: ["INSTALL"]),
 
-    ok = run_command("install.log", [ "make", "install" ])
-    return ok
+      Run(log: "configure.log", argv: [
+        "./configure",
+        "--host=#{arch}-pc-linux-gnu",
+        "--build=#{build_triple}",
+        "--prefix=$INSTALL/install",
+        "--datarootdir=/usr/share",
+        "--disable-db-install",
+        "--disable-widec",
+        "--without-progs",
+        "--without-cxx",
+        "--without-cxx-binding",
+        "--without-ada",
+        "--without-manpages",
+        "--without-dlsym",
+        "BUILD_CC=#{host_cc}",
+      ]),
+
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+      Run(log: "install.log", argv: ["make", "install"]),
+    ]
   end
 end
 
@@ -156,10 +156,7 @@ class NcursesHostPackage < Package
     )
   end
 
-  def install_impl_internal(install_dir)
-
-    # Same case-insensitive-FS workaround as the target build.
-    File.delete("INSTALL") if File.exist?("INSTALL")
+  def build_steps(ver = nil)
 
     # At runtime, ncurses needs to find terminfo entries for the
     # user's $TERM. The system ncurses on each host distro has its
@@ -192,85 +189,70 @@ class NcursesHostPackage < Package
       "/opt/homebrew/opt/ncurses/share/terminfo",
     ].join(":")
 
-    ok = run_command("configure.log", [
-      "./configure",
-      "--prefix=#{install_dir}/install",
-      "--datarootdir=/usr/share",
-      "--disable-db-install",
-      "--with-terminfo-dirs=#{terminfo_dirs}",
-      # Wide-char ncurses: busybox/u-boot's kconfig prefers -lncursesw.
-      "--enable-widec",
-      # Split terminfo into a separately-named library so the kconfig
-      # link line's `-ltinfo` finds ours, not the system's. Without
-      # the =tinfo suffix the lib would be named libtinfow (widec
-      # default), which would NOT match `-ltinfo`.
-      "--with-termlib=tinfo",
-      # --enable-pc-files opts in to installing pkg-config files (OFF
-      # by default upstream); --with-pkg-config-libdir directs them
-      # into our tree so PKG_CONFIG_PATH can discover them without
-      # touching the system pkg-config search path.
-      "--enable-pc-files",
-      "--with-pkg-config-libdir=#{install_dir}/install/lib/pkgconfig",
-      "--without-progs",
-      "--without-cxx",
-      "--without-cxx-binding",
-      "--without-ada",
-      "--without-manpages",
-    ])
-    return false if !ok
+    return [
 
-    ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
-    return false if !ok
+      # Same case-insensitive-FS workaround as the target build.
+      Remove(paths: ["INSTALL"]),
 
-    ok = run_command("install.log", [ "make", "install" ])
-    return false if !ok
+      Run(log: "configure.log", argv: [
+        "./configure",
+        "--prefix=$INSTALL/install",
+        "--datarootdir=/usr/share",
+        "--disable-db-install",
+        "--with-terminfo-dirs=#{terminfo_dirs}",
+        # Wide-char ncurses: busybox/u-boot's kconfig prefers
+        # -lncursesw.
+        "--enable-widec",
+        # Split terminfo into a separately-named library so the
+        # kconfig link line's `-ltinfo` finds ours, not the system's.
+        # Without the =tinfo suffix the lib would be named libtinfow
+        # (widec default), which would NOT match `-ltinfo`.
+        "--with-termlib=tinfo",
+        # --enable-pc-files opts in to installing pkg-config files
+        # (OFF by default upstream); --with-pkg-config-libdir directs
+        # them into our tree so PKG_CONFIG_PATH can discover them
+        # without touching the system pkg-config search path.
+        "--enable-pc-files",
+        "--with-pkg-config-libdir=$INSTALL/install/lib/pkgconfig",
+        "--without-progs",
+        "--without-cxx",
+        "--without-cxx-binding",
+        "--without-ada",
+        "--without-manpages",
+      ]),
 
-    # Post-install fixup: ncurses bakes the `--prefix` path (which is
-    # the *staging* dir at configure time) into .pc files and
-    # ncurses6-config. After install_impl atomically mv's staging to
-    # the final host toolchain location, those baked paths would be
-    # dangling. Rewrite them to use paths that resolve at query time
-    # from the script/pc-file's own location, so the files survive
-    # relocation.
-    ncurses_host_fix_baked_paths("#{install_dir}/install")
-    return true
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+      Run(log: "install.log", argv: ["make", "install"]),
+
+      # ncurses bakes the --prefix path -- which is the STAGING
+      # directory at configure time -- into its .pc files and into
+      # ncurses6-config. install_impl then moves staging to the final
+      # location and those baked paths dangle. Rewrite them to resolve
+      # at query time from the file's own location instead, so they
+      # survive the move.
+      #
+      # Every .pc sits at <prefix>/lib/pkgconfig/, so two levels up
+      # lands at <prefix>. A substitution that matches nothing fails
+      # the build: silently leaving a dangling path behind is the one
+      # outcome nobody would notice.
+      Substitute(path: "$INSTALL/install/lib/pkgconfig/*.pc", subs: [
+        [/^prefix=.+$/, 'prefix=${pcfiledir}/../..'],
+        ["$INSTALL/install", '${prefix}'],
+      ]),
+
+      # ncurses{,w}6-config is a POSIX shell script with the prefix
+      # baked in the same way; derive it from $0's directory
+      # (<prefix>/bin/ -> <prefix>). It is named ncurses6-config
+      # without widec and ncursesw6-config with --enable-widec.
+      Substitute(path: "$INSTALL/install/bin/ncurses*6-config", subs: [
+        [/^prefix="[^"]*"/,
+         'prefix="$(cd -- "$(dirname -- "$0")/.." && pwd)"'],
+        ["$INSTALL/install", '${prefix}'],
+      ]),
+    ]
   end
 end
 
-# Rewrite hardcoded prefix paths to relocatable equivalents in the
-# host_ncurses install tree. Called AFTER `make install` so the files
-# survive the atomic staging→final mv. See NcursesHostPackage.
-def ncurses_host_fix_baked_paths(prefix_dir)
-  # pkg-config files: make prefix= pcfiledir-relative. Every .pc sits
-  # at <prefix>/lib/pkgconfig/, so going two levels up lands at <prefix>.
-  Dir.glob("#{prefix_dir}/lib/pkgconfig/*.pc").each do |pc|
-    data = File.read(pc)
-    m = data.match(/^prefix=(.+)$/)
-    next if !m
-    staged = m[1]
-    data.sub!(/^prefix=.+$/, 'prefix=${pcfiledir}/../..')
-    data.gsub!(staged, '${prefix}')
-    File.write(pc, data)
-  end
-
-  # ncurses{,w}6-config is a POSIX shell script with the prefix baked
-  # in. Replace the static prefix="..." assignment with one that
-  # derives the prefix from $0's directory at runtime
-  # (<prefix>/bin/ -> <prefix>). The script is named ncurses6-config
-  # without widec and ncursesw6-config with --enable-widec.
-  Dir.glob("#{prefix_dir}/bin/ncurses*6-config").each do |script|
-    data = File.read(script)
-    m = data.match(/^prefix="([^"]*)"/)
-    next if !m
-    staged = m[1]
-    data.sub!(
-      /^prefix="[^"]*"/,
-      'prefix="$(cd -- "$(dirname -- "$0")/.." && pwd)"'
-    )
-    data.gsub!(staged, '${prefix}')
-    File.write(script, data)
-  end
-end
 
 pkgmgr.register(NcursesPackage.new())
 pkgmgr.register(NcursesHostPackage.new())

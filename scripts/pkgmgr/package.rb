@@ -644,10 +644,22 @@ class Package
   # running and there is no install directory to speak of.
   #
   #   $INSTALL   this version's install directory
+  #   $PREFIX    where this version will live once installed
+  #   $DESTDIR   where `make install` stages it first
   #   $SYSROOT   the stack's composed sysroot
   #   $PAR       the build parallelism
   #   $PYTHON    the interpreter host_python installed
   #   $SRC_REF   the short git ref the source was fetched at
+  #
+  # ...and one per DECLARED DEPENDENCY, named after it, holding the
+  # directory that dependency was installed in:
+  #
+  #   "--with-gmp=$host_gmp/install"
+  #
+  # Uppercase is a builtin; lowercase is what the recipe brought in
+  # with it -- a dependency, or a value a step bound. A recipe that
+  # names a package it does not depend on gets "unknown token", which
+  # is the right complaint about an undeclared dependency.
   #
   # $SRC_REF is why tokens exist rather than string interpolation. Its
   # value lives in a file inside the extracted source, which is not
@@ -676,11 +688,40 @@ class Package
   def build_tokens(install_dir)
     return {
       "INSTALL" => install_dir.to_s,
+
+      # Where the package will live once installed, NOT the staging
+      # path it is standing in: ld bakes its library search dirs into
+      # itself from --prefix, and staging stops existing the moment
+      # the install completes.
+      #
+      # Lazy, like the two below: only a host package has a final
+      # install prefix, and a target package that never names the
+      # token must not be asked to produce one.
+      "PREFIX"  => -> { final_install_prefix(install_dir).to_s },
+      "DESTDIR" => "#{install_dir}/destdir",
       "SYSROOT" => (on_host ? stack_sysroot.to_s : ""),
       "PAR"     => BUILD_PAR.to_s,
       "PYTHON"  => -> { pkgmgr.python_interpreter.to_s },
       "SRC_REF" => -> { source_ref_short(install_dir) },
+      **dep_list.to_h { |d| [d.name, -> { dep_install_dir(d.name).to_s }] },
     }
+  end
+
+  # Where a declared dependency of this package was installed.
+  #
+  # The version comes from the resolution of the request being
+  # installed, NOT from this package's own dep list: mpfr names
+  # host_gmp without a version, so asking mpfr alone answers "gmp's
+  # default" -- while the gcc that asked for all four pinned
+  # something else. gcc 16 pins gmp 6.3.0, and mpfr must link the
+  # same one, not 6.2.1.
+  #
+  # Behind a token, and therefore resolved only while building. It
+  # raises when the dependency is absent, and the digest is computed
+  # in exactly the situations where it may well be.
+  def dep_install_dir(name)
+    pkg = pkgmgr.get(name)
+    return pkg.install_prefix(pkgmgr.resolved_ver(name) || pkg.default_ver)
   end
 
   # The short git ref the source was fetched at.
