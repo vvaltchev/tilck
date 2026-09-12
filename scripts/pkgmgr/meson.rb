@@ -82,59 +82,47 @@ class HostMesonPackage < Package
   # The interpreter this runs on, by absolute path. Asked of the
   # package manager rather than assumed: a wrapper that silently
   # falls back to the machine's python is the thing this replaces.
-  def python_bin = pkgmgr.python_interpreter
+  # meson runs from its own sources: "building" it is putting the tree
+  # somewhere permanent and writing a launcher for it.
+  def build_steps(ver = nil) = [
 
-  def install_impl_internal(install_dir)
+    Mkdir(path: "$INSTALL/install/lib/meson"),
+    Mkdir(path: "$INSTALL/install/bin"),
 
-    # The wrapper has to name the path meson will live at, not the
-    # staging one we are standing in: the staging directory stops
-    # existing the moment the atomic move completes. expected_files
-    # cannot catch this — the file is present either way, and only its
-    # contents are wrong — so the check at the end runs it.
-    final = final_install_prefix(install_dir)
-
-    libdir = "#{install_dir}/install/lib/meson"
-    bindir = "#{install_dir}/install/bin"
-
-    FileUtils.mkdir_p(libdir)
-    FileUtils.mkdir_p(bindir)
-
-    # Everything except the install prefix we are building into.
-    Dir.children(".").each { |e|
-      next if e == "install"
-      FileUtils.cp_r(e, libdir)
-    }
+    # The whole extracted tree, except the install prefix we are
+    # building into. "." means its entries, dotfiles included.
+    Copy(from: ".", to: "$INSTALL/install/lib/meson",
+         except: ["install"]),
 
     # A wrapper rather than a symlink: meson locates its own modules
     # relative to meson.py, and running it through a symlink from
     # bin/ would put that resolution one directory away from the tree.
-    wrapper = "#{bindir}/meson"
-    File.write(wrapper, <<~SH)
+    #
+    # It names $PREFIX, where meson will live -- not the staging
+    # directory we are standing in, which stops existing the moment
+    # the atomic move completes. expected_files cannot catch a wrapper
+    # that names the wrong path (the file is there either way and only
+    # its contents are wrong), so the check below runs one.
+    Write(path: "$INSTALL/install/bin/meson", text: <<~SH),
       #!/bin/sh
-      exec "#{python_bin}" "#{final}/lib/meson/meson.py" "$@"
+      exec "$PYTHON" "$PREFIX/lib/meson/meson.py" "$@"
     SH
-    FileUtils.chmod(0755, wrapper)
+    Chmod(path: "$INSTALL/install/bin/meson", mode: 0755),
 
-    prune_build_tree
+    Prune(),
 
-    # Run it, with the staging tree standing in for the final path, so
-    # a wrapper that cannot start is caught here rather than by the
-    # first package that tries to configure with it.
-    check = File.read(wrapper).sub(final.to_s, "#{install_dir}/install")
-    File.write("#{install_dir}/check-meson", check)
-    FileUtils.chmod(0755, "#{install_dir}/check-meson")
-
-    out = `#{install_dir}/check-meson --version 2>&1`.strip
-    FileUtils.rm_f("#{install_dir}/check-meson")
-
-    if !$?.success?
-      error "the installed meson does not run: #{out}"
-      return false
-    end
-
-    info "meson #{out} runs"
-    return true
-  end
+    # The same wrapper with the staging tree standing in for the final
+    # path, run once, so a meson that cannot start is caught here
+    # rather than by the first package that tries to configure with
+    # it. $$@ is a literal $@: the shell's, not ours.
+    Write(path: "check-meson", text: <<~SH),
+      #!/bin/sh
+      exec "$PYTHON" "$INSTALL/install/lib/meson/meson.py" "$$@"
+    SH
+    Chmod(path: "check-meson", mode: 0755),
+    Run(log: "check-meson.log", argv: ["./check-meson", "--version"]),
+    Remove(paths: ["check-meson"]),
+  ]
 end
 
 pkgmgr.register(HostMesonPackage.new())

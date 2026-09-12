@@ -64,44 +64,34 @@ class LicheervNanoBootPackage < Package
     ["install/soc_#{CODENAME}/fip.bin", false],
   ]
 
-  def install_impl_internal(install_dir)
+  def build_steps(ver = nil) = [
 
-    # Symlink sophgo's prebuilt host tools as `host-tools/` inside the
-    # licheerv source tree — that's the path the vendor build system
-    # (cvisetup.sh + the u-boot makefiles) hardcodes.
-    sophgo_dir = sophgo_tools_install_dir
-    if sophgo_dir.nil? || !sophgo_dir.directory?
-      error "host_sophgo_tools install dir not found: #{sophgo_dir}"
-      return false
-    end
-    rm_f("host-tools")
-    ln_s(sophgo_dir.to_s, "host-tools")
+    # Sophgo's prebuilt host tools as `host-tools/` inside the
+    # licheerv source tree -- the path the vendor build system
+    # (cvisetup.sh + the u-boot makefiles) hardcodes. Through the
+    # dependency token, so a missing host_sophgo_tools says which
+    # package to install rather than which directory was not found.
+    Symlink(target: "$host_sophgo_tools", link: "host-tools"),
 
-    # Run the vendor build with our cross-compiler env *unset* so that
-    # cvisetup.sh's own toolchain selection wins. with_saved_env will
-    # restore the prior values when we leave the block.
-    with_saved_env(
-      %w[CC CXX AR NM RANLIB CROSS_PREFIX CROSS_COMPILE]
-    ) do
-      ENV["CC"]            = ""
-      ENV["CXX"]           = ""
-      ENV["AR"]            = ""
-      ENV["NM"]            = ""
-      ENV["RANLIB"]        = ""
-      ENV["CROSS_PREFIX"]  = ""
-      ENV["CROSS_COMPILE"] = ""
-
-      ok = run_command("build.log", [
+    # The vendor build runs with our cross-compiler variables emptied,
+    # so that cvisetup.sh's own toolchain selection wins.
+    Within(env: {
+      "CC"            => "",
+      "CXX"           => "",
+      "AR"            => "",
+      "NM"            => "",
+      "RANLIB"        => "",
+      "CROSS_PREFIX"  => "",
+      "CROSS_COMPILE" => "",
+    }, steps: [
+      Run(log: "build.log", argv: [
         "bash", "-c",
-        "source build/cvisetup.sh && " +
-        "defconfig #{CODENAME} && " +
-        "build_uboot"
-      ])
-      return false if !ok
-    end
-
-    return true
-  end
+        "source build/cvisetup.sh && " \
+        "defconfig #{CODENAME} && " \
+        "build_uboot",
+      ]),
+    ]),
+  ]
 
   private
 

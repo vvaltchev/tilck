@@ -658,6 +658,70 @@ class TestRecipeExecution < Minitest::Test
   end
 
   #
+  # "." as a source means the ENTRIES of a directory, dotfiles
+  # included -- the only way to copy a tree whose contents are not
+  # known in advance -- and `except` leaves some of them behind. meson
+  # copies its whole extracted tree except the prefix it is building
+  # into.
+  #
+  def test_copying_a_whole_directory_except_some_of_it
+    in_tree do |root, c|
+      run_steps([
+        Mkdir(path: "src/sub"),
+        Mkdir(path: "src/install"),
+        Write(path: "src/a.py", text: "a"),
+        Write(path: "src/.hidden", text: "h"),
+        Write(path: "src/sub/b.py", text: "b"),
+        Write(path: "src/install/no", text: "no"),
+        Mkdir(path: "dst"),
+        Copy(from: "src/.", to: "dst", except: ["install"]),
+      ], c)
+
+      got = Dir.children("#{root}/dst").sort
+      assert_equal [".hidden", "a.py", "sub"], got
+      assert_equal "b", File.read("#{root}/dst/sub/b.py")
+    end
+  end
+
+  #
+  # Replacing a symlink is the point: the same build run twice must
+  # work. Replacing anything else is not -- the link often points into
+  # the source tree.
+  #
+  def test_symlink_replaces_a_link_and_refuses_anything_else
+    in_tree do |root, c|
+      run_steps([
+        Mkdir(path: "a"),
+        Mkdir(path: "b"),
+        Symlink(target: "a", link: "l"),
+        Symlink(target: "b", link: "l"),
+      ], c)
+      assert_equal "b", File.readlink("#{root}/l")
+
+      err = assert_raises(Recipe::Error) {
+        run_steps([Symlink(target: "a", link: "b")], c)
+      }
+      assert_match(/is not a symlink/, err.message)
+      assert File.directory?("#{root}/b"), "the directory survived"
+    end
+  end
+
+  # A package whose deliverable is one file at the top says so.
+  def test_prune_keeps_what_it_is_told_to
+    in_tree do |root, c|
+      run_steps([
+        Write(path: "keep.gz", text: "x"),
+        Mkdir(path: "src"),
+        Write(path: "src/junk", text: "y"),
+        Write(path: "top.log", text: "z"),
+        Prune(keep: ["keep.gz"]),
+      ], c)
+
+      assert_equal ["keep.gz"], Dir.children(root).sort
+    end
+  end
+
+  #
   # Prune keeps the install and the logs, and lifts the logs of an
   # out-of-tree build out of the directory that is about to go.
   #
