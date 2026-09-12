@@ -324,9 +324,12 @@ class TestShowStatusAll < Minitest::Test
         rows = output.lines.to_h { |l| [l.split.first, l] }
         assert_includes rows["asked"], Term::GREEN + "installed"
         assert_includes rows["pulled"], Term::DARK_GREEN256 + "installed"
-        tail = output.lines.last(2).join
-        assert_match(/Legend: .*installed.* asked for by name/, tail)
+        # The legend is the last paragraph, however many lines it
+        # grows to.
+        tail = output.split("Legend:").last
+        assert_match(/installed.* asked for by name/, tail)
         assert_match(/dependency/, tail)
+        assert_match(/unusable.* a dependency it needs is gone/, tail)
       end
     end
   end

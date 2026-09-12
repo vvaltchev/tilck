@@ -58,7 +58,7 @@ class HostGperfPackage < Package
     return BuildEnv.new(bin_dirs: [install_prefix(ver) / "install" / "bin"])
   end
 
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
     Run(log: "configure.log",
         argv: ["./configure", "--prefix=$INSTALL/install"]),
     Run(log: "build.log", argv: ["make", "-j$PAR"]),

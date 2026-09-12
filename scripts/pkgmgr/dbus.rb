@@ -73,7 +73,7 @@ class HostDbusPackage < Package
       "-Dmodular_tests=disabled",
   ]
 
-  def build_steps(ver = nil) = meson_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = meson_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostDbusPackage.new())

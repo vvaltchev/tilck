@@ -79,7 +79,7 @@ class HostBinutilsPackage < Package
   # library search dirs and ldscripts location into itself from
   # --prefix, and staging stops existing the moment the install
   # completes.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     # Binutils insists on being configured outside its source tree.
     Mkdir(path: "build"),

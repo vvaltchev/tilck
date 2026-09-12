@@ -523,6 +523,12 @@ class PackageManager
     # count is, and whether there is one at all.
     digits = count_digits(groups)
 
+    # Before dump, which captures it: what each installation needs,
+    # what it cannot find, and therefore what cannot be used.
+    installs, needs, missing = install_graph
+    unusable = unusable_installs(installs, needs, missing)
+    cannot_use = unusable.keys.to_set
+
     dump = ->(sections) {
       for msg, l in sections do
         next if l.empty?      # a stack with nothing in it is not news
@@ -530,7 +536,7 @@ class PackageManager
         puts "--- #{msg.center(width)} ---"
         l.map { |x| x.pkgname }.uniq.each { |pkg|
           show_status(pkg, group_by, l.select { |x| x.pkgname == pkg },
-                      digits)
+                      digits, unusable: cannot_use)
         }
       end
     }
@@ -540,11 +546,12 @@ class PackageManager
     # stack only, and a reader who saw nothing of a QEMU built into
     # another one asked, reasonably, how they were to know there was
     # more.
-    installs, needs = install_graph
     show_tilck_stacks(width: width, needs: needs)
     dump.call(front)
     show_stacks(width: width, needs: needs)
     dump.call(back)
+
+    show_unusable(unusable)
 
     puts
     puts legend
@@ -664,7 +671,9 @@ class PackageManager
            "dependency\n" \
            "        #{Term.makeYellow('stale')} built from other sources   " \
            "#{Term.makeRed('broken')} incomplete   " \
-           "#{Term.makeBlue('found')} no package claims it"
+           "#{Term.makeBlue('found')} no package claims it\n" \
+           "        #{Term.makeMagenta('unusable')} a dependency it needs " \
+           "is gone"
   end
 
   # How many packages have been built into one stack. Package
@@ -696,7 +705,7 @@ class PackageManager
     return max < 2 ? 0 : max.to_s.length
   end
 
-  def show_status(name, group_by, list, digits = 0)
+  def show_status(name, group_by, list, digits = 0, unusable: Set.new)
 
     add_braces = ->(s) { "{#{s}}" }
 
@@ -784,8 +793,17 @@ class PackageManager
         }
         n = installed.length
         auto = installed.none?(&:manual)
-        status = stale ? Package.stale_str(n, digits: digits)
-                       : Package.installed_str(n, digits: digits, auto: auto)
+
+        # Unusable before stale: both say "do something", but only
+        # this one explains why the package does not work RIGHT NOW,
+        # and staleness is what --check-for-updates is for.
+        status = if installed.any? { |e| unusable.include?(e) }
+          Package.unusable_str(n, digits: digits)
+        elsif stale
+          Package.stale_str(n, digits: digits)
+        else
+          Package.installed_str(n, digits: digits, auto: auto)
+        end
       elsif !broken.empty?
         status = Package.broken_str(digits: digits)
       else
@@ -1309,16 +1327,83 @@ class PackageManager
   # once per question, since a question about one root is a question
   # about every install it can reach.
   def install_graph
+
     installs = @packages.values.flat_map(&:get_install_list)
     by_key = installs.group_by { |i| [i.pkgname, i.ver] }
+    needs = {}
+    missing = {}
 
-    needs = installs.to_h { |i|
-      [i, needs_of_install(i.pkg, i).flat_map { |n, v, coords|
-        (by_key[[n, v]] || []).select { |d| coords.include?(d.coords) }
-      }]
+    for i in installs do
+      found = []
+      gone = []
+
+      for n, v, coords in needs_of_install(i.pkg, i) do
+        here = (by_key[[n, v]] || []).select { |d| coords.include?(d.coords) }
+        here.empty? ? gone << [n, v] : found.concat(here)
+      end
+
+      needs[i] = found
+      missing[i] = gone
+    end
+
+    return [installs, needs, missing]
+  end
+
+  #
+  # Installations that cannot be used, and what they are waiting for.
+  #
+  # A package can be complete, current, and still unusable: something
+  # it was built against is no longer installed. Nothing about the
+  # package itself says so -- the artifact is exactly what it should
+  # be -- and the failure surfaces later, in somebody else's build, as
+  # a header or a library that is not where the flags say.
+  #
+  # It travels: an install whose dependency cannot be used cannot be
+  # used either. A gmp that is gone takes mpfr with it, and mpfr takes
+  # the gcc built against it.
+  #
+  # Returns {install => [what it is waiting for, as words]}.
+  #
+  def unusable_installs(installs, needs, missing)
+
+    bad = {}
+
+    for i, gone in missing do
+      next if gone.empty?
+      bad[i] = gone.map { |n, v| "#{n} #{v}" }
+    end
+
+    loop do
+      grew = false
+
+      for i in installs do
+        next if bad.key?(i)
+        via = needs[i].select { |d| bad.key?(d) }
+        next if via.empty?
+
+        bad[i] = via.map { |d| "#{d.pkgname} #{d.ver}" }.uniq
+        grew = true
+      end
+
+      break if !grew
+    end
+
+    return bad
+  end
+
+  # The list under the table: the status cell has room for the word
+  # and none for the reason, and the reason is the actionable half.
+  def show_unusable(unusable)
+
+    return if unusable.empty?
+
+    puts
+    puts "Unusable: built correctly, but something they need is gone:"
+
+    unusable.sort_by { |i, _| [i.pkgname, i.ver.to_s] }.each { |i, why|
+      name = "#{i.pkgname} #{i.ver}"
+      puts "    #{name.ljust(34)}needs #{why.join(", ")}"
     }
-
-    return [installs, needs]
   end
 
   # What `roots` hold: everything they need, transitively, roots

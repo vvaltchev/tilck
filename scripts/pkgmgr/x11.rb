@@ -151,15 +151,15 @@ class X11Package < Package
 
   def build_flags(ver = nil) = [
       "--disable-static",
-      "--libdir=#{stack_sysroot}/usr/lib",
+      "--libdir=$SYSROOT/usr/lib",
 
       # X.org's configure scripts look for their own .m4 macros and for
       # sibling headers under the prefix; without this they find the
       # host's copies in /usr/share and mix the two.
-      "--datarootdir=#{stack_sysroot}/usr/share",
+      "--datarootdir=$SYSROOT/usr/share",
   ]
 
-  def build_steps(ver = nil) = autotools_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = autotools_stack_steps(build_flags(ver))
 end
 
 X11_LIBS.each { |spec| pkgmgr.register(X11Package.new(spec)) }

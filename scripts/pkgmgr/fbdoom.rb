@@ -51,7 +51,7 @@ class FbDoomPackage < Package
     ["fbdoom.gz", false],
   ]
 
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     arch_tc = default_arch().gcc_tc
 

@@ -37,7 +37,7 @@ class MtoolsPackage < Package
     "mtools"
   ]
 
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     conf_params = [
       "--without-x",

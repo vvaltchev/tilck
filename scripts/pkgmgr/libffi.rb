@@ -55,13 +55,13 @@ class HostLibffiPackage < Package
 
   def build_flags(ver = nil) = [
       "--disable-static",       # the sysroot ships shared libraries
-      "--libdir=#{stack_sysroot}/usr/lib",
+      "--libdir=$SYSROOT/usr/lib",
       "--disable-multi-os-directory",  # keeps it out of lib64
   ]
 
   # autogen runs OUTSIDE the stack's toolchain, as it did: it builds a
   # configure script with the host's autotools.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
     # The git tarball has no configure script; autogen builds one.
     Run(log: "autogen.log", argv: ["./autogen.sh"]),
     *autotools_stack_steps(build_flags(ver)),

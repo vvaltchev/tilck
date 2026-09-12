@@ -33,7 +33,7 @@ class ZlibPackage < Package
     ["install/lib/libz.a", false]
   ]
 
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     arch = default_arch().gcc_tc
 

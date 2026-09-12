@@ -55,10 +55,10 @@ class HostLibpngPackage < Package
 
   def build_flags(ver = nil) = [
       "--disable-static",
-      "--libdir=#{stack_sysroot}/usr/lib",
+      "--libdir=$SYSROOT/usr/lib",
   ]
 
-  def build_steps(ver = nil) = autotools_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = autotools_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostLibpngPackage.new())

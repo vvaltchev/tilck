@@ -37,7 +37,7 @@ class MicropythonPackage < Package
   # than an override.
   CC_VARS = %w[CC CXX AR NM RANLIB CROSS_PREFIX CROSS_COMPILE].freeze
 
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     mpy_cross = ["make", "V=1", "-j$PAR"]
 

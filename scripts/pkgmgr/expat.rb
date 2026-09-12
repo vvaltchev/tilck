@@ -63,10 +63,10 @@ class HostExpatPackage < Package
       "--disable-static",
       "--without-examples",
       "--without-tests",
-      "--libdir=#{stack_sysroot}/usr/lib",
+      "--libdir=$SYSROOT/usr/lib",
   ]
 
-  def build_steps(ver = nil) = autotools_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = autotools_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostExpatPackage.new())

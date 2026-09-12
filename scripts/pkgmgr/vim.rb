@@ -38,7 +38,7 @@ class VimPackage < Package
     ["install/vr.tgz", false],
   ]
 
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     arch = default_arch.gcc_tc
 

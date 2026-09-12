@@ -64,7 +64,7 @@ class LicheervNanoBootPackage < Package
     ["install/soc_#{CODENAME}/fip.bin", false],
   ]
 
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     # Sophgo's prebuilt host tools as `host-tools/` inside the
     # licheerv source tree -- the path the vendor build system

@@ -77,7 +77,7 @@ class HostZlibPackage < Package
   # takes --prefix and its compiler from $CC, so the shared helper
   # drives it unchanged -- and this way the flags are declared and
   # recorded like every other package's.
-  def build_steps(ver = nil) = autotools_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = autotools_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostZlibPackage.new())

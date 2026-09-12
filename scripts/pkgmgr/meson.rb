@@ -84,7 +84,7 @@ class HostMesonPackage < Package
   # falls back to the machine's python is the thing this replaces.
   # meson runs from its own sources: "building" it is putting the tree
   # somewhere permanent and writing a launcher for it.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     Mkdir(path: "$INSTALL/install/lib/meson"),
     Mkdir(path: "$INSTALL/install/bin"),

@@ -49,7 +49,7 @@ class LuaPackage < Package
   # AR and RANLIB, because build_steps is asked for during a staleness
   # check too, when no build is running and the environment holds
   # nothing. It is the same value: with_cc sets CC to exactly this.
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     arch = default_arch().gcc_tc
 
