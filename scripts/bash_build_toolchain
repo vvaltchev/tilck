@@ -2,6 +2,13 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 # RUBY CONF
+#
+# 3.2 on purpose: it is what Ubuntu 24.04 ships, and the package
+# manager is meant to run on that system's Ruby rather than download
+# its own. What a 3.2 lacks -- prism, a default gem only from 3.3,
+# which the recipe digest parses the sources with -- is installed as
+# a gem by ensure_ruby_gems, the way minitest is where a distro left
+# it out. The floor is the interpreter; the gems are a separate list.
 RUBY_MIN_VER='3.2'
 
 # Project's root directory
@@ -224,6 +231,14 @@ function setup_ruby {
             export SKIP_INSTALL_PACKAGES=1
          fi
       fi
+
+      # A system Ruby new enough to use may still lack a gem the
+      # package manager needs: prism on a 3.2, minitest where a distro
+      # left it out. One probe, and a gem install only when something
+      # is missing. Running here, for every invocation, is what makes
+      # `-l` on a fresh machine say "install ruby-dev" instead of
+      # crashing on `require 'prism'` deep inside the listing.
+      ensure_ruby_gems
       return
    fi
 

@@ -54,6 +54,9 @@ function install_debian_family {
    pkg_list+=(pkg-config)
    pkg_list+=(autoconf)
    pkg_list+=(ruby)
+   # Ruby's headers: prism is a gem with a C extension on a 3.2 (Ubuntu
+   # 24.04), and `gem install` cannot build one without them.
+   pkg_list+=(ruby-dev)
    pkg_list+=(device-tree-compiler)
 
    if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
@@ -360,9 +363,19 @@ function install_arch {
 # says "installed" in every one of those cases; only the require tells
 # them apart.
 #
+# prism is the other kind of gap: the package manager parses its own
+# sources with it (scripts/pkgmgr/source_digest.rb), it is a default
+# gem only from Ruby 3.3, and the floor is 3.2 because that is what
+# Ubuntu 24.04 ships. On a 3.2 it is a gem with a C extension, which
+# is why the debian family installs ruby-dev.
+#
 # Nothing here matters when the bootstrap builds its own Ruby, which
-# bundles all three. It matters when the system Ruby is new enough to
+# bundles all of them. It matters when the system Ruby is new enough to
 # be used as-is, which is exactly when the distro decides the version.
+#
+# Runs on every invocation (setup_ruby), so it is one interpreter
+# start when everything is there -- the per-gem probes run only after
+# the combined one fails, to name what is missing.
 #
 function ensure_ruby_gems {
 
@@ -370,12 +383,21 @@ function ensure_ruby_gems {
       "power_assert:power_assert"
       "minitest:minitest"
       "minitest/mock:minitest-mock"
+      "prism:prism"
    )
    local missing_gems=()
-   local p feature gem_name gems
+   local p feature gem_name gems all=""
 
    if ! which ruby &> /dev/null; then
       return   # no system Ruby: the bootstrap will build its own
+   fi
+
+   for p in "${probes[@]}"; do
+      all+="require '${p%%:*}';"
+   done
+
+   if ruby -e "$all" &> /dev/null; then
+      return
    fi
 
    for p in "${probes[@]}"; do
@@ -389,9 +411,10 @@ function ensure_ruby_gems {
    fi
 
    gems="${missing_gems[*]}"
+   echo "INFO: system Ruby lacks the gem(s): $gems"
 
    if [ "$RUNNING_IN_CI" == 1 ] || [[ "$EUID" -eq 0 ]]; then
-      run_command "gem install --no-document $gems" || exit 1
+      run_command "gem install --no-document $gems" || gem_install_failed
    else
 
       # A user-level gem install needs no root: it always lands
@@ -402,8 +425,25 @@ function ensure_ruby_gems {
       # home instead, invisible to the pkgmgr Ruby process that
       # runs right after this, as the normal user.
       run_command "gem install --no-document --user-install $gems" \
-         || exit 1
+         || gem_install_failed
    fi
+}
+
+# The usual reason a gem install fails on a fresh machine is a C
+# extension (prism) with no Ruby headers to build against. The system
+# packages are installed by the no-argument invocation, which `-l` and
+# friends skip on purpose; say so rather than leaving the mkmf error
+# as the only clue.
+function gem_install_failed {
+   echo
+   echo "ERROR: gem install failed. If the error above mentions mkmf or"
+   echo "       missing headers, the system packages are not installed"
+   echo "       yet (prism needs ruby-dev / ruby-devel). Run"
+   echo
+   echo "          ./scripts/build_toolchain"
+   echo
+   echo "       with no arguments once, then retry."
+   exit 1
 }
 
 function install_freebsd {
