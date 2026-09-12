@@ -513,18 +513,31 @@ usually wants it for other things too, so it is asked rather than decided. An
 unattended run passes `--no-modify-path`: nobody was there to consent to a
 shell profile being edited.
 
-## Default packages and upgrades
+## Tilck stacks, default packages and upgrades
 
-When `build_toolchain` is run without arguments, it installs the **default
-package set** for the current `ARCH` and `BOARD`:
+Every target has a **Tilck stack**: a meta-package named
+`tilck-<arch>-<board>` -- `tilck-i386-pc`, `tilck-x86_64-pc`,
+`tilck-riscv64-qemu-virt`, `tilck-riscv64-licheerv-nano` -- that builds
+nothing and installs an empty directory carrying the records every install
+has, and exists for its dependencies: the cross compiler(s) the target is
+built with and every package declared default for that arch and board.
+Running `build_toolchain` without arguments installs the stack of the
+current `ARCH` and `BOARD`, so the **default package set** comes in as what
+it is -- dependencies, held by the stack:
 
   * **Always**: cross-compilers (x86 gets both i386 + x86_64), acpica,
-    gnuefi_src, host_mtools, zlib, busybox
+    gnuefi_src, host_mtools, host_ncurses, zlib, busybox
   * **x86 only**: gnuefi
   * **riscv64 only**: dtc, uboot (qemu-virt) or licheerv_nano_boot (licheerv-nano)
 
-Each package's `default?` method determines if it's in the default set, gated
-by `arch_supported?`, `host_supported?`, and `board_supported?`.
+Each package's `default?` method says whether it is a member, gated by
+`arch_supported?`, `host_supported?` and `board_supported?`; the stack's
+`dep_list` is that answer under its own coordinates. Members show dark green
+in `-l`, `--autoremove` leaves them alone while the stack is installed, and
+`-u tilck-i386-pc` sets them free. A stack's version is its own (`1`): what
+it is made of is a matter of dependencies, not of versions, so adding a
+default package is a dependency the next no-mode run installs. `-l` opens
+with the stacks, built or not, and how many packages each holds.
 
 **Upgrades**: when a version is bumped in either version file, running
 `build_toolchain --upgrade` (or just `build_toolchain` with no arguments)

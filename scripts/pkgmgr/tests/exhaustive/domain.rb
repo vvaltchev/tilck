@@ -22,6 +22,7 @@
 
 require 'set'
 require_relative '../test_helper'
+require_relative '../../tilck_stack'
 require_relative '../model/model'
 
 module Exhaustive
@@ -102,6 +103,11 @@ module Exhaustive
                                                      ver: Ver("2.0.0"))]),
                             stack_pkg("host_x", versions: %w[1.0.0 2.0.0]),
                             FakeHostGcc.new] },
+    # A Tilck stack: the real meta-package over fake members, one
+    # default and one not, at one arch -- the other contexts are
+    # where it does not apply.
+    "meta"         => -> { [Pkg.new("dflt", default: true), Pkg.new("t"),
+                            TilckStackPackage.new(I386, "pc")] },
     "cross_cc"     => -> { [Pkg.new("t"),
                             Pkg.new("gcc-i386-musl", on_host: true,
                                     is_compiler: true, host_tier: :portable,
@@ -166,7 +172,7 @@ module Exhaustive
   # single-package shapes already ask, and made one shape (diamond)
   # cost more than the other fourteen together.
   NARROW = %w[stack_pin stack_cc_dep cross_cc chain diamond conflict
-              default].freeze
+              default meta].freeze
 
   def candidates(pkgs, narrow: false)
     out = []

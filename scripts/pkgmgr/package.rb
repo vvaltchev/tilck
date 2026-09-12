@@ -873,6 +873,12 @@ class Package
     )[0, 32]
   end
 
+  # A meta-package, in APT's sense: it builds nothing and installs an
+  # empty tree -- a directory with the records every install carries
+  # -- and exists for its dependencies. The Tilck stacks are the ones
+  # there are (tilck_stack.rb); the no-mode run installs them.
+  def metapackage? = false
+
   # The title of a table of this package's installs in the listing,
   # after the host stacks, or nil for the packages that get a line in
   # their section and no more. Asked of the package because it is the
@@ -1462,15 +1468,17 @@ class Package
       return nil
     end
 
-    if !@source
+    if !@source && !metapackage?
       raise NotImplementedError,
             "#{name}: no source declared and no custom install_impl"
     end
 
     # --- Download (into cache/) ---
 
-    ok = @source.download(ver)
-    return false if !ok
+    if @source
+      ok = @source.download(ver)
+      return false if !ok
+    end
 
     # --- Ensure extracted source in staging ---
 
@@ -1488,10 +1496,16 @@ class Package
     end
 
     if !staging.directory?
-      # Fresh extraction into staging
-      chdir_package_base_dir(TC_STAGING) do
-        ok = @source.extract(ver, ver_dirname(ver))
-        return false if !ok
+      if @source
+        # Fresh extraction into staging
+        chdir_package_base_dir(TC_STAGING) do
+          ok = @source.extract(ver, ver_dirname(ver))
+          return false if !ok
+        end
+      else
+        # A meta-package's tree is empty: the directory is all there is
+        # to extract.
+        FileUtils.mkdir_p(staging)
       end
     end
 

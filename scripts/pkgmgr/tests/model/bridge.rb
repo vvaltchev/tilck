@@ -64,6 +64,7 @@ module Bridge
       host_os: pkg.host_os_list,
       host_arch: pkg.host_arch_list,
       world_root: pkg.host_world_root?,
+      meta: pkg.metapackage?,
     )
   end
 

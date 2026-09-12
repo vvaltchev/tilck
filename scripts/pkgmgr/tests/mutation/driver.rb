@@ -36,7 +36,8 @@ module Mutation
 
   # Whole files in scope.
   FILES = %w[coords.rb install_selector.rb dep_resolver.rb
-             version_solver.rb build_inputs.rb layout.rb].freeze
+             version_solver.rb build_inputs.rb layout.rb
+             tilck_stack.rb].freeze
 
   # Files where only these methods are in scope.
   METHODS = {

@@ -391,23 +391,36 @@ class TestMarks < Minitest::Test
     end
   end
 
-  # The default install claims the default set, and upgrades what is
-  # beside it the way --upgrade does.
-  def test_the_default_install_claims_the_defaults_and_upgrades_the_rest
+  # The default install installs the Tilck stack -- the meta-package,
+  # manual -- and its members stay what they are, dependencies; what is
+  # beside it is upgraded the way --upgrade does, mark included.
+  def test_the_default_install_installs_the_stack_over_its_members
     with_fake_tc do
       with_stubbed_externals do
         dflt = FakePackage.new("dflt", default: true)
         multi = FakePackage.new("multi")
         pkgmgr.register(dflt)
         pkgmgr.register(multi)
+        stack = register_tilck_stack!
         fake_install(dflt, mark: :auto)
         fake_install(multi, "0.9.0", mark: :auto)
 
         rc, out = run_cli("-q")
         assert_equal 0, rc
-        assert_match(/Set dflt:1.0.0 to manually installed/, out)
-        assert_equal :manual, mark_of(dflt)
+        refute_match(/Set dflt/, out, "a member is not claimed")
+        assert_equal :manual, mark_of(stack, "1")
+        assert_equal :auto, mark_of(dflt)
         assert_equal :auto, mark_of(multi)
+
+        # ...and the stack holds its members: dflt is not free while
+        # the stack is installed (multi, nobody's, is), and is once the
+        # stack goes.
+        _, out = run_cli("--autoremove", "-d", "-q")
+        refute_match(/Remove pkg 'dflt'/, out)
+        assert_match(/Remove pkg 'multi'/, out)
+        run_cli("-u", stack.name, "-q")
+        _, out = run_cli("--autoremove", "-d", "-q")
+        assert_match(/Remove pkg 'dflt'/, out)
       end
     end
   end

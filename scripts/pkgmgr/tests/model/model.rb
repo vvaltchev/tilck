@@ -73,18 +73,21 @@ module Model
   #                everything only the roots need runs where they do
   Shape = Data.define(:name, :kind, :versions, :default_ver, :deps,
                       :arch_list, :board_list, :default, :install_archs,
-                      :target_arch, :host_os, :host_arch, :world_root) do
+                      :target_arch, :host_os, :host_arch, :world_root,
+                      :meta) do
     def self.make(name, kind, versions: [], default_ver: nil,
                   deps: [], arch_list: nil, board_list: nil,
                   default: false, install_archs: nil, target_arch: nil,
-                  host_os: nil, host_arch: nil, world_root: false)
+                  host_os: nil, host_arch: nil, world_root: false,
+                  meta: false)
       vs = versions.map { |v| Ver(v) }
       new(name: name, kind: kind, versions: vs,
           default_ver: Ver(default_ver || versions.first || "1.0.0"),
           deps: deps.map { |d, p| [d, p && Ver(p)] },
           arch_list: arch_list, board_list: board_list, default: default,
           install_archs: install_archs, target_arch: target_arch,
-          host_os: host_os, host_arch: host_arch, world_root: world_root)
+          host_os: host_os, host_arch: host_arch, world_root: world_root,
+          meta: meta)
     end
 
     def target?   = kind == :target
@@ -112,11 +115,30 @@ module Model
 
     def deps_of(name, scope)
       s = self[name]
+      return members_of(scope).map { |n| [n, nil] } if s.meta
       out = s.deps.dup
       if s.target? && (cc = cross_cc_for(scope.arch))
         out << [cc.name, nil] if out.none? { |d, _| d == cc.name }
       end
       return out
+    end
+
+    # SPEC: a Tilck stack's members at a scope are what is declared
+    # default and supported there, and the cross compilers the arch
+    # is built with -- x86 takes both of its own, the UEFI loader
+    # being 64-bit whatever the kernel is.
+    def members_of(scope)
+      named = shapes.select { |m|
+        !m.meta && m.default && Model.supported?(m, scope, self)
+      }.map(&:name)
+      return (named + compilers_for(scope.arch).map(&:name)).uniq
+    end
+
+    def compilers_for(arch)
+      wanted = arch.family == "generic_x86" ? %w[i386 x86_64] : [arch.name]
+      return shapes.select { |s|
+        s.kind == :cross_cc && wanted.include?(s.target_arch)
+      }
     end
 
     def roots = shapes.select(&:world_root)
@@ -832,10 +854,12 @@ module Model
     return Outcome.new(0, world, "rebuilt")
   end
 
-  # No mode at all: the defaults, plus whatever wants upgrading.
+  # No mode at all: the Tilck stack of this target -- the meta-package
+  # whose dependencies are the defaults -- plus whatever wants
+  # upgrading. A target without a stack gets its upgrades alone.
   def default_install(registry, world, req, scope)
     names = registry.shapes.select { |s|
-      s.default && supported?(s, scope, registry)
+      s.meta && supported?(s, scope, registry)
     }
                     .map(&:name)
     # The default set is claimed -- being a default is being wanted --
