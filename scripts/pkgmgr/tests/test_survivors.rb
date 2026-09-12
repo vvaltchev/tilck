@@ -228,6 +228,7 @@ class TestSurvivors < Minitest::Test
       assert p.needs_upgrade?, "an old default install wants the new default"
 
       FileUtils.rm_f(dir / "bin" / "thing")
+      pkgmgr.installs_changed!
       pkgmgr.refresh
       refute p.needs_upgrade?, "broken: nothing to upgrade from"
     end
@@ -391,6 +392,7 @@ class TestSurvivors < Minitest::Test
       pkgmgr.register(p)
       dir = fake_install(p, V1, record: :changed)
       FileUtils.rm_f(dir / "bin" / "thing")
+      pkgmgr.installs_changed!
       pkgmgr.refresh
       assert_empty pkgmgr.get_stale_packages
     end

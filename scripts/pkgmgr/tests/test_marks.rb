@@ -397,6 +397,7 @@ class TestMarks < Minitest::Test
         inst = a.get_install_list.find { |i| !i.path.nil? }
         File.write(inst.path / InstallOrigin::FILE, "pinned\n")
 
+        pkgmgr.installs_changed!
         pkgmgr.refresh
         inst = a.get_install_list.find { |i| !i.path.nil? }
         assert inst.manual

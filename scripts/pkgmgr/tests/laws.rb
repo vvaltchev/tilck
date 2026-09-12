@@ -75,6 +75,13 @@ module Laws
       out << Violation.new(:L3_placement, argv, m)
     end
 
+    # L5: what the package manager holds about the tree is what the
+    # tree says. Its install lists are re-read once per change, and a
+    # change nobody announced is a list that lies until the next one.
+    for m in Array(after.stale) do
+      out << Violation.new(:L5_installs, argv, m)
+    end
+
     if !argv.include?("-d")
       # A mark is a note on an install, not an install: a key that
       # differs from before only by its mark was not built.
