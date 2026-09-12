@@ -24,6 +24,11 @@ $all_build_types     = ARGV.delete("--all-build-types")
 $run_tilck_tests     = ARGV.delete("--run-also-tilck-tests")
 $exhaustive          = ARGV.delete("--exhaustive")
 $mutation            = ARGV.delete("--mutation")
+
+# A trace is for reading after a kill, and a kill takes the buffer
+# with it: unbuffered, or the last lines -- the ones that matter --
+# are the ones lost.
+$stdout.sync = true if ENV["PKGMGR_TRACE"]
 $test_filter         = nil
 $test_arch           = nil
 $test_packages_filter = nil
@@ -113,12 +118,17 @@ class PrettyReporter < Minitest::AbstractReporter
     puts
   end
 
+  # PKGMGR_TRACE names each test before it runs, so that a suite
+  # killed part-way -- the mutation driver's timeout -- says which
+  # test it was in. Off by default: a line per test that finishes is
+  # noise, and the finishing line says everything the trace would.
   def prerecord(klass, name)
     return if @abort
     if klass.name != @current_class
       @current_class = klass.name
       puts "  #{DIM}#{klass.name}#{RESET}"
     end
+    puts "    #{DIM}-> #{name}#{RESET}" if ENV["PKGMGR_TRACE"]
   end
 
   def record(result)
