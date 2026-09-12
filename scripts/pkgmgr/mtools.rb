@@ -37,7 +37,7 @@ class MtoolsPackage < Package
     "mtools"
   ]
 
-  def build_steps
+  def build_steps(ver = nil)
 
     conf_params = [
       "--without-x",
@@ -48,8 +48,8 @@ class MtoolsPackage < Package
     end
 
     return [
-      Step("configure.log", ["./configure", *conf_params]),
-      Step("build.log", ["make", "-j$PAR"]),
+      Run(log: "configure.log", argv: ["./configure", *conf_params]),
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
     ]
   end
 end

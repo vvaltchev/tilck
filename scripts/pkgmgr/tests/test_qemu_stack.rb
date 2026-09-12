@@ -185,7 +185,7 @@ class TestQemuStack < Minitest::Test
   # interpreter's path into it would move every fingerprint the day
   # the Python version changes.
   def test_ninja_bootstraps_through_the_token
-    argv = pkg("host_ninja").build_steps.flat_map(&:argv)
+    argv = Recipe.all_argv(pkg("host_ninja").build_steps)
 
     assert_includes argv, "$PYTHON",
                     "ninja bootstraps with whatever python3 PATH offers"

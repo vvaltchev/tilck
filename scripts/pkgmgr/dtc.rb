@@ -45,14 +45,14 @@ class DtcPackage < Package
            out: "/dev/null", err: "/dev/null")
   end
 
-  def build_steps = [
+  def build_steps(ver = nil) = [
 
     # Build only the static archive — `make libfdt` would also build the
     # host shared library (libfdt-VER.dylib on macOS) using the *host*
     # uname's link flags (-install_name), which the Linux cross-linker
     # rejects. The kernel only links libfdt.a, so the .so/.dylib is
     # unneeded.
-    Step("build.log", [
+    Run(log: "build.log", argv: [
       "make",
       "libfdt/libfdt.a",
       "V=1",

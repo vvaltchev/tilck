@@ -33,15 +33,15 @@ class ZlibPackage < Package
     ["install/lib/libz.a", false]
   ]
 
-  def build_steps
+  def build_steps(ver = nil)
 
     arch = default_arch().gcc_tc
 
     return [
-      Step("configure.log",
-           ["./configure", "--prefix=$INSTALL/install", "--static"]),
+      Run(log: "configure.log",
+          argv: ["./configure", "--prefix=$INSTALL/install", "--static"]),
 
-      Step("build.log", [
+      Run(log: "build.log", argv: [
         "make",
         "-j$PAR",
         "AR=#{arch}-linux-ar",
@@ -49,7 +49,7 @@ class ZlibPackage < Package
         "RANLIB=#{arch}-linux-ranlib",
       ]),
 
-      Step("install.log", ["make", "install"]),
+      Run(log: "install.log", argv: ["make", "install"]),
     ]
   end
 end

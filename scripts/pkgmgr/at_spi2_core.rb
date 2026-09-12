@@ -110,9 +110,7 @@ class HostAtSpi2CorePackage < Package
       "-Dgtk2_atk_adaptor=false",
   ]
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir)
-  end
+  def build_steps(ver = nil) = meson_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostAtSpi2CorePackage.new())

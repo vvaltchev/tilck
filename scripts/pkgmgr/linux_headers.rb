@@ -60,20 +60,20 @@ class HostLinuxHeadersPackage < Package
     ["install/usr/include/asm-generic/errno.h", false],
   ]
 
-  def build_steps = [
+  def build_steps(ver = nil) = [
 
     # The kernel names x86_64 "x86"; both 32- and 64-bit headers come
     # out of that one tree.
-    Step("headers.log", [
+    Run(log: "headers.log", argv: [
       "make", "headers_install",
       "ARCH=x86",
       "INSTALL_HDR_PATH=$INSTALL/install/usr",
     ]),
-  ]
 
-  # A kernel tree is ~1.5 GB extracted and we want a few MB of
-  # headers out of it.
-  def prune_after_build? = true
+    # A kernel tree is ~1.5 GB extracted and we want a few MB of
+    # headers out of it.
+    Prune(),
+  ]
 end
 
 pkgmgr.register(HostLinuxHeadersPackage.new())

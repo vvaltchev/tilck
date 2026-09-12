@@ -91,7 +91,7 @@ class TccPackage < Package
   # No -j: this build is not parallel-safe, and was not run that way
   # before either.
   #
-  def build_steps
+  def build_steps(ver = nil)
 
     arch = default_arch.gcc_tc    # "i686" or "riscv64"
     cpu = default_arch.name       # "i386" or "riscv64"
@@ -118,18 +118,21 @@ class TccPackage < Package
     configure << "--targetos=Linux" if OS == "Darwin"
 
     return [
-      Step("configure.log", configure, unset: %w[CC AR]),
+      Within(unset: %w[CC AR], steps: [
+        Run(log: "configure.log", argv: configure),
+      ]),
 
       # <cpu>-libtcc1-usegcc=yes makes lib/Makefile compile libtcc1.a
       # with $(CC), the cross GCC, instead of running the tcc it has
       # just built on the build host.
-      Step("build.log", [
+      Run(log: "build.log", argv: [
         "make",
         "#{cpu}-libtcc1-usegcc=yes",
         "DEF_GITHASH=-DTCC_GITHASH=\\\"$SRC_REF\\\"",
       ]),
 
-      Step("strip.log", ["#{arch}-linux-strip", "--strip-all", "tcc"]),
+      Run(log: "strip.log",
+          argv: ["#{arch}-linux-strip", "--strip-all", "tcc"]),
     ]
   end
 

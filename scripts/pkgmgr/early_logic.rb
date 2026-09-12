@@ -506,6 +506,22 @@ end
 # a user what to run, are the same sentence and are written once.
 def cmd_to_s(argv) = argv.map { |a| shell_word(a) }.join(" ")
 
+# The environment of one command, written the way somebody would type
+# it. A nil value is a variable REMOVED for this command, which
+# `VAR=` -- the empty string -- would misreport as merely blank, so it
+# is spelled the way a shell spells it.
+def env_to_s(env)
+
+  unset = env.select { |_, v| v.nil? }.keys.sort
+  set = env.reject { |_, v| v.nil? }
+
+  words = unset.map { |k| "-u #{k}" } +
+          set.map { |k, v| "#{k}=#{shell_word(v)}" }
+
+  return words.join(" ") if unset.empty?
+  return "env " + words.join(" ")
+end
+
 # `env` adds variables for this command only, and is logged with it:
 # a build step that behaves differently because of one has to say so,
 # or the log stops being a record of what ran.
@@ -515,8 +531,7 @@ def run_command(out, argv, env: nil)
   assert { env.nil? || env.is_a?(Hash) }
 
   cmd_str = cmd_to_s(argv)
-  cmd_str = env.map { |k, v| "#{k}=#{shell_word(v)}" }
-               .join(" ") + " " + cmd_str if env
+  cmd_str = env_to_s(env) + " " + cmd_str if env && !env.empty?
   info "Run: #{cmd_str}"
 
   args = env ? [env, *argv] : argv

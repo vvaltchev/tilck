@@ -10,6 +10,7 @@ require_relative 'build_env'
 require_relative 'coords'
 require_relative 'source_digest'
 require_relative 'build_inputs'
+require_relative 'recipe'
 
 PackageDep = Struct.new(
 
@@ -165,6 +166,10 @@ class InstallInfo
 end
 
 class Package
+
+  # Run(...), Copy(...), Within(...): the constructors a build_steps
+  # is written with. See recipe.rb.
+  include Recipe::DSL
 
   attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
   attr_reader :host_tier, :board_list
@@ -630,33 +635,18 @@ class Package
   def dep_list_for(ver = nil) = dep_list
 
   #
-  # One command in a package's build.
+  # THE RECIPE: the ordered steps that build this package, as DATA.
   #
-  # `dir` is relative to the source tree, `env` is applied for the
-  # step only, `unset` removes variables for it (micropython builds
-  # mpy-cross for the HOST and must not inherit the cross compiler).
-  #
-  BuildStep = Struct.new(:log, :argv, :dir, :env, :unset,
-                         keyword_init: true)
-
-  def Step(log, argv, dir: nil, env: {}, unset: [])
-    return BuildStep.new(log: log, argv: argv, dir: dir,
-                         env: env, unset: unset)
-  end
-
-  #
-  # The ordered commands that build this package, as DATA.
-  #
-  # Declarative on purpose: the same list is executed and recorded,
-  # so a build cannot run a command that goes unrecorded. It takes no
-  # arguments and refers to the install directory and the parallelism
-  # through tokens, which keeps it computable during a staleness
-  # check -- when no build is running and there is no install
-  # directory to speak of.
+  # Declarative on purpose: the same list is executed and recorded, so
+  # a build cannot run a command that goes unrecorded. It refers to
+  # the install directory and the parallelism through tokens, which
+  # keeps it computable during a staleness check -- when no build is
+  # running and there is no install directory to speak of.
   #
   #   $INSTALL   this version's install directory
   #   $SYSROOT   the stack's composed sysroot
   #   $PAR       the build parallelism
+  #   $PYTHON    the interpreter host_python installed
   #   $SRC_REF   the short git ref the source was fetched at
   #
   # $SRC_REF is why tokens exist rather than string interpolation. Its
@@ -673,31 +663,24 @@ class Package
   # install_impl_internal is then hashed instead. See
   # docs/plans/toolchain5.md.
   #
-  def build_steps = []
+  def build_steps(ver = nil) = []
 
-  # Should the build tree be discarded once the install succeeded?
-  def prune_after_build? = false
-
-  def expand_tokens(str, install_dir)
-
-    out = str.to_s
-             .gsub("$INSTALL", install_dir.to_s)
-             .gsub("$SYSROOT", (on_host ? stack_sysroot.to_s : ""))
-             .gsub("$PAR", BUILD_PAR.to_s)
-
-    # Resolved only when asked for: it requires host_python to be
-    # installed, which is true at build time -- the package that uses
-    # the token declares the dependency -- and not during a staleness
-    # check. A recipe digest records the token, never its value, so
-    # the fingerprint does not move when the interpreter's path does.
-    out = out.gsub("$PYTHON", pkgmgr.python_interpreter.to_s) if
-      out.include?("$PYTHON")
-
-    # Resolved only when asked for: reading it requires the source to
-    # be extracted, which is true at build time and never during a
-    # staleness check.
-    return out if !out.include?("$SRC_REF")
-    return out.gsub("$SRC_REF", source_ref_short(install_dir))
+  # The values behind the tokens, for one install.
+  #
+  # $PYTHON and $SRC_REF are Procs, so they are resolved only if a
+  # step actually asks: the first needs host_python installed and the
+  # second needs the source extracted, both true while building and
+  # neither during a staleness check. A digest records the token,
+  # never the value, so the fingerprint does not move when the
+  # interpreter's path does.
+  def build_tokens(install_dir)
+    return {
+      "INSTALL" => install_dir.to_s,
+      "SYSROOT" => (on_host ? stack_sysroot.to_s : ""),
+      "PAR"     => BUILD_PAR.to_s,
+      "PYTHON"  => -> { pkgmgr.python_interpreter.to_s },
+      "SRC_REF" => -> { source_ref_short(install_dir) },
+    }
   end
 
   # The short git ref the source was fetched at.
@@ -719,28 +702,58 @@ class Package
     return f.read.strip
   end
 
-  def run_build_steps(install_dir)
+  #
+  # WHERE A PACKAGE'S RECIPE RUNS.
+  #
+  # A plain command goes through run_command, which streams to its log
+  # and prints the line somebody could paste. A command whose OUTPUT
+  # the recipe reads -- gcc -dumpspecs -- is short, and takes the base
+  # class's buffered path instead.
+  #
+  class BuildCtx < Recipe::Ctx
 
-    for step in build_steps do
-
-      argv = step.argv.map { |a| expand_tokens(a, install_dir) }
-      env = (step.env || {}).transform_values { |v|
-        expand_tokens(v, install_dir)
-      }
-
-      ok = with_saved_env(env.keys + (step.unset || [])) do
-        (step.unset || []).each { |v| ENV.delete(v) }
-        env.each { |k, v| ENV[k] = v }
-
-        dir = step.dir ? expand_tokens(step.dir, install_dir) : "."
-        FileUtils.chdir(dir) { run_command(step.log, argv) }
-      end
-
-      return false if !ok
+    def initialize(pkg, install_dir)
+      @pkg = pkg
+      super(root: install_dir, tokens: pkg.build_tokens(install_dir))
     end
 
-    prune_build_tree if prune_after_build?
+    def run_argv(argv, log: nil, stdin: nil, capture: nil)
+
+      return super if capture || stdin
+
+      # As the package, not as the context: run_command has always
+      # been called with the package as self, and a package may
+      # replace it.
+      env = spawn_env
+      ok = FileUtils.chdir(dir) {
+        next @pkg.send(:run_command, log, argv) if env.empty?
+        @pkg.send(:run_command, log, argv, env: env)
+      }
+
+      # run_command reports only whether it worked; 1 stands for
+      # "not 0", which is all a recipe can ask about here.
+      return [ok ? 0 : 1, ""]
+    end
+
+    def ambient(name, &block)
+      case name
+      when :stack_toolchain then @pkg.with_stack_toolchain(&block)
+      when :cargo           then @pkg.with_cargo_env(&block)
+      else super
+      end
+    end
+
+    def prune = @pkg.prune_build_tree
+  end
+
+  def run_build_steps(install_dir, ver = nil)
+
+    Recipe.run(build_steps(ver), BuildCtx.new(self, install_dir))
     return true
+
+  rescue Recipe::Error => e
+    error "#{name}: #{e.message}"
+    return false
   end
 
   #
@@ -780,8 +793,7 @@ class Package
   SHIMS_DIR = (RUBY_SOURCE_DIR / "shims").to_s
 
   BUILD_HELPERS = [
-    :meson_stack_build, :autotools_stack_build, :stack_install,
-    :host_compiler_gnu17,
+    :meson_stack_build, :stack_install, :host_compiler_gnu17,
   ].freeze
 
   # Hooks that say what a package IS, or whether it may be asked for,
@@ -855,6 +867,15 @@ class Package
   #
   def build_recipe_digest(ver = nil)
 
+    # Converted: the recipe IS the steps, and the steps are data. No
+    # source is read, and what is hashed is exactly what runs.
+    steps = build_steps(ver)
+    return Recipe.digest(steps) if !steps.empty?
+
+    # NOT YET CONVERTED. The recipe is still a Ruby method, so its
+    # source is all there is to hash. This branch, SourceDigest and
+    # the Prism dependency all go together once the last package has
+    # a build_steps -- see docs/plans/toolchain5.md.
     own = SourceDigest.class_source(self.class, upto: Package,
                                     except: NON_RECIPE_HOOKS)
     file = SourceDigest.source_file_of(self.class)
@@ -1156,6 +1177,62 @@ class Package
   # Only the configure invocation differs between build systems, which
   # is what the two wrappers below supply. `block` is called with the
   # prefix and the destdir and returns true on success.
+  #
+  # A package built INTO the stack's sysroot: it is configured as
+  # though it already lived there, staged into a destdir, and the
+  # staged tree is what gets installed.
+  #
+  # The commands run inside the stack's own toolchain. That is named
+  # rather than spelled out, because which environment a build runs in
+  # is a real difference between two builds while the compiler paths
+  # it contains are a property of the coordinates -- which are already
+  # in the install path.
+  #
+  def stack_steps(commands)
+    return [
+      Within(env_from: :stack_toolchain, steps: commands),
+      Mkdir(path: "$INSTALL/install"),
+      Move(from: "$INSTALL/destdir$SYSROOT/usr",
+           to: "$INSTALL/install/usr"),
+      Prune(),
+    ]
+  end
+
+  def meson_commands(flags)
+    return [
+      Run(log: "configure.log",
+          argv: ["meson", "setup", "build",
+                 "--prefix=$SYSROOT/usr", "--libdir=lib",
+                 "--buildtype=release",
+                 "--wrap-mode=nofallback", *flags]),
+      Run(log: "build.log", argv: ["ninja", "-C", "build"]),
+      Run(log: "install.log",
+          argv: ["meson", "install", "-C", "build",
+                 "--destdir=$INSTALL/destdir"]),
+    ]
+  end
+
+  def autotools_commands(flags)
+    return [
+      Run(log: "configure.log",
+          argv: ["./configure", "--prefix=$SYSROOT/usr", *flags]),
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+      Run(log: "install.log",
+          argv: ["make", "install", "DESTDIR=$INSTALL/destdir"]),
+    ]
+  end
+
+  def meson_stack_steps(flags) = stack_steps(meson_commands(flags))
+  def autotools_stack_steps(flags) = stack_steps(autotools_commands(flags))
+
+  #
+  # TRANSITIONAL: the imperative form of meson_stack_steps, kept for
+  # the two glycin packages alone. They write a cargo cross file whose
+  # content is full of this machine's compiler paths, which needs a
+  # token vocabulary the conversion has not reached yet; until then
+  # their recipe is still hashed from its source. Delete this, and
+  # stack_install with it, when glycin lands.
+  #
   def stack_install(install_dir, &block)
 
     sysroot_usr = "#{stack_sysroot}/usr"
@@ -1174,16 +1251,6 @@ class Package
 
   # ./configure && make && make install, the shape most of the X11 and
   # freetype side of the QEMU closure uses.
-  def autotools_stack_build(install_dir)
-
-    return stack_install(install_dir) do |prefix, destdir|
-      run_command("configure.log",
-                  ["./configure", "--prefix=#{prefix}", *build_flags]) &&
-      run_command("build.log", ["make", "-j#{BUILD_PAR}"]) &&
-      run_command("install.log", ["make", "install", "DESTDIR=#{destdir}"])
-    end
-  end
-
   # meson + ninja, the shape glib and most of the GTK stack uses.
   #
   # --libdir=lib because the sysroot has exactly one library directory;
@@ -1709,9 +1776,12 @@ class Package
   # own install_impl_internal; declaring none of the three is a
   # package that does not know how to build itself.
   def install_impl_internal(install_dir)
+
     return true if nothing_to_build?
-    raise NotImplementedError if build_steps.empty?
-    return run_build_steps(install_dir)
+
+    ver = installing_ver(install_dir)
+    raise NotImplementedError if build_steps(ver).empty?
+    return run_build_steps(install_dir, ver)
   end
   def expected_files(ver = nil) = raise NotImplementedError
 

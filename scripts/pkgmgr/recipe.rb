@@ -34,6 +34,11 @@ require 'open3'
 # comment in a 109-line install method cost a 30-minute rebuild, while
 # the helper that method called could change without anyone noticing.
 #
+# ONLY Mkdir MAKES A DIRECTORY. Copy, Move, Write and Symlink require
+# the parent of what they write to exist already, as cp and mv do, so
+# that a mistyped destination fails instead of quietly putting the
+# artifact somewhere nobody looks.
+#
 # STEPS BUILD; POSTCONDITIONS CHECK
 #
 # Only what produces the artifact belongs here. A check that the result
@@ -295,8 +300,8 @@ module Recipe
 
     def run(ctx)
       at = ctx.path_of(link)
+      Recipe.needs_parent("symlink", link, at)
       FileUtils.rm_rf(at)
-      FileUtils.mkdir_p(File.dirname(at))
       File.symlink(ctx.expand(target), at)
     end
 
@@ -336,7 +341,7 @@ module Recipe
 
     def run(ctx)
       at = ctx.path_of(path)
-      FileUtils.mkdir_p(File.dirname(at))
+      Recipe.needs_parent("write", path, at)
       File.write(at, ctx.expand(text))
     end
 
@@ -478,12 +483,19 @@ module Recipe
   # The only way to set a directory or an environment: one structure
   # per effect, so one build has one digest rather than two spellings.
   #
+  # `env_from` names an environment the RUNNER supplies rather than
+  # the recipe: the stack's own toolchain, cargo's. Which one a build
+  # runs in is a real difference between two builds, so the NAME is
+  # identity; what it contains -- this machine's compiler paths --
+  # comes from the coordinates, which are already in the install path,
+  # so the VALUES are not.
   class Within < Step
     def self.tag = "within"
 
     field :dir, nil
     field :env, {}
     field :unset, []
+    field :env_from, nil
     field :steps, []
 
     def check
@@ -491,20 +503,26 @@ module Recipe
         !steps.is_a?(Array) || steps.any? { |s| !s.is_a?(Step) }
       raise Error, "within: env must be a hash" if !env.is_a?(Hash)
       raise Error, "within: unset must be an array" if !unset.is_a?(Array)
+      raise Error, "within: env_from must be a symbol" if
+        !env_from.nil? && !env_from.is_a?(Symbol)
     end
 
     def run(ctx)
+
       inner = ctx.scoped(dir: dir, env: env, unset: unset)
+
       if !File.directory?(inner.dir)
         raise Error, "within: no such directory: #{dir}"
       end
-      for s in steps do
-        s.run(inner)
-      end
+
+      body = -> { steps.each { |s| s.run(inner) } }
+      return body.call if env_from.nil?
+      return ctx.ambient(env_from, &body)
     end
 
     def describe
-      where = [dir && "dir=#{dir}", !env.empty? && "env=#{env.keys.sort}",
+      where = [dir && "dir=#{dir}", env_from && "env_from=#{env_from}",
+               !env.empty? && "env=#{env.keys.sort}",
                !unset.empty? && "unset=#{unset}"].select { |x| x }.join(" ")
       return "within #{where} (#{steps.length} step(s))"
     end
@@ -564,11 +582,21 @@ module Recipe
       @binds = binds || {}      # shared with every scope of one run
     end
 
+    # clone, not Ctx.new: a subclass carries more than these five
+    # things (the package whose build this is), and the binds must
+    # stay the SAME hash -- a value captured inside a scope belongs to
+    # the run, not to the directory it happened to be in.
     def scoped(dir: nil, env: {}, unset: [])
-      return Ctx.new(root: @root, tokens: @tokens,
-                     dir: dir ? path_of(dir) : @dir,
-                     env: @env.merge(env), unset: @unset | unset,
-                     binds: @binds)
+      c = clone
+      c.rescope(dir ? path_of(dir) : @dir, @env.merge(env), @unset | unset)
+      return c
+    end
+
+    # An environment the runner supplies, by name. The base knows
+    # none: a recipe that asks for one is told so rather than quietly
+    # running without it.
+    def ambient(name, &block)
+      raise Error, "no ambient environment named #{name.inspect} here"
     end
 
     def expand(str)
@@ -577,9 +605,19 @@ module Recipe
 
     def expand_all(list) = list.map { |e| expand(e) }
 
+    # A token's value may be a Proc, and then it is resolved only if a
+    # step actually asks: $PYTHON needs another package installed and
+    # $SRC_REF needs the source extracted, both true while building
+    # and neither during a staleness check.
     def lookup(name)
+
       return @binds[name] if @binds.key?(name)
-      return @tokens[name].to_s if @tokens.key?(name)
+
+      if @tokens.key?(name)
+        v = @tokens[name]
+        return (v.is_a?(Proc) ? v.call : v).to_s
+      end
+
       raise Error, "unknown token $#{name}: not a builtin, and no step " \
                    "before this one binds it"
     end
@@ -600,16 +638,23 @@ module Recipe
 
     def glob(p) = Dir.glob(path_of(p)).sort
 
-    def run_argv(argv, log: nil, stdin: nil, capture: nil)
+    # What the scope adds to a command's environment. A nil value is a
+    # variable REMOVED for that command, which is what spawn does with
+    # one -- and what `unset` means.
+    def spawn_env
 
       env = {}
       for k in @unset do env[k] = nil end
       for k, v in @env do env[k] = expand(v.to_s) end
+      return env
+    end
+
+    def run_argv(argv, log: nil, stdin: nil, capture: nil)
 
       # [prog, argv0], not a bare string: a one-element argv would
       # otherwise go through a shell the moment it contained a space.
       cmd = argv.length == 1 ? [[argv[0], argv[0]]] : argv
-      out, err, st = Open3.capture3(env, *cmd, chdir: @dir,
+      out, err, st = Open3.capture3(spawn_env, *cmd, chdir: @dir,
                                     stdin_data: stdin.to_s)
       append_log(log, out + err)
 
@@ -626,6 +671,16 @@ module Recipe
       return if log.nil?
       File.open(File.join(@dir, expand(log)), "a") { |f| f.write(text) }
     end
+
+    protected
+
+    def rescope(dir, env, unset)
+      @dir = dir
+      @env = env
+      @unset = unset
+    end
+
+    public
 
     def prune
 
@@ -692,6 +747,22 @@ module Recipe
     end
   end
 
+  # Every step of a recipe in order, the ones inside a Within
+  # included. What an audit, a listing or a dry run walks.
+  def walk(steps, &block)
+    for s in steps do
+      block.call(s)
+      walk(s.steps, &block) if s.is_a?(Within)
+    end
+  end
+
+  # Every command a recipe runs, flattened.
+  def all_argv(steps)
+    out = []
+    walk(steps) { |s| out.concat(s.argv) if s.is_a?(Run) }
+    return out
+  end
+
   # --- shared by more than one kind ------------------------------------------
 
   def matches?(text, pattern)
@@ -726,7 +797,20 @@ module Recipe
                    "must be an existing directory"
     end
 
-    FileUtils.mkdir_p(File.dirname(dst)) if !File.directory?(dst)
+    Recipe.needs_parent(who, to, dst) if !File.directory?(dst)
     FileUtils.send(op, srcs.length == 1 ? srcs.first : srcs, dst)
+  end
+
+  # ONLY Mkdir makes a directory. Every other step that writes one
+  # requires its parent to be there already, the way cp and mv do:
+  # a step that quietly created the directory a typo named would
+  # succeed at putting the file somewhere nobody looks.
+  def needs_parent(who, shown, path)
+
+    parent = File.dirname(path)
+    return if File.directory?(parent)
+
+    raise Error, "#{who}: #{shown}: #{parent} is not a directory. Only " \
+                 "Mkdir creates one."
   end
 end

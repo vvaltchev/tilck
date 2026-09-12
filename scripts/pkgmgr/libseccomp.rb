@@ -69,9 +69,7 @@ class HostLibseccompPackage < Package
       "--disable-python",   # the bindings are not wanted, only the C lib
   ]
 
-  def install_impl_internal(install_dir)
-    return autotools_stack_build(install_dir)
-  end
+  def build_steps(ver = nil) = autotools_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostLibseccompPackage.new())

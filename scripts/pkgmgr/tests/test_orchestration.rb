@@ -41,9 +41,9 @@ class TestOrchestration < Minitest::Test
       return run_build_steps(install_dir)
     end
 
-    def build_steps = [
-      Step("mkdir.log", ["mkdir", "-p", "$INSTALL/install/bin"]),
-      Step("touch.log", ["touch", "$INSTALL/install/bin/#{name}"]),
+    def build_steps(ver = nil) = [
+      Mkdir(path: "$INSTALL/install/bin"),
+      Run(log: "touch.log", argv: ["touch", "$INSTALL/install/bin/#{name}"]),
     ]
 
     def expected_files(ver = nil) = [["install/bin/#{name}", false]]
@@ -57,10 +57,11 @@ class TestOrchestration < Minitest::Test
       return run_build_steps(install_dir)
     end
 
-    def build_steps = [
-      Step("mkdir.log", ["mkdir", "-p", "$INSTALL/install/bin"]),
-      Step("half.log", ["touch", "$INSTALL/install/bin/half-written"]),
-      Step("boom.log", ["false"]),
+    def build_steps(ver = nil) = [
+      Mkdir(path: "$INSTALL/install/bin"),
+      Run(log: "half.log",
+          argv: ["touch", "$INSTALL/install/bin/half-written"]),
+      Run(log: "boom.log", argv: ["false"]),
     ]
 
     def expected_files(ver = nil) = [["install/bin/#{name}", false]]

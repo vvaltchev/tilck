@@ -58,13 +58,13 @@ class HostGperfPackage < Package
     return BuildEnv.new(bin_dirs: [install_prefix(ver) / "install" / "bin"])
   end
 
-  def build_steps = [
-    Step("configure.log", ["./configure", "--prefix=$INSTALL/install"]),
-    Step("build.log", ["make", "-j$PAR"]),
-    Step("install.log", ["make", "install"]),
+  def build_steps(ver = nil) = [
+    Run(log: "configure.log",
+        argv: ["./configure", "--prefix=$INSTALL/install"]),
+    Run(log: "build.log", argv: ["make", "-j$PAR"]),
+    Run(log: "install.log", argv: ["make", "install"]),
+    Prune(),
   ]
-
-  def prune_after_build? = true
 end
 
 pkgmgr.register(HostGperfPackage.new())
