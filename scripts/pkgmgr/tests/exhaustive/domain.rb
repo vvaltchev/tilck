@@ -47,7 +47,7 @@ module Exhaustive
   # The stack compiler, as the shapes need it: its default version is
   # the stack in effect and it can be asked for A or B, which is what
   # -H checks against and what a :stack package's dependency resolves
-  # through. Mirrors HostGccPackage in the two things that matter.
+  # through. Mirrors HostGccPackage in the three things that matter.
   class FakeHostGcc < TestHelper::FakePackage
 
     def initialize(dep_list: [])
@@ -58,6 +58,9 @@ module Exhaustive
     def default_ver = pkgmgr.current_host_stack
     def installable_versions = [STACK_A, STACK_B]
     def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_host_stack
+    # ...and the third: an install of it belongs to the stack it
+    # defines, which is where what it needs is looked for.
+    def stack_of_install(inst) = stack_gcc_ver(inst.ver)
   end
 
   module_function
