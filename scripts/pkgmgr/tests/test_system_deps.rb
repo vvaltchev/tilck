@@ -7,84 +7,15 @@ require_relative '../gdk_pixbuf'
 require_relative '../librsvg'
 
 #
-# Test doubles for the outside world.
+# Test doubles for the outside world. FakeSysBackend and FakeSysEnv
+# live in test_helper.rb: the stubbed world every test installs in
+# stands on one.
 #
 # SystemDeps::Env is the only thing in system_deps.rb that runs
 # commands, reads PATH or talks to a terminal, so replacing it makes
 # every decision below testable without a package manager, a network
 # or a tty.
 #
-
-class FakeSysBackend
-
-  attr_reader :id, :queried
-
-  def initialize(id: :apt, installed: [])
-    @id = id
-    @installed = installed
-    @queried = []
-  end
-
-  def name = @id.to_s
-
-  def installed?(pkg)
-    @queried << pkg
-    return @installed.include?(pkg)
-  end
-
-  def full_install_argv(pkgs, assume_yes: false)
-    return ["fakepm", "install", *(assume_yes ? ["-y"] : []), *pkgs]
-  end
-end
-
-class FakeSysEnv
-
-  attr_accessor :tools, :backend, :answers, :interactive, :ci, :flags,
-                :run_result, :on_run
-  attr_reader :ran, :asked
-
-  # tools: { "rustc" => { path: "/usr/bin/rustc", ver: "1.66.1" } }
-  #        a nil :ver means the binary is there but won't say what it is
-  def initialize(tools: {}, backend: nil, answers: [], interactive: true,
-                 ci: false, flags: {}, run_result: true)
-    @tools = tools
-    @backend = backend
-    @answers = answers
-    @interactive = interactive
-    @ci = ci
-    @flags = flags
-    @run_result = run_result
-    @ran = []
-    @asked = []
-    @on_run = nil
-  end
-
-  def which(cmd)
-    t = @tools[cmd]
-    return t ? t[:path] : nil
-  end
-
-  def probe_version(path, flag, re)
-    t = @tools.values.find { |v| v[:path] == path }
-    return nil if t.nil? || t[:ver].nil?
-    return SafeVer(t[:ver])
-  end
-
-  def run(argv)
-    @ran << argv
-    @on_run&.call(argv, self)
-    return @run_result
-  end
-
-  def ask(q, default: true)
-    @asked << q
-    return @answers.empty? ? default : @answers.shift
-  end
-
-  def interactive? = @interactive
-  def in_ci? = @ci
-  def env_flag(name) = !!@flags[name]
-end
 
 class FakeSysPkg
 

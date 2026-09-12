@@ -51,6 +51,46 @@ end
 # empty is worse -- host_world_names computes [] from it, and the wipe
 # that means to keep the host world takes it instead.
 #
+# A test never reaches the machine's package manager or an installer:
+# the stubbed world satisfies every system dependency by itself, and
+# the real machine refuses. Found by a mutant that let host_qemu
+# through on a host it does not support -- the plan went on to its
+# system dependencies, and CI ran `cargo install cargo-c`.
+class TestNoRealInstallers < Minitest::Test
+
+  include TestHelper
+
+  def setup = reset_pkgmgr!
+
+  def test_the_stubbed_world_satisfies_every_system_dependency
+    with_fake_tc do
+      with_stubbed_externals do
+        needy = FakePackage.new("needy")
+        needy.define_singleton_method(:system_deps) { |ver = nil|
+          [SystemDeps::CARGO, SystemDeps::CARGO_C]
+        }
+        pkgmgr.register(needy)
+
+        rc, _ = run_cli("-s", "needy", "-q")
+        assert_equal 0, rc
+        assert_empty SystemDeps.env.ran, "an installer ran"
+        assert needy.installed?(needy.default_ver)
+      end
+    end
+  end
+
+  def test_the_real_machine_refuses_to_run_anything_in_a_test
+    e = assert_raises(RuntimeError) { SystemDeps::Env.new.run(["true"]) }
+    assert_match(/with_stubbed_externals/, e.message)
+  end
+
+  def test_the_stub_is_lifted_with_the_block
+    before = SystemDeps.env
+    with_stubbed_externals { refute_same before, SystemDeps.env }
+    assert_same before, SystemDeps.env
+  end
+end
+
 class TestTheRealWorldIsHandedBack < Minitest::Test
 
   include TestHelper

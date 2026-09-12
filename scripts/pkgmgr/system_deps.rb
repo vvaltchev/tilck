@@ -362,6 +362,17 @@ module SystemDeps
 
   module_function
 
+  # The machine the checks read and the installers act on: one
+  # object, so that a test can hand the package manager a machine of
+  # its own. The real one runs installers, and the one test that
+  # reached it -- a mutant let a package through that the host does
+  # not support -- built cargo-c on CI for two minutes and was
+  # reported as a hang.
+  def env = (@env ||= Env.new)
+  def env=(e)
+    @env = e
+  end
+
   # Toolchains that are installed but not necessarily on PATH.
   #
   # rustup puts rustc and cargo in ~/.cargo/bin, and when run with
@@ -404,7 +415,7 @@ module SystemDeps
   # not be resolved -- that is, when going ahead would waste the
   # user's time on a build that cannot succeed.
   #
-  def check_plan(pairs, dry_run: false, env: Env.new, pm: nil)
+  def check_plan(pairs, dry_run: false, env: SystemDeps.env, pm: nil)
     entries = collect(pairs, pm || pkgmgr)
     return true if entries.empty?
 
