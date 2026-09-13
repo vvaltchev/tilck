@@ -43,18 +43,22 @@ class UbootPackage < Package
 
   def uboot_config = board_bsp / "u-boot.config"
 
-  def install_impl_internal(install_dir)
-    cp uboot_config, ".config"
+  def build_steps(ver = default_ver) = [
+    Copy(from: src_path(uboot_config), to: ".config"),
+    Run(log: "build.log", argv: make_argv),
+  ]
 
-    ok = run_command("build.log", make_argv)
-    return ok
-  end
+  # mkimage links OpenSSL. Declared, so the check before the first
+  # build says so when it is missing -- and so the recipe may name
+  # where the host keeps it.
+  def system_deps(ver = nil) = [SystemDeps::OPENSSL]
 
   def configurable? = true
 
   def config_impl
     # configure runs this in the installed version's directory.
-    be = deps_build_env.expand(BuildCtx.new(self, Pathname.pwd))
+    ctx = BuildCtx.new(self, Pathname.pwd)
+    be = deps_build_env.expand(ctx)
 
     ok = system(be.env, "make", *be.kconfig_make_vars, "menuconfig")
     return false if !ok
@@ -69,11 +73,11 @@ class UbootPackage < Package
       info "Source file #{uboot_config} UPDATED"
     end
 
-    # Rebuild with the new configuration. Uses make_argv (which carries
-    # the Darwin openssl workaround); ncurses is only needed for
-    # menuconfig itself.
+    # Rebuild with the new configuration: the recipe's own make line,
+    # its tokens resolved here since this is not a recipe run.
+    # ncurses is only needed for menuconfig itself.
     info "Rebuilding #{name}..."
-    ok = run_command("build.log", make_argv)
+    ok = run_command("build.log", ctx.expand_all(make_argv))
     return false if !ok
 
     return true
@@ -81,17 +85,20 @@ class UbootPackage < Package
 
   private
 
+  # In tokens, because it is part of the recipe. On macOS Homebrew's
+  # openssl@3 is keg-only -- on no default path -- and $openssl is
+  # where the host says it is, resolved when the step runs. The
+  # recipe used to run `brew --prefix` right here, which made it a
+  # function of the machine rather than of the coordinates, on every
+  # staleness check.
   def make_argv
-    argv = [ "make", "V=1", "-j#{BUILD_PAR}" ]
+    argv = ["make", "V=1", "-j$PAR"]
 
     if OS == "Darwin"
-      ssl = `brew --prefix openssl@3`.strip
-      if !ssl.empty? && File.directory?(ssl)
-        argv += [
-          "HOSTCFLAGS=-I#{ssl}/include",
-          "HOSTLDFLAGS=-L#{ssl}/lib",
-        ]
-      end
+      argv += [
+        "HOSTCFLAGS=-I$openssl/include",
+        "HOSTLDFLAGS=-L$openssl/lib",
+      ]
     end
 
     return argv

@@ -36,16 +36,15 @@ class BusyBoxPackage < Package
     ["busybox", false],
   ]
 
-  def install_impl_internal(install_dir)
-
-    cp CONFIG_FILE, ".config"
-    ok = run_command("build.log", [ "make", "V=1", "-j#{BUILD_PAR}" ])
-    return false if !ok
-
-    fix_config_file
-    cp ".config", ".last_build_config"
-    return ok
-  end
+  # The build used to end by normalising .config and copying it to
+  # .last_build_config. Nothing in the tree reads that file -- the
+  # riscv64 bootloader script keeps one of its own -- so the build no
+  # longer writes it. Normalising stays in config_impl, where -C
+  # compares and saves a config somebody edited by hand.
+  def build_steps(ver = default_ver) = [
+    Copy(from: src_path(CONFIG_FILE), to: ".config"),
+    Run(log: "build.log", argv: ["make", "V=1", "-j$PAR"]),
+  ]
 
   def configurable? = true
 
