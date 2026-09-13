@@ -51,8 +51,8 @@ module NoRealToolchainReads
   def self.allowed? = @@allowed
   def self.allow!(v) = @@allowed = v
 
-  def get_install_list
-    NoRealToolchainReads.check!("#{name}.get_install_list")
+  def read_install_list
+    NoRealToolchainReads.check!("#{name}.read_install_list")
     return super
   end
 
@@ -306,12 +306,8 @@ module TestHelper
     # another test's `-s` saw that test's answer.
     pm.instance_variable_set(:@resolved_versions, nil)
     pm.instance_variable_set(:@host_world, nil)
-    pm.instance_variable_set(:@known_pkgs_paths, nil)
-    pm.instance_variable_set(:@known_installed, [])
-    pm.instance_variable_set(:@found_installed, [])
-    pm.instance_variable_set(:@installable, [])
-    # A new world: whatever a package remembered of the tree is of the
-    # one before.
+    # A new world: what the manager holds of the tree is of the one
+    # before.
     pm.installs_changed!
   end
 
@@ -661,7 +657,7 @@ module TestHelper
 
     # The same wrap GccPackage applies, for the same reason: an
     # install of a cross compiler has to say what it targets.
-    def get_install_list
+    def read_install_list
       return super if @fake_target_arch.nil?
 
       super.map { |i|

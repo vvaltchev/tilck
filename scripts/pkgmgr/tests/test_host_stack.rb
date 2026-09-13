@@ -415,7 +415,7 @@ class TestNoCompilerPackageAmbiguity < Minitest::Test
       reset_pkgmgr!
       FileUtils.mkdir_p(portable_pkgs / "gcc-riscv64-musl" / "13.3.0")
 
-      found = pkgmgr.send(:scan_toolchain)
+      found = World.scan(pkgmgr.all_packages).orphans
       musl = found.select { |i| i.pkgname == "gcc-riscv64-musl" }
 
       assert_equal 1, musl.length
@@ -444,7 +444,7 @@ class TestNoCompilerPackageAmbiguity < Minitest::Test
       root = portable_pkgs / "gcc-riscv64-musl" / "13.3.0"
       ["bin", "share", "include"].each { |d| FileUtils.mkdir_p(root / d) }
 
-      out, = capture_io { pkgmgr.send(:scan_toolchain) }
+      out, = capture_io { World.scan(pkgmgr.all_packages) }
       refute_match(/Invalid package version/, out)
     end
   end
