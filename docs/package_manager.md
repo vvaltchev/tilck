@@ -253,6 +253,10 @@ Key methods:
   * `initialize` — declares name, URL, arch_list, dep_list, host_tier, default, etc.
   * `install_impl_internal(dir)` — build logic (configure + make + make install)
   * `expected_files(ver)` — files/dirs that must exist after a successful build.
+  * `postconditions(ver)` — the behavioural half of that: checks run once,
+    after the atomic move, against the install where it lives (e.g.
+    `Runs(argv: ["install/bin/meson", "--version"])`). Never on a scan,
+    never in the recipe digest; a failing one removes the install.
     Most packages ignore `ver`; it is there so a package whose install layout
     changed between versions can return a different list
   * `clean_build(dir)` — remove build artifacts (for recovery after interruption).
@@ -677,6 +681,10 @@ The flow:
 
 The final install directory is **never** in a partial state. Either it doesn't
 exist (package not installed) or it was atomically moved after full verification.
+
+After the move, the package's `postconditions` run against the final
+directory. An install that fails one is removed again: a failed install
+installs nothing, and this one has only just stopped being a failed build.
 
 On `SIGINT`, `SIGTERM`, `SIGHUP`, or `SIGQUIT` during the build step: a signal
 handler cleans build artifacts from the staging dir (preserving extracted source),
