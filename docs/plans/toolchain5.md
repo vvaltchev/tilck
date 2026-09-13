@@ -631,11 +631,15 @@ board applies to which arch.
 Each answers a question the others cannot. Together they are why the
 next bug of this class has to get past all five.
 
-**The lint** — `tests/lint/ambient.rb`, 157 lines, Prism. Three rules:
+**The lint** — `tests/lint/ambient.rb`, on a parse tree. Three rules:
 a read of ambient state outside its owners (R1); an identity
 comparison on part of a coordinate (R2); a write to a scope variable
-outside its `with_*` (R3). Prism and not grep, so `"ARCH=x86"` handed
-to make is not a read and a comment is not a read. The allowlist lives
+outside its `with_*` (R3). A parser and not grep, so `"ARCH=x86"`
+handed to make is not a read and a comment is not a read. The parser
+was Prism until 2026-09-13 and is Ripper since (`tests/ruby_tree.rb`),
+so that the suite runs on the system Ruby 3.2 of Ubuntu 24.04 with no
+gem installed; the mutation operators parse the same way. The allowlist
+lives
 in the test with a reason per entry, and an entry naming a method that
 no longer exists fails. It self-tests on planted violations: a lint
 that cannot see one reports nothing, and nothing reads as clean.

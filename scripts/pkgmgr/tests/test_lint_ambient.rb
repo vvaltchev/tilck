@@ -63,8 +63,8 @@ class TestLintAmbient < Minitest::Test
   }.freeze
 
   # Parsed once for the class, not once per test: 80 files through
-  # Prism is ~600 ms, and eight tests re-doing it was most of the
-  # suite's runtime.
+  # the parser is a few hundred milliseconds, and eight tests re-doing
+  # it was most of the suite's runtime.
   def violations
     @@violations ||= AmbientLint.scan_dir(PKGMGR)
   end
