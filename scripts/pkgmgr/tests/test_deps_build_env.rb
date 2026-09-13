@@ -639,7 +639,7 @@ class TestPublishedTokens < Minitest::Test
       fake_install(p, Ver("1.0.0"))
       at2 = fake_install(p, Ver("2.0.0"))
 
-      assert_nil pkgmgr.resolved_ver("host_prov"), "no install in progress"
+      assert_nil c.resolved_ver("host_prov"), "no install in progress"
       assert_equal at2.to_s, c.dep_install_dir("host_prov").to_s
     end
   end

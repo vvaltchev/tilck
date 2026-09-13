@@ -52,13 +52,13 @@ module Layout
   # file used to carry its own copy, "same rule as Package#target_board"
   # -- and when that rule learned about scopes, the copy did not, so
   # CMake's view of the tree and the package manager's could disagree.
-  def target_pkgs(arch)
+  def target_pkgs(arch, scope)
     return nil if arch.gcc_ver.nil?
-    return Coords.new("tilck-#{arch.name}", pkgmgr.board_for(arch),
+    return Coords.new("tilck-#{arch.name}", scope.board_of(arch),
                       "gcc-#{arch.gcc_ver}").pkgs_dir
   end
 
-  def vars
+  def vars(scope = pkgmgr.scope)
 
     v = {
       "ARCH"        => ARCH.name,
@@ -73,7 +73,7 @@ module Layout
       "PKGS_HOST_CC"       => Coords.new(HOST_OS_ARCH, HOST_DISTRO,
                                          HOST_CC).pkgs_dir,
       "PKGS_NOARCH"        => Coords.new("noarch", nil, nil).pkgs_dir,
-      "PKGS_TARGET"        => target_pkgs(ARCH),
+      "PKGS_TARGET"        => target_pkgs(scope.env_arch, scope),
     }
 
     # An arch with no compiler version configured has no package tree
@@ -81,7 +81,7 @@ module Layout
     # hole in it. A consumer that needs one and does not find it can
     # say so; a consumer handed "gcc-" cannot.
     for arch in ALL_ARCHS.values
-      p = target_pkgs(arch)
+      p = target_pkgs(arch, scope)
       v["PKGS_TARGET_#{arch.name}"] = p if p
     end
 
@@ -101,7 +101,7 @@ module Layout
     return q.get_install_list.reject(&:broken).sort_by(&:ver)
   end
 
-  def print_vars
-    vars.each { |k, val| puts "#{k}=#{val}" }
+  def print_vars(scope = pkgmgr.scope)
+    vars(scope).each { |k, val| puts "#{k}=#{val}" }
   end
 end

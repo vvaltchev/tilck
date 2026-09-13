@@ -1004,22 +1004,7 @@ module Main
   # old install is gone. Host first (a package inherits its world's
   # host), then, for a target package, the arch and the board.
   def unsupported_reason(name)
-
-    for n in [name] + pkgmgr.dep_closure(name) do
-      pkg = pkgmgr.get(n)
-      next if pkg.nil? || pkg.host_supported?
-      who = n == name ? "" : " (needs #{n}, which requires it)"
-      return "host: #{name} requires #{pkg.host_requirement}#{who}"
-    end
-
-    # The arch and the board: a question only a target package can
-    # answer "no" to, and the two predicates say "yes" for every other
-    # kind, so there is nothing to guard.
-    pkg = pkgmgr.get(name)
-    return "arch #{pkgmgr.target_arch.name}" if !pkg.arch_supported?
-    return "board #{pkgmgr.board_for(pkgmgr.target_arch)}" \
-      if !pkg.board_supported?
-    return nil
+    return Planner.unsupported_reason(pkgmgr, pkgmgr.get(name), pkgmgr.scope)
   end
 
   # The arch an invocation is about: `-a <arch>` when given, else the
@@ -1188,25 +1173,15 @@ module Main
     end
 
     if options[:print_layout]
-      Layout.print_vars
+      Layout.print_vars(pkgmgr.scope)
       return 0
     end
 
     if options[:check_for_updates]
-      pkgmgr.refresh()
-
-      upgrades = pkgmgr.get_upgradable_packages.map(&:name).sort
-      stale = pkgmgr.get_stale_packages.map(&:name).sort - upgrades
-
-      return 0 if upgrades.empty? && stale.empty?
-
-      # Two different problems with two different remedies, so they
-      # are reported separately: a bumped version needs --upgrade, a
-      # package built from sources that have since changed needs a
-      # rebuild.
-      puts "NEEDS_UPGRADE #{upgrades.join(' ')}" if !upgrades.empty?
-      puts "NEEDS_REBUILD #{stale.join(' ')}" if !stale.empty?
-      return 2
+      judged = pkgmgr.world.judged(pkgmgr, pkgmgr.scope)
+      rc, lines = Planner.check_updates(pkgmgr, judged, pkgmgr.scope)
+      lines.each { |l| puts l }
+      return rc
     end
 
     pkgmgr.refresh()
@@ -1240,64 +1215,25 @@ module Main
     end
 
     if options[:list_installable]
-      # Emit one line per installable package: "<name> <tag>".
-      # tag = "default" when the package is itself a default, OR
-      # transitively required by a default (both get auto-installed
-      # by `build_toolchain` with no arguments). tag = "optional"
-      # otherwise. Compilers are included — `-s <full-name>` works
-      # on them too, `-S <arch>` is just a shortcut.
-      #
-      # Order is topological (deps-first) so a consumer installing
-      # in listed order keeps each `-s` step small (no hidden dep
-      # installs blowing up the per-step timing).
-      #
-      # Respects -a <arch> if given, so
-      # `--list-installable -a riscv64` shows riscv64's set.
-      target = requested_arch(options[:arch])
-      pkgmgr.with_target_arch(target) do
-        installable = pkgmgr.all_packages.reject { |p|
-          p.get_installable_list.empty?
-        }
-        graph = pkgmgr.build_dep_graph
-        empty = Set.new
-        default_names = pkgmgr.get_default_packages.map(&:name)
-
-        default_order = DepResolver.resolve(default_names, graph, empty)
-        default_set = Set.new(default_order)
-
-        full_order = DepResolver.resolve(
-          installable.map(&:name), graph, empty
-        )
-
-        # A third tag, not a third column: the host world is optional
-        # by definition -- none of it is a default -- so this refines
-        # "optional" rather than contradicting it. A consumer that
-        # wants the packages Tilck is built from can now say so, and
-        # the system tests do.
-        world = Set.new(pkgmgr.host_world_names)
-
-        full_order.each do |name|
-          tag = if world.include?(name)
-            "host-world"
-          elsif default_set.include?(name)
-            "default"
-          else
-            "optional"
-          end
-
-          puts "#{name} #{tag}"
-        end
+      # One line per installable package: "<name> <tag>", in dependency
+      # order so a consumer installing in listed order keeps each -s
+      # step small. Respects -a <arch>: `--list-installable -a riscv64`
+      # shows riscv64's set. See Planner.installable for the tags.
+      scope = pkgmgr.scope.with(arch: requested_arch(options[:arch]))
+      for name, tag in Planner.installable(pkgmgr, scope) do
+        puts "#{name} #{tag}"
       end
       return 0
     end
 
     if !options[:deps].blank?
-      target = requested_arch(options[:arch])
-      pkgmgr.with_target_arch(target) do
-        graph = pkgmgr.build_dep_graph
+      scope = pkgmgr.scope.with(arch: requested_arch(options[:arch]))
+      begin
+        graph = Planner.graph(pkgmgr, scope)
         installed = Set.new
         pkgmgr.all_packages.each { |p|
-          installed.add(p.name) if p.installed?(p.default_ver)
+          b = p.at(scope, world: pkgmgr.world)
+          installed.add(p.name) if b.installed?(b.default_ver)
         }
 
         roots = options[:deps].map { |raw|
@@ -1324,120 +1260,60 @@ module Main
     end
 
     if options[:upgrade]
-      upgrades = pkgmgr.get_upgradable_packages
-      if upgrades.empty?
-        info "All installed packages are up to date"
-        return 0
+      plan = Planner.plan_upgrade(pkgmgr, pkgmgr.world, pkgmgr.scope)
+      if plan.is_a?(Refusal)
+        error plan.message
+        return 1
       end
+      plan.notes.each { |n| info n }
+      return 0 if plan.builds.empty?
 
-      plan = pkgmgr.resolve_install_plan(
-        upgrades.map { |p| [p.name, nil] }
-      )
-
-      info "Packages to upgrade: #{plan.map(&:first).join(', ')}"
+      info "Packages to upgrade: #{plan.builds.map(&:name).join(', ')}"
 
       if options[:dry_run]
         info "Dry run (-d): nothing upgraded"
         return 0
       end
 
-      # The new version is the user's exactly as much as the old one
-      # was; whatever else the plan brings in is a dependency.
-      manual = upgrades.to_h { |p|
-        [p.name, pkgmgr.upgrade_inherits_manual?(p)]
-      }
-      for name, ver in plan do
-        if !pkgmgr.install(name, ver, manual: manual.fetch(name, false))
-          error "Could not install: #{name}"
-          return 1
-        end
+      failed = Executor.run(pkgmgr, plan)
+      if failed
+        error "Could not install: #{failed}"
+        return 1
       end
       return 0
     end
 
     if options[:rebuild]
-      stale = pkgmgr.get_stale_installs
-      if stale.empty?
-        info "Every install was built from the sources we have"
-        return 0
+      # Every stale install rebuilt where it is, at its version,
+      # against what it was built against, as it was asked for. What
+      # cannot be known is refused before anything moves; what cannot
+      # be built here is left as it is, and said.
+      judged = pkgmgr.world.judged(pkgmgr, pkgmgr.scope)
+      plan = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      if plan.is_a?(Refusal)
+        error plan.message
+        return 1
       end
-
-      # Only where the package can build it. An install at a board the
-      # package does not build for is stale and stays as it is -- said
-      # here, because this used to remove it first and find out second.
-      stale, elsewhere = stale.partition { |pkg, inst|
-        pkg.with_install_context(inst) { pkg.supported? }
-      }
-      for pkg, inst in elsewhere do
-        where = pkg.with_install_context(inst) { unsupported_reason(pkg.name) }
-        info "Left as it is: #{pkg.name}:#{inst.ver} at #{inst.coords} " \
-             "(#{pkg.name} does not build for #{where})"
-      end
-      return 0 if stale.empty?
-
-      info "Installs to rebuild, dependencies first:"
-      for pkg, inst in stale do
-        info "  #{pkg.name}:#{inst.ver} at #{inst.coords}"
-      end
-
-      # What each was built against, all of it settled before anything
-      # is removed: a rebuild that cannot know which gmp its isl linked
-      # must say so now, not after it has taken the old isl away.
-      against = stale.map { |pkg, inst|
-        versions, ambiguous = pkgmgr.deps_of_install(pkg, inst)
-        if !ambiguous.empty?
-          error "#{pkg.name}:#{inst.ver} has no record of which " \
-                "#{ambiguous.join(', ')} it was built against, and " \
-                "more than one is installed. Rebuild it through the " \
-                "package that pinned it: -s <that package>:<ver> -f"
-          return 1
-        end
-        versions
-      }
+      plan.notes.each { |n| info n }
+      return 0 if plan.empty?
 
       if options[:dry_run]
         info "Dry run (-d): nothing rebuilt"
         return 0
       end
 
-      stale.zip(against).each do |(pkg, inst), versions|
-        # At the install's own coordinates -- its stack, its arch and
-        # board -- at its own version, against the dependency versions
-        # it was built with, and as it was asked for: a version nobody
-        # named stays a default install, so --upgrade keeps following
-        # it. Both said outright, because passing nil to keep the
-        # origin would install the default version, and a default
-        # install of an older version, seen from another arch's scope,
-        # is exactly that.
-        ok = pkg.with_install_context(inst) do
-          pkgmgr.with_resolved_versions(versions) do
-            # Planned as the install itself was, with what it was
-            # built against asked for by name so nothing already there
-            # moves: a recipe can have grown a dependency since the
-            # install was made -- QEMU learned libslirp -- and the
-            # rebuild has to have it before the old tree goes.
-            plan = pkgmgr.resolve_install_plan([[pkg.name, inst.ver],
-                                                *versions.to_a])
-            deps = plan.reject { |n, _| n == pkg.name }
-            deps.all? { |n, v|
-              pkgmgr.install(n, v, manual: false) != false
-            } &&
-              pkgmgr.replace(pkg, inst.ver,
-                             default_install: inst.default_install,
-                             manual: inst.manual)
-          end
-        end
-
-        if !ok
-          error "Could not rebuild: #{pkg.name}:#{inst.ver}"
-          return 1
-        end
-      rescue RuntimeError => e
+      begin
+        failed = Executor.run(pkgmgr, plan)
+      rescue Executor::Failed => e
         # A recipe that raises mid-build -- a dependency it cannot
         # find -- has said what is wrong; the run ends on that, not on
-        # a traceback, and replace has put the old tree back.
+        # a traceback, and the old tree is back where it was.
         error e.message
-        error "Could not rebuild: #{pkg.name}:#{inst.ver}"
+        failed = e.name
+      end
+
+      if failed
+        error "Could not rebuild: #{failed}"
         return 1
       end
       return 0
@@ -1639,8 +1515,8 @@ module Main
     # No mode flag specified: install the Tilck stack of this target --
     # the meta-package whose dependencies are the default set -- AND
     # upgrade any installed package whose version was bumped.
-    defaults = pkgmgr.tilck_stacks.select(&:supported?)
-    upgrades = pkgmgr.get_upgradable_packages
+    defaults = pkgmgr.tilck_stacks.select { |m| m.at(pkgmgr.scope).supported? }
+    upgrades = Planner.upgradable(pkgmgr, pkgmgr.world, pkgmgr.scope)
     if defaults.empty?
       info "No Tilck stack is defined for #{pkgmgr.target_arch.name}/" \
            "#{pkgmgr.board_for(pkgmgr.target_arch)}: nothing to install " \

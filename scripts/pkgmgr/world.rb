@@ -29,6 +29,7 @@ require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'version'
 require_relative 'coords'
+require_relative 'build_inputs'
 
 # `tc` is the tree the installs were read from: the tests swap TC,
 # and a world of another tree answers nothing about this one.
@@ -55,6 +56,23 @@ World = Data.define(:installs, :tc) do
 
   # Every install of the package called `name`, broken ones included.
   def of(name) = installs.select { |i| i.pkgname == name && !i.pkg.nil? }
+
+  # The same world, every install carrying what its record says
+  # (InstallInfo#record), each judged as its package's recipe reads
+  # at the install's own coordinates. An orphan has no recipe to
+  # judge against: it is :ok with a record and :unknown without.
+  # Asked for by the modes that need it (-l, --check-for-updates,
+  # --rebuild); a build has no use for it and does not pay for it.
+  def judged(registry, scope)
+    return World.new(installs: installs.map { |i|
+      state = if i.pkg
+        i.pkg.at(scope, world: self).build_inputs_state_of(i)
+      else
+        BuildInputs.comparable(i.path).nil? ? :unknown : :ok
+      end
+      i.with_record(state)
+    }.freeze, tc: tc)
+  end
 
   # The one install of `name` at `ver` and `coords` that is complete.
   def find(name, ver, coords)

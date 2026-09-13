@@ -261,6 +261,22 @@ class TestSurvivors < Minitest::Test
     end
   end
 
+  # package.rb:1081  `return nil if host_tier != :stack` deleted, and
+  # the nil made "ALL": the same coordinates asked as a scope. The
+  # gcc-* in them names the host's compiler, not a stack, and the
+  # install's own scope is the one it was asked from.
+  def test_a_compiler_tier_install_belongs_to_no_stack
+    with_fake_tc do
+      p = StackReadingCompilerFake.new
+      pkgmgr.register(p)
+      fake_install(p, V1)
+      inst = p.find_install(V1)
+
+      assert_nil p.stack_of_install(inst)
+      assert_equal pkgmgr.scope, p.scope_at(inst, pkgmgr.scope)
+    end
+  end
+
   # package.rb:1583  `next if seen.include?(c)` deleted
   # When the current stack is also one on disk, it is listed once.
   def test_the_current_stack_is_scanned_once

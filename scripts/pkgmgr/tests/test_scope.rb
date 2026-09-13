@@ -31,11 +31,11 @@ class TestScope < Minitest::Test
   # other product file is a recipe, converted wholesale when the
   # executor binds the package it builds; the harness files are
   # converted with the tests.
-  UNBOUND_CEILING = 15
+  UNBOUND_CEILING = 7
 
   # The same, for a package asked what is installed with no World in
   # hand (step 5.2): the manager's scan answers, and the site counts.
-  UNBOUND_WORLD_CEILING = 14
+  UNBOUND_WORLD_CEILING = 8
 
   # The same, for a package asked which version a request bound with
   # no Plan in hand (step 5.3): the rebuild's stash answers.

@@ -142,7 +142,7 @@ module Bridge
     for p in pkgmgr.all_packages do
       for i in p.get_install_list do
         next if i.path.nil? || i.broken
-        want = p.with_install_context(i) { p.coords(i.ver) }
+        want = p.at(p.scope_at(i, pkgmgr.scope)).coords(i.ver)
         next if want == i.coords
         out << "#{p.name}@#{i.ver} is at #{i.coords}, its package says #{want}"
       end
