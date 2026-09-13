@@ -127,3 +127,124 @@ class TestHostGccVersionDecisions < Minitest::Test
     end
   end
 end
+
+
+#
+# The recipe itself, now that it is data: which version gets which
+# flags, what the prerequisites are named by, and the specs rewrite
+# exercised on a real -dumpspecs shape without a compiler to hand.
+#
+class TestHostGccRecipe < Minitest::Test
+
+  include TestHelper
+  include Recipe::DSL
+
+  def setup
+    reset_pkgmgr!
+    @pkg = HostGccPackage.new
+    pkgmgr.register(@pkg)
+  end
+
+  def configure_argv(ver)
+    Recipe.walk(@pkg.build_steps(ver)) { |s|
+      return s.argv if s.is_a?(Recipe::Run) && s.log == "configure.log"
+    }
+  end
+
+  def test_the_recipe_follows_the_version_not_the_default
+    with_fake_tc do
+      assert_includes configure_argv(Ver("11.5.0")), "--disable-libsanitizer"
+      refute_includes configure_argv(Ver("14.4.0")), "--disable-libsanitizer"
+    end
+  end
+
+  def test_the_prerequisites_and_binutils_are_named_by_token
+    with_fake_tc do
+      argv = configure_argv(Ver("14.4.0"))
+      assert_includes argv, "--with-gmp=$host_gmp/install"
+      assert_includes argv, "--with-isl=$host_isl/install"
+      assert_includes argv, "--with-as=$host_binutils/install/bin/as"
+      assert_includes argv, "--with-sysroot=$STACK_SYSROOT"
+      refute argv.any? { |a| a.include?(TC.to_s) }, "a path leaked in"
+    end
+  end
+
+  # A compiler is configured against the stack it DEFINES, which is
+  # not the sysroot at its own :distro coordinates. The same token,
+  # asked through a staging directory for 11.5.0 and for 14.4.0,
+  # names two different sysroots -- and $SYSROOT names neither.
+  def test_the_stack_sysroot_is_the_stack_the_compiler_defines
+    with_fake_tc do
+      a = Package::BuildCtx.new(@pkg, @pkg.staging_dir(Ver("11.5.0")))
+      b = Package::BuildCtx.new(@pkg, @pkg.staging_dir(Ver("14.4.0")))
+      assert_includes a.expand("$STACK_SYSROOT"), "gcc-11.5.0"
+      assert_includes b.expand("$STACK_SYSROOT"), "gcc-14.4.0"
+      refute_includes a.expand("$SYSROOT"), "gcc-11.5.0"
+    end
+  end
+
+  # ...while for an ordinary stack package the two are one directory.
+  def test_a_stack_packages_two_sysroots_are_the_same_one
+    with_fake_tc do
+      p = FakePackage.new("host_lib", on_host: true, host_tier: :stack)
+      pkgmgr.register(p)
+      ctx = Package::BuildCtx.new(p, p.staging_dir(Ver("1.0.0")))
+      assert_equal p.stack_sysroot.to_s, ctx.expand("$SYSROOT")
+      assert_equal ctx.expand("$SYSROOT"), ctx.expand("$STACK_SYSROOT")
+    end
+  end
+
+  # The specs rewrite, on the shape gcc -dumpspecs actually prints:
+  # the interpreter replaced, the rpath appended to the *link: line,
+  # everything else untouched.
+  SPECS = <<~SPECS
+    *asm:
+    %{m32:--32}
+
+    *link:
+    %{!static:--eh-frame-hdr} -m elf_x86_64 %{!shared: %{!static: -dynamic-linker /lib64/ld-linux-x86-64.so.2}}
+
+    *lib:
+    %{pthread:-lpthread} -lc
+  SPECS
+
+  def rewrite_steps
+    all = []
+    Recipe.walk(@pkg.build_steps(Ver("14.4.0"))) { |s| all << s }
+    return all.select { |s|
+      (s.is_a?(Recipe::Extract) && s.bind == "link_line") ||
+      (s.is_a?(Recipe::Transform) && s.bind == "specs")
+    }
+  end
+
+  def test_the_specs_rewrite_replaces_the_loader_and_adds_the_rpath
+    Dir.mktmpdir do |root|
+      c = Recipe::Ctx.new(root: root,
+                          tokens: { "STACK_SYSROOT" => "/tc/sys" })
+      Recipe.run([Set(bind: "specs", value: SPECS), *rewrite_steps], c)
+      out = c.bound("specs")
+
+      refute_includes out, "/lib64/ld-linux-x86-64.so.2"
+      assert_includes out,
+                      "-dynamic-linker /tc/sys/usr/lib/ld-linux-x86-64.so.2"
+      rpath = "%{!static:-rpath /tc/sys/usr/lib --disable-new-dtags}"
+      assert_match(/^\*link:\n.*-m elf_x86_64.* #{Regexp.escape(rpath)}$/,
+                   out)
+      assert_includes out, "*asm:\n%{m32:--32}", "the other sections untouched"
+      assert_includes out, "*lib:\n%{pthread:-lpthread} -lc"
+    end
+  end
+
+  # ...and each rewrite must match, or the install stops.
+  def test_a_spec_without_the_system_loader_stops_the_install
+    Dir.mktmpdir do |root|
+      c = Recipe::Ctx.new(root: root,
+                          tokens: { "STACK_SYSROOT" => "/tc/sys" })
+      moved = SPECS.sub("/lib64/ld-linux-x86-64.so.2", "/elsewhere/ld.so")
+      err = assert_raises(Recipe::Error) {
+        Recipe.run([Set(bind: "specs", value: moved), *rewrite_steps], c)
+      }
+      assert_match(/ld-linux-x86-64.so.2.*matches nothing/m, err.message)
+    end
+  end
+end

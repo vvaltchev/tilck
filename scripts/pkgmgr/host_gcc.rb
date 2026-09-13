@@ -222,7 +222,8 @@ class HostGccPackage < Package
       end
 
       loader = stack_loader(gcc_ver)
-      refs = Portability.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
+      readelf = dep_install_dir("host_binutils") / "install/bin/readelf"
+      refs = Portability.read_refs(bin, readelf: readelf.to_s)
       resolved = Portability.resolve_libs(bin, loader: loader)
 
       violations = Portability.check_refs(
@@ -266,8 +267,12 @@ class HostGccPackage < Package
   # in post_sysroot_check referred to `sysroot`, a local of
   # install_impl_internal, and raised NameError instead of returning
   # false — aborting five unrelated builds.
+  # Where a stack's glibc puts it, relative to the sysroot. The recipe
+  # names it as $STACK_SYSROOT/LOADER; the audit asks stack_loader.
+  LOADER = "usr/lib/ld-linux-x86-64.so.2"
+
   def stack_loader(gcc_ver)
-    return "#{pkgmgr.stack_sysroot(gcc_ver)}/usr/lib/ld-linux-x86-64.so.2"
+    return "#{pkgmgr.stack_sysroot(gcc_ver)}/#{LOADER}"
   end
 
   # Configure flags that depend on which version is being built.
@@ -284,305 +289,209 @@ class HostGccPackage < Package
     return args
   end
 
-  def install_impl_internal(install_dir)
-
-    # The version being INSTALLED, which is not default_ver when the
-    # user named another one. Getting this wrong is silent: the checks
-    # below would answer about a compiler nobody asked for.
-    ver = installing_ver(install_dir)
-    sysroot = pkgmgr.stack_sysroot(ver)
-
-    if !supported_version?(ver)
-      error "gcc #{ver} is not one of the supported versions: " +
-            SUPPORTED.map(&:to_s).join(", ")
-      return false
-    end
-
-    prefix = final_install_prefix(install_dir)
-    destdir = "#{install_dir}/destdir"
-    binutils = binutils_bin_dir
+  # A version nobody supports is refused before this is asked:
+  # installable_versions names SUPPORTED, and a request has to name
+  # one of them.
+  def build_steps(ver = default_ver) = [
 
     # GCC refuses to be configured in its own source tree.
-    FileUtils.mkdir_p("build")
+    Mkdir(path: "build"),
 
-    conf = [
-      "../configure",
-      "--prefix=#{prefix}",
+    Within(dir: "build", steps: [
+      Run(log: "configure.log", argv: [
+        "../configure",
+        "--prefix=$PREFIX",
 
-      # The whole point: headers and libraries resolve inside our
-      # sysroot, so libgcc and libstdc++ are built against OUR glibc
-      # and anything this compiler builds looks there and nowhere else.
-      "--with-sysroot=#{sysroot}",
+        # The whole point: headers and libraries resolve inside our
+        # sysroot, so libgcc and libstdc++ are built against OUR glibc
+        # and anything this compiler builds looks there and nowhere
+        # else. $STACK_SYSROOT is the stack this compiler DEFINES, not the
+        # sysroot at its own :distro coordinates.
+        "--with-sysroot=$STACK_SYSROOT",
 
-      # Use the binutils we built, not whatever the host happens to
-      # have. --with-build-time-tools covers the build itself; the
-      # -B flags below cover what the finished compiler invokes.
-      "--with-build-time-tools=#{binutils}",
-      "--with-as=#{binutils}/as",
-      "--with-ld=#{binutils}/ld",
+        # Use the binutils we built, not whatever the host happens to
+        # have. --with-build-time-tools covers the build itself; -as
+        # and -ld cover what the finished compiler invokes. Through
+        # the package, not the sysroot: binutils is a :distro package
+        # and deliberately not part of the sysroot at all.
+        "--with-build-time-tools=$host_binutils/install/bin",
+        "--with-as=$host_binutils/install/bin/as",
+        "--with-ld=$host_binutils/install/bin/ld",
 
-      # The maths libraries, as packages we built at the versions THIS
-      # GCC asks for, rather than tarballs it downloads for itself
-      # mid-build. See PREREQS and gcc_prereqs.rb.
-      *prereq_flags(ver),
+        # The maths libraries, as packages we built at the versions
+        # THIS GCC asks for, rather than tarballs it downloads for
+        # itself mid-build. See PREREQS.
+        *prereq_flags,
 
-      "--enable-languages=c,c++",
+        "--enable-languages=c,c++",
 
-      # Nothing here wants translations, and they would pull in the
-      # host's gettext.
-      "--disable-nls",
+        # Nothing here wants translations, and they would pull in the
+        # host's gettext.
+        "--disable-nls",
 
-      # Multilib would need a 32-bit glibc in the sysroot as well, and
-      # nothing in the QEMU stack is 32-bit.
-      "--disable-multilib",
+        # Multilib would need a 32-bit glibc in the sysroot as well,
+        # and nothing in the QEMU stack is 32-bit.
+        "--disable-multilib",
 
-      # Bootstrapping rebuilds GCC three times with itself, which is
-      # how GCC validates a compiler change. We are not changing GCC,
-      # and it triples an already long build.
-      "--disable-bootstrap",
+        # Bootstrapping rebuilds GCC three times with itself, which is
+        # how GCC validates a compiler change. We are not changing
+        # GCC, and it triples an already long build.
+        "--disable-bootstrap",
 
-      # With no bootstrap, the system compiler builds all of it, and
-      # it has to be told which C++ that is: under GCC 16's default
-      # C++20, GCC 11's libcody stops at `S2C(u8" ")` -- a char8_t
-      # array where the code expects char. GCC's own gcc/ directory
-      # picks no dialect of its own either. See
-      # Package#host_compiler_gnu17.
-      *host_compiler_gnu17,
-    ]
+        # With no bootstrap, the system compiler builds all of it, and
+        # it has to be told which C++ that is: under GCC 16's default
+        # C++20, GCC 11's libcody stops at `S2C(u8" ")` -- a char8_t
+        # array where the code expects char. GCC's own gcc/ directory
+        # picks no dialect of its own either. See
+        # Package#host_compiler_gnu17.
+        *host_compiler_gnu17,
 
-    # glibc removed libcrypt and crypt.h in 2.39; it lives in the
-    # separate libxcrypt project now. Older GCC includes <crypt.h>
-    # unconditionally from libsanitizer and cannot be built against a
-    # glibc that new:
+        # --disable-libsanitizer below 14: see version_conf_args.
+        *version_conf_args(ver),
+      ]),
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+      Run(log: "install.log",
+          argv: ["make", "install", "DESTDIR=$DESTDIR"]),
+    ]),
+
+    Move(from: "$DESTDIR$PREFIX", to: "$INSTALL/install"),
+
+    # POINT THE FINISHED COMPILER AT OUR LOADER BY DEFAULT.
     #
-    #   libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cpp:
-    #     fatal error: crypt.h: No such file or directory
+    # --with-sysroot gets link time right on its own: the search
+    # paths, -print-file-name=libc.so and the -L flags all resolve
+    # inside the sysroot. What it does NOT change is the ELF
+    # interpreter, which GCC bakes from a hardcoded path in its link
+    # spec. A binary built without this links against our glibc and
+    # is then loaded by the system one -- the worst of both, and
+    # invisible unless you ask the right loader about it: the system
+    # ldd reports the system libc for such a binary regardless of what
+    # it would really load. Rewriting the driver's specs makes the
+    # default correct rather than leaving every consumer to remember
+    # -Wl,--dynamic-linker=.
     #
-    # The boundary here is MEASURED, not assumed. An earlier version of
-    # this comment claimed GCC 13 had fixed it upstream; 13.4.0 then
-    # failed exactly like 11.5.0 and 12.5.0 did. Observed against glibc
-    # 2.41: 11.5.0 fails, 12.5.0 fails, 13.4.0 fails, 14.4.0 builds.
-    # 15.3.0 and 16.2.0 are untested, and being newer than the last
-    # known-good they get no flag until something says otherwise.
+    # -print-file-name=specs is no good for finding where: for a file
+    # that does not exist yet -- which is always, since we are about
+    # to create it -- gcc echoes the bare name back. The "install:"
+    # line of -print-search-dirs is the directory it actually looks
+    # in.
+    Capture(bind: "search_dirs",
+            argv: ["$INSTALL/install/bin/gcc", "-print-search-dirs"]),
+    Extract(bind: "specs_dir", from: "$search_dirs",
+            pattern: /^install:\s*(.+)$/),
+    Capture(bind: "specs", argv: ["$INSTALL/install/bin/gcc", "-dumpspecs"]),
+
+    # Two rewrites, and each MUST match: a spec that no longer
+    # mentions the system loader means the hardcoded interpreter
+    # moved, and a spec with no *link: section has nowhere to put an
+    # rpath. Either would once have silently done nothing.
     #
-    # Supplying crypt.h instead would mean adding libxcrypt, which is an
-    # ordinary library that has to be built AGAINST our glibc and
-    # therefore needs our gcc — a real cycle, and not one the
-    # same-triple trick breaks, because libxcrypt cannot be built by the
-    # system compiler without linking the system libc.
+    # The rpath records the library search path in the binaries
+    # themselves. Without it, portability is an accident of which
+    # loader happens to run: our ld.so has the sysroot compiled in as
+    # its default search path and finds our libraries, the SYSTEM
+    # ld.so finds the system's, and the binary says nothing either
+    # way -- one LD_LIBRARY_PATH and our own loader loads the system's
+    # libstdc++. DT_RPATH rather than DT_RUNPATH, because RPATH is
+    # searched BEFORE LD_LIBRARY_PATH and RUNPATH after it; only the
+    # former is immune. --disable-new-dtags is our binutils' default
+    # today, but that is a build-time default rather than a promise,
+    # and silently getting RUNPATH would silently restore the hole.
+    Extract(bind: "link_line", from: "$specs",
+            pattern: /^\*link:\n([^\n]*)$/),
     #
-    # So the sanitizer runtimes are dropped for those versions only.
-    # Nothing in the QEMU stack uses them, and the alternative is not
-    # supporting those compilers at all.
-    conf.concat(version_conf_args(ver))
+    # The rpath first, matched against the *link: line as captured;
+    # the loader second, since it appears inside that same line and
+    # rewriting it first would leave the capture matching nothing.
+    Transform(bind: "specs", from: "$specs", subs: [
+      ["*link:\n$link_line",
+       "*link:\n$link_line %{!static:-rpath $STACK_SYSROOT/usr/lib " \
+       "--disable-new-dtags}"],
+      [SYSTEM_LOADER, "$STACK_SYSROOT/#{LOADER}"],
+    ]),
+    Mkdir(path: "$specs_dir"),
+    Write(path: "$specs_dir/specs", text: "$specs"),
 
-    ok = false
-    chdir("build") do
-      ok = run_command("configure.log", conf)
-      next if !ok
+    # A GCC build tree is several GB; the compiler is a few hundred
+    # MB.
+    Prune(),
+  ]
 
-      ok = run_command("build.log", ["make", "-j#{BUILD_PAR}"])
-      next if !ok
-
-      ok = run_command("install.log",
-                       ["make", "install", "DESTDIR=#{destdir}"])
-    end
-
-    return false if !ok
-
-    FileUtils.mv("#{destdir}#{prefix}", "#{install_dir}/install")
-
-    return false if !install_portability_specs("#{install_dir}/install", ver)
-    return false if !verify_produces_portable_binaries(
-                       "#{install_dir}/install", ver)
-
-    # A GCC build tree is several GB; the compiler is a few hundred MB.
-    prune_build_tree
-    return true
-  end
+  # Make the compiler prove itself once the install is in place.
+  # Everything above is a claim about how GCC was configured; this is
+  # the only check that observes what it actually produces -- and a
+  # toolchain quietly emitting system-linked binaries would poison
+  # every package built after it.
+  def postconditions(ver = default_ver) = [PortableBinaries.new]
 
   private
 
   # The system loader GCC hardcodes into its link spec on this host.
   SYSTEM_LOADER = "/lib64/ld-linux-x86-64.so.2"
 
-  # Point the finished compiler at OUR loader by default.
+
+
   #
-  # --with-sysroot gets link time right on its own: the search paths,
-  # -print-file-name=libc.so and the -L flags all resolve inside the
-  # sysroot. What it does NOT change is the ELF interpreter, which GCC
-  # bakes from a hardcoded path in its link spec. A binary built
-  # without this links against our glibc and is then loaded by the
-  # system one — the worst of both, and invisible unless you ask the
-  # right loader about it: the system ldd reports the system libc for
-  # such a binary regardless of what it would really load.
+  # The installed gcc produces portable binaries: compile a trivial
+  # program with it and check its interpreter, its rpath and every
+  # library the stack's loader resolves for it live under the
+  # toolchain. Cheap, and run once the install is where it lives.
   #
-  # Rewriting the driver's specs makes the default correct rather than
-  # leaving every consumer to remember -Wl,--dynamic-linker=. A
-  # compiler that emits non-portable output unless invoked just so is a
-  # trap, and the whole stack passes through this one place.
-  def install_portability_specs(install, gcc_ver)
+  class PortableBinaries < Postcondition::Base
 
-    gcc = "#{install}/bin/gcc"
-    loader = stack_loader(gcc_ver)
+    def check(pkg, dir)
 
-    if !File.exist?(loader)
-      error "no stack loader at #{loader}: this stack has no glibc, " \
-            "which should have been built as a dependency"
-      return false
-    end
+      install = dir / "install"
+      gcc_ver = pkg.installing_ver(dir)
+      ok = false
 
-    # -print-file-name=specs is no good here: for a file that does not
-    # exist yet — which is always, since we are about to create it —
-    # gcc echoes the bare name back. The "install:" line of
-    # -print-search-dirs is the directory it actually looks in.
-    dirs = `#{gcc} -print-search-dirs`
-    m = dirs.match(/^install:\s*(.+)$/)
+      Dir.mktmpdir("gcc-portable-check-") do |d|
+        src = File.join(d, "t.c")
+        bin = File.join(d, "t")
+        File.write(src, "int main(void){return 0;}\n")
 
-    if m.nil?
-      error "gcc -print-search-dirs has no install: line, so there is " \
-            "nowhere to put the specs file"
-      return false
-    end
+        if !system("#{install}/bin/gcc", "-O0", "-o", bin, src,
+                   out: File::NULL, err: File::NULL)
+          error "the installed gcc cannot compile a trivial program"
+          next
+        end
 
-    specs_path = File.join(m[1].strip, "specs")
+        loader = pkg.stack_loader(gcc_ver)
+        readelf = pkg.dep_install_dir("host_binutils") /
+                  "install" / "bin" / "readelf"
+        refs = Portability.read_refs(bin, readelf: readelf.to_s)
+        resolved = Portability.resolve_libs(bin, loader: loader)
 
-    specs = `#{gcc} -dumpspecs`
-    if !specs.include?(SYSTEM_LOADER)
-      error "gcc's link spec does not mention #{SYSTEM_LOADER}: the " \
-            "hardcoded interpreter has moved and this rewrite would " \
-            "silently do nothing"
-      return false
-    end
+        violations = Portability.check_refs(
+          bin, interp: refs[:interp], rpaths: refs[:rpaths],
+          resolved: resolved || {}, allowed: [TC]
+        )
 
-    specs = specs.gsub(SYSTEM_LOADER, loader)
+        if !violations.empty?
+          error "gcc #{gcc_ver} produces non-portable binaries:"
+          violations.each { |v| error "  #{v.kind}: #{v.detail}" }
+          next
+        end
 
-    specs = add_link_rpath(specs,
-                           "#{pkgmgr.stack_sysroot(gcc_ver)}/usr/lib")
-    if specs.nil?
-      error "gcc -dumpspecs has no *link: section to add an rpath to"
-      return false
-    end
-
-    FileUtils.mkdir_p(File.dirname(specs_path))
-    File.write(specs_path, specs)
-    info "Portability specs installed: interpreter -> #{loader}"
-    return true
-  end
-
-  # Record the library search path in the binaries themselves.
-  #
-  # Without this, portability is an accident of which loader happens to
-  # run: our ld.so has the sysroot compiled in as its default search
-  # path, so it finds our libraries, and the SYSTEM ld.so finds the
-  # system's. The binary says nothing either way. That is not a
-  # theoretical difference —
-  #
-  #   $ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu our-loader --list prog
-  #     libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-  #     libc.so.6      => /usr/lib/x86_64-linux-gnu/libc.so.6
-  #
-  # — one environment variable and our own loader loads the system's
-  # libraries.
-  #
-  # DT_RPATH rather than DT_RUNPATH, because RPATH is searched BEFORE
-  # LD_LIBRARY_PATH and RUNPATH after it; only the former is immune.
-  # --disable-new-dtags is our binutils' default today, but that is a
-  # build-time default of binutils rather than a promise, and silently
-  # getting RUNPATH would silently restore the hole.
-  def add_link_rpath(specs, libdir)
-
-    marker = "*link:\n"
-    i = specs.index(marker)
-    return nil if i.nil?
-
-    body_start = i + marker.length
-    body_end = specs.index("\n", body_start)
-    return nil if body_end.nil?
-
-    body = specs[body_start...body_end]
-    added = " %{!static:-rpath #{libdir} --disable-new-dtags}"
-
-    return specs[0...body_start] + body + added + specs[body_end..]
-  end
-
-  # Make the compiler prove itself before the install is accepted.
-  #
-  # Everything above this point is a claim about how GCC was
-  # configured; this is the only step that observes what it actually
-  # produces. It is cheap, and a toolchain quietly emitting
-  # system-linked binaries would poison every package built after it.
-  def verify_produces_portable_binaries(install, gcc_ver)
-
-    ok = false
-
-    Dir.mktmpdir("gcc-portable-check-") do |d|
-      src = File.join(d, "t.c")
-      bin = File.join(d, "t")
-      File.write(src, "int main(void){return 0;}\n")
-
-      if !system("#{install}/bin/gcc", "-O0", "-o", bin, src,
-                 out: File::NULL, err: File::NULL)
-        error "the installed gcc cannot compile a trivial program"
-        next
+        info "Verified: gcc produces portable binaries by default"
+        ok = true
       end
 
-      loader = stack_loader(gcc_ver)
-      refs = Portability.read_refs(bin, readelf: "#{binutils_bin_dir}/readelf")
-      resolved = Portability.resolve_libs(bin, loader: loader)
-
-      violations = Portability.check_refs(
-        bin, interp: refs[:interp], rpaths: refs[:rpaths],
-        resolved: resolved || {}, allowed: [TC]
-      )
-
-      if !violations.empty?
-        error "gcc #{gcc_ver} produces non-portable binaries:"
-        violations.each { |v| error "  #{v.kind}: #{v.detail}" }
-        next
-      end
-
-      info "Verified: gcc produces portable binaries by default"
-      ok = true
+      return ok
     end
 
-    return ok
+    def describe = "the installed gcc produces portable binaries"
   end
 
-  # Where our as and ld live. Resolved through the package rather than
-  # the sysroot: binutils is a :distro package and deliberately not
-  # part of the sysroot at all.
-  def binutils_bin_dir
-    pkg = pkgmgr.get("host_binutils")
-    return pkg.install_prefix(pkg.default_ver) / "install" / "bin"
-  end
 
-  # --with-gmp and friends, at the versions PREREQS pins for this GCC.
-  #
-  # Read back from the resolver rather than from the table directly:
-  # what actually got installed is what the resolver bound, and if the
-  # two ever disagree the configure line should follow the tree, not
-  # our intention about it.
-  def prereq_flags(ver)
-
-    table = PREREQS[ver] || {}
-
-    return [
-      ["gmp",  "host_gmp"],
-      ["mpfr", "host_mpfr"],
-      ["mpc",  "host_mpc"],
-      ["isl",  "host_isl"],
-    ].map { |flag, name|
-      pkg = pkgmgr.get(name)
-
-      # What the resolver actually bound for this request first: the
-      # tree is the authority on what got installed, and the table is
-      # only our statement of intent about it.
-      v = pkgmgr.resolved_ver(name) ||
-          (table[flag.to_sym] && Ver(table[flag.to_sym])) ||
-          pkg.default_ver
-
-      "--with-#{flag}=#{pkg.prefix_for(v)}"
+  # --with-gmp and friends. Each is a token: what the resolver bound
+  # for this request is what the token resolves to, and the resolver
+  # bound what dep_list_for pinned from PREREQS -- so the configure
+  # line follows the tree, and the table is only our statement of
+  # intent about it.
+  def prereq_flags
+    return PREREQ_NAMES.map { |n|
+      "--with-#{n.delete_prefix("host_")}=$#{n}/install"
     }
   end
 end

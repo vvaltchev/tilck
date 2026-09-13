@@ -662,7 +662,11 @@ class Package
   #   $CACHE     the download cache, where a source's extra files wait
   #   $PREFIX    the install prefix under $FINAL
   #   $DESTDIR   where `make install` stages it first
-  #   $SYSROOT   the stack's composed sysroot
+  #   $SYSROOT   the sysroot at this install's coordinates
+  #   $STACK_SYSROOT   the composed sysroot of the stack this install
+  #              BELONGS to. The same directory for a stack package;
+  #              not for the compiler that defines a stack, which is a
+  #              :distro package built against the stack it defines
   #   $STACK_GCC        the bin dir of the compiler that names the stack
   #   $STACK_BINUTILS   ...and of its binutils
   #   $PAR       the build parallelism
@@ -733,6 +737,14 @@ class Package
       "PREFIX"  => -> { final_install_prefix(install_dir).to_s },
       "DESTDIR" => "#{install_dir}/destdir",
       "SYSROOT" => (on_host ? stack_sysroot.to_s : ""),
+
+      # Through stack_gcc_ver, the same answer the listing gives to
+      # "which stack is this in": host_gcc is a :distro package whose
+      # own coordinates have a sysroot that is not its stack's, and
+      # the compiler is configured against the stack it DEFINES.
+      "STACK_SYSROOT" => on_host ? -> {
+        pkgmgr.stack_sysroot(stack_gcc_ver(installing_ver(install_dir))).to_s
+      } : "",
 
       # The STACK's compiler, not $host_gcc: a request may pin host_gcc
       # to something else for its own build (qemu does), while every
