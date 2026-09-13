@@ -8,6 +8,7 @@ require_relative 'source_ref'
 require_relative 'package_manager'
 require_relative 'build_env'
 require_relative 'coords'
+require_relative 'scope'
 require_relative 'build_inputs'
 require_relative 'recipe'
 require_relative 'postcondition'
@@ -174,6 +175,57 @@ class Package
 
   attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
   attr_reader :host_tier, :board_list
+
+  # --- the scope a scoped question is answered under -----------------
+  #
+  # A package in the registry is a declaration. Where it installs,
+  # which arch it builds for, which stack it belongs to: those are
+  # questions about one INVOCATION, and asking them binds the package
+  # to a Scope first. A bound package is a shallow copy with one
+  # field set, so the scope an answer was computed under is visible
+  # at the call site that asked, and cannot be some block open up
+  # the stack.
+  #
+  #   pkg.at(scope).coords(ver)     # this scope, visibly
+  #   pkg.coords(ver)               # TRANSITION: the invocation's, counted
+  #
+  # The transition (docs/plans/pkgmgr-functional-core.md, step 5.1):
+  # an unbound package answers from pkgmgr.scope and notes the site
+  # that asked. The sites are printed at the end of a test run and
+  # driven to zero step by step; then the fallback goes and an
+  # unbound question raises Unbound.
+  class Unbound < StandardError; end
+
+  # file basename => Set of line numbers that asked an unbound
+  # package a scoped question. Read by tests/run_all.rb's summary
+  # and by test_scope.rb's ceiling.
+  UNBOUND_READS = Hash.new { |h, k| h[k] = Set.new }
+
+  def at(s)
+    raise ArgumentError, "#{name}: not a Scope: #{s.inspect}" \
+      if !s.is_a?(Scope)
+    b = dup
+    b.instance_variable_set(:@scope, s)
+    return b
+  end
+
+  def bound? = !@scope.nil?
+
+  def scope
+    return @scope if @scope
+    Package.note_unbound_read(caller_locations(1, 12))
+    return pkgmgr.scope
+  end
+
+  # The first frame of ours outside this file is the site to convert:
+  # the caller that held no scope, or the recipe that read one. A
+  # frame in the standard library (a FileUtils.cd block) is not a site.
+  def self.note_unbound_read(frames)
+    ours = frames.select { |x| x.path.include?("/pkgmgr/") }
+    f = ours.find { |x| File.basename(x.path) != "package.rb" }
+    f ||= ours.first || frames.first
+    UNBOUND_READS[File.basename(f.path)] << f.lineno
+  end
 
   # Where this package may run: OS names and host arch names, nil for
   # anywhere. Constructor arguments for most; a package that is the
@@ -374,16 +426,14 @@ class Package
     a = default_arch
     return true if a.nil?
 
-    return @board_list.include?(pkgmgr.board_for(a))
+    return @board_list.include?(scope.board_of(a))
   end
 
-  # Is the current target arch supported by this package?
+  # Is the scope's target arch supported by this package?
   # Noarch (arch_list nil) and host packages are always true.
-  # Reads pkgmgr.target_arch so the answer reflects the `-a <arch>`
-  # install-mode override when one is active.
   def arch_supported?
     return true if @arch_list.nil? || @on_host
-    return @arch_list.include?(pkgmgr.target_arch)
+    return @arch_list.include?(scope.arch)
   end
 
   # Is this package available at all in the current invocation?
@@ -482,11 +532,11 @@ class Package
   # silently overwritten each other. Only safe until now because
   # board-specific packages happened to have distinct names.
   #
-  # Which board applies to an arch is the package manager's to say
-  # (PackageManager#board_for): the answer depends on the invocation's
-  # scope, and a package asking it directly would read the global pair
-  # even while judging an install that belongs to another board.
-  def target_board(arch) = pkgmgr.board_for(arch)
+  # Which board applies to an arch is the scope's to say (Scope#board_of):
+  # the answer depends on the invocation, and a package reading the
+  # global pair would answer for another board while judging an
+  # install that belongs to this one.
+  def target_board(arch) = scope.board_of(arch)
 
   # The BSP directory of THIS package's install: board data (device
   # tree, bootloader config) for the arch and board it is built for.
@@ -514,7 +564,7 @@ class Package
   # compiler. host_gcc overrides it, because a compiler must belong to
   # ITS OWN stack — binding one to another compiler's stack is how a
   # gcc ends up configured against a sysroot it has no business in.
-  def stack_gcc_ver(ver = nil) = pkgmgr.current_host_stack
+  def stack_gcc_ver(ver = nil) = scope.stack
 
   def stack_root = coords.root
 
@@ -1395,10 +1445,9 @@ class Package
     end
   end
 
-  # Default arch for a regular target package: the pkgmgr's current
-  # target_arch (ARCH unless a with_target_arch(...) override is
-  # active). Host and noarch packages override it.
-  def default_arch = pkgmgr.target_arch
+  # The arch a regular target package builds for: the scope's. Host
+  # and noarch packages override it.
+  def default_arch = scope.arch
 
   # WHICH COMPILER PRODUCES THIS PACKAGE.
   #
@@ -1414,9 +1463,9 @@ class Package
   # section as mtools, which the distro's compiler really did build,
   # and left the stack invisible in a listing that groups on this.
   def default_cc
-    return pkgmgr.target_arch.gcc_ver if !on_host
+    return scope.arch.gcc_ver if !on_host
     return "syscc" if host_tier != :stack
-    return pkgmgr.current_host_stack
+    return scope.stack
   end
   def default_ver = pkgmgr.get_config_ver(pkg_dirname, host: on_host)
 

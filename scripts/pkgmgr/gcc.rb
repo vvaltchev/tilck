@@ -96,7 +96,7 @@ class GccCompiler < Package
 
     return false if !host_supported?
 
-    arch = pkgmgr.target_arch
+    arch = scope.arch
 
     if arch.family == "generic_x86"
       return @target_arch == ALL_ARCHS["i386"] ||

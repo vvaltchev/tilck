@@ -163,7 +163,7 @@ class HostGccPackage < Package
   # mutable, so switching HOST_VER_GCC afterwards left the compiler
   # pointing at a stack it no longer belonged to, with nothing
   # detecting the disagreement.
-  def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_host_stack
+  def stack_gcc_ver(ver = nil) = ver || scope.stack
 
   # An install of the stack compiler belongs to the stack it defines,
   # although it lives in the distro's env: what it needs -- its glibc,
@@ -259,7 +259,7 @@ class HostGccPackage < Package
   # the compiler the stack's packages are built against has to be that
   # one -- otherwise `-H 16.2.0 -s host_qemu` would place QEMU in
   # gcc-16.2.0 while building it against the 14.4.0 the file names.
-  def default_ver = pkgmgr.current_host_stack
+  def default_ver = scope.stack
 
   # The dynamic loader belonging to a given stack.
   #
