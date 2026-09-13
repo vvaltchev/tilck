@@ -35,10 +35,20 @@ module Executor
   def run(registry, plan)
     return pkgmgr.with_scope(plan.scope) {
       failed = nil
+      removed = false
       for a in plan.actions do
+        # The sysroot is a view over what is installed, so a removal
+        # invalidates it exactly as an install does -- every stack,
+        # since a stale symlink is the failure mode hardest to
+        # notice. Recomposed once the removals are done, before
+        # anything is built against it.
+        if removed && !a.is_a?(Remove)
+          recompose_all
+          removed = false
+        end
         ok = case a
              when Build  then build(registry, a)
-             when Remove then remove(a)
+             when Remove then removed = true; remove(a)
              when Mark   then mark(a)
              else raise "unknown action #{a.inspect}"
              end
@@ -47,22 +57,40 @@ module Executor
           break
         end
       end
+      recompose_all if removed
       failed
     }
   end
 
+  def recompose_all
+    pkgmgr.refresh
+    pkgmgr.host_stacks.each { |v| pkgmgr.compose_stack_sysroot(Ver(v)) }
+  end
+
   # --- the actions ----------------------------------------------------------
 
+  # One installation gone, and the empty parents it leaves (the
+  # package's directory, the arch's) with it, so that stale empty
+  # trees do not confuse the listing.
   def remove(action)
-    i = action.install
-    pkgmgr.uninstall(i.pkgname, false, false, i.ver, coords: [i.coords])
+    path = action.install.path
+    FileUtils.rm_rf(path)
+
+    parent = path.parent
+    # mutation: equivalent -- the root holds cache/, never empty
+    while parent != TC && parent.directory? && Dir.empty?(parent)
+      FileUtils.rmdir(parent)
+      parent = parent.parent
+    end
+
+    pkgmgr.installs_changed!
     return true
   end
 
+  # Silent: what a mark is FOR is the caller's to say (a claim, a
+  # --mark), and it says it.
   def mark(action)
     i = action.install
-    info "Set #{i.pkgname}:#{i.ver} to #{action.manual ? 'manually' :
-                                          'automatically'} installed"
     InstallOrigin.write(i.path, i.default_install, action.manual)
     pkgmgr.installs_changed!
     return true

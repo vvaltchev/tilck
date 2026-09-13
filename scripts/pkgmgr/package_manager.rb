@@ -267,9 +267,7 @@ class PackageManager
     # none.
     v = ver || pkg.default_ver
 
-    wanted = pkg.install_archs(v).map { |a|
-      a ? with_target_arch(a) { pkg.coords(v) } : pkg.coords(v)
-    }
+    wanted = Planner.coords_of_install_for(pkg, v, scope)
 
     # Exactly those coordinates, and nothing about the compiler or the
     # arch: the coordinates ARE the compiler and the arch. A version
@@ -1098,42 +1096,19 @@ class PackageManager
   # reason uninstall does.
   def mark(name, manual, dry, force, ver = nil, compiler = nil, arch = nil)
 
-    all_pkgs = name.eql?("ALL")
-    pkg = all_pkgs ? nil : get_smart(name)
-    install_list = pkg ? pkg.get_install_list : world.installs
-
-    sel = uninstall_selector(pkg, name, install_list, ver: ver,
-                             compiler: compiler, arch: arch)
-    return 0 if sel.nil?
-
-    # ...and -u's two exceptions with it: what is never removed is not
-    # worth marking, and ALL leaves the cross compilers alone unless -f
-    # says otherwise, here as there.
-    picked = install_list.select { |e|
-      sel.matches?(e) &&
-        !NEVER_REMOVE.include?(e.pkgname) &&
-        !(all_pkgs && !force && (e.compiler? || e.pkg&.is_compiler))
-    }
-
-    if picked.empty?
-      warning "#{name}: nothing matched, so nothing was marked"
-      return 0
-    end
+    plan = Planner.plan_mark(self, world, name, manual, scope, ver: ver,
+                             compiler: compiler, arch: arch, force: force)
+    plan.notes.each { |n| warning n }
 
     p = "[DRY RUN] " if dry
     how = manual ? "manually installed" : "automatically installed"
-
-    for inst in picked do
-      puts "#{p}Mark #{inst.pkgname}:#{inst.ver} at #{inst.coords} as #{how}"
-      InstallOrigin.write(inst.path, inst.default_install, manual) if !dry
+    for m in plan.marks do
+      i = m.install
+      puts "#{p}Mark #{i.pkgname}:#{i.ver} at #{i.coords} as #{how}"
     end
 
-    # mutation: equivalent -- rereading what a dry run did not write
-    if !dry
-      installs_changed!
-      refresh()
-    end
-    return picked.length
+    Executor.run(self, plan) if !dry
+    return plan.marks.length
   end
 
   # The mark an upgrade inherits: manual if any default install of the
@@ -1144,115 +1119,26 @@ class PackageManager
     }
   end
 
-  # The installations one install needs: its dependencies at the
-  # versions it was built against, each at the coordinates it would be
-  # found at from this install's own context, plus the cross compiler
-  # a target install is built by. A dependency whose version cannot be
-  # known -- no record, two present -- keeps every version present:
-  # --autoremove must never take the one that was meant.
+  # The installations one install needs (Planner.needs_of).
   def needs_of_install(pkg, inst)
-
-    pkg.with_install_context(inst) do
-      versions, ambiguous = deps_of_install(pkg, inst)
-
-      wanted = versions.flat_map { |n, v|
-        dep = get(n)
-        vers = ambiguous.include?(n) ? dep.get_install_list.map(&:ver).uniq
-                                     : [v]
-        vers.map { |dv| [n, dv, coords_of_install_for(dep, dv)] }
-      }
-
-      if pkg.target? && (a = pkg.default_arch) &&
-         (cc = get("gcc-#{a.name}-musl"))
-        wanted << [cc.name, cc.default_ver,
-                   coords_of_install_for(cc, cc.default_ver)]
-      end
-
-      wanted
-    end
+    return Planner.needs_of(self, world, inst, scope)
   end
 
   # Where an install of `pkg` at `ver` would write, from the current
-  # context: force_remove's question, asked for a dependency.
+  # scope: the -f question, asked for a dependency.
   def coords_of_install_for(pkg, ver)
-    pkg.install_archs(ver).map { |a|
-      a ? with_target_arch(a) { pkg.coords(ver) } : pkg.coords(ver)
-    }
+    return Planner.coords_of_install_for(pkg, ver, scope)
   end
 
-  # Remove every automatically installed installation that nothing
-  # kept still needs -- apt's autoremove. Kept: the manual installs,
-  # and whatever they need, and whatever that needs; a broken install
-  # is kept or taken by the same rule, since what it is worth is not
-  # what decides. Dependents go before their dependencies, and -d
-  # lists without removing.
-  # Every installation, and what each one needs among them: the graph
-  # --autoremove walks and the listing counts. Built from the records
-  # once per question, since a question about one root is a question
-  # about every install it can reach.
-  def install_graph
+  # Every installation, and what each one needs among them
+  # (Planner.install_graph): what --autoremove walks and the listing
+  # counts.
+  def install_graph = Planner.install_graph(self, world, scope)
 
-    installs = @packages.values.flat_map(&:get_install_list)
-    by_key = installs.group_by { |i| [i.pkgname, i.ver] }
-    needs = {}
-    missing = {}
-
-    for i in installs do
-      found = []
-      gone = []
-
-      for n, v, coords in needs_of_install(i.pkg, i) do
-        here = (by_key[[n, v]] || []).select { |d| coords.include?(d.coords) }
-        here.empty? ? gone << [n, v] : found.concat(here)
-      end
-
-      needs[i] = found
-      missing[i] = gone
-    end
-
-    return [installs, needs, missing]
-  end
-
-  #
-  # Installations that cannot be used, and what they are waiting for.
-  #
-  # A package can be complete, current, and still unusable: something
-  # it was built against is no longer installed. Nothing about the
-  # package itself says so -- the artifact is exactly what it should
-  # be -- and the failure surfaces later, in somebody else's build, as
-  # a header or a library that is not where the flags say.
-  #
-  # It travels: an install whose dependency cannot be used cannot be
-  # used either. A gmp that is gone takes mpfr with it, and mpfr takes
-  # the gcc built against it.
-  #
-  # Returns {install => [what it is waiting for, as words]}.
-  #
+  # Installations that cannot be used, and what they are waiting for
+  # (Planner.unusable): {install => [words]}.
   def unusable_installs(installs, needs, missing)
-
-    bad = {}
-
-    for i, gone in missing do
-      next if gone.empty?
-      bad[i] = gone.map { |n, v| "#{n} #{v}" }
-    end
-
-    loop do
-      grew = false
-
-      for i in installs do
-        next if bad.key?(i)
-        via = needs[i].select { |d| bad.key?(d) }
-        next if via.empty?
-
-        bad[i] = via.map { |d| "#{d.pkgname} #{d.ver}" }.uniq
-        grew = true
-      end
-
-      break if !grew
-    end
-
-    return bad
+    return Planner.unusable(installs, needs, missing)
   end
 
   #
@@ -1290,47 +1176,26 @@ class PackageManager
     }
   end
 
-  # What `roots` hold: everything they need, transitively, roots
-  # included. The set --autoremove keeps is what the manual installs
-  # hold; what a stack's compiler or a QEMU holds is this for one.
-  def held_by(roots, needs)
-    held = roots.to_set
-    queue = roots.to_a
-    while (i = queue.shift)
-      for d in needs[i] do
-        queue << d if held.add?(d)
-      end
-    end
-    return held
+  # What `roots` hold: everything they need, transitively.
+  def held_by(roots, needs) = Planner.held_by(roots, needs)
+
+  # Remove every automatically installed installation that nothing
+  # kept still needs -- apt's autoremove (Planner.plan_autoremove).
+  # -d lists without removing.
+  def autoremove(dry)
+    plan = Planner.plan_autoremove(self, world, scope)
+    plan.notes.each { |n| info n }
+    say_removals(plan, dry)
+    Executor.run(self, plan) if !dry
+    return plan.removes.length
   end
 
-  def autoremove(dry)
-
-    installs, needs = install_graph
-    kept = held_by(installs.select(&:manual), needs)
-    removable = installs.reject { |i| kept.include?(i) }
-    if removable.empty?
-      info "Nothing to remove: every automatic install is still needed"
-      return 0
+  def say_removals(plan, dry)
+    p = "[DRY RUN] " if dry
+    for r in plan.removes do
+      i = r.install
+      puts "#{p}Remove pkg '#{i.pkgname}' install at #{i.path}"
     end
-
-    # Dependents first: an install goes after everything that needs it.
-    ordered = []
-    pending = removable.dup
-    while !pending.empty?
-      free = pending.select { |i|
-        pending.none? { |o| needs[o].include?(i) }
-      }
-      free = [pending.first] if free.empty?    # a cycle: any order will do
-      ordered += free
-      pending -= free
-    end
-
-    for i in ordered do
-      uninstall(i.pkgname, dry, false, i.ver, coords: [i.coords])
-    end
-
-    return ordered.length
   end
 
   # Replace an install with a fresh build of the same version.
@@ -1405,27 +1270,10 @@ class PackageManager
     return Planner.against_of(self, pkg, ver, versions_in_effect, scope)
   end
 
-  # What an install was built against, for a rebuild to build against
-  # again. Recorded at install time; an install from before the record
-  # is asked the only other way there is -- which version of each
-  # dependency is present -- and cannot be answered when more than one
-  # is. Returns [versions, ambiguous], the second naming the
-  # dependencies with two installs and no record.
+  # What an install was built against (Planner.deps_of_install):
+  # [versions, ambiguous].
   def deps_of_install(pkg, inst)
-
-    recorded = InstallDeps.read(inst.path)
-    ambiguous = []
-
-    versions = pkg.dep_list_for(inst.ver).to_h { |d|
-      next [d.name, recorded[d.name]] if recorded.key?(d.name)
-      next [d.name, d.ver] if d.ver
-      dep = get(d.name)
-      here = dep ? dep.get_install_list.reject(&:broken).map(&:ver).uniq : []
-      ambiguous << d.name if here.length > 1
-      [d.name, here.first || dep&.default_ver]
-    }.compact
-
-    return [versions, ambiguous]
+    return Planner.deps_of_install(self, world, pkg, inst, scope)
   end
 
   def dep_closure(name)
@@ -1506,7 +1354,7 @@ class PackageManager
   # The cache needs no rule. It lives beside the installs rather than
   # inside them, and nothing here walks anywhere but <coords>/pkgs/.
   #
-  NEVER_REMOVE = ["ruby"].freeze
+  NEVER_REMOVE = Planner::NEVER_REMOVE
 
   #
   # Everything, except what a clean must never take.
@@ -1520,145 +1368,39 @@ class PackageManager
   # none; the system tests pass the host world, because wiping a GCC
   # and a GTK-enabled QEMU to prove that busybox builds is hours of
   # rebuilding for a question neither answers.
+  # --clean: what Planner.plan_clean says, printed, then run unless dry.
   def clean(dry, except: [], force: false)
-    # Every package, every version, every compiler -- and every arch,
-    # which is the one that has to be said: without it, ALL means the
-    # scope's arch only.
-    # mutation: equivalent -- for ALL, nil means what "ALL" means
-    return uninstall("ALL", dry, force, nil, nil, "ALL", except: except)
+    plan = Planner.plan_clean(self, world, scope, except: except,
+                              force: force)
+    plan.notes.each { |n| warning n }
+    say_removals(plan, dry)
+    Executor.run(self, plan) if !dry
+    return plan.removes.length
   end
 
-  #
-  # WHICH installations `-u` means, as one value.
-  #
-  # This is the argument-computing layer -- the one every -u bug lived
-  # in -- so it is one function, with the coordinates written out per
-  # kind of package, and uninstall then asks each installation
-  # `matches?` and nothing else.
-  #
-  #   ver       nil = the default version if it is HERE, else every
-  #             version here; "ALL" = every version; a Version = that
-  #             one, and if it is not here, nothing (and a warning).
-  #   compiler  nil = the compiler these coordinates imply; "ALL" =
-  #             any; a version = the stack "gcc-<ver>".
-  #   arch      nil = the scoped arch; "ALL" = every arch and board;
-  #             a name = that arch at its board.
-  #   coords    an explicit list of coordinates, which beats all of the
-  #             above (force_remove knows exactly what it will rewrite).
-  #
+  # WHICH installations `-u` means, as one value (Planner.selector).
   # Returns nil, having said why, when a named version is not there.
-  #
   def uninstall_selector(pkg, name, install_list, ver: nil, compiler: nil,
                          arch: nil, coords: nil)
-
-    all_pkgs = name.eql?("ALL")
-    cc = compiler.eql?("ALL") ? :any : (compiler.blank? ? nil : compiler)
-    ver = nil if ver.blank?
-
-    where = if coords
-      coords.map { |c| CoordsFilter.exact(c) }
-    else
-      uninstall_where(pkg, all_pkgs, cc, arch)
+    sel = Planner.selector(self, pkg, name, install_list, scope, ver: ver,
+                           compiler: compiler, arch: arch, coords: coords)
+    if sel.is_a?(Refusal)
+      warning sel.message
+      return nil
     end
-
-    at_where = install_list.select { |e|
-      (all_pkgs || e.pkgname == name) &&
-      where.any? { |f| f.include?(e.coords) }
-    }
-
-    picked = if ver.eql?("ALL") || (ver.nil? && pkg.nil?)
-      :all
-    elsif ver
-      if at_where.none? { |e| e.ver == ver }
-        warning "#{name} #{ver} is not installed at these coordinates"
-        return nil
-      end
-      ver
-    else
-      # No version named: the default if it is here, else everything
-      # that is. Decided by what is at THESE coordinates -- the default
-      # being installed somewhere else says nothing about here.
-      d = pkg.default_ver
-      at_where.any? { |e| e.ver == d } ? d : :all
-    end
-
-    return InstallSelector.new(name: all_pkgs ? :all : name, ver: picked,
-                               where: where)
+    return sel
   end
 
-  # The coordinates an uninstall of `pkg` is about. Written out per
-  # kind rather than derived, so that a reader can check each line
-  # against the layout table in docs/package_manager.md.
+  # The coordinates an uninstall of `pkg` is about (Planner.uninstall_where).
   def uninstall_where(pkg, all_pkgs, cc, arch)
-
-    stack_of = ->(default) {
-      next :any    if cc == :any
-      next default if cc.nil?
-      Coords.stack_name(cc)
-    }
-
-    arch_of = ->(a) {
-      x = a.is_a?(Architecture) ? a : ALL_ARCHS[a]
-      raise ArgumentError, "Unknown arch: #{a}" if x.nil?
-      x
-    }
-
-    target_at = ->(a, board, default_stack) {
-      CoordsFilter.new(machine: "tilck-#{a.name}", env: board,
-                       stack: stack_of.call(default_stack))
-    }
-
-    # ALL: everything installed for this scope -- the target arch at
-    # its current coordinates, and every host and noarch package --
-    # or every arch and board with -a ALL. -c narrows to one stack.
-    if all_pkgs
-      st = stack_of.call(:any)
-      return [CoordsFilter.new(machine: :any, env: :any, stack: st)] \
-        if arch.eql?("ALL")
-
-      a = arch.nil? ? target_arch : arch_of.call(arch)
-      return [
-        CoordsFilter.new(machine: "noarch", env: :any, stack: st),
-        CoordsFilter.new(machine: HOST_OS_ARCH, env: :any, stack: st),
-        target_at.call(a, board_for(a), :any),
-      ]
-    end
-
-    # An orphan has no package to say where it lives, so -a and -c are
-    # read directly as coordinates: an arch's machine, a stack. With
-    # neither, every copy goes.
-    if pkg.nil?
-      st = stack_of.call(:any)
-      return [CoordsFilter.new(machine: :any, env: :any, stack: st)] \
-        if arch.nil? || arch.eql?("ALL")
-      a = arch_of.call(arch)
-      return [CoordsFilter.new(machine: "tilck-#{a.name}", env: :any,
-                               stack: st)]
-    end
-
-    # Noarch: one place, and neither -a nor -c can mean anything.
-    if pkg.noarch?
-      return [] if !arch.nil? || (!cc.nil? && cc != :any)
-      return [CoordsFilter.exact(pkg.coords)]
-    end
-
-    # Host: -a means nothing. -c selects a stack, for a :stack package.
-    if pkg.on_host
-      return [] if !arch.nil?
-      return [CoordsFilter.exact(pkg.coords)] if cc.nil? || cc == :any
-      return [] if pkg.host_tier != :stack
-      return [CoordsFilter.exact(stack_coords(cc))]
-    end
-
-    # Target.
-    if arch.eql?("ALL")
-      return ALL_ARCHS.values.map { |a| target_at.call(a, :any, :any) }
-    end
-
-    a = arch.nil? ? target_arch : arch_of.call(arch)
-    return [target_at.call(a, board_for(a), "gcc-#{a.gcc_ver}")]
+    return Planner.uninstall_where(self, pkg, all_pkgs, cc, arch, scope)
   end
 
+  # Uninstall: what Planner.plan_uninstall says, printed, then run
+  # (Executor) unless `dry`. See the planner for what ver, compiler,
+  # arch and coords mean. Returns how many were taken -- or, in a dry
+  # run, how many would be: a caller that reports "removed nothing"
+  # when it selected fifty is worse than one that says nothing at all.
   def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
                 arch = nil, coords: nil, except: [])
 
@@ -1666,110 +1408,15 @@ class PackageManager
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
     end
 
-    all_pkgs = pkg_or_name.eql?("ALL")
-    pkg = all_pkgs ? nil : get_smart(pkg_or_name)
-    name = all_pkgs ? "ALL" : (pkg ? pkg.name : pkg_or_name)
-
-    if pkg
-      install_list = pkg.get_install_list
-    else
-      # An orphan (on disk, no package) or ALL: the scan is what knows.
-      install_list = all_pkgs ? world.installs : world.orphans
-      warning "Not recognized package name: #{name}" unless all_pkgs
-    end
-
-    sel = uninstall_selector(pkg, name, install_list,
-                             ver: ver, compiler: compiler, arch: arch,
-                             coords: coords)
-    return 0 if sel.nil?
-
-    to_remove = install_list.select { |e|
-      sel.matches?(e) &&
-      !except.include?(e.pkgname) &&
-      !NEVER_REMOVE.include?(e.pkgname)
-    }
-
-    if all_pkgs && !force
-      # When the package name is ALL, exclude the cross compilers
-      # unless `force` is also true.
-      #
-      # Both ways of being one count. InstallInfo#compiler? reads the
-      # target_arch metadata, which only the GCC package attaches; a
-      # package that merely DECLARES is_compiler would otherwise be
-      # swept up by a plain -u ALL, which is the one thing the
-      # no-force form exists to prevent.
-      to_remove = to_remove.select { |e|
-        !(e.compiler? || e.pkg&.is_compiler)
-      }
-    end
-
-    # Nothing matched, and the caller named something specific.
-    #
-    # An uninstall that removes nothing and says nothing is the most
-    # expensive output this tool has produced: `-u host_qemu:6.2.0`
-    # exited 0 with no output while the package sat there, and a
-    # forced rebuild announced a removal and then reported "already
-    # installed" -- twice, in one session, for two different reasons.
-    # Silence reads as success.
-    #
-    # ALL is exempt: `-u ALL` on a clean tree is a no-op by design,
-    # and so is --clean.
-    if to_remove.empty?
-      warning "#{name}: nothing matched, so nothing was removed"
-
-      # What DOES exist under that name, since the usual cause is
-      # asking about one set of coordinates while it lives at
-      # another -- another arch, board, stack or version.
-      elsewhere = install_list.select { |e| e.pkgname == name }
-
-      for e in elsewhere.first(8) do
-        warning "  it is installed at #{e.coords}, version #{e.ver}"
-      end
-
-      return 0
-    end
-
-    p = "[DRY RUN] " if dry
-    removed = 0
-
-    for info in to_remove do
-      puts "#{p}Remove pkg '#{info.pkgname}' install at #{info.path}"
-      if !dry
-        FileUtils.rm_rf(info.path)
-
-        # Clean up empty parent directories left behind (pkg dir,
-        # arch dir) so stale empty trees don't confuse the listing.
-        parent = info.path.parent
-        # mutation: equivalent -- the root holds cache/, never empty
-        while parent != TC && parent.directory? &&
-              Dir.empty?(parent)
-          FileUtils.rmdir(parent)
-          parent = parent.parent
-        end
-
-        removed += 1
-      end
-    end
-
-    # The sysroot is a view over what is installed, so removing
-    # something invalidates it exactly as installing something does.
-    # Without this it keeps symlinks pointing at packages that are no
-    # longer there, and the next thing to build against it fails in a
-    # way that looks nothing like the cause.
-    # mutation: equivalent -- composing after removing nothing changes nothing
-    if removed > 0
-      installs_changed!
-      refresh()
-      # Every stack, not just the default: an uninstall can invalidate
-      # any of them, and a stale symlink is the failure mode hardest to
-      # notice.
-      host_stacks.each { |v| compose_stack_sysroot(Ver(v)) }
-    end
-
-    # How many were taken -- or, in a dry run, how many would be.
-    # A caller that reports "removed nothing" when it selected fifty
-    # is worse than one that says nothing at all.
-    return dry ? to_remove.length : removed
+    name = pkg_or_name.is_a?(Package) ? pkg_or_name.name : pkg_or_name
+    plan = Planner.plan_uninstall(self, world, name, scope, ver: ver,
+                                  compiler: compiler, arch: arch,
+                                  coords: coords, force: force,
+                                  except: except)
+    plan.notes.each { |n| warning n }
+    say_removals(plan, dry)
+    Executor.run(self, plan) if !dry
+    return plan.removes.length
   end
 
   private

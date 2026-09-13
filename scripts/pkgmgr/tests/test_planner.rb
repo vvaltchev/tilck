@@ -16,6 +16,8 @@ class TestPlanner < Minitest::Test
 
   HOST = { on_host: true, host_tier: :distro,
            arch_list: ALL_HOST_ARCHS.values }.freeze
+  I386 = ALL_ARCHS["i386"]
+  RV   = ALL_ARCHS["riscv64"]
 
   def setup
     reset_pkgmgr!
@@ -258,6 +260,181 @@ class TestPlanner < Minitest::Test
       FileUtils.rm_rf(dir)
       fake_install(t, one, origin: :default, mark: :auto)
       assert_equal :auto, Planner.inherited_mark(pkgmgr.world, "t")
+    end
+  end
+
+  # --- -u, --mark, --autoremove: on values -----------------------------------
+
+  def uninstall(name, **kw)
+    return Planner.plan_uninstall(pkgmgr, world_now, name, pkgmgr.scope, **kw)
+  end
+
+  def test_uninstall_takes_the_default_here_else_everything_here
+    with_fake_tc do
+      t = FakePackage.new("t")
+      t.define_singleton_method(:installable_versions) {
+        [Ver("1.0.0"), Ver("2.0.0")]
+      }
+      pkgmgr.register(t)
+      fake_install(t, Ver("2.0.0"))
+      vers = ->(pl) { pl.removes.map { |r| r.install.ver } }
+      assert_equal [Ver("2.0.0")], vers.call(uninstall("t")),
+                   "the default is not here: everything here goes"
+      fake_install(t, Ver("1.0.0"))
+      assert_equal [Ver("1.0.0")], vers.call(uninstall("t")),
+                   "the default is here: only it goes"
+      assert_empty uninstall("t").notes, "a match has nothing to say"
+      assert_equal 2, uninstall("t", ver: "ALL").removes.length
+    end
+  end
+
+  def test_a_version_that_is_not_here_removes_nothing_and_says_so
+    with_fake_tc do
+      t = FakePackage.new("t")
+      pkgmgr.register(t)
+      fake_install(t)
+      p = uninstall("t", ver: Ver("9.9.9"))
+      assert_empty p.removes
+      assert_match(/9.9.9 is not installed at these coordinates/,
+                   p.notes.join("\n"))
+      refute_match(/nothing matched/, p.notes.join("\n"))
+    end
+  end
+
+  def test_nothing_matched_names_where_it_is
+    with_fake_tc do
+      t = FakePackage.new("t", arch_list: [I386, RV])
+      pkgmgr.register(t)
+      fake_install(t, at: t.at(pkgmgr.scope.with(arch: RV)).coords)
+      p = uninstall("t")                       # the scope's arch: i386
+      assert_empty p.removes
+      assert_match(/t: nothing matched/, p.notes.join("\n"))
+      assert_match(/installed at tilck-riscv64/, p.notes.join("\n"))
+    end
+  end
+
+  def test_all_spares_the_compilers_unless_forced_and_never_the_interpreter
+    with_fake_tc do
+      t = FakePackage.new("t")
+      cc = FakePackage.new("gcc-#{ARCH.name}-musl", on_host: true,
+                           is_compiler: true, host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values,
+                           target_arch: ARCH)
+      ruby = FakePackage.new("ruby")     # the name is what is spared
+      [t, cc, ruby].each { |p| pkgmgr.register(p) }
+      [t, cc, ruby].each { |p| fake_install(p) }
+      names = ->(pl) { pl.removes.map { |r| r.install.pkgname }.sort }
+      assert_equal ["t"], names.call(uninstall("ALL"))
+      assert_equal [cc.name, "t"], names.call(uninstall("ALL", force: true))
+      assert_equal [cc.name], names.call(uninstall("ALL", force: true,
+                                                   except: ["t"]))
+      assert_empty uninstall("ALL").notes, "ALL that matched says nothing"
+    end
+  end
+
+  # `-u ALL` on a clean tree is a no-op by design, and so is --clean:
+  # neither says "nothing matched".
+  def test_all_on_an_empty_tree_says_nothing
+    with_fake_tc do
+      chain
+      p = uninstall("ALL")
+      assert_empty p.removes
+      assert_empty p.notes
+      c = Planner.plan_clean(pkgmgr, world_now, pkgmgr.scope)
+      assert_empty c.removes
+      assert_empty c.notes
+    end
+  end
+
+  # --clean is every arch: without -a ALL, ALL means the scope's arch.
+  def test_clean_takes_every_arch_where_all_takes_the_scopes
+    with_fake_tc do
+      t = FakePackage.new("t", arch_list: [I386, RV])
+      pkgmgr.register(t)
+      fake_install(t, at: t.at(pkgmgr.scope.with(arch: I386)).coords)
+      fake_install(t, at: t.at(pkgmgr.scope.with(arch: RV)).coords)
+      assert_equal 1, uninstall("ALL").removes.length
+      c = Planner.plan_clean(pkgmgr, world_now, pkgmgr.scope)
+      assert_equal 2, c.removes.length
+    end
+  end
+
+  def test_mark_is_the_same_selection_re_marked
+    with_fake_tc do
+      _, b, c = chain
+      fake_install(c, mark: :auto)
+      fake_install(b, mark: :manual)
+      p = Planner.plan_mark(pkgmgr, world_now, "c", true, pkgmgr.scope)
+      assert_equal ["c"], p.marks.map { |m| m.install.pkgname }
+      assert p.marks.first.manual
+      assert_empty p.notes, "a match has nothing to say"
+      gone = Planner.plan_mark(pkgmgr, world_now, "c", true, pkgmgr.scope,
+                               ver: Ver("9.9.9"))
+      assert_empty gone.marks
+      assert_match(/9.9.9 is not installed/, gone.notes.join("\n"))
+      refute_match(/nothing matched/, gone.notes.join("\n"))
+      p2 = Planner.plan_mark(pkgmgr, world_now, "a", false, pkgmgr.scope)
+      assert_empty p2.marks
+      assert_match(/a: nothing matched, so nothing was marked/,
+                   p2.notes.join("\n"))
+    end
+  end
+
+  # A host install is not built with a cross compiler, so it does not
+  # hold one; a target install does.
+  def test_only_a_target_install_needs_the_cross_compiler
+    with_fake_tc do
+      t = FakePackage.new("t")
+      h = FakePackage.new("host_h", **HOST)
+      cc = FakePackage.new("gcc-#{ARCH.name}-musl", on_host: true,
+                           is_compiler: true, host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values,
+                           target_arch: ARCH)
+      [t, h, cc].each { |p| pkgmgr.register(p) }
+      [t, h, cc].each { |p| fake_install(p) }
+      installs, needs, = Planner.install_graph(pkgmgr, world_now,
+                                               pkgmgr.scope)
+      by = installs.to_h { |i| [i.pkgname, i] }
+      assert_equal [cc.name], needs[by["t"]].map(&:pkgname)
+      assert_empty needs[by["host_h"]]
+    end
+  end
+
+  # Unusable travels the whole chain whatever order the installs are
+  # visited in: top needs mid needs base needs what is gone, and top
+  # is visited first.
+  def test_unusable_reaches_the_end_of_a_chain_visited_top_first
+    with_fake_tc do
+      gone = FakePackage.new("gone")
+      base = FakePackage.new("base", dep_list: [Dep("gone", false)])
+      mid  = FakePackage.new("mid",  dep_list: [Dep("base", false)])
+      top  = FakePackage.new("top",  dep_list: [Dep("mid", false)])
+      [top, mid, base, gone].each { |p| pkgmgr.register(p) }
+      [top, mid, base].each { |p| fake_install(p) }
+      bad = Planner.unusable(*Planner.install_graph(pkgmgr, world_now,
+                                                    pkgmgr.scope))
+      words = bad.to_h { |i, w| [i.pkgname, w] }
+      assert_equal({ "base" => ["gone 1.0.0"], "mid" => ["base 1.0.0"],
+                     "top" => ["mid 1.0.0"] }, words,
+                   "each says what it waits for: the gone, or the unusable")
+    end
+  end
+
+  # What nothing manual holds goes, dependents before what they need.
+  def test_autoremove_takes_the_unheld_dependents_first
+    with_fake_tc do
+      a, b, c = chain
+      fake_install(c, mark: :auto)
+      fake_install(b, mark: :auto)
+      fake_install(a, mark: :auto)
+      p = Planner.plan_autoremove(pkgmgr, world_now, pkgmgr.scope)
+      assert_equal %w[a b c], p.removes.map { |r| r.install.pkgname }
+
+      InstallOrigin.write(a.install_dir(a.default_ver), true, true)
+      pkgmgr.installs_changed!
+      p2 = Planner.plan_autoremove(pkgmgr, world_now, pkgmgr.scope)
+      assert_empty p2.removes, "a manual root holds its closure"
+      assert_match(/Nothing to remove/, p2.notes.join("\n"))
     end
   end
 

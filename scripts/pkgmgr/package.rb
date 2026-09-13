@@ -1066,45 +1066,33 @@ class Package
     return inst.coords&.stack_ver
   end
 
-  # Evaluate `block` as the recipe reads AT one install's coordinates.
-  #
-  # A recipe is not one text: build_steps and build_flags may vary by
-  # architecture, and several do -- zlib names its archiver
-  # "#{default_arch.gcc_tc}-linux-ar", which is i686-linux-ar for one
-  # install of a version and riscv64-linux-ar for another. A digest
-  # therefore only means anything together with the arch it was
-  # computed for, and both writing a record and checking one have to
-  # say which arch they mean.
-  #
-  # Noarch and host packages have nothing to scope: their recipe does
-  # not consult the target arch at all.
-  def with_install_context(inst, &block)
-
+  # The scope one install's own coordinates describe, from `scope`:
+  # its stack for a :stack install (x11 passes
+  # "--libdir=.../gcc-14.4.0/sysroot/usr/lib" for one install of a
+  # version and ".../gcc-16.2.0/..." for another), its arch and board
+  # for a target install (u-boot picks its .config out of the BSP
+  # directory, and two boards of one arch render differently). A
+  # recipe is only a recipe AT some coordinates, and judging an
+  # install from another's scope called twenty-two packages built
+  # minutes earlier stale. Noarch and other host installs have
+  # nothing to scope.
+  def scope_at(inst, scope = self.scope)
     if on_host
-      # The stack is a coordinate for exactly the same reason. A
-      # :stack package's flags name their own sysroot -- x11 passes
-      # "--libdir=.../gcc-14.4.0/sysroot/usr/lib" for one install of a
-      # version and ".../gcc-16.2.0/..." for another -- so checking a
-      # 16.2.0 install from an invocation whose stack is 14.4.0
-      # rendered the wrong path and called twenty-two packages built
-      # minutes earlier stale. Which stack an install has to scope is
-      # the package's to say (stack_of_install).
       stack = stack_of_install(inst)
-      return block.call if stack.nil?
-      return pkgmgr.with_host_stack(stack, &block)
+      return stack ? scope.with(stack: stack) : scope
     end
-
-    return block.call if inst.arch.nil?
-
-    # The board goes with the arch. It is the `env` level of a target
-    # install's coordinates, so a recipe that reads it -- u-boot picks
-    # its .config out of the BSP directory -- renders differently for
-    # two boards of one arch, and judging one from the other's scope
-    # is the stack bug above with the coordinates changed.
+    return scope if inst.arch.nil?
     board = inst.coords&.env
     board = nil if board == Coords::ANY
+    return scope.with(arch: inst.arch, board: board)
+  end
 
-    return pkgmgr.with_target_coords(inst.arch, board, &block)
+  # TRANSITION: evaluate `block` under the scope an install describes
+  # from the invocation's, for callers that do not yet bind the
+  # package with it. Reads the manager's scope, as the block openers
+  # it replaced did.
+  def with_install_context(inst, &block)
+    return pkgmgr.with_scope(scope_at(inst, pkgmgr.scope), &block)
   end
 
   # The target architectures ONE install of this version writes.
