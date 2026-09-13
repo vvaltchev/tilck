@@ -89,6 +89,11 @@ module Exhaustive
     "target_rv"    => -> { [Pkg.new("rv", arch_list: [RV])] },
     "target_board" => -> { [Pkg.new("ub", arch_list: [RV],
                                     board_list: ["qemu-virt"])] },
+    # A host tool for one board (the SOPHGO toolchain): offered at
+    # that board, whatever arch the tool itself runs on.
+    "host_board"   => -> { [host("host_hb", :portable,
+                                 board_list: ["licheerv-nano"])] },
+
     "noarch"       => -> { [Pkg.new("n", arch_list: nil)] },
     "portable"     => -> { [host("host_p", :portable)] },
     "distro"       => -> { [host("host_d", :distro)] },

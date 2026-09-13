@@ -185,6 +185,20 @@ class TestInstallsAreBoardSpecific < Minitest::Test
     end
   end
 
+  # A host tool with a board_list is a tool for building that board:
+  # the SOPHGO toolchain is offered where licheerv-nano is the target,
+  # whatever board the arch it runs on has. Asking for the host
+  # arch's board gave "pc", which no such list contains.
+  def test_a_host_tool_for_a_board_follows_the_target_board
+    p = FakePackage.new("host_tool", on_host: true, host_tier: :portable,
+                        board_list: ["licheerv-nano"])
+    rv = ALL_ARCHS["riscv64"]
+
+    assert p.at(scope.with(arch: rv, board: "licheerv-nano")).board_supported?
+    refute p.at(scope.with(arch: rv, board: "qemu-virt")).board_supported?
+    refute p.at(scope.with(arch: ALL_ARCHS["i386"])).board_supported?
+  end
+
   # A host package builds for the machine. Boards are a property of
   # what Tilck runs on, so it has no BSP to read.
   def test_a_host_package_has_no_bsp
