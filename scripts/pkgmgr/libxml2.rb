@@ -59,7 +59,7 @@ class HostLibxml2Package < Package
   ]
 
   def build_env(ver)
-    prefix = install_prefix(ver) / "install" / "usr"
+    prefix = install_token / "install" / "usr"
     return BuildEnv.new(
       include_dirs:    [prefix / "include" / "libxml2"],
       lib_dirs:        [prefix / "lib"],

@@ -50,7 +50,8 @@ class BusyBoxPackage < Package
   def configurable? = true
 
   def config_impl
-    be = deps_build_env
+    # configure runs this in the installed version's directory.
+    be = deps_build_env.expand(BuildCtx.new(self, Pathname.pwd))
 
     ok = system(be.env, "make", *be.kconfig_make_vars, "menuconfig")
     return false if !ok

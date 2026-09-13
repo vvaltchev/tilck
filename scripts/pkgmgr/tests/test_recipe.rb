@@ -633,6 +633,44 @@ class TestRecipeExecution < Minitest::Test
     end
   end
 
+  #
+  # A String pattern is expanded before it is matched. ncurses bakes
+  # the STAGED path into its .pc files, and the recipe names it as
+  # "$INSTALL/install" -- which, searched for as sixteen literal
+  # characters, is in no file on earth. The first real build of the
+  # converted ncurses died on exactly that.
+  #
+  def test_a_string_pattern_is_expanded_before_it_is_matched
+    Dir.mktmpdir("pkgmgr-recipe-") do |root|
+      c = Recipe::Ctx.new(root: root, tokens: { "INSTALL" => root })
+      Recipe.run([
+        Write(path: "a.pc", text: "Libs: -L#{root}/install/lib -lx\n"),
+        Substitute(path: "a.pc", subs: [["$INSTALL/install", '${prefix}']]),
+        Set(bind: "v", value: "-I$INSTALL/install/include"),
+        Transform(bind: "v", from: "$v",
+                  subs: [["$INSTALL/install", '${prefix}']]),
+        Write(path: "v.txt", text: "$v"),
+      ], c)
+
+      assert_equal "Libs: -L${prefix}/lib -lx\n", File.read("#{root}/a.pc")
+      assert_equal "-I${prefix}/include", File.read("#{root}/v.txt")
+    end
+  end
+
+  # ...and the complaint names what was actually looked for.
+  def test_the_no_match_complaint_shows_the_expanded_pattern
+    Dir.mktmpdir("pkgmgr-recipe-") do |root|
+      c = Recipe::Ctx.new(root: root, tokens: { "INSTALL" => "/nowhere" })
+      err = assert_raises(Recipe::Error) {
+        Recipe.run([
+          Write(path: "a.pc", text: "prefix=/elsewhere\n"),
+          Substitute(path: "a.pc", subs: [["$INSTALL/install", "x"]]),
+        ], c)
+      }
+      assert_match(%r{"/nowhere/install" matches nothing}, err.message)
+    end
+  end
+
   def test_substitute_fails_when_no_file_matches_a_sub
     in_tree do |root, c|
       err = assert_raises(Recipe::Error) {

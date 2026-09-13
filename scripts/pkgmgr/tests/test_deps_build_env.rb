@@ -13,11 +13,13 @@
 
 require_relative 'test_helper'
 
-# A package that publishes a build interface, the way host_ncurses does.
+# A package that publishes a build interface, the way host_ncurses does:
+# relative to its own token, so that what it publishes can be computed
+# before it is installed and never names a machine.
 class ProviderPackage < TestHelper::FakePackage
 
   def build_env(ver)
-    prefix = install_prefix(ver)
+    prefix = install_token
     return BuildEnv.new(
       include_dirs:    [prefix / "include"],
       lib_dirs:        [prefix / "lib"],
@@ -31,7 +33,7 @@ end
 class VersionedProviderPackage < TestHelper::FakePackage
 
   def build_env(ver)
-    prefix = install_prefix(ver)
+    prefix = install_token
     dirs = [prefix / "include"]
     dirs << prefix / "include" / "wide" if ver >= Ver("2.0.0")
     return BuildEnv.new(include_dirs: dirs)
@@ -215,10 +217,9 @@ class TestPackageBuildEnv < Minitest::Test
         pkg.install_impl(Ver("1.0.0"))
 
         be = pkg.build_env(Ver("1.0.0"))
-        prefix = pkg.install_prefix(Ver("1.0.0"))
-        assert_equal ["#{prefix}/include"], be.include_dirs
-        assert_equal ["#{prefix}/lib"], be.lib_dirs
-        assert_equal ["#{prefix}/lib/pkgconfig"], be.pkg_config_dirs
+        assert_equal ["$host_prov/include"], be.include_dirs
+        assert_equal ["$host_prov/lib"], be.lib_dirs
+        assert_equal ["$host_prov/lib/pkgconfig"], be.pkg_config_dirs
       end
     end
   end
@@ -273,10 +274,9 @@ class TestDepsBuildEnv < Minitest::Test
         p.install_impl(Ver("1.0.0"))
 
         be = c.deps_build_env
-        prefix = p.install_prefix(Ver("1.0.0"))
-        assert_equal ["#{prefix}/include"], be.include_dirs
-        assert_equal ["HOSTCFLAGS=-I#{prefix}/include",
-                      "HOSTLDFLAGS=-L#{prefix}/lib"], be.kconfig_make_vars
+        assert_equal ["$host_prov/include"], be.include_dirs
+        assert_equal ["HOSTCFLAGS=-I$host_prov/include",
+                      "HOSTLDFLAGS=-L$host_prov/lib"], be.kconfig_make_vars
       end
     end
   end
@@ -390,7 +390,8 @@ class TestDepsBuildEnv < Minitest::Test
         p.install_impl(Ver("3.0.0"))
         assert_equal 3, p.get_install_list.length
 
-        dirs = c.deps_build_env.include_dirs
+        ctx = Package::BuildCtx.new(c, Pathname.new("/x/1.0.0"))
+        dirs = c.deps_build_env.expand(ctx).include_dirs
         assert_equal 1, dirs.length
         assert_match(%r{/1\.0\.0/include\z}, dirs.first)
         refute_match(/2\.0\.0/, dirs.first)
@@ -432,7 +433,8 @@ class TestDepsBuildEnv < Minitest::Test
         p.install_impl(Ver("1.0.0"))     # the default
         p.install_impl(Ver("2.0.0"))     # the pinned one
 
-        dirs = c.deps_build_env.include_dirs
+        ctx = Package::BuildCtx.new(c, Pathname.new("/x/1.0.0"))
+        dirs = c.deps_build_env.expand(ctx).include_dirs
         assert_equal 1, dirs.length
         assert_match(%r{/2\.0\.0/include\z}, dirs.first)
       end
@@ -452,7 +454,10 @@ class TestDepsBuildEnv < Minitest::Test
         p.install_impl(Ver("1.0.0"))
         p.install_impl(Ver("2.0.0"))
 
-        dirs = c.deps_build_env.include_dirs
+        # The version is not in the token; it is in what the token
+        # resolves to.
+        ctx = Package::BuildCtx.new(c, Pathname.new("/x/1.0.0"))
+        dirs = c.deps_build_env.expand(ctx).include_dirs
         assert_match(%r{/1\.0\.0/include\z}, dirs.first)
       end
     end
@@ -492,12 +497,150 @@ class TestDepsBuildEnv < Minitest::Test
         c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
         pkgmgr.register(p)
         pkgmgr.register(c)
-        # prov is never installed.
+        # prov is never installed. The interface itself is still
+        # there -- it is a function of the package, not of the tree --
+        # and it is RESOLVING it that has to say what is missing,
+        # rather than degrade to an empty flag.
+        be = c.deps_build_env
+        assert_equal ["$host_prov/include"], be.include_dirs
 
-        e = assert_raises(RuntimeError) { c.deps_build_env }
+        e = assert_raises(RuntimeError) {
+          be.expand(Package::BuildCtx.new(c, Pathname.new("/x/1.0.0")))
+        }
         assert_match(/prov/, e.message)
         assert_match(/not installed/, e.message)
       end
+    end
+  end
+end
+
+
+#
+# WHAT THE TOKENS BUY.
+#
+# A published interface used to be absolute paths computed from
+# install_prefix, which raises when the publisher is not installed --
+# so a recipe built from it could not be fingerprinted during a
+# staleness check, and the fingerprint named this machine. Both are
+# gone: a publisher speaks relative to its own token, and the token is
+# resolved by the DEPENDENT's build, at build time, to wherever the
+# install actually is.
+#
+class TestPublishedTokens < Minitest::Test
+
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def host_pkg(klass, name, deps: [])
+    return klass.new("host_#{name}", on_host: true, host_tier: :distro,
+                     dep_list: deps.map { |d| Dep("host_#{d}", true) })
+  end
+
+  # The headline: nothing installed, and the answer is still there.
+  def test_the_interface_is_computable_before_anything_is_installed
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+
+      be = c.deps_build_env
+      assert_equal ["$host_prov/include"], be.include_dirs
+      assert_equal ["-I$host_prov/include"], [be.cflags]
+    end
+  end
+
+  def test_nothing_published_names_a_machine
+    with_fake_tc do |tc|
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      fake_install(p)
+
+      be = c.deps_build_env
+      all = be.include_dirs + be.lib_dirs + be.pkg_config_dirs + be.bin_dirs
+      all.each { |d|
+        refute_includes d, tc.to_s, "#{d} names this machine"
+        refute d.start_with?("/"), "#{d} is absolute"
+      }
+    end
+  end
+
+  # ...and expand is where the two worlds meet: the same interface,
+  # every token resolved against the real install.
+  def test_expand_resolves_every_field_against_the_real_install
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      at = fake_install(p)
+
+      ctx = Package::BuildCtx.new(c, Pathname.new("/x/1.0.0"))
+      be = c.deps_build_env.expand(ctx)
+
+      assert_equal ["#{at}/include"], be.include_dirs
+      assert_equal ["#{at}/lib"], be.lib_dirs
+      assert_equal ["#{at}/lib/pkgconfig"], be.pkg_config_dirs
+      assert_equal "-I#{at}/include", be.cflags
+    end
+  end
+
+  # The token has to resolve wherever it turns up, and it turns up
+  # through the whole closure: what c publishes reaches a through b.
+  def test_a_token_resolves_for_the_whole_closure_not_just_direct_deps
+    with_fake_tc do
+      c = host_pkg(ProviderPackage, "c")
+      b = host_pkg(TestHelper::FakePackage, "b", deps: ["c"])
+      a = host_pkg(TestHelper::FakePackage, "a", deps: ["b"])
+      [c, b, a].each { |p| pkgmgr.register(p) }
+      at_c = fake_install(c)
+      fake_install(b)
+
+      assert_equal ["$host_c/include"], a.deps_build_env.include_dirs
+
+      ctx = Package::BuildCtx.new(a, Pathname.new("/x/1.0.0"))
+      assert_equal at_c.to_s, ctx.expand("$host_c")
+    end
+  end
+
+  # A package outside the closure is not a token: the right complaint
+  # about an undeclared dependency.
+  def test_a_package_outside_the_closure_is_not_a_token
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer")
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      fake_install(p)
+
+      ctx = Package::BuildCtx.new(c, Pathname.new("/x/1.0.0"))
+      err = assert_raises(Recipe::Error) { ctx.expand("$host_prov/lib") }
+      assert_match(/unknown token \$host_prov/, err.message)
+    end
+  end
+
+  # With no install in progress -- `-C` -- the version a token resolves
+  # to is the solver's answer for this package as the root, which is
+  # what a pin in the dep list decides.
+  def test_with_no_install_in_progress_a_pin_still_picks_the_version
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = TestHelper::FakePackage.new(
+        "host_consumer", on_host: true, host_tier: :distro,
+        dep_list: [Dep("host_prov", true, ver: Ver("2.0.0"))])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      fake_install(p, Ver("1.0.0"))
+      at2 = fake_install(p, Ver("2.0.0"))
+
+      assert_nil pkgmgr.resolved_ver("host_prov"), "no install in progress"
+      assert_equal at2.to_s, c.dep_install_dir("host_prov").to_s
     end
   end
 end

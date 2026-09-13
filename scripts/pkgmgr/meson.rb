@@ -71,7 +71,7 @@ class HostMesonPackage < Package
 
   def build_env(ver)
 
-    bin = install_prefix(ver) / "install" / "bin"
+    bin = install_token / "install" / "bin"
 
     return BuildEnv.new(
       bin_dirs: [bin],

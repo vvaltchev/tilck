@@ -664,14 +664,17 @@ class Package
   #   $PYTHON    the interpreter host_python installed
   #   $SRC_REF   the short git ref the source was fetched at
   #
-  # ...and one per DECLARED DEPENDENCY, named after it, holding the
-  # directory that dependency was installed in:
+  # ...and one per package in the DEPENDENCY CLOSURE, named after it,
+  # holding the directory that package was installed in:
   #
   #   "--with-gmp=$host_gmp/install"
   #
+  # The closure and not the direct list, because that is what
+  # deps_build_env merges: gtk3 names glib2 through what cairo
+  # publishes, and the token has to resolve wherever it turns up.
   # Uppercase is a builtin; lowercase is what the recipe brought in
   # with it -- a dependency, or a value a step bound. A recipe that
-  # names a package it does not depend on gets "unknown token", which
+  # names a package outside its closure gets "unknown token", which
   # is the right complaint about an undeclared dependency.
   #
   # $SRC_REF is why tokens exist rather than string interpolation. Its
@@ -727,7 +730,20 @@ class Package
       "PAR"     => BUILD_PAR.to_s,
       "PYTHON"  => -> { pkgmgr.python_interpreter.to_s },
       "SRC_REF" => -> { source_ref_short(install_dir) },
-      **dep_list.to_h { |d| [d.name, -> { dep_install_dir(d.name).to_s }] },
+      **dependency_tokens,
+    }
+  end
+
+  # One lazy token per package in the dependency closure. A package
+  # the registry does not know has no closure and so no tokens: its
+  # recipe then fails on the first "$dep" it names, with "unknown
+  # token", which is the right complaint -- rather than here, with
+  # MissingDepError, which is the complaint about a DEPENDENCY naming
+  # a package that does not exist.
+  def dependency_tokens
+    return {} if pkgmgr.get(name).nil?
+    return pkgmgr.dep_closure(name).to_h { |d|
+      [d, -> { dep_install_dir(d).to_s }]
     }
   end
 
@@ -743,9 +759,17 @@ class Package
   # Behind a token, and therefore resolved only while building. It
   # raises when the dependency is absent, and the digest is computed
   # in exactly the situations where it may well be.
-  def dep_install_dir(name)
-    pkg = pkgmgr.get(name)
-    return pkg.install_prefix(pkgmgr.resolved_ver(name) || pkg.default_ver)
+  #
+  # With no install in progress -- `-C`, which runs menuconfig in an
+  # installed tree -- there is no active resolution to read, and the
+  # solver's answer for this package as the root is the one the old
+  # deps_build_env used there.
+  def dep_install_dir(dep)
+    pkg = pkgmgr.get(dep)
+    ver = pkgmgr.resolved_ver(dep) ||
+          pkgmgr.resolved_versions(name)[dep] ||
+          pkg.default_ver
+    return pkg.install_prefix(ver)
   end
 
   # The short git ref the source was fetched at.
@@ -802,7 +826,7 @@ class Package
 
     def ambient(name, &block)
       case name
-      when :stack_toolchain then @pkg.with_stack_toolchain(&block)
+      when :stack_toolchain then @pkg.with_stack_toolchain(self, &block)
       when :cargo           then @pkg.with_cargo_env(&block)
       else super
       end
@@ -1189,14 +1213,16 @@ class Package
             bu_inst.path / "install" / "bin"]
   end
 
-  def with_stack_toolchain(&block)
+  # `ctx` resolves the tokens the dependencies publish their paths
+  # in; the variables set here are real ones.
+  def with_stack_toolchain(ctx, &block)
 
     gcc_bin, bu_bin = stack_toolchain_bins
 
     # What the dependencies publish comes first, so a build tool a
     # dependency ships is reachable by name: meson looks for ninja on
     # PATH and will not be told about it any other way.
-    deps = deps_build_env.env
+    deps = deps_build_env.expand(ctx).env
 
     vars = deps.merge({
       "CC"                => "#{gcc_bin}/gcc",
@@ -1328,7 +1354,8 @@ class Package
     destdir = "#{install_dir}/destdir"
     ok = false
 
-    with_stack_toolchain { ok = block.call(sysroot_usr, destdir) }
+    ctx = BuildCtx.new(self, install_dir)
+    with_stack_toolchain(ctx) { ok = block.call(sysroot_usr, destdir) }
     return false if !ok
 
     FileUtils.mkdir_p("#{install_dir}/install")
@@ -1897,11 +1924,26 @@ class Package
   # so this is the only place that knowledge belongs.
   def build_env(ver) = BuildEnv.empty
 
+  # Where this package's install will be, as the TOKEN a dependent's
+  # build names it by: "$host_ncurses". Everything a package publishes
+  # in build_env is relative to this, and that is what makes the
+  # interface a pure function of the package -- computable before it
+  # is installed, hashed without naming a machine, and resolved by the
+  # dependent's build to wherever the install actually is.
+  def install_token = Pathname.new("$#{name}")
+
   # The merged build interface published by this package's dependencies,
   # each at the version bound for it, nearest dependency first.
   #
   # Consumers call this instead of naming any dependency: adding a new
   # host library to dep_list is enough for its flags to appear here.
+  #
+  # PURE, and written in tokens: "-I$host_ncurses/install/include".
+  # Nothing here needs a dependency installed, so a recipe built from
+  # it can be fingerprinted during a staleness check, and the
+  # fingerprint does not record where this machine keeps its
+  # toolchain. A build that must set real variables, or a shell about
+  # to run menuconfig, asks for .expand(ctx) first.
   def deps_build_env
 
     versions = pkgmgr.resolved_versions(name)

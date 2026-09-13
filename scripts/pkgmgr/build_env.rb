@@ -129,6 +129,24 @@ class BuildEnv
   # emitted when we have something to say: passing an empty
   # HOSTCFLAGS= on the command line would override the Makefile's own
   # value with nothing.
+  # The same interface with every token resolved: what a build that
+  # sets real environment variables, or a shell that is about to run
+  # menuconfig, needs. `ctx` is anything that answers expand(str) --
+  # a Recipe::Ctx, or the package's BuildCtx.
+  #
+  # What is published is written with tokens so that it can be
+  # computed without the publisher installed and hashed without naming
+  # a machine; this is where the two worlds meet.
+  def expand(ctx)
+    return BuildEnv.new(
+      include_dirs:    @include_dirs.map { |d| ctx.expand(d) },
+      lib_dirs:        @lib_dirs.map { |d| ctx.expand(d) },
+      pkg_config_dirs: @pkg_config_dirs.map { |d| ctx.expand(d) },
+      bin_dirs:        @bin_dirs.map { |d| ctx.expand(d) },
+      extra_env:       @extra_env.transform_values { |v| ctx.expand(v) },
+    )
+  end
+
   def kconfig_make_vars
 
     vars = []

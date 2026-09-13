@@ -67,7 +67,7 @@ class HostMconfPackage < Package
     # it — so just drop it to free the name.
     File.delete("INSTALL") if File.exist?("INSTALL")
 
-    be = deps_build_env
+    be = deps_build_env.expand(BuildCtx.new(self, install_dir))
 
     # Seed .config from the one busybox.rb uses for its own build —
     # content doesn't matter, we just need a file so silentoldconfig
