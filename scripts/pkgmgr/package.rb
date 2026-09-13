@@ -10,6 +10,7 @@ require_relative 'build_env'
 require_relative 'coords'
 require_relative 'scope'
 require_relative 'world'
+require_relative 'planner'
 require_relative 'build_inputs'
 require_relative 'recipe'
 require_relative 'postcondition'
@@ -222,19 +223,37 @@ class Package
   # tests/run_all.rb's summary and by test_scope.rb's ceilings.
   UNBOUND_READS = Hash.new { |h, k| h[k] = Set.new }
   UNBOUND_WORLD_READS = Hash.new { |h, k| h[k] = Set.new }
+  UNBOUND_VERSION_READS = Hash.new { |h, k| h[k] = Set.new }
 
-  # A copy bound to `s`, and to `world` when the caller holds one:
-  # what is installed is then this value, not the tree as the manager
-  # last read it.
-  def at(s, world: nil)
+  # A copy bound to `s`; to `world` when the caller holds one, so
+  # that what is installed is this value and not the tree as the
+  # manager last read it; and to `versions`, the map a request bound
+  # (Plan#bound), which is what a build reads its dependencies'
+  # versions through.
+  def at(s, world: nil, versions: nil)
     raise ArgumentError, "#{name}: not a Scope: #{s.inspect}" \
       if !s.is_a?(Scope)
     raise ArgumentError, "#{name}: not a World: #{world.inspect}" \
       if !world.nil? && !world.is_a?(World)
-    b = dup
+    raise ArgumentError, "#{name}: not a Hash: #{versions.inspect}" \
+      if !versions.nil? && !versions.is_a?(Hash)
+    # clone, not dup: a package's behaviour may sit on its singleton
+    # class (the tests stub default_ver and install_impl_internal
+    # that way), and dup would leave it behind.
+    b = clone(freeze: false)
     b.instance_variable_set(:@scope, s)
     b.instance_variable_set(:@world, world) if world
+    b.instance_variable_set(:@versions, versions) if versions
     return b
+  end
+
+  # A dependency, bound exactly as this package is: with the world
+  # and versions it was handed, or without them -- a dependency that
+  # then asks what is installed reads the fallback and is counted,
+  # and one that only publishes its build interface never reads it.
+  def bound_dep(dep_name)
+    return pkgmgr.get(dep_name)&.at(scope, world: @world,
+                                    versions: @versions)
   end
 
   def bound? = !@scope.nil?
@@ -252,6 +271,22 @@ class Package
     Package.note_unbound_read(UNBOUND_WORLD_READS, caller_locations(1, 12))
     return pkgmgr.world
   end
+
+  # The versions the request being served bound, name => Version:
+  # the map this package was bound with, else (TRANSITION, counted)
+  # the one the manager holds for a rebuild. The version of a
+  # dependency comes from here, NOT from this package's own dep
+  # list: mpfr names host_gmp without a version, so asking mpfr
+  # alone answers gmp's default, while the gcc that asked for all
+  # four pinned something else.
+  def versions
+    return @versions if @versions
+    Package.note_unbound_read(UNBOUND_VERSION_READS,
+                              caller_locations(1, 12))
+    return pkgmgr.versions_in_effect
+  end
+
+  def resolved_ver(dep_name) = versions[dep_name]
 
   # The first frame of ours outside this file is the site to convert:
   # the caller that held no scope, or the recipe that read one. A
@@ -878,30 +913,23 @@ class Package
     }
   end
 
-  # Where a declared dependency of this package was installed.
-  #
-  # The version comes from the resolution of the request being
-  # installed, NOT from this package's own dep list: mpfr names
-  # host_gmp without a version, so asking mpfr alone answers "gmp's
-  # default" -- while the gcc that asked for all four pinned
-  # something else. gcc 16 pins gmp 6.3.0, and mpfr must link the
-  # same one, not 6.2.1.
+  # Where a declared dependency of this package was installed: at
+  # the version the request bound (see #versions), else -- with no
+  # request being served, as under `-C` -- at the version this
+  # package alone resolves it to, else at its default.
   #
   # Behind a token, and therefore resolved only while building. It
   # raises when the dependency is absent, and the digest is computed
   # in exactly the situations where it may well be.
-  #
-  # With no install in progress -- `-C`, which runs menuconfig in an
-  # installed tree -- there is no active resolution to read, and the
-  # solver's answer for this package as the root is the one the old
-  # deps_build_env used there.
   def dep_install_dir(dep)
-    pkg = pkgmgr.get(dep)
-    ver = pkgmgr.resolved_ver(dep) ||
-          pkgmgr.resolved_versions(name)[dep] ||
-          pkg.default_ver
+    pkg = bound_dep(dep)
+    ver = resolved_ver(dep) || own_resolution[dep] || pkg.default_ver
     return pkg.install_prefix(ver)
   end
+
+  # The versions this package resolves its closure to when it is the
+  # whole request.
+  def own_resolution = Planner.bind(pkgmgr, [[name, nil]], scope).first
 
   # The short git ref the source was fetched at.
   #
@@ -1227,10 +1255,10 @@ class Package
   # system libc no matter what the rest of the environment says.
   def stack_toolchain_bins
 
-    gcc = pkgmgr.stack_compiler
+    gcc = pkgmgr.stack_compiler && bound_dep(pkgmgr.stack_compiler.name)
     gcc_inst = gcc&.find_install(gcc.default_ver)
 
-    bu = pkgmgr.get("host_binutils")
+    bu = bound_dep("host_binutils")
     bu_inst = bu&.find_install(bu.default_ver)
 
     if gcc_inst.nil? || bu_inst.nil?
@@ -1930,10 +1958,10 @@ class Package
   # to run menuconfig, asks for .expand(ctx) first.
   def deps_build_env
 
-    versions = pkgmgr.resolved_versions(name)
+    versions = own_resolution
 
     return pkgmgr.dep_closure(name).reduce(BuildEnv.empty) { |acc, dep_name|
-      dep = pkgmgr.get(dep_name)
+      dep = bound_dep(dep_name)
       next acc if !dep
       acc.merge(dep.build_env(versions[dep_name] || dep.default_ver))
     }

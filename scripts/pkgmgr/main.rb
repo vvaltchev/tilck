@@ -1074,6 +1074,46 @@ module Main
     return 0
   end
 
+  # --- what a plan looks like on the terminal -------------------------------
+
+  def show_removals(plan, dry)
+    info "Force mode (-f): #{dry ? 'would remove' : 'removing'} requested " \
+         "packages"
+    for r in plan.removes do
+      i = r.install
+      info "  #{dry ? 'Would force-remove' : 'Force-removing'}: " \
+           "#{i.pkgname}:#{i.ver}"
+    end
+  end
+
+  # The executor says "Set ..." as it marks; a dry run says what it would.
+  def show_marks(plan, dry)
+    return if !dry
+    for m in plan.marks do
+      info "Would set #{m.install.pkgname}:#{m.install.ver} to " \
+           "#{m.manual ? 'manually' : 'automatically'} installed"
+    end
+  end
+
+  # The install plan as a dependency tree, then as the list in build
+  # order. Installed, for the tree, is what is at its bound version
+  # at the plan's scope.
+  def show_plan(plan, roots, ascii)
+    graph = Planner.graph(pkgmgr, plan.scope)
+    installed = Set.new
+    pkgmgr.all_packages.each { |p|
+      b = p.at(plan.scope, world: pkgmgr.world)
+      installed.add(p.name) if b.installed?(b.default_ver)
+    }
+    info "Install plan:"
+    lines = render_dep_trees(roots, graph, installed: installed,
+                             show_installed: false, ascii: ascii)
+    lines.each { |l| puts l }
+    puts if !ascii
+    show_name_list("#{plan.builds.length} package(s) to install, in " \
+                   "this order:", plan.builds.map(&:name), ascii)
+  end
+
   def main(argv)
 
     early_checks
@@ -1483,171 +1523,56 @@ module Main
           end
           next if !arch_ok
 
-          # Which host stack this invocation builds into: the
-          # host_gcc version the request resolves to. `-s
-          # host_gcc:13.4.0` therefore builds the 13.4.0 stack — that
-          # stack's kernel headers and glibc included — rather than
-          # borrowing another compiler's sysroot. HOST_VER_GCC only
-          # supplies a version when none was named.
-          begin
-            bound = pkgmgr.resolved_versions_for(requested)["host_gcc"]
-          rescue VersionSolver::ConflictError,
-                 VersionSolver::UnstableError => e
-            error "Version conflict: #{e.message}"
+          # The plan: what to remove, re-mark and build, at which
+          # coordinates and versions, decided once from the world as it
+          # is. The stack it builds into is the one the request
+          # resolves to -- `-s host_gcc:13.4.0` builds the 13.4.0 stack
+          # -- and everything after reads it from the plan.
+          plan = Planner.plan_install(pkgmgr, pkgmgr.world, requested,
+                                      pkgmgr.scope, force: options[:force])
+          if plan.is_a?(Refusal)
+            error plan.message
             return 1
           end
-
-          # A request that binds no compiler builds into the stack in
-          # effect: the one -H named, else the default. Handing nil to
-          # the scope meant the default over -H's head, and
-          # `-H 11.5.0 -s host_glibc` -- glibc names no compiler --
-          # installed into 14.4.0.
-          stack = bound || pkgmgr.current_host_stack
+          plan.notes.each { |n| info n }
 
           # Say so when the stack is not the one the context printed.
           # A pin moves it -- asking for QEMU 7 asks for GCC 12 -- and
           # a run whose header says gcc-14.4.0 while it writes into
           # gcc-12.5.0 has told the user the wrong thing about the
           # only coordinate that decides where its work lands.
-          if bound && bound != pkgmgr.current_host_stack
-            info "Building into the #{Coords.stack_name(stack)} stack"
+          if plan.scope.stack != pkgmgr.current_host_stack
+            info "Building into the " \
+                 "#{Coords.stack_name(plan.scope.stack)} stack"
           end
 
-          failed = nil
+          show_removals(plan, options[:dry_run]) if options[:force]
+          show_marks(plan, options[:dry_run])
 
-          # Everything from here on runs inside the stack scope: what
-          # counts as already-installed, what the plan contains, what
-          # the tree shows and what actually gets built all have to
-          # agree on which stack this is. Computing any of them outside
-          # the scope silently answers about a different one — the tree
-          # did exactly that, hiding the dependencies it thought were
-          # present because they were, in the OTHER stack.
-          plan = nil
-          conflict = nil
-          done = false
-
-          pkgmgr.with_host_stack(stack) do
-
-            # -f in install mode: force a fresh install by uninstalling
-            # each requested package first. Transitive deps are NOT
-            # touched — only the explicitly requested packages.
-            #
-            # INSIDE the stack scope, because force_remove asks the
-            # package where the install about to run will write, and
-            # outside the scope that is the default stack rather than
-            # this one. It removed a tree nobody was rebuilding, the
-            # plan then found the real install still present, and the
-            # run said both of these in the same breath:
-            #
-            #   INFO:   Force-removing: host_qemu:6.2.0
-            #   INFO: All requested packages are already installed
-            #
-            # -- a forced rebuild that rebuilt nothing and reported
-            # success.
-            if options[:force]
-              if options[:dry_run]
-                info "Force mode (-f): would remove requested packages"
-                for name, ver in requested do
-                  info "  Would force-remove: #{name}#{ver ? ":#{ver}" : ""}"
-                end
-              else
-                info "Force mode (-f): removing requested packages"
-                for name, ver in requested do
-                  info "  Force-removing: #{name}#{ver ? ":#{ver}" : ""}"
-                  pkgmgr.force_remove(name, ver)
-                end
-                pkgmgr.refresh()
-              end
-            end
-
-            begin
-              plan = pkgmgr.resolve_install_plan(requested)
-              pkgmgr.mark_requested_manual(requested.map(&:first),
-                                           options[:dry_run])
-            rescue VersionSolver::ConflictError,
-                   VersionSolver::UnstableError => e
-              conflict = e.message
-              next
-            end
-
-            if plan.empty?
-              # After a forced removal the plan CANNOT be empty: -f
-              # just deleted what the install would recreate. An empty
-              # one means the removal missed -- wrong stack, wrong
-              # filter -- and the run would otherwise report success
-              # having rebuilt nothing:
-              #
-              #   INFO:   Force-removing: host_qemu:6.2.0
-              #   INFO: All requested packages are already installed
-              #
-              # Two separate bugs produced exactly that, and the only
-              # evidence either time was three builds finishing in one
-              # second.
-              if options[:force] && !options[:dry_run]
-                error "-f removed nothing that the install would " \
-                      "recreate: the removal and the plan disagree " \
-                      "about which installation this is"
-                failed = requested.map(&:first).join(", ")
-                next
-              end
-
-              info "All requested packages are already installed"
-              done = true
-              next
-            end
-
-            # Show the install plan as a dependency tree.
-            graph = pkgmgr.build_dep_graph
-            installed = Set.new
-            pkgmgr.all_packages.each { |p|
-              installed.add(p.name) if p.installed?(p.default_ver)
-            }
-            req_names = requested.map(&:first)
-            info "Install plan:"
-            lines = render_dep_trees(req_names, graph,
-                                     installed: installed,
-                                     show_installed: false,
-                                     ascii: options[:ascii])
-            lines.each { |l| puts l }
-            puts if !options[:ascii]
-            show_name_list("#{plan.length} package(s) to install, " \
-                           "in this order:", plan.map(&:first),
-                           options[:ascii])
-
-            # Everything the plan needs from the host, checked as
-            # one batch before the first build starts. A missing Rust
-            # toolchain has to stop the run here, not forty minutes
-            # in when a configure script finally goes looking.
-            if !SystemDeps.check_plan(plan, dry_run: options[:dry_run])
-              failed = "unmet system dependencies"
-              next
-            end
-
-            if options[:dry_run]
-              info "Dry run (-d): nothing installed"
-              done = true
-              next
-            end
-
-            # What was asked for by name is manual; what came with it
-            # is auto, and --autoremove may take it once nothing needs
-            # it.
-            asked = requested.map(&:first)
-            for name, ver in plan do
-              if !pkgmgr.install(name, ver, manual: asked.include?(name))
-                failed = name
-                break
-              end
-            end
+          if plan.builds.empty?
+            Executor.run(pkgmgr, plan) if !options[:dry_run]
+            info "All requested packages are already installed"
+            next
           end
 
-          if conflict
-            error "Version conflict: #{conflict}"
+          show_plan(plan, requested.map(&:first), options[:ascii])
+
+          # Everything the plan needs from the host, checked as one
+          # batch before the first build starts. A missing Rust
+          # toolchain has to stop the run here, not forty minutes in
+          # when a configure script finally goes looking.
+          pairs = plan.builds.map { |b| [b.name, b.ver] }
+          if !SystemDeps.check_plan(pairs, dry_run: options[:dry_run])
+            error "Could not install: unmet system dependencies"
             return 1
           end
 
-          next if done
+          if options[:dry_run]
+            info "Dry run (-d): nothing installed"
+            next
+          end
 
+          failed = Executor.run(pkgmgr, plan)
           if failed
             error "Could not install: #{failed}"
             return 1
@@ -1736,48 +1661,39 @@ module Main
       end
     end
 
-    plan = pkgmgr.resolve_install_plan(
-      all.map { |p| [p.name, nil] }
-    )
-
     # The default set (and what --contrib adds to it) is claimed --
     # being a default is being wanted -- so one of them already here
     # as a dependency becomes the user's; the upgrades beside it are
     # upgrades, and inherit the mark of what they replace.
     claimed = all.map(&:name) - (upgrades.map(&:name) - defaults.map(&:name))
-    pkgmgr.mark_requested_manual(claimed, options[:dry_run])
+    plan = Planner.plan_install(pkgmgr, pkgmgr.world,
+                                all.map { |p| [p.name, nil] }, pkgmgr.scope,
+                                claimed: claimed)
+    if plan.is_a?(Refusal)
+      error plan.message
+      return 1
+    end
+    plan.notes.each { |n| info n }
+    show_marks(plan, options[:dry_run])
 
-    if plan.empty?
+    if plan.builds.empty?
+      Executor.run(pkgmgr, plan) if !options[:dry_run]
       info "All default packages are installed and up to date"
       return 0
     end
 
-    upgrade_names = upgrades.map(&:name) & plan.map(&:first)
+    upgrade_names = upgrades.map(&:name) & plan.builds.map(&:name)
     if !upgrade_names.empty?
       info "Packages to upgrade: #{upgrade_names.join(', ')}"
     end
 
-    # Show the install plan as a dependency tree (same renderer as
-    # -s install plans). Roots are the top-level defaults/upgrades
-    # that actually have work to do — already-up-to-date packages
-    # drop out of the plan and thus also out of the root list, so
-    # the tree doesn't get cluttered with bare "no-op" roots.
-    graph = pkgmgr.build_dep_graph
-    installed = Set.new
-    pkgmgr.all_packages.each { |p|
-      installed.add(p.name) if p.installed?(p.default_ver)
-    }
-    plan_set = Set.new(plan.map(&:first))
-    root_names = all.map(&:name).select { |n| plan_set.include?(n) }
-    info "Install plan:"
-    lines = render_dep_trees(root_names, graph,
-                             installed: installed,
-                             show_installed: false,
-                             ascii: options[:ascii])
-    lines.each { |l| puts l }
-    puts if !options[:ascii]
-    show_name_list("#{plan.length} package(s) to install, in this order:",
-                   plan.map(&:first), options[:ascii])
+    # Roots are the top-level defaults/upgrades that actually have work
+    # to do -- already-up-to-date packages drop out of the plan and thus
+    # also out of the root list, so the tree is not cluttered with bare
+    # no-op roots.
+    plan_set = Set.new(plan.builds.map(&:name))
+    show_plan(plan, all.map(&:name).select { |n| plan_set.include?(n) },
+              options[:ascii])
 
     # The one mode that never checked -d. Found by the exhaustive
     # lane: `-d` with no mode installed the defaults.
@@ -1786,15 +1702,10 @@ module Main
       return 0
     end
 
-    inherit = upgrades.to_h { |p|
-      [p.name, pkgmgr.upgrade_inherits_manual?(p)]
-    }
-    for name, ver in plan do
-      manual = claimed.include?(name) || inherit.fetch(name, false)
-      if !pkgmgr.install(name, ver, manual: manual)
-        error "Could not install: #{name}"
-        return 1
-      end
+    failed = Executor.run(pkgmgr, plan)
+    if failed
+      error "Could not install: #{failed}"
+      return 1
     end
 
     return 0

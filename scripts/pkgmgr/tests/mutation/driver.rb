@@ -37,7 +37,7 @@ module Mutation
   # Whole files in scope.
   FILES = %w[coords.rb install_selector.rb dep_resolver.rb
              version_solver.rb build_inputs.rb layout.rb
-             tilck_stack.rb].freeze
+             tilck_stack.rb planner.rb plan.rb].freeze
 
   # Files where only these methods are in scope.
   METHODS = {
@@ -60,7 +60,7 @@ module Mutation
       host_world_names compute_host_world_names host_world_roots
       get_stale_packages get_stale_installs get_upgradable_packages
       built_against deps_of_install with_resolved_versions replace
-      mark mark_requested_manual needs_of_install coords_of_install_for
+      mark needs_of_install coords_of_install_for
       autoremove install_graph held_by held_in_stack refresh
       installs_changed!
       build_dep_graph clean get_installed_compilers

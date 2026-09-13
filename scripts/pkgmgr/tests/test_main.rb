@@ -1425,10 +1425,14 @@ class TestMainRebuildKeepsTheOldTreeOnFailure < Minitest::Test
   end
 
   # Builds once, and never again.
+  # Class-level, because a build runs on a copy of the package bound
+  # to its plan; a count on the instance would start over each time.
   class Once < TestHelper::FakePackage
+    @@built = 0
+    def self.reset! = @@built = 0
     def install_impl_internal(install_dir)
-      @built = (@built || 0) + 1
-      return false if @built > 1
+      @@built += 1
+      return false if @@built > 1
       super
     end
   end
@@ -1436,6 +1440,7 @@ class TestMainRebuildKeepsTheOldTreeOnFailure < Minitest::Test
   def test_the_old_install_survives_a_failed_rebuild
     with_fake_tc do
       with_stubbed_externals do
+        Once.reset!
         pkg = Once.new("once")
         pkgmgr.register(pkg)
         assert_equal 0, run_cli("-s", "once").first
@@ -1474,9 +1479,11 @@ class TestMainRebuildKeepsTheOldTreeOnARaise < Minitest::Test
   end
 
   class Raising < TestHelper::FakePackage
+    @@built = 0
+    def self.reset! = @@built = 0
     def install_impl_internal(install_dir)
-      @built = (@built || 0) + 1
-      raise "host_nothing version 1.0.0 is not installed" if @built > 1
+      @@built += 1
+      raise "host_nothing version 1.0.0 is not installed" if @@built > 1
       super
     end
   end
@@ -1484,6 +1491,7 @@ class TestMainRebuildKeepsTheOldTreeOnARaise < Minitest::Test
   def test_the_old_install_survives_and_the_run_ends_cleanly
     with_fake_tc do
       with_stubbed_externals do
+        Raising.reset!
         pkg = Raising.new("raisy")
         pkgmgr.register(pkg)
         assert_equal 0, run_cli("-s", "raisy").first
@@ -1515,15 +1523,20 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
   def setup
     reset_pkgmgr!
     FakePackage.clear_log!
+    Noting.reset!
   end
 
   # A dependency with two versions, a user of it that notes which one
   # it saw, and a root that pins the older.
+  # Class-level, because a build runs on a copy of the package bound
+  # to its plan, and what it saw has to reach the test.
   class Noting < TestHelper::FakePackage
-    attr_reader :saw
+    @@saw = []
+    def self.saw = @@saw
+    def self.reset! = @@saw = []
+    def saw = @@saw
     def install_impl_internal(install_dir)
-      @saw ||= []
-      @saw << pkgmgr.resolved_ver("host_gmp")
+      @@saw << resolved_ver("host_gmp")
       super
     end
   end

@@ -392,7 +392,9 @@ Minitest.after_run {
    for kind, table, ceiling in [
      [:scope, Package::UNBOUND_READS, TestScope::UNBOUND_CEILING],
      [:world, Package::UNBOUND_WORLD_READS,
-      TestScope::UNBOUND_WORLD_CEILING]] do
+      TestScope::UNBOUND_WORLD_CEILING],
+     [:version, Package::UNBOUND_VERSION_READS,
+      TestScope::UNBOUND_VERSION_CEILING]] do
     groups = table.group_by { |f, _|
       if f.start_with?("test_") || TestScope::HARNESS.include?(f)
         :tests
