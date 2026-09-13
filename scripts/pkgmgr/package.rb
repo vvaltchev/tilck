@@ -659,6 +659,7 @@ class Package
   #   $INSTALL   this version's directory WHILE it is being built
   #   $FINAL     ...and where that directory ends up
   #   $SRC       the Tilck repository
+  #   $CACHE     the download cache, where a source's extra files wait
   #   $PREFIX    the install prefix under $FINAL
   #   $DESTDIR   where `make install` stages it first
   #   $SYSROOT   the stack's composed sysroot
@@ -716,6 +717,7 @@ class Package
       # tree names it through this, so the digest does not record
       # where somebody happened to clone Tilck.
       "SRC"     => MAIN_DIR.to_s,
+      "CACHE"   => TC_CACHE.to_s,
 
       # Where the package will live once installed, NOT the staging
       # path it is standing in: ld bakes its library search dirs into
@@ -733,6 +735,24 @@ class Package
       "PYTHON"  => -> { pkgmgr.python_interpreter.to_s },
       "SRC_REF" => -> { source_ref_short(install_dir) },
       **dependency_tokens,
+      **system_dep_tokens,
+    }
+  end
+
+  # One lazy token per system dependency that declares one: where the
+  # host keeps that package. A keg-only Homebrew package is on no
+  # default path and only `brew --prefix` knows where it is; that runs
+  # when a step names the token, never when a recipe is fingerprinted.
+  # A prefix the backend cannot give is refused rather than expanded
+  # to "", which would quietly turn "-I$openssl/include" into
+  # "-I/include".
+  def system_dep_tokens
+    return system_deps(default_ver).select(&:token).to_h { |d|
+      [d.token, -> {
+        d.prefix(SystemDeps.env) or
+          raise Recipe::Error, "$#{d.token}: no prefix for #{d.what} " \
+                               "on this host"
+      }]
     }
   end
 

@@ -214,11 +214,14 @@ module SystemDeps
     DEFAULT_VER_RE = /(\d+(?:\.\d+)+)/
 
     attr_reader :key, :what, :pkgs, :command, :version_flag, :version_re,
-                :min_ver, :installer
+                :min_ver, :installer, :token
 
+    # `token`: the name a recipe may resolve this dependency's prefix
+    # by -- "$openssl/include". Only for a dependency a build has to
+    # NAME; a tool found on PATH needs none.
     def initialize(key:, what:, pkgs: {}, command: nil,
                    version_flag: "--version", version_re: DEFAULT_VER_RE,
-                   min_ver: nil, installer: nil)
+                   min_ver: nil, installer: nil, token: nil)
       @key = key
       @what = what
       @pkgs = pkgs.is_a?(String) ? Hash.new(pkgs) : pkgs
@@ -227,6 +230,7 @@ module SystemDeps
       @version_re = version_re
       @min_ver = min_ver
       @installer = installer
+      @token = token
 
       raise "min_ver needs a command to check it with" if min_ver && !command
     end
@@ -240,6 +244,16 @@ module SystemDeps
     # The package name for a backend, or nil when this dep is not
     # available from it under any name we know.
     def pkg_for(backend_id) = @pkgs[backend_id]
+
+    # Where the host keeps this package, for a recipe that has to name
+    # its headers or libraries. nil when there is no backend to ask,
+    # or the backend cannot say -- and a token that resolves to
+    # nothing is refused, not expanded to "".
+    def prefix(env)
+      b = env.backend
+      return nil if b.nil?
+      return b.prefix_of(pkg_for(b.id))
+    end
 
     def check(env)
       return @command ? check_command(env) : check_package(env)
@@ -333,6 +347,16 @@ module SystemDeps
                        what: "cargo-c, which gives a Rust crate a C ABI",
                        command: "cargo-cbuild",
                        installer: CARGO_C_INSTALLER)
+
+  # u-boot's host tools (mkimage) link OpenSSL. The bootstrap installs
+  # the -dev package on every distro it knows, and pacman and FreeBSD
+  # ship it in the base system, so on those it is on the default path
+  # and nothing has to be named. Homebrew's openssl@3 is keg-only:
+  # a build there must say -I$openssl/include, and the token is how.
+  OPENSSL = SysDep.new(
+    key: :openssl, what: "OpenSSL headers and libraries",
+    pkgs: { apt: "libssl-dev", dnf: "openssl-devel", brew: "openssl@3" },
+    token: "openssl")
 
   #
   # Everything that touches the world outside this process, in one
