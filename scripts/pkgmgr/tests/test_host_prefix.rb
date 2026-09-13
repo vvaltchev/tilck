@@ -170,7 +170,8 @@ class TestSystemDepPrefix < Minitest::Test
         pkgmgr.register(pkg)
         ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
         err = assert_raises(Recipe::Error) { ctx.expand("$openssl/include") }
-        assert_match(/no prefix for OpenSSL/, err.message)
+        assert_match(/OpenSSL headers and libraries was not found/,
+                     err.message)
       end
     end
   end
@@ -182,6 +183,53 @@ class TestSystemDepPrefix < Minitest::Test
       pkgmgr.register(pkg)
       ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
       assert_raises(Recipe::Error) { ctx.expand("$openssl") }
+    end
+  end
+end
+
+
+class TestSystemDepCommandToken < Minitest::Test
+
+  include TestHelper
+
+  class FakeEnv < SystemDeps::Env
+    def initialize(found) = @found = found
+    def which(cmd) = @found[cmd]
+    def backend = nil
+  end
+
+  # A command dependency's location is the command's path, found the
+  # way its check finds it -- what a cross file names rustc by.
+  def test_a_command_dependency_resolves_to_its_path
+    env = FakeEnv.new("rustc" => "/home/x/.cargo/bin/rustc")
+    assert_equal "/home/x/.cargo/bin/rustc",
+                 SystemDeps::RUSTC.location(env)
+    assert_equal "rustc", SystemDeps::RUSTC.token
+    assert_nil SystemDeps::RUSTC.location(FakeEnv.new({}))
+  end
+end
+
+class TestStackTokens < Minitest::Test
+
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # The stack's compiler is a coordinate: named lazily, and refused
+  # with the reason when the stack is not built rather than expanded
+  # to something that is not there.
+  def test_the_stack_compiler_tokens_are_lazy_and_honest
+    with_fake_tc do
+      pkg = FakePackage.new("host_x", on_host: true, host_tier: :stack)
+      pkgmgr.register(pkg)
+      ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
+      assert_equal "-j#{BUILD_PAR}", ctx.expand("-j$PAR"),
+                   "an unrelated token must not resolve the stack"
+      err = assert_raises(RuntimeError) { ctx.expand("$STACK_GCC/gcc") }
+      assert_match(/host toolchain is not installed/, err.message)
     end
   end
 end

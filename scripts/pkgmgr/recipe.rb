@@ -350,9 +350,14 @@ module Recipe
 
     field :path
     field :text
+    # Only if the file is not there: for a placeholder the build needs
+    # and a tarball may or may not ship -- glycin's po/LINGUAS -- so
+    # that one shipped is never overwritten with the placeholder.
+    field :if_absent, false
 
     def run(ctx)
       at = ctx.path_of(path)
+      return if if_absent && File.exist?(at)
       Recipe.needs_parent("write", path, at)
       File.write(at, ctx.expand(text))
     end

@@ -92,18 +92,6 @@ class GlycinPackage < Package
     )
   end
 
-  # The 2.2 prerelease tarballs ship no po/ directory at all, while
-  # glycin-loaders/meson.build merges translations unconditionally
-  # through i18n.merge_file -- so every one of them fails with
-  # "msgfmt: ../po/LINGUAS does not exist". An empty LINGUAS is what
-  # "no translations" looks like to meson, which is accurate: the
-  # tarball contains none.
-  def ensure_po_dir
-    return if File.exist?("po/LINGUAS")
-    info "#{name}: creating the po/ directory absent from the tarball"
-    FileUtils.mkdir_p("po")
-    File.write("po/LINGUAS", "")
-  end
 
   # Options shared by both halves. glycin's meson passes --target to
   # cargo only under meson.is_cross_build(), so the cross file is not
@@ -125,13 +113,25 @@ class GlycinPackage < Package
     *half_flags,
   ]
 
-  def build_halves(install_dir)
+  # cargo's environment wraps the stack's, not the other way round:
+  # with_stack_toolchain puts our compiler at the head of PATH, and
+  # nothing may shadow it.
+  def build_steps(ver = default_ver) = [
 
-    ensure_po_dir
-    write_cargo_cross_file
+    # The 2.2 prerelease tarballs ship no po/ directory at all, while
+    # glycin-loaders/meson.build merges translations unconditionally
+    # through i18n.merge_file -- so every one of them fails with
+    # "msgfmt: ../po/LINGUAS does not exist". An empty LINGUAS is what
+    # "no translations" looks like to meson, which is accurate: the
+    # tarball contains none. Written only if absent, so a tarball that
+    # does ship one keeps it.
+    Mkdir(path: "po"),
+    Write(path: "po/LINGUAS", text: "", if_absent: true),
 
-    with_cargo_env { meson_stack_build(install_dir) }
-  end
+    Write(path: CROSS_FILE, text: cross_file_text),
+
+    Within(env_from: :cargo, steps: meson_stack_steps(build_flags(ver))),
+  ]
 end
 
 #
@@ -172,9 +172,6 @@ class HostLibglycinPackage < GlycinPackage
     "-Dglycin-loaders=false",
   ]
 
-  def install_impl_internal(install_dir)
-    return build_halves(install_dir)
-  end
 end
 
 #
@@ -232,9 +229,6 @@ class HostGlycinLoadersPackage < GlycinPackage
     "-Dloaders=#{LOADERS.join(",")}",
   ]
 
-  def install_impl_internal(install_dir)
-    return build_halves(install_dir)
-  end
 end
 
 pkgmgr.register(HostLibglycinPackage.new())

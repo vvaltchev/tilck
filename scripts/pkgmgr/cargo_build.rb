@@ -124,35 +124,28 @@ module CargoBuild
   CROSS_FILE = "./tilck-cross.ini"
 
   # Resolved against the build directory, which is where meson will
-  # look for it and where write_cargo_cross_file runs.
-  def cargo_cross_file_path = File.expand_path(CROSS_FILE)
+  # look for it and where the recipe writes it.
+  # What meson is told about the toolchain, for the Rust half of a
+  # package. In tokens: the compiler and binutils are the STACK's,
+  # rustc is wherever the host keeps it, and a recipe that writes this
+  # is fingerprinted without any of them installed.
+  def cross_file_text = <<~CROSS
+    [binaries]
+    c = '$STACK_GCC/gcc'
+    cpp = '$STACK_GCC/g++'
+    ar = '$STACK_BINUTILS/ar'
+    strip = '$STACK_BINUTILS/strip'
+    pkg-config = 'pkg-config'
+    rust = '$rustc'
 
-  def write_cargo_cross_file
+    [properties]
+    needs_exe_wrapper = false
+    rust_target = '#{cargo_triple}'
 
-    _, rustc = rust_tools
-    gcc_bin, bu_bin = stack_toolchain_bins
-    full = cargo_cross_file_path
-
-    File.write(full, <<~CROSS)
-      [binaries]
-      c = '#{gcc_bin}/gcc'
-      cpp = '#{gcc_bin}/g++'
-      ar = '#{bu_bin}/ar'
-      strip = '#{bu_bin}/strip'
-      pkg-config = 'pkg-config'
-      rust = '#{rustc}'
-
-      [properties]
-      needs_exe_wrapper = false
-      rust_target = '#{cargo_triple}'
-
-      [host_machine]
-      system = 'linux'
-      cpu_family = '#{HOST_ARCH.name}'
-      cpu = '#{HOST_ARCH.name}'
-      endian = 'little'
-    CROSS
-
-    return full
-  end
+    [host_machine]
+    system = 'linux'
+    cpu_family = '#{HOST_ARCH.name}'
+    cpu = '#{HOST_ARCH.name}'
+    endian = 'little'
+  CROSS
 end

@@ -245,11 +245,13 @@ module SystemDeps
     # available from it under any name we know.
     def pkg_for(backend_id) = @pkgs[backend_id]
 
-    # Where the host keeps this package, for a recipe that has to name
-    # its headers or libraries. nil when there is no backend to ask,
-    # or the backend cannot say -- and a token that resolves to
-    # nothing is refused, not expanded to "".
-    def prefix(env)
+    # Where the host keeps this: a command's path, found the way the
+    # check finds it; a package's prefix, from the backend. For a
+    # recipe that has to NAME it -- the rustc a cross file points at,
+    # the headers a make line includes. nil when nobody can say, and a
+    # token that resolves to nothing is refused, not expanded to "".
+    def location(env)
+      return env.which(@command) if @command
       b = env.backend
       return nil if b.nil?
       return b.prefix_of(pkg_for(b.id))
@@ -334,7 +336,9 @@ module SystemDeps
 
   RUSTC = SysDep.new(key: :rustc, what: "the Rust compiler",
                      command: "rustc", min_ver: MIN_RUST,
-                     installer: RUSTUP)
+                     installer: RUSTUP,
+                     # a cross file names the compiler by path
+                     token: "rustc")
 
   CARGO = SysDep.new(key: :cargo, what: "Cargo, Rust's build tool",
                      command: "cargo", min_ver: MIN_RUST,
