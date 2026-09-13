@@ -299,7 +299,8 @@ module TestHelper
     # command line, and a landmine for a test process, where one
     # `run_cli("-H", "7.7.7", ...)` silently moved the stack for
     # every test that ran afterwards.
-    pm.instance_variable_set(:@portable_stack, nil)
+    pm.instance_variable_set(:@stack, nil)
+    pm.instance_variable_set(:@scope, nil)
     # The resolution of the last request, which resolve_install_plan
     # sets and nothing unsets: a test that read resolved_ver after
     # another test's `-s` saw that test's answer.
@@ -673,20 +674,19 @@ module TestHelper
       }
     end
 
-    # Match the pattern of real packages: noarch → nil, target →
-    # pkgmgr.target_arch (respects with_target_arch scope, defaults to
-    # ARCH). Host packages defer to the base, where the tier decides
+    # Match the pattern of real packages: noarch → nil, target → the
+    # scope's arch. Host packages defer to the base, where the tier decides
     # between the system compiler and the stack's own.
     def default_cc
       return super if on_host
       return nil if arch_list.nil?
-      return pkgmgr.target_arch.gcc_ver
+      return scope.arch.gcc_ver
     end
 
     def default_arch
       return HOST_ARCH if on_host
       return nil if arch_list.nil?
-      return pkgmgr.target_arch
+      return scope.arch
     end
 
     def install_impl_internal(install_dir)

@@ -32,115 +32,71 @@ class PackageManager
     @installable = nil
     @tree_generation = 0
     @resolved_versions = nil
-    @target_arch = nil    # nil = fall back to the global ARCH
-    @target_board = nil   # nil = fall back to the global BOARD
     @host_world = nil     # memoized host_world_names, per registry
-    @portable_stack = nil # nil = fall back to HOST_VER_GCC
+    @scope = nil          # the scope a with_* block opened; nil = the
+                          # environment's (see #scope)
+    @stack = nil          # the stack -H named for the whole invocation
   end
 
-  # Current target architecture: the arch the install/uninstall flow
-  # is currently operating on. Defaults to the global ARCH constant;
-  # temporarily overridden by with_target_arch { ... } to honor the
-  # `-a <arch>` CLI flag in `-s` mode (i.e. "install this package for
-  # a different arch than ARCH"). Every arch-sensitive computation
-  # in the install/introspection path reads this instead of ARCH
-  # directly, so the override flows transparently through:
-  #   - Package#default_arch / default_cc / arch_supported?
-  #   - Package#final_install_root (→ the install dir)
-  #   - PackageManager#build_dep_graph (→ the implicit compiler dep)
-  #   - ALL-expansion for -s ALL (→ per-arch installable set)
-  def target_arch
-    @target_arch || ARCH
+  # THE INVOCATION'S SCOPE (scope.rb): the arch and board being built
+  # for, the stack being built into, and the environment.
+  #
+  # TRANSITION (docs/plans/pkgmgr-functional-core.md, step 5.1). Every
+  # scoped question will be asked of a package BOUND to a scope
+  # (Package#at); until every asker has one in hand, this is what an
+  # unbound package falls back to, and the three readers below are
+  # its three fields. The count of such fallbacks is printed at the
+  # end of every test run and only ever goes down; at zero this
+  # method, the with_* openers and the readers go.
+  #
+  # The environment's scope is built on every read rather than held,
+  # because ARCH and BOARD are constants a test swaps under it.
+  def scope
+    return @scope || Scope.env(stack: @stack || default_stack_cc_ver)
   end
 
-  # Run `block` with the target arch temporarily set to `arch`. Nests
-  # correctly — the previous @target_arch (possibly another override,
-  # possibly nil) is saved on entry and restored on exit even if the
-  # block raises. The block's return value is propagated.
+  # Run `block` under `s`. Nests: the scope open before is put back
+  # on exit, whether the block returned or raised.
+  def with_scope(s, &block)
+    assert { s.is_a?(Scope) }
+    prev = @scope
+    @scope = s
+    begin
+      return block.call
+    ensure
+      @scope = prev
+    end
+  end
+
+  # The openers, as the callers still spell them: `-a <arch>` moves
+  # the arch (and the board follows Scope#board_of), an install's
+  # coordinates move the arch and the board together, and a stack
+  # request (`-s host_gcc:13.4.0`, or a :stack install being judged)
+  # moves the stack.
   def with_target_arch(arch, &block)
     assert { arch.is_a?(Architecture) }
-    prev = @target_arch
-    @target_arch = arch
-    begin
-      return block.call
-    ensure
-      @target_arch = prev
-    end
+    return with_scope(scope.with(arch: arch), &block)
   end
 
-  # Which board applies to `arch`.
-  #
-  # The rule lives here, in one place, because three different things
-  # need the same answer: an install's coordinates (the board is the
-  # `env` level of a target install's path), a recipe that reads its
-  # board's BSP, and the scope that judges an installation.
-  #
-  # BOARD is a single global and cannot mean two things at once, so it
-  # applies to the arch it was set for; another arch reached through
-  # `-a` gets its own default. An explicit scope beats both, and only
-  # for the arch it was opened with -- see with_target_coords.
-  def board_for(arch)
-    return @target_board if @target_board && arch == target_arch
-    return BOARD if arch == ARCH && BOARD
-    return arch.default_board
-  end
-
-  # Run `block` at one installation's target coordinates.
-  #
-  # The arch and the board move TOGETHER because they are one
-  # coordinate, not two: a board is only meaningful for an arch
-  # (other/bsp/<arch>/<board>, and "qemu-virt" names nothing under
-  # i386), and BOARD as a global already means "the board of ARCH".
-  # Scoping them apart would let one arch's board answer for another
-  # arch's install, which is the same mistake one level down.
   def with_target_coords(arch, board, &block)
-
-    return with_target_arch(arch) {
-      prev = @target_board
-      @target_board = board
-
-      begin
-        block.call
-      ensure
-        @target_board = prev
-      end
-    }
+    return with_scope(scope.with(arch: arch, board: board), &block)
   end
 
-  # The host stack this invocation is building into.
-  #
-  # Scoped, the same way with_target_arch scopes the target
-  # architecture. `-s host_gcc:13.4.0` builds the 13.4.0 stack — its
-  # kernel headers, its glibc, then the compiler — because asking for a
-  # version is a request to BUILD that version.
-  #
-  # HOST_VER_GCC is a convenience only: it supplies a version when none
-  # is named, so `-s host_gcc` works. It never limits which versions
-  # can be built or coexist.
   def with_host_stack(gcc_ver, &block)
-
-    prev = @portable_stack
-    @portable_stack = gcc_ver
-
-    begin
-      return block.call
-    ensure
-      @portable_stack = prev
-    end
+    return with_scope(scope.with(stack: gcc_ver), &block)
   end
 
-  # The stack in effect: what this invocation asked for, else the
-  # default.
-  def current_host_stack
-    return @portable_stack || default_stack_cc_ver
-  end
+  # The readers. Each is one field of the scope in effect.
+  def target_arch = scope.arch
+  def board_for(arch) = scope.board_of(arch)
+  def current_host_stack = scope.stack
 
   # Set the stack for the whole invocation, which is what -H does.
   # with_host_stack is for internal work that looks at another stack
   # and has to put this one back; a choice made on the command line
   # has no "back" to return to.
   def host_stack=(gcc_ver)
-    @portable_stack = gcc_ver
+    @stack = gcc_ver
   end
 
   # The package that provides a stack's compiler.

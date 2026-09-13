@@ -36,18 +36,17 @@ class TestLintAmbient < Minitest::Test
       "validates the invocation's BOARD against the BSP tree",
     "main.rb#requested_arch" =>
       "the one place -a is turned into a scope",
+    "scope.rb#self.env" =>
+      "builds the environment's Scope from ARCH and BOARD: the one " \
+      "place the constants become a value",
     "layout.rb#vars" =>
       "REPORTS the invocation's ARCH/BOARD to CMake, which compares " \
       "them against its own",
-    "package_manager.rb#target_arch" => "the owner",
-    "package_manager.rb#board_for"   => "the owner",
   }.freeze
 
   SCOPE_SETTERS = %w[
     package_manager.rb#initialize
-    package_manager.rb#with_target_arch
-    package_manager.rb#with_target_coords
-    package_manager.rb#with_host_stack
+    package_manager.rb#with_scope
     package_manager.rb#host_stack=
   ].freeze
 
@@ -163,7 +162,7 @@ class TestLintAmbient < Minitest::Test
                  found.map(&:where)
 
     scope = AmbientLint.scan_source("class PackageManager\n" \
-                                    "  def x = (@target_arch = 1)\nend\n",
+                                    "  def x = (@scope = 1)\nend\n",
                                     file: "package_manager.rb")
     assert_equal [:R3], scope.map(&:rule)
     assert_equal ["package_manager.rb#x"], scope.map(&:where)

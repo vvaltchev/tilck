@@ -59,10 +59,9 @@ class TilckStackPackage < Package
   # it is declared default by nothing, being what the declaration
   # makes a package a member OF.
   def dep_list
-    pkgmgr.with_target_coords(@arch, @board) {
-      pkgmgr.all_packages.select(&:default?)
-            .map { |p| Dep(p.name, p.on_host) }
-    }
+    sc = scope.with(arch: @arch, board: @board)
+    return pkgmgr.all_packages.select { |p| p.at(sc).default? }
+                 .map { |p| Dep(p.name, p.on_host) }
   end
 end
 

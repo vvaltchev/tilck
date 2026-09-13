@@ -22,9 +22,10 @@
 # the spec: it states what is RIGHT, not what the code does. Three
 # such places are marked SPEC below.
 #
-# What it reuses from the implementation, deliberately: Coords and
-# Ver, which are pure value objects with their own tests, and ALL_ARCHS
-# (the harness sets every gcc_ver). Nothing that decides anything.
+# What it reuses from the implementation, deliberately: Coords, Ver
+# and Scope, which are pure value objects with their own tests, and
+# ALL_ARCHS (the harness sets every gcc_ver). Nothing that decides
+# anything.
 #
 # Validated two ways before it is trusted (tests/test_model.rb): every
 # historical bug is a case with the hand-written correct answer, and
@@ -37,6 +38,7 @@ require_relative '../../early_logic'
 require_relative '../../arch'
 require_relative '../../version'
 require_relative '../../coords'
+require_relative '../../scope'
 
 module Model
 
@@ -170,24 +172,10 @@ module Model
   Inv = Data.define(:env_arch, :env_board, :default_stack, :host_os,
                     :host_arch)
 
-  # What the invocation resolves to. board_of(a) is the one rule about
-  # boards: the scoped board for the scoped arch, the shell's BOARD
-  # for the shell's ARCH, an arch's own default otherwise.
-  Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board,
-                      :host_os, :host_arch) do
-    def board_of(a)
-      return board     if a == arch
-      return env_board if a == env_arch && env_board
-      return a.default_board
-    end
-
-    def with(arch: self.arch, stack: self.stack)
-      b = arch == self.arch ? board : board_of(arch)
-      Scope.new(arch: arch, board: b, stack: stack,
-                env_arch: env_arch, env_board: env_board,
-                host_os: host_os, host_arch: host_arch)
-    end
-  end
+  # What the invocation resolves to: the product's own value
+  # (scripts/pkgmgr/scope.rb), reused the way Coords and Ver are. It
+  # decides nothing but the board rule, which is stated there.
+  Scope = ::Scope
 
   # A parsed command line. targets: [[name, Ver | :all | nil]].
   # arch: Architecture | :all | nil.  cc: Ver | nil.
