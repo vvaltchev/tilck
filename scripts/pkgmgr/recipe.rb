@@ -375,6 +375,23 @@ module Recipe
     def describe = "read $#{bind} <- #{path}"
   end
 
+  # Where a symlink points, as written. What a recipe that rewrites
+  # links reads before it rewrites them.
+  class Readlink < Step
+    def self.tag = "readlink"
+
+    field :bind
+    field :path
+
+    def run(ctx)
+      at = ctx.path_of(path)
+      raise Error, "readlink: #{path} is not a symlink" if !File.symlink?(at)
+      ctx.bind(bind, File.readlink(at))
+    end
+
+    def describe = "readlink $#{bind} <- #{path}"
+  end
+
   # --- values ----------------------------------------------------------------
 
   class Set < Step
@@ -549,6 +566,64 @@ module Recipe
   end
 
   #
+  # The same steps once per entry a glob matches, the entry bound to a
+  # name: a cross compiler's bin/ has forty tools whose names and link
+  # targets all say musl-, and forty Moves would be the same Move
+  # forty times.
+  #
+  # BOUNDED, not a loop: the entries are what the glob matches when
+  # the step starts, in sorted order, and nothing inside can add to
+  # them. No condition, either -- `kind` narrows the entries to files,
+  # directories or symlinks, and a step inside that has nothing to do
+  # for an entry fails the build, the way it would anywhere else. A
+  # glob that matches nothing fails too: a loop over nothing is a
+  # typo, not a success.
+  #
+  class ForEach < Step
+    def self.tag = "foreach"
+
+    field :glob
+    field :as
+    field :kind, :any
+    field :steps, []
+
+    def check
+      raise Error, "foreach: steps must all be steps" if
+        !steps.is_a?(Array) || steps.any? { |s| !s.is_a?(Step) }
+      raise Error, "foreach: kind must be :any, :file, :dir or :symlink" if
+        ![:any, :file, :dir, :symlink].include?(kind)
+    end
+
+    def run(ctx)
+
+      pattern = ctx.expand(glob)
+      dir = ctx.dir
+      found = Dir.glob(pattern, base: dir).sort.select { |e|
+        Recipe.of_kind?(File.join(dir, e), kind)
+      }
+
+      if found.empty?
+        raise Error, "foreach: nothing matches #{glob}" +
+                     (kind == :any ? "" : " (#{kind}s only)")
+      end
+
+      for e in found do
+        ctx.bind(as, e)
+        for s in steps do
+          s.run(ctx)
+        end
+      end
+    ensure
+      ctx.unbind(as)
+    end
+
+    def describe
+      only = kind == :any ? "" : " #{kind}s"
+      return "foreach $#{as} in #{glob}#{only} (#{steps.length} step(s))"
+    end
+  end
+
+  #
   # Discard the build tree, keeping the install and the logs -- the
   # logs of an out-of-tree build first lifted out of the directory
   # about to go, prefixed with where they came from.
@@ -566,7 +641,8 @@ module Recipe
   end
 
   KINDS = [Run, Capture, Mkdir, Copy, Move, Remove, Symlink, Chmod, Write,
-           Read, Set, Extract, Transform, Substitute, Within, Prune].freeze
+           Read, Readlink, Set, Extract, Transform, Substitute, Within,
+           ForEach, Prune].freeze
 
   # The constructors a recipe is written with, generated from KINDS so
   # that a new kind is usable the moment it is defined and the two can
@@ -655,6 +731,9 @@ module Recipe
     end
 
     def bound(name) = @binds[name]
+
+    # A ForEach's entry name lives only inside it.
+    def unbind(name) = @binds.delete(name)
 
     def path_of(p)
       s = expand(p)
@@ -781,7 +860,18 @@ module Recipe
   def walk(steps, &block)
     for s in steps do
       block.call(s)
-      walk(s.steps, &block) if s.is_a?(Within)
+      walk(s.steps, &block) if s.is_a?(Within) || s.is_a?(ForEach)
+    end
+  end
+
+  # lstat, not stat: a ForEach over symlinks must see the links, not
+  # what they point at, and a dangling one is still a link.
+  def of_kind?(path, kind)
+    case kind
+    when :any     then true
+    when :symlink then File.symlink?(path)
+    when :file    then !File.symlink?(path) && File.file?(path)
+    when :dir     then !File.symlink?(path) && File.directory?(path)
     end
   end
 

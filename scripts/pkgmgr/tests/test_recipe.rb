@@ -215,6 +215,8 @@ class TestRecipeIdentity < Minitest::Test
              when "chmod"     then k.new(path: "a", mode: 0755)
              when "write"     then k.new(path: "a", text: "t")
              when "read"      then k.new(bind: "b", path: "a")
+             when "readlink"  then k.new(bind: "b", path: "a")
+             when "foreach"   then k.new(glob: "*", as: "e", steps: [])
              when "set"       then k.new(bind: "b", value: "v")
              when "extract"   then k.new(bind: "b", from: "$x", pattern: /a/)
              when "transform" then k.new(bind: "b", from: "$x",
@@ -285,8 +287,9 @@ class TestRecipeEvolution < Minitest::Test
   # recorded under, so renaming one rebuilds everything: this list
   # makes that an edit to a test rather than an accident.
   #
-  TAGS = %w[capture chmod copy extract mkdir move prune read remove run
-            set substitute symlink transform within write].freeze
+  TAGS = %w[capture chmod copy extract foreach mkdir move prune read
+            readlink remove run set substitute symlink transform within
+            write].freeze
 
   def test_the_shipped_tags_are_these
     assert_equal TAGS, Recipe::KINDS.map(&:tag).sort
@@ -756,6 +759,103 @@ class TestRecipeExecution < Minitest::Test
       ], c)
 
       assert_equal ["keep.gz"], Dir.children(root).sort
+    end
+  end
+
+  #
+  # THE CROSS COMPILER'S bin/: every tool is named *-linux-musl-* and
+  # the one symlink (cc -> gcc) points at a musl name too; the install
+  # strips "musl-" from all of it. The real tarball has 25 files, 13
+  # hardlinks and that one link, and this tree has the same shape.
+  # Links first, while their names still match the glob and their
+  # targets still say what to strip; then every entry is renamed.
+  #
+  def test_a_loop_over_a_glob_binds_each_entry
+    in_tree do |root, c|
+      run_steps([
+        Mkdir(path: "bin"),
+        Write(path: "bin/aarch64-linux-musl-gcc", text: "gcc"),
+        Write(path: "bin/aarch64-linux-musl-ar", text: "ar"),
+        Write(path: "bin/aarch64-linux-musl-c++", text: "c++"),
+        Symlink(target: "aarch64-linux-musl-gcc",
+                link: "bin/aarch64-linux-musl-cc"),
+
+        Within(dir: "bin", steps: [
+          ForEach(glob: "*musl*", as: "l", kind: :symlink, steps: [
+            Readlink(bind: "t", path: "$l"),
+            Transform(bind: "t", from: "$t", subs: [["musl-", ""]]),
+            Symlink(target: "$t", link: "$l"),
+          ]),
+          ForEach(glob: "*musl*", as: "f", steps: [
+            Transform(bind: "g", from: "$f", subs: [["musl-", ""]]),
+            Move(from: "$f", to: "$g"),
+          ]),
+        ]),
+      ], c)
+
+      assert_equal %w[aarch64-linux-ar aarch64-linux-c++ aarch64-linux-cc
+                      aarch64-linux-gcc],
+                   Dir.children("#{root}/bin").sort
+      assert_equal "aarch64-linux-gcc",
+                   File.readlink("#{root}/bin/aarch64-linux-cc")
+      assert_equal "gcc", File.read("#{root}/bin/aarch64-linux-cc")
+      assert_nil c.bound("f"), "the entry name lived only inside the loop"
+      assert_nil c.bound("l")
+    end
+  end
+
+  # kind narrows to the entries that are that thing by lstat: a
+  # dangling symlink is a symlink, a symlink to a file is not a file.
+  def test_kind_selects_by_what_the_entry_is_not_what_it_points_at
+    in_tree do |root, c|
+      run_steps([
+        Write(path: "real", text: "x"),
+        Symlink(target: "real", link: "link"),
+        Symlink(target: "gone", link: "dangling"),
+        Mkdir(path: "out"),
+        ForEach(glob: "*", as: "e", kind: :symlink, steps: [
+          Write(path: "out/$e", text: "link"),
+        ]),
+        ForEach(glob: "*", as: "e", kind: :file, steps: [
+          Write(path: "out/$e.file", text: "file"),
+        ]),
+      ], c)
+
+      assert_equal %w[dangling link real.file], Dir.children("#{root}/out").sort
+    end
+  end
+
+  # A loop over nothing is a typo, not a success.
+  def test_a_loop_over_nothing_fails
+    in_tree do |root, c|
+      err = assert_raises(Recipe::Error) {
+        run_steps([ForEach(glob: "nope-*", as: "e", steps: [])], c)
+      }
+      assert_match(/nothing matches nope-\*/, err.message)
+    end
+  end
+
+  # ...and nothing inside can extend what the loop walks: the entries
+  # are what the glob matched when it started.
+  def test_the_entries_are_fixed_when_the_loop_starts
+    in_tree do |root, c|
+      run_steps([
+        Write(path: "a.txt", text: "a"),
+        ForEach(glob: "*.txt", as: "e", steps: [
+          Copy(from: "$e", to: "$e.copy.txt"),
+        ]),
+      ], c)
+      assert_equal %w[a.txt a.txt.copy.txt], Dir.children(root).sort
+    end
+  end
+
+  def test_readlink_refuses_what_is_not_a_link
+    in_tree do |root, c|
+      err = assert_raises(Recipe::Error) {
+        run_steps([Write(path: "f", text: "x"),
+                   Readlink(bind: "t", path: "f")], c)
+      }
+      assert_match(/is not a symlink/, err.message)
     end
   end
 
