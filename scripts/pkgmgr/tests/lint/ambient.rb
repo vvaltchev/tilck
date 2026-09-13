@@ -26,8 +26,9 @@
 #       @portable_stack) outside the with_* method that owns it, so a
 #       scope cannot be left open.
 #
-# Prism, not regexes: a string "ARCH=x86" in a make invocation is not
-# a read, a comment is not a read, and a receiver is not a bare name.
+# A parse tree, not regexes: a string "ARCH=x86" in a make invocation
+# is not a read, a comment is not a read, and a receiver is not a bare
+# name. See ruby_tree.rb for the parser and why it is the one it is.
 #
 # It is a test, so a new reader fails the suite the day it is written,
 # with file, method and line. An allowlist entry needs a reason, and
@@ -35,8 +36,8 @@
 # list from rotting.
 #
 
-require 'prism'
 require 'pathname'
+require_relative '../ruby_tree'
 
 module AmbientLint
 
@@ -55,6 +56,14 @@ module AmbientLint
   # is the arch it targets -- and those are not scopes.
   SCOPE_IVARS  = %i[@target_arch @target_board @portable_stack].freeze
   SCOPE_FILE   = "package_manager.rb"
+
+  # The node types a method call comes as, in Ripper's tree: with a
+  # receiver (call, command_call), bare (vcall), with arguments and
+  # no parentheses (command), or one of those wrapped in the node that
+  # adds the parenthesised arguments or the block.
+  CALLS        = %i[call command_call vcall fcall command
+                    method_add_arg method_add_block].freeze
+  DEFS         = %i[def defs].freeze
 
   Violation = Struct.new(:rule, :file, :method, :line, :text) do
     def where = "#{file}##{method || "<top>"}"
@@ -79,49 +88,71 @@ module AmbientLint
   end
 
   def scan_source(src, file: "<string>")
-    result = Prism.parse(src)
+    tree = RubyTree.new(src)
     out = []
-    walk(result.value, file, nil, src, out)
+    tree.each_node { |node, up| check(tree, node, up, file, out) }
     return out
   end
 
-  # Depth-first, remembering the enclosing method. A module_function
-  # module (Main, Layout) and a class body look the same to this: a
-  # DefNode is a method, `def self.x` is "self.x".
-  def walk(node, file, meth, src, out)
-
-    return if node.nil?
-
-    if node.is_a?(Prism::DefNode)
-      meth = node.receiver.nil? ? node.name.to_s : "self.#{node.name}"
+  def call_name(n)
+    case n.type
+    when :call, :command_call         then leaf_sym(n.children[2])
+    when :vcall, :fcall, :command     then leaf_sym(n.children[0])
+    when :method_add_arg, :method_add_block then call_name(n.children[0])
     end
-
-    check(node, file, meth, src, out)
-    node.compact_child_nodes.each { |c| walk(c, file, meth, src, out) }
   end
 
-  def check(node, file, meth, src, out)
+  def leaf_sym(x) = x.is_a?(RubyTree::Node) && x.leaf? ? x.text.to_sym : nil
 
-    line = node.location.start_line
-    text = src.lines[line - 1].to_s.strip
+  # [:def, name, ...] and [:defs, receiver, period, name, ...].
+  def def_name(d)
+    return d.children[0].text if d.type == :def
+    return "self.#{d.children[2].text}"
+  end
 
-    case node
-    when Prism::ConstantReadNode
-      if AMBIENT.include?(node.name)
-        out << Violation.new(:R1, file, meth, line, text)
+  def call?(x) = x.is_a?(RubyTree::Node) && CALLS.include?(x.type)
+
+  # `up` is the chain of enclosing nodes, nearest first. The method a
+  # violation is reported in is the nearest def on it; a
+  # module_function module (Main, Layout) and a class body look the
+  # same to this, and `def self.x` is "self.x".
+  def check(tree, node, up, file, out)
+
+    found = ->(rule) {
+      scope = up.find { |n| DEFS.include?(n.type) }
+      out << Violation.new(rule, file, scope && def_name(scope),
+                           tree.line_of(node.range.begin),
+                           tree.line_text(node))
+    }
+
+    case node.type
+    when :var_ref
+      leaf = node.children[0]
+      if leaf.type == :@const && AMBIENT.include?(leaf.text.to_sym)
+        found.call(:R1)
       end
 
-    when Prism::CallNode
-      if COMPARISONS.include?(node.name) &&
-         node.receiver.is_a?(Prism::CallNode) &&
-         PARTIAL_KEYS.include?(node.receiver.name)
-        out << Violation.new(:R2, file, meth, line, text)
+    when :binary
+      left, op, _right = node.children
+      if COMPARISONS.include?(op) && call?(left) &&
+         PARTIAL_KEYS.include?(call_name(left))
+        found.call(:R2)
       end
 
-    when Prism::InstanceVariableWriteNode,
-         Prism::InstanceVariableOrWriteNode
-      if file == SCOPE_FILE && SCOPE_IVARS.include?(node.name)
-        out << Violation.new(:R3, file, meth, line, text)
+    when :call, :command_call
+      recv = node.children[0]
+      if COMPARISONS.include?(call_name(node)) && call?(recv) &&
+         PARTIAL_KEYS.include?(call_name(recv))
+        found.call(:R2)
+      end
+
+    when :assign, :opassign
+      # `@x = v` and `@x ||= v` alike.
+      target = node.children[0]
+      ivar = target.type == :var_field ? target.children[0] : nil
+      if file == SCOPE_FILE && ivar && ivar.type == :@ivar &&
+         SCOPE_IVARS.include?(ivar.text.to_sym)
+        found.call(:R3)
       end
     end
   end
@@ -130,20 +161,14 @@ module AmbientLint
   # allowlist entry has to still point at.
   def methods_of(path)
 
-    src = File.binread(path.to_s)
+    tree = RubyTree.new(File.binread(path.to_s))
     out = []
 
-    each_def(Prism.parse(src).value) { |d|
-      out << (d.receiver.nil? ? d.name.to_s : "self.#{d.name}")
+    tree.each_node { |n, _|
+      out << def_name(n) if DEFS.include?(n.type)
     }
 
     return out
-  end
-
-  def each_def(node, &blk)
-    return if node.nil?
-    blk.call(node) if node.is_a?(Prism::DefNode)
-    node.compact_child_nodes.each { |c| each_def(c, &blk) }
   end
 
   # Drop the allowlisted violations. An entry is "file.rb" (the whole

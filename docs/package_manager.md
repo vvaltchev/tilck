@@ -796,7 +796,9 @@ stronger standard than "well tested". Four instruments, each answering
 a question the others cannot:
 
 **The lint** (`tests/test_lint_ambient.rb`) parses every source file
-with Prism and fails the suite if anything reads `ARCH`, `BOARD` or
+(with Ripper, via `tests/ruby_tree.rb`, so that the suite runs on any
+Ruby the package manager does) and fails the suite if anything reads
+`ARCH`, `BOARD` or
 the current stack outside their owners (`pkgmgr.target_arch`,
 `board_for`, `current_host_stack`), compares an installation by part
 of a coordinate (`.arch ==`, `.compiler ==`) outside `InstallSelector`,

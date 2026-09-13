@@ -54,9 +54,6 @@ function install_debian_family {
    pkg_list+=(pkg-config)
    pkg_list+=(autoconf)
    pkg_list+=(ruby)
-   # Ruby's headers: prism is a gem with a C extension on a 3.2 (Ubuntu
-   # 24.04), and `gem install` cannot build one without them.
-   pkg_list+=(ruby-dev)
    pkg_list+=(device-tree-compiler)
 
    if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
@@ -363,11 +360,10 @@ function install_arch {
 # says "installed" in every one of those cases; only the require tells
 # them apart.
 #
-# prism is the other kind of gap: the package manager parses its own
-# sources with it (scripts/pkgmgr/source_digest.rb), it is a default
-# gem only from Ruby 3.3, and the floor is 3.2 because that is what
-# Ubuntu 24.04 ships. On a 3.2 it is a gem with a C extension, which
-# is why the debian family installs ruby-dev.
+# Every gem here is pure Ruby. Nothing with a C extension belongs on
+# this list: building one needs the interpreter's headers, which
+# means one more distro package to know the name of on every family,
+# for a `gem install` that then fails on the machines that lack it.
 #
 # Nothing here matters when the bootstrap builds its own Ruby, which
 # bundles all of them. It matters when the system Ruby is new enough to
@@ -383,7 +379,6 @@ function ensure_ruby_gems {
       "power_assert:power_assert"
       "minitest:minitest"
       "minitest/mock:minitest-mock"
-      "prism:prism"
    )
    local missing_gems=()
    local p feature gem_name gems all=""
@@ -429,16 +424,15 @@ function ensure_ruby_gems {
    fi
 }
 
-# The usual reason a gem install fails on a fresh machine is a C
-# extension (prism) with no Ruby headers to build against. The system
+# A gem install on a fresh machine usually fails for want of network
+# or of a rubygems the distro's Ruby package left out. The system
 # packages are installed by the no-argument invocation, which `-l` and
-# friends skip on purpose; say so rather than leaving the mkmf error
+# friends skip on purpose; say so rather than leaving gem's own error
 # as the only clue.
 function gem_install_failed {
    echo
-   echo "ERROR: gem install failed. If the error above mentions mkmf or"
-   echo "       missing headers, the system packages are not installed"
-   echo "       yet (prism needs ruby-dev / ruby-devel). Run"
+   echo "ERROR: gem install failed. If the system packages are not"
+   echo "       installed yet, run"
    echo
    echo "          ./scripts/build_toolchain"
    echo
