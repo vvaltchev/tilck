@@ -11,6 +11,7 @@ require_relative 'coords'
 require_relative 'source_digest'
 require_relative 'build_inputs'
 require_relative 'recipe'
+require_relative 'postcondition'
 
 PackageDep = Struct.new(
 
@@ -168,8 +169,9 @@ end
 class Package
 
   # Run(...), Copy(...), Within(...): the constructors a build_steps
-  # is written with. See recipe.rb.
+  # is written with. See recipe.rb. And Runs(...) for a postcondition.
   include Recipe::DSL
+  include Postcondition::DSL
 
   attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
   attr_reader :host_tier, :board_list
@@ -944,7 +946,8 @@ class Package
                         host_os_list host_arch_list
                         clean_build sysroot_fragments
                         get_install_list get_installable_list
-                        stack_of_install own_table].freeze
+                        stack_of_install own_table
+                        postconditions].freeze
 
   #
   # One digest standing for "how this package is built".
@@ -1783,6 +1786,17 @@ class Package
     FileUtils.mv(staging.to_s, final_ver_dir.to_s)
     pkgmgr.installs_changed!
 
+    # Everything the build produced is in place, and now it can be
+    # asked whether it works. If it does not, take it back out: a
+    # failed install installs nothing, and this one has only just
+    # stopped being a failed build.
+    if !verify_postconditions(final_ver_dir, ver)
+      error "#{name}: the install does not pass its own checks; removed"
+      FileUtils.rm_rf(final_ver_dir)
+      pkgmgr.installs_changed!
+      return false
+    end
+
     # Clean up the empty staging/pkg_dirname/ directory
     staging_pkg = TC_STAGING / pkg_dirname
     FileUtils.rmdir(staging_pkg) if staging_pkg.directory? &&
@@ -1900,6 +1914,18 @@ class Package
     return run_build_steps(install_dir, ver)
   end
   def expected_files(ver = nil) = raise NotImplementedError
+
+  # The behavioural half of what must be true of an install -- see
+  # postcondition.rb. Checked once, after the atomic move, against the
+  # install where it lives; never on a scan; never in the digest.
+  def postconditions(ver = default_ver) = []
+
+  def verify_postconditions(dir, ver)
+    for pc in postconditions(ver) do
+      return false if !pc.check(self, dir)
+    end
+    return true
+  end
 
   # Normalize a kernel-style .config file: strip metadata header,
   # empty lines, non-CONFIG lines, and reverse-sort by binary value.

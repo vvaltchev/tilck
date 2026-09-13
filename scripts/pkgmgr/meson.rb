@@ -110,18 +110,15 @@ class HostMesonPackage < Package
     Chmod(path: "$INSTALL/install/bin/meson", mode: 0755),
 
     Prune(),
+  ]
 
-    # The same wrapper with the staging tree standing in for the final
-    # path, run once, so a meson that cannot start is caught here
-    # rather than by the first package that tries to configure with
-    # it. $$@ is a literal $@: the shell's, not ours.
-    Write(path: "check-meson", text: <<~SH),
-      #!/bin/sh
-      exec "$PYTHON" "$INSTALL/install/lib/meson/meson.py" "$$@"
-    SH
-    Chmod(path: "check-meson", mode: 0755),
-    Run(log: "check-meson.log", argv: ["./check-meson", "--version"]),
-    Remove(paths: ["check-meson"]),
+  # A meson that cannot start is caught here, rather than by the first
+  # package that tries to configure with it. The launcher names the
+  # FINAL path, which is why this is a postcondition -- run once the
+  # install is where it lives -- and not a step run from staging with
+  # a rewritten copy of the launcher, which is what it used to be.
+  def postconditions(ver = default_ver) = [
+    Runs(argv: ["install/bin/meson", "--version"]),
   ]
 end
 
