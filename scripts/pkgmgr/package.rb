@@ -265,11 +265,11 @@ class Package
   # For stacks rather than packages: a stack is BUILT when the
   # compiler that names it is installed, since that is what makes it
   # usable as one. One that is not built is not wrong, and its cell
-  # is blank: a red "not built" beside every stack nobody asked for
-  # read as a fault. No count -- nothing in that listing has one.
+  # is empty: a red "not built" beside every stack nobody asked for
+  # read as a fault. The brackets stay, as they do everywhere else.
+  # No count -- nothing in that listing has one.
   def self.stack_cell(built)
-    return "[ #{status_str("built", :makeGreen)} ]" if built
-    return " " * (status_cell(0) + 4)
+    return "[ #{built ? status_str("built", :makeGreen) : empty_str} ]"
   end
 
   public
