@@ -343,13 +343,15 @@ class TestPortableStackBinding < Minitest::Test
     with_fake_tc do
       FileUtils.mkdir_p(stack_pkgs("11.5.0"))
       FileUtils.mkdir_p(stack_pkgs("14.4.0"))
-      # A stack id may be anything -- the schema leaves room for
-      # gcc-14.4.0-lto or a clang stack -- but host_stacks answers
-      # "which GCC versions have a stack", so a non-GCC one is not in
-      # the list.
+      # A directory is a stack when it is spelled like one
+      # (StackId): a variant or a foreign compiler counts, a word does
+      # not.
       FileUtils.mkdir_p(Coords.new(HOST_OS_ARCH, nil, "some-other").pkgs_dir)
+      FileUtils.mkdir_p(Coords.new(HOST_OS_ARCH, nil, "gcc-14.4.0-lto")
+                              .pkgs_dir)
 
-      assert_equal ["11.5.0", "14.4.0"], pkgmgr.host_stacks.sort
+      assert_equal ["gcc-11.5.0", "gcc-14.4.0", "gcc-14.4.0-lto"],
+                   pkgmgr.host_stacks.map(&:to_s)
     end
   end
 end
@@ -429,9 +431,10 @@ class TestNoCompilerPackageAmbiguity < Minitest::Test
       FileUtils.mkdir_p(portable_pkgs / "gcc-riscv64-musl" / "13.3.0")
       FileUtils.mkdir_p(stack_pkgs("14.4.0") / "glib2" / "2.88.3")
 
-      stacks = pkgmgr.host_stacks
-      assert_includes stacks, "14.4.0"
-      refute_includes stacks, "riscv64-musl"
+      stacks = pkgmgr.host_stacks.map(&:to_s)
+      assert_includes stacks, "gcc-14.4.0"
+      refute stacks.any? { |s| s.include?("riscv64") },
+             "a package directory was read as a stack"
     end
   end
 

@@ -55,7 +55,7 @@ module Layout
   def target_pkgs(arch, scope)
     return nil if arch.gcc_ver.nil?
     return Coords.new("tilck-#{arch.name}", scope.board_of(arch),
-                      "gcc-#{arch.gcc_ver}").pkgs_dir
+                      Coords.stack_name(arch.gcc_ver)).pkgs_dir
   end
 
   def vars(scope = pkgmgr.env_scope)

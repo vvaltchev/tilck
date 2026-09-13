@@ -75,7 +75,7 @@ module Executor
 
   def recompose_all
     pkgmgr.refresh
-    pkgmgr.host_stacks.each { |v| pkgmgr.compose_stack_sysroot(Ver(v)) }
+    pkgmgr.host_stacks.each { |id| pkgmgr.compose_stack_sysroot(id) }
   end
 
   # --- the actions ----------------------------------------------------------

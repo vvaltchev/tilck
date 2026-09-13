@@ -418,7 +418,7 @@ module Main
 
     # Not a constant: -H moves it, and a run that built into another
     # stack should say so where every other coordinate is printed.
-    puts "HOST_STACK = gcc-#{scope.stack}"
+    puts "HOST_STACK = #{Coords.stack_name(scope.stack)}"
 
     for k, v in ALL_ARCHS do
       puts "GCC_VER[#{k}]: #{v.gcc_ver}"
@@ -1024,7 +1024,7 @@ module Main
          when "ALL"        then :all
          else Ver(o[:compiler])
          end
-    stack = o[:host_gcc] ? Coords.parse_stack(o[:host_gcc]) : nil
+    stack = o[:host_gcc] ? Coords.parse_stack_ver(o[:host_gcc]) : nil
 
     return Request.make(mode, targets: targets, force: o[:force],
                         dry: o[:dry_run], arch: arch, board: board, cc: cc,
@@ -1042,7 +1042,7 @@ module Main
   def select_host_stack(str)
 
     gcc = pkgmgr.stack_compiler
-    ver = Coords.parse_stack(str)
+    id = Coords.parse_stack(str)
 
     # Nil only when no compiler package is registered at all, which
     # is a broken registry rather than a user error -- but saying so
@@ -1053,7 +1053,15 @@ module Main
       return nil
     end
 
-    if ver.nil? || !gcc.installable_versions.include?(ver)
+    # A variant or foreign stack is a legal coordinate the tool cannot
+    # build into yet: said as that, not as an unknown name.
+    if id && !id.plain?
+      error "Cannot build into #{id}: only plain gcc stacks can be " \
+            "selected, so far"
+      return nil
+    end
+
+    if id.nil? || !gcc.installable_versions.include?(id.ver)
       names = gcc.installable_versions.map { |v| Coords.stack_name(v) }
       error "Unknown host GCC stack: #{str}"
       error "Available: #{names.join(', ')} " \
@@ -1061,7 +1069,7 @@ module Main
       return nil
     end
 
-    return ver
+    return id.ver
   end
 
   # --- what a plan looks like on the terminal -------------------------------

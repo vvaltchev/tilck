@@ -1081,7 +1081,7 @@ module Model
       when "-c"
         x = a.shift
         cc = x == "ALL" ? :all : Ver(x)
-      when "-H" then stack = Coords.parse_stack(a.shift)
+      when "-H" then stack = Coords.parse_stack_ver(a.shift)
       when "--upgrade"           then mode = :upgrade
       when "--rebuild"           then mode = :rebuild
       when "--autoremove"        then mode = :autoremove

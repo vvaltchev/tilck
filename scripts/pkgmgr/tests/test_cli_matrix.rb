@@ -304,6 +304,32 @@ class TestCliMatrix < Minitest::Test
     end
   end
 
+  # -c takes a version, ALL, or "syscc": the system compiler, which
+  # names no stack directory, so it selects nothing among the installs
+  # our stacks hold -- and never selects by accident what a missing
+  # -c would.
+  def test_u_with_c_syscc_selects_nothing_built_by_our_stacks
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("host_s", on_host: true,
+                                        host_tier: :stack,
+                                        arch_list: ALL_HOST_ARCHS.values))
+        pkgmgr.register(FakePackage.new("t"))
+        pkgmgr.install("host_s")
+        pkgmgr.install("t")
+        before = snapshot
+
+        for name in %w[host_s t] do
+          rc, out = run_cli("-u", name, "-c", "syscc", "-q",
+                            laws: false, because: "the model has no syscc")
+          assert_equal 0, rc, out
+          assert_match(/nothing matched/, out)
+        end
+        assert_equal before, snapshot, "-c syscc took a stack's install"
+      end
+    end
+  end
+
   # --- -s ------------------------------------------------------------
 
   # A plan the planner refuses -- two roots pinning one dependency at

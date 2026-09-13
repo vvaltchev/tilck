@@ -498,10 +498,12 @@ class PackageManager
     end
 
     compilers = world.of(gcc.name).reject { |i| i.path.nil? || i.broken }
-    built = compilers.map(&:ver)
+    built = compilers.map { |i| StackId.of(i.ver) }
 
-    known = (gcc.installable_versions + built +
-             host_stacks.map { |v| Ver(v) }).uniq.sort
+    # Every stack the compiler could define, and every one on disk --
+    # a variant or foreign stack among them, listed as it is.
+    known = (gcc.installable_versions.map { |v| StackId.of(v) } + built +
+             host_stacks).uniq.sort
 
     needs ||= install_graph(scope: scope).last
 
@@ -513,11 +515,11 @@ class PackageManager
     # typically; the rest are there for whatever else was built into
     # the stack, which the next table says.
     for v in known do
-      here = v == scope.stack ? "  [ CURRENT ]" : ""
-      cc = compilers.find { |i| i.ver == v }
+      here = v == StackId.of(scope.stack) ? "  [ CURRENT ]" : ""
+      cc = compilers.find { |i| StackId.of(i.ver) == v }
       held = cc ? held_in_stack(v, held_by([cc], needs)) : 0
       printf("%-20s %s %3d pkgs, %3d held%s\n",
-             Coords.stack_name(v), Package.stack_cell(built.include?(v)),
+             v.to_s, Package.stack_cell(built.include?(v)),
              packages_in_stack(v), held, here)
     end
 
@@ -526,9 +528,9 @@ class PackageManager
 
   # The installs of a stack among `held`, the root itself not counted:
   # what a stack's row and a QEMU's row call "held".
-  def held_in_stack(gcc_ver, held)
-    stack = Coords.stack_name(gcc_ver)
-    return held.count { |i| i.coords.stack == stack }
+  def held_in_stack(stack, held)
+    name = Coords.stack_name(stack)
+    return held.count { |i| i.coords.stack == name }
   end
 
   # A table per package that asks for one (Package#own_table): its
@@ -548,7 +550,7 @@ class PackageManager
       puts "--- #{title.center(width)} ---"
 
       for i in rows do
-        stack = i.coords.stack_ver
+        stack = i.coords.stack_id
         held = stack ? held_in_stack(stack, held_by([i], needs)) - 1 : 0
         status = Package.installed_str(1, auto: !i.manual)
         printf("%-14s %-13s [ %s ] %3d held\n",
@@ -866,22 +868,23 @@ class PackageManager
   # rather than on Package because several packages, the sysroot
   # composition and the audit all need the same answer.
   # The coordinates of one of OUR stacks: needs nothing from the
-  # machine, built by the compiler named.
-  def stack_coords(gcc_ver = nil)
+  # machine, built by the compiler named -- a StackId, or the version
+  # of the plain gcc stack.
+  def stack_coords(stack = nil)
 
-    gcc_ver ||= default_stack_cc_ver
+    stack ||= default_stack_cc_ver
 
-    if gcc_ver.nil?
+    if stack.nil?
       raise "HOST_VER_GCC is missing from other/host_pkg_versions: it " \
             "names the host stack's directory, so without it every " \
             "stack package would install to the same broken path"
     end
 
-    return Coords.new(HOST_OS_ARCH, nil, Coords.stack_name(gcc_ver))
+    return Coords.new(HOST_OS_ARCH, nil, Coords.stack_name(stack))
   end
 
-  def stack_root(gcc_ver = nil) = stack_coords(gcc_ver).root
-  def stack_sysroot(gcc_ver = nil) = stack_coords(gcc_ver).sysroot
+  def stack_root(stack = nil) = stack_coords(stack).root
+  def stack_sysroot(stack = nil) = stack_coords(stack).sysroot
 
   # Which stack the world is currently being built for. Everything
   # except host_gcc belongs to this one: choosing a different compiler
@@ -892,28 +895,25 @@ class PackageManager
     return @default_stack || get_config_ver("gcc", host: true)
   end
 
-  # The GCC versions of our stacks that exist on disk.
+  # The stacks that exist on disk, as StackIds, sorted: every
+  # directory under <host>/any spelled like a stack, gcc-14.4.0-lto
+  # and clang-18.1.0 included. What is NOT a stack is left alone.
   #
-  # Returns versions rather than stack ids, because that is what the
-  # callers want: which compilers have a stack built with them.
-  #
-  # Selecting gcc-* here is NOT the disambiguation toolchain4 needed.
-  # There, one directory level held both packages and compilers and a
+  # Reading directories here is not the disambiguation toolchain4
+  # needed. There, one level held both packages and compilers and a
   # name had to be parsed to tell them apart. Here the level holds
-  # nothing but stacks, so this is only asking which of them are gcc
-  # ones -- a stack may legitimately be called anything, and the
-  # schema leaves room for gcc-14.4.0-lto or a clang stack later.
+  # nothing but stacks, and the only question is which spelling each
+  # one has.
   def host_stacks
 
     dir = TC / HOST_OS_ARCH / Coords::ANY
     return [] if !dir.directory?
 
-    # stack_ver, not parse_stack: this reads a DIRECTORY, and a
+    # stack_id, not parse_stack: this reads a DIRECTORY, and a
     # directory is only a stack if it is spelled like one. parse_stack
     # is lenient because it reads what a person typed.
     return Dir.children(dir)
-              .filter_map { |d| Coords.new(HOST_OS_ARCH, nil, d).stack_ver }
-              .map(&:to_s)
+              .filter_map { |d| Coords.new(HOST_OS_ARCH, nil, d).stack_id }
               .sort
   end
 
@@ -985,9 +985,20 @@ class PackageManager
   # makes that path real: glibc's own libc.so.6 will not exec before
   # this has run, its ELF interpreter pointing into a directory that
   # does not exist yet.
-  def compose_stack_sysroot(gcc_ver = nil)
+  def compose_stack_sysroot(stack = nil)
 
-    gcc_ver ||= default_stack_cc_ver
+    stack = StackId.coerce(stack || default_stack_cc_ver)
+
+    # A stack the tool cannot build into, it cannot compose either:
+    # what its packages need is asked at a scope, and the scope's
+    # stack is a plain gcc one. Said, and left as it is.
+    if !stack.plain?
+      warning "Not composing the sysroot of #{stack}: only plain gcc " \
+              "stacks can be built into, so far"
+      return 0
+    end
+
+    gcc_ver = stack.ver
     at_stack = env_scope.with(stack: gcc_ver)
     fragments = @packages.values.flat_map { |p|
       p.at(at_stack, world: world).sysroot_fragments(gcc_ver)
@@ -1010,14 +1021,14 @@ class PackageManager
     has_pkgs = pkgs.directory? && !Dir.empty?(pkgs.to_s)
 
     if fragments.empty? && has_pkgs
-      error "Refusing to empty the composed sysroot of gcc-#{gcc_ver}: " \
+      error "Refusing to empty the composed sysroot of #{stack}: " \
             "it has packages installed, so finding no fragments for it " \
             "means the question was asked wrongly, not that it is empty"
       return 0
     end
 
     n = Sysroot.compose(root, fragments)
-    info "Composed sysroot gcc-#{gcc_ver}: #{n} entries from " \
+    info "Composed sysroot #{stack}: #{n} entries from " \
          "#{fragments.length} packages"
     return n
   end

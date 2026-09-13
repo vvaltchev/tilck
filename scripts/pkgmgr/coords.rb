@@ -22,13 +22,16 @@
 #   stack     which build environment produced it. Deliberately NOT
 #             "the compiler": its values look like compilers today,
 #             but naming it this way leaves gcc-13.3.0-musl and
-#             gcc-14.4.0-lto legal without changing the schema
+#             gcc-14.4.0-lto legal without changing the schema. The
+#             grammar, <family>-<version>[-<variant>], is StackId's
+#             (stack_id.rb): a directory is a stack when it parses.
 #             any, gcc-14.4.0, gcc-13.3.0
 #
 # ANY is a reserved word in all three: no distro, board or stack may
 # be called it.
 #
 require_relative 'version'
+require_relative 'stack_id'
 
 class Coords
 
@@ -60,33 +63,42 @@ class Coords
   end
   private :check
 
-  # The version in a stack NAME, written either way: "gcc-14.4.0", as
-  # it appears in a path and in the -L listing, or the bare "14.4.0"
-  # that names it just as unambiguously while there is one kind of
-  # stack. nil when it is neither.
+  # A stack as a PERSON writes it: "gcc-14.4.0", as it appears in a
+  # path and in the -L listing, or the bare "14.4.0" that names the
+  # plain gcc stack just as unambiguously. A StackId, or nil when it
+  # is neither.
   #
   # Here rather than in the option parser because the spelling of a
-  # stack is the schema's business, and stack_ver right below is the
+  # stack is the schema's business, and stack_id right below is the
   # same knowledge read in the other direction.
   def self.parse_stack(str)
-    return SafeVer(str.to_s.strip.sub(/\Agcc-/, ""))
+    s = str.to_s.strip
+    bare = SafeVer(s)
+    return StackId.of(bare) if bare
+    return StackId.parse(s)
   end
 
-  # The name a stack version is filed under. The inverse of
-  # parse_stack, so callers that print a stack agree with callers that
-  # read one.
-  def self.stack_name(ver) = "gcc-#{ver}"
-
-  # The compiler version this stack names, or nil when the stack is
-  # not a GCC one -- ANY, or the clang-* the schema leaves room for.
-  #
-  # Lives here because the spelling of a stack is the schema's
-  # business: everyone who needed the version was re-deriving it with
-  # a sub("gcc-", "") of their own.
-  def stack_ver
-    return nil if @stack == ANY || !@stack.start_with?("gcc-")
-    return SafeVer(@stack.sub("gcc-", ""))
+  # The compiler version of the plain gcc stack a person named -- the
+  # one kind of stack an invocation can be in (Scope#stack) -- or nil
+  # when the string names no stack, or a stack of another kind.
+  def self.parse_stack_ver(str)
+    id = parse_stack(str)
+    return id&.plain? ? id.ver : nil
   end
+
+  # The name a stack is filed under: a StackId's spelling, or the
+  # plain gcc stack of a compiler version. The inverse of parse_stack,
+  # so callers that print a stack agree with callers that read one.
+  def self.stack_name(stack) = StackId.coerce(stack).to_s
+
+  # The stack these coordinates name, or nil for a directory that is
+  # not spelled like a stack -- ANY among them -- which the schema's
+  # scanners therefore leave alone.
+  def stack_id = StackId.parse(@stack)
+
+  # The compiler version inside the stack, whatever its family and
+  # variant; nil where there is no stack.
+  def stack_ver = stack_id&.ver
 
   # The three coordinates as a path fragment, for messages.
   def to_s = @key

@@ -22,6 +22,7 @@
 
 require_relative 'early_logic'
 require_relative 'arch'
+require_relative 'coords'
 
 Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board,
                     :host_os, :host_arch) do
@@ -51,5 +52,5 @@ Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board,
                      host_os: host_os, host_arch: host_arch)
   end
 
-  def to_s = "#{arch.name}/#{board} gcc-#{stack}"
+  def to_s = "#{arch.name}/#{board} #{Coords.stack_name(stack)}"
 end

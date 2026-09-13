@@ -601,7 +601,8 @@ class Package
               "string \"gcc-\" and every arch would share one directory"
       end
 
-      Coords.new("tilck-#{a.name}", target_board(a), "gcc-#{a.gcc_ver}")
+      Coords.new("tilck-#{a.name}", target_board(a),
+                 Coords.stack_name(a.gcc_ver))
     end
   end
 
@@ -2073,14 +2074,15 @@ class Package
 
   # The coordinates of every stack on disk.
   def stack_coords_on_disk
-    return pkgmgr.host_stacks.map { |v| pkgmgr.stack_coords(Ver(v)) }
+    return pkgmgr.host_stacks.map { |id| pkgmgr.stack_coords(id) }
   end
 
-  # The stack directories present under one <machine>/<env>.
+  # The stack directories present under one <machine>/<env>: those
+  # spelled like a stack (StackId), whatever the family or variant.
   def stack_dirs_of(machine, env)
     dir = Coords.env_dir(machine, env)
     return [] if !dir.directory?
-    return Dir.children(dir).select { |d| d.start_with?("gcc-") }
+    return Dir.children(dir).select { |d| StackId.parse(d) }
   end
 
   def regular_target_package_get_install_list
@@ -2095,10 +2097,8 @@ class Package
       for board in (arch_obj.boards || [nil])
         for cc_dir in stack_dirs_of("tilck-#{arch_obj.name}", board)
 
-          cc_ver = SafeVer(cc_dir.sub("gcc-", ""))
-          next if !cc_ver
-
           coords = Coords.new("tilck-#{arch_obj.name}", board, cc_dir)
+          cc_ver = coords.stack_ver           # the stack's, lto or not
           dir = pkg_dir_at(coords)
           next if !dir.directory?
 

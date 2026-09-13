@@ -331,6 +331,7 @@ module TestHelper
   def distro_pkgs   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil).pkgs_dir
   def hostcc_pkgs   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, HOST_CC).pkgs_dir
   def stack_pkgs(v) = Coords.new(HOST_OS_ARCH, nil, "gcc-#{v}").pkgs_dir
+  def stack_pkgs_at(id) = Coords.new(HOST_OS_ARCH, nil, id.to_s).pkgs_dir
 
   # Target and noarch package dirs. Tests used to spell these out as
   # tc/"gcc-<ver>"/<arch>/..., which is why a layout change broke

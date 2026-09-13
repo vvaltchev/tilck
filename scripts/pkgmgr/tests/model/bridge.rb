@@ -168,6 +168,12 @@ module Bridge
     for p in pkgmgr.all_packages do
       for i in p.get_install_list do
         next if i.path.nil? || i.broken
+        # A stack the tool cannot build into -- a variant, a foreign
+        # compiler -- has no placement rule yet: the invocation's
+        # stack is a plain gcc version (Scope#stack), so the package
+        # cannot be asked where an install in gcc-14.4.0-lto goes.
+        # Such an install is identified by its coordinates alone.
+        next if i.coords&.stack_id && !i.coords.stack_id.plain?
         want = p.at(p.scope_at(i, env)).coords(i.ver)
         next if want == i.coords
         out << "#{p.name}@#{i.ver} is at #{i.coords}, its package says #{want}"

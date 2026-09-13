@@ -413,10 +413,11 @@ module Planner
   # against the layout table in docs/package_manager.md.
   def uninstall_where(registry, pkg, all_pkgs, cc, arch, board, scope)
 
+    # -c names the plain gcc stack of a version; ALL is :any, every
+    # stack; "syscc" names no stack directory at all, and matches none.
     stack_of = ->(default) {
-      next :any    if cc == :any
       next default if cc.nil?
-      Coords.stack_name(cc)
+      cc.is_a?(Version) ? Coords.stack_name(cc) : cc
     }
 
     # The board of an arch's coordinates: -b's, every one for ALL, the
@@ -479,7 +480,7 @@ module Planner
     if pkg.on_host
       return [] if !arch.nil? || !board.nil?
       return [CoordsFilter.exact(at.coords)] if cc.nil? || cc == :any
-      return [] if pkg.host_tier != :stack
+      return [] if pkg.host_tier != :stack || !cc.is_a?(Version)
       return [CoordsFilter.exact(Coords.new(HOST_OS_ARCH, nil,
                                             Coords.stack_name(cc)))]
     end
@@ -490,7 +491,8 @@ module Planner
     end
 
     a = arch.nil? ? scope.arch : arch_of.call(arch)
-    return [target_at.call(a, env_of.call(a), "gcc-#{a.gcc_ver}")]
+    return [target_at.call(a, env_of.call(a),
+                           Coords.stack_name(a.gcc_ver))]
   end
 
   # WHICH installations `-u` means, as one value.
@@ -519,7 +521,11 @@ module Planner
                compiler: nil, arch: nil, board: nil, coords: nil)
 
     all_pkgs = name.eql?("ALL")
-    cc = compiler.eql?("ALL") ? :any : (compiler.blank? ? nil : compiler)
+    # The compiler as a Version where it is one; "syscc" as the word.
+    cc = if compiler.eql?("ALL") then :any
+         elsif compiler.blank?   then nil
+         else SafeVer(compiler.to_s) || compiler
+         end
     ver = nil if ver.blank?
 
     where = if coords

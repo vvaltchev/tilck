@@ -131,8 +131,17 @@ one we find. `pc` is the board for i386 and x86_64.
 
 `<stack>` is deliberately not called "the compiler". It is the identity
 of a build environment, which today is always a compiler but must be
-free to become `gcc-14.4.0-lto` without a schema change. `any` means no
-particular build environment matters: a static binary, or a blob.
+free to become `gcc-14.4.0-lto` without a schema change. Its grammar is
+`<family>-<version>[-<variant>]` and lives in one place, `StackId`
+(`scripts/pkgmgr/stack_id.rb`): a directory is a stack when that
+parses it, `gcc-14.4.0-lto` and `clang-18.1.0` included, and the
+compiler version inside is read through the family and the variant.
+Such a stack is scanned, listed by `-L` and identified by its
+coordinates like any other; what an invocation can *build into*
+(`-H`, `Scope#stack`) is still the plain `gcc-<version>` stack, and
+naming another kind is refused as that rather than as unknown. `any`
+means no particular build environment matters: a static binary, or a
+blob.
 
 A package name can appear only under `pkgs/`, so it can never be
 mistaken for structure. `sysroot/` exists exactly when we built the
