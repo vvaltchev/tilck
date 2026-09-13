@@ -633,6 +633,12 @@ module Recipe
   # logs of an out-of-tree build first lifted out of the directory
   # about to go, prefixed with where they came from.
   #
+  # The logs are the record of HOW a package was built, and they are
+  # worth more than the space: warnings a newer compiler raises on
+  # older code often mark undefined behaviour it is about to exploit,
+  # and that signal is only visible there. Deleting them alongside
+  # the source made the question unanswerable without a rebuild.
+  #
   class Prune < Step
     def self.tag = "prune"
 

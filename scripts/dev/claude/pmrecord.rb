@@ -81,7 +81,6 @@ module FileUtils
 end
 
 class Package
-  def prune_build_tree = emit("prune")
   def source_ref_short(d) = "SRCREF"
   def with_stack_toolchain(ctx = nil, &b) = in_scope("stack_toolchain", &b)
   def in_scope(n, &b)

@@ -593,10 +593,11 @@ is the same and what is installed no longer matches the sources it claims
 to come from.
 
 So each install records what it was built FROM, in a hidden
-`.build_inputs` beside what was built: a digest of the *recipe* (the
-declared flags, the build steps, and the source of the methods the
-package itself defines, comments excluded) plus a digest of every patch
-file that applies to it.
+`.build_inputs` beside what was built: a digest of the *recipe* -- the
+build steps, which are data (`scripts/pkgmgr/recipe.rb`), so that what
+is hashed is exactly what runs -- plus a digest of every patch file
+that applies to it. The Ruby around a recipe may change freely; only
+a step it emits can move the digest.
 
 Beside it, `.built_against` records which version of each dependency the
 install was built with. That is knowable only while the request that pulled

@@ -1,103 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 require_relative 'test_helper'
-require_relative '../source_digest'
 require_relative '../build_inputs'
 require_relative '../micropython'
-
-#
-# Fingerprinting the code that builds a package.
-#
-# The properties that make this usable rather than merely correct: it
-# must notice a changed flag, and must NOT notice a reworded comment,
-# because a 30-minute rebuild for a prose edit is the kind of price
-# that makes people switch a safety mechanism off.
-#
-class TestSourceDigest < Minitest::Test
-
-  include TestHelper
-
-  def write_rb(dir, body)
-    path = File.join(dir, "probe.rb")
-    File.write(path, body)
-    return path
-  end
-
-  SAMPLE = <<~RB
-    class Probe
-      # A comment that says something.
-      def build
-        run("make", "V=1")     # trailing comment
-      end
-
-      def other
-        42
-      end
-    end
-  RB
-
-  def test_extracts_one_method_not_the_file
-    Dir.mktmpdir do |d|
-      f = write_rb(d, SAMPLE)
-      src = SourceDigest.method_source(f, :build)
-      assert_includes src, "make"
-      refute_includes src, "42"
-    end
-  end
-
-  def test_comments_do_not_change_the_digest
-    Dir.mktmpdir do |d|
-      a = SourceDigest.method_source(write_rb(d, SAMPLE), :build)
-      SourceDigest.instance_variable_set(:@cache, nil)
-      reworded = SAMPLE.sub("# A comment that says something.",
-                            "# TOTALLY DIFFERENT PROSE")
-                       .sub("# trailing comment", "# also different")
-      b = SourceDigest.method_source(write_rb(d, reworded), :build)
-      assert_equal a, b
-    end
-  end
-
-  def test_a_changed_flag_changes_the_digest
-    Dir.mktmpdir do |d|
-      a = SourceDigest.method_source(write_rb(d, SAMPLE), :build)
-      SourceDigest.instance_variable_set(:@cache, nil)
-      changed = SAMPLE.sub('"V=1"', '"V=0"')
-      b = SourceDigest.method_source(write_rb(d, changed), :build)
-      refute_equal a, b
-    end
-  end
-
-  # Moving a method within its file is not a change to what it does.
-  def test_order_does_not_matter
-    Dir.mktmpdir do |d|
-      f1 = write_rb(d, SAMPLE)
-      d1 = SourceDigest.digest(SourceDigest.method_source(f1, :build),
-                               SourceDigest.method_source(f1, :other))
-      SourceDigest.instance_variable_set(:@cache, nil)
-
-      swapped = <<~RB
-        class Probe
-          def other
-            42
-          end
-
-          def build
-            run("make", "V=1")
-          end
-        end
-      RB
-      f2 = write_rb(d, swapped)
-      d2 = SourceDigest.digest(SourceDigest.method_source(f2, :build),
-                               SourceDigest.method_source(f2, :other))
-      assert_equal d1, d2
-    end
-  end
-
-  def test_missing_file_is_not_a_crash
-    assert_equal({}, SourceDigest.parse_defs("/nonexistent/x.rb"))
-  end
-end
-
 
 #
 # The record itself.
@@ -541,112 +446,6 @@ end
 
 
 #
-# Prism reports BYTE offsets; String#[]= with a Range addresses
-# CHARACTERS. One em-dash in a comment is enough to make the two
-# disagree, and the whole rebuild died on it -- after expat had been
-# built, because expat was the first package to call a shared helper
-# and so the first to hash package.rb, which is full of em-dashes.
-#
-class TestMultiByteSource < Minitest::Test
-
-  include TestHelper
-
-  MULTIBYTE = <<~RB
-    class Probe
-      # An em-dash — and an arrow → and an accent é, all multi-byte.
-      def first
-        run("a")
-      end
-
-      # More prose — with another — dash.
-      def second
-        run("b")
-      end
-    end
-  RB
-
-  def test_multibyte_comments_do_not_crash
-    Dir.mktmpdir do |d|
-      f = File.join(d, "mb.rb")
-      File.write(f, MULTIBYTE)
-      SourceDigest.instance_variable_set(:@cache, nil)
-
-      src = SourceDigest.method_source(f, :second)
-      refute_empty src
-      assert_includes src, '"b"'
-
-      # The comment must still be gone, not merely survived.
-      refute_includes src, "More prose"
-    end
-  end
-
-  def test_a_multibyte_comment_edit_still_changes_nothing
-    Dir.mktmpdir do |d|
-      f = File.join(d, "mb.rb")
-      File.write(f, MULTIBYTE)
-      SourceDigest.instance_variable_set(:@cache, nil)
-      a = SourceDigest.method_source(f, :first)
-
-      File.write(f, MULTIBYTE.sub("An em-dash — and an arrow → and an accent é",
-                                  "Rewritten — with ✓ different ✗ symbols"))
-      SourceDigest.instance_variable_set(:@cache, nil)
-      b = SourceDigest.method_source(f, :first)
-
-      assert_equal a, b
-    end
-  end
-
-  # The real file that broke it.
-  def test_the_real_package_rb_can_be_hashed
-    src = SourceDigest.method_source(
-      File.expand_path("../package.rb", __dir__), :host_compiler_gnu17
-    )
-    refute_empty src
-    assert_includes src, "gnu17"
-  end
-
-  # A recipe is only a recipe AT some coordinates, and the stack is
-  # one of them -- not just the arch.
-  #
-  # x11 and expat pass "--libdir=#{stack_sysroot}/usr/lib", which
-  # spells out the stack they belong to. Checking an install that
-  # lives in gcc-16.2.0 while the invocation's stack is gcc-14.4.0
-  # rendered the 14.4.0 path, compared it against a record written
-  # with the 16.2.0 one, and reported twenty-two packages built ten
-  # minutes earlier as stale.
-  def test_a_stack_packages_flags_are_read_at_its_own_stack
-    with_fake_tc do
-      with_stubbed_externals do
-        reset_pkgmgr!
-        pkg = FakePackage.new("host_thing", on_host: true,
-                              host_tier: :stack,
-                              arch_list: ALL_HOST_ARCHS.values)
-
-        pkg.define_singleton_method(:build_flags) { |ver = nil|
-          ["--libdir=#{stack_sysroot}/usr/lib"]
-        }
-
-        pkgmgr.register(pkg)
-
-        other = Ver("9.9.9")
-        pkgmgr.with_host_stack(other) { pkgmgr.install("host_thing") }
-        pkgmgr.refresh
-
-        inst = pkg.get_install_list.find { |i|
-          i.coords&.stack_ver == other
-        }
-        refute_nil inst, "the install did not land in the other stack"
-
-        # Looking from the default stack, which is not the one it was
-        # built in.
-        assert_equal :ok, pkg.build_inputs_state_of(inst),
-                     "judged with another stack's paths"
-      end
-    end
-  end
-end
-
-#
 # Two more lines of the fingerprint's ledger.
 #
 # clean_build is recovery, not recipe: it runs before a resumed build
@@ -674,12 +473,6 @@ class TestWhatTheFingerprintCounts < Minitest::Test
       assert_equal WithoutCleanBuild.new("a").build_recipe_digest,
                    WithCleanBuild.new("b").build_recipe_digest
     end
-  end
-
-  def test_the_dialect_helper_is_fingerprinted_for_its_callers
-    assert_includes Package::BUILD_HELPERS, :host_compiler_gnu17
-    params = Package.instance_method(:host_compiler_gnu17).parameters
-    assert_equal [], params, "an argument could go unrecorded"
   end
 end
 

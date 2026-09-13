@@ -106,8 +106,6 @@ class TestPostconditions < Minitest::Test
         }
       }
       assert_equal a.build_recipe_digest, b.build_recipe_digest
-      assert_includes Package::NON_RECIPE_HOOKS, :postconditions,
-                      "and the source branch leaves them out too"
     end
   end
 
