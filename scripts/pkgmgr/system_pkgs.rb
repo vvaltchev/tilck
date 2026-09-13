@@ -61,6 +61,14 @@ module SystemPkgs
     def query_argv(pkg) = raise(NotImplementedError)
     def install_argv(pkgs, assume_yes: false) = raise(NotImplementedError)
 
+    # Where this backend's development packages put their headers and
+    # libraries -- the prefix a build must name when the host's
+    # default search path does not already cover it. The distro
+    # backends install under /usr, and the compiler finds that
+    # unaided; Homebrew's keg-only packages live each in a prefix of
+    # its own, which is why this exists.
+    def prefix_of(pkg) = "/usr"
+
     # The full command line to install `pkgs`, privilege escalation
     # included. Kept separate from install_argv so that the escalation
     # logic is written once and so that the caller can PRINT the exact
@@ -122,6 +130,10 @@ module SystemPkgs
     def initialize = super(:pkg, "pkg")
     def query_argv(pkg) = ["pkg", "info", "-e", pkg]
 
+    # Ports install under /usr/local. A dependency with no port name
+    # is one the base system provides, under /usr.
+    def prefix_of(pkg) = pkg.nil? ? "/usr" : "/usr/local"
+
     def install_argv(pkgs, assume_yes: false)
       return ["pkg", "install", *(assume_yes ? ["-y"] : []), *pkgs]
     end
@@ -133,6 +145,14 @@ module SystemPkgs
     def initialize = super(:brew, "brew")
     def query_argv(pkg) = ["brew", "list", "--formula", pkg]
     def needs_root? = false
+
+    # Each formula in its own keg: `brew --prefix openssl@3` is the
+    # only way to learn where its headers are.
+    def prefix_of(pkg)
+      return nil if pkg.nil?
+      ok, out = SystemPkgs.run_capture(["brew", "--prefix", pkg])
+      return ok && !out.strip.empty? ? out.strip : nil
+    end
 
     def install_argv(pkgs, assume_yes: false)
       return ["brew", "install", *pkgs]
