@@ -547,9 +547,16 @@ class Package
   # The version is taken from the staging directory's own name, which
   # is `ver_dirname(ver)`: staging and final share the <pkg>/<ver>/
   # tail, so this stays correct for a pinned install too.
-  def final_install_prefix(staging_path)
+  # Where this version's directory will be once the atomic move
+  # completes -- the counterpart of the staging directory a build runs
+  # in, and what anything pointing AT the install has to name.
+  def final_install_dir(staging_path)
     ver_dir = File.basename(staging_path.to_s)
-    return final_install_root / pkg_dirname / ver_dir / "install"
+    return final_install_root / pkg_dirname / ver_dir
+  end
+
+  def final_install_prefix(staging_path)
+    return final_install_dir(staging_path) / "install"
   end
 
   # The version currently being installed, which is NOT default_ver
@@ -643,8 +650,10 @@ class Package
   # keeps it computable during a staleness check -- when no build is
   # running and there is no install directory to speak of.
   #
-  #   $INSTALL   this version's install directory
-  #   $PREFIX    where this version will live once installed
+  #   $INSTALL   this version's directory WHILE it is being built
+  #   $FINAL     ...and where that directory ends up
+  #   $SRC       the Tilck repository
+  #   $PREFIX    the install prefix under $FINAL
   #   $DESTDIR   where `make install` stages it first
   #   $SYSROOT   the stack's composed sysroot
   #   $PAR       the build parallelism
@@ -689,6 +698,11 @@ class Package
     return {
       "INSTALL" => install_dir.to_s,
 
+      # The repository. A recipe that copies a config file in from the
+      # tree names it through this, so the digest does not record
+      # where somebody happened to clone Tilck.
+      "SRC"     => MAIN_DIR.to_s,
+
       # Where the package will live once installed, NOT the staging
       # path it is standing in: ld bakes its library search dirs into
       # itself from --prefix, and staging stops existing the moment
@@ -697,6 +711,7 @@ class Package
       # Lazy, like the two below: only a host package has a final
       # install prefix, and a target package that never names the
       # token must not be asked to produce one.
+      "FINAL"   => -> { final_install_dir(install_dir).to_s },
       "PREFIX"  => -> { final_install_prefix(install_dir).to_s },
       "DESTDIR" => "#{install_dir}/destdir",
       "SYSROOT" => (on_host ? stack_sysroot.to_s : ""),
@@ -784,7 +799,9 @@ class Package
       end
     end
 
-    def prune = @pkg.prune_build_tree
+    # prune is the base class's: it is the same operation
+    # prune_build_tree performs, and that one stays only for the
+    # packages the conversion has not reached.
   end
 
   def run_build_steps(install_dir, ver = nil)

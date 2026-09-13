@@ -51,34 +51,24 @@ class FbDoomPackage < Package
     ["fbdoom.gz", false],
   ]
 
-  def install_impl_internal(install_dir)
+  def build_steps(ver = nil)
 
     arch_tc = default_arch().gcc_tc
-    ok = false
-    with_saved_env(["LDFLAGS"]) do
-      ENV["LDFLAGS"] = "-static"
-      chdir("fbdoom") do
-        ok = run_command("build.log", [
-          "make", "NOSDL=1", "-j#{BUILD_PAR}",
-        ])
-        next if !ok
 
-        ok = system("#{arch_tc}-linux-strip", "--strip-all", "fbdoom")
-        next if !ok
-        ok = system("gzip", "-f", "fbdoom")
-      end
-    end
-    return false if !ok
+    return [
+      Within(dir: "fbdoom", env: { "LDFLAGS" => "-static" }, steps: [
+        Run(log: "build.log", argv: ["make", "NOSDL=1", "-j$PAR"]),
+        Run(argv: ["#{arch_tc}-linux-strip", "--strip-all", "fbdoom"]),
+        Run(argv: ["gzip", "-f", "fbdoom"]),
+      ]),
 
-    # The package's deliverable is a single fbdoom.gz binary. Move it
-    # out of the fbdoom/ source subdir, then discard everything else
-    # so the install tree stays small and matches expected_files.
-    mv("fbdoom/fbdoom.gz", "fbdoom.gz")
-    Dir.children(".").each { |e|
-      next if e == "fbdoom.gz"
-      rm_rf(e)
-    }
-    return true
+      # The package's deliverable is a single fbdoom.gz binary. Move
+      # it out of the fbdoom/ source subdir, then discard everything
+      # else so the install tree stays small and matches
+      # expected_files.
+      Move(from: "fbdoom/fbdoom.gz", to: "fbdoom.gz"),
+      Prune(keep: ["fbdoom.gz"]),
+    ]
   end
 end
 

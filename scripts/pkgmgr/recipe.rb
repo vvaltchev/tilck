@@ -253,8 +253,9 @@ module Recipe
 
     field :from
     field :to
+    field :except, []
 
-    def run(ctx) = Recipe.transfer(ctx, :cp_r, "copy", from, to)
+    def run(ctx) = Recipe.transfer(ctx, :cp_r, "copy", from, to, except)
     def describe = "copy #{from} -> #{to}"
   end
 
@@ -263,8 +264,9 @@ module Recipe
 
     field :from
     field :to
+    field :except, []
 
-    def run(ctx) = Recipe.transfer(ctx, :mv, "move", from, to)
+    def run(ctx) = Recipe.transfer(ctx, :mv, "move", from, to, except)
     def describe = "move #{from} -> #{to}"
   end
 
@@ -298,10 +300,20 @@ module Recipe
     field :target
     field :link
 
+    # Replacing a symlink is the point -- the same build run twice
+    # must work. Replacing anything ELSE is not: the link often points
+    # into the source tree, and rm -rf of a real directory there is
+    # not a thing a recipe should be able to do by accident.
     def run(ctx)
+
       at = ctx.path_of(link)
       Recipe.needs_parent("symlink", link, at)
-      FileUtils.rm_rf(at)
+
+      if File.exist?(at) && !File.symlink?(at)
+        raise Error, "symlink: #{link} exists and is not a symlink"
+      end
+
+      File.unlink(at) if File.symlink?(at)
       File.symlink(ctx.expand(target), at)
     end
 
@@ -536,8 +548,13 @@ module Recipe
   class Prune < Step
     def self.tag = "prune"
 
-    def run(ctx) = ctx.prune
-    def describe = "prune"
+    # What survives. The default is a package that installs into
+    # install/; one whose deliverable is a single file at the top says
+    # so instead.
+    field :keep, ["install", "*.log"]
+
+    def run(ctx) = ctx.prune(keep)
+    def describe = "prune (keeping #{keep.join(" ")})"
   end
 
   KINDS = [Run, Capture, Mkdir, Copy, Move, Remove, Symlink, Chmod, Write,
@@ -682,11 +699,15 @@ module Recipe
 
     public
 
-    def prune
+    def prune(keep = ["install", "*.log"])
+
+      kept = ->(e) {
+        keep.any? { |p| File.fnmatch?(p, e, File::FNM_DOTMATCH) }
+      }
 
       for d in Dir.children(@root) do
         at = File.join(@root, d)
-        next if d == "install" || !File.directory?(at)
+        next if kept.call(d) || !File.directory?(at)
 
         Dir.glob("#{at}/*.log").each { |l|
           FileUtils.mv(l, File.join(@root, "#{d}-#{File.basename(l)}"))
@@ -694,7 +715,7 @@ module Recipe
       end
 
       for e in Dir.children(@root) do
-        next if e == "install" || e.end_with?(".log")
+        next if kept.call(e)
         FileUtils.rm_rf(File.join(@root, e))
       end
     end
@@ -786,9 +807,25 @@ module Recipe
   # both refuse to match nothing (a typo that copies nothing is not a
   # thing anyone wants to succeed), and both require an existing
   # directory as the destination when the glob matched more than one.
-  def transfer(ctx, op, who, from, to)
+  # "." as a source means the ENTRIES of that directory, dotfiles
+  # included -- what `cp -r src/. dst` does, and the only way to copy
+  # a tree whose contents are not known in advance.
+  def sources_of(ctx, from)
 
-    srcs = ctx.glob(from)
+    return ctx.glob(from) if File.basename(ctx.expand(from)) != "."
+
+    dir = ctx.path_of(from)
+    return Dir.children(dir).sort.map { |e| File.join(dir, e) }
+  end
+
+  def transfer(ctx, op, who, from, to, except = [])
+
+    srcs = sources_of(ctx, from).reject { |s|
+      except.any? { |pat|
+        File.fnmatch?(pat, File.basename(s), File::FNM_DOTMATCH)
+      }
+    }
+
     raise Error, "#{who}: nothing matches #{from}" if srcs.empty?
     dst = ctx.path_of(to)
 

@@ -50,7 +50,7 @@ class TilckStackPackage < Package
   def default_ver = VERSION
   def installable_versions = [VERSION]
   def expected_files(ver = nil) = []
-  def install_impl_internal(install_dir) = true
+  def nothing_to_build? = true
 
   # The members: what is declared default for this arch and board, as
   # the packages themselves say it under those coordinates -- the
