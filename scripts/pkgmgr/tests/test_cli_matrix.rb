@@ -311,6 +311,39 @@ class TestCliMatrix < Minitest::Test
   # reason said, nothing installed. The full lane has this case; the
   # sampled one need not, and the mutant that dropped the refusal
   # survived on CI for exactly that reason.
+  # A package at every version it offers: one round per version,
+  # said as such, each planned from the world the one before leaves.
+  def test_s_ALL_installs_every_version_in_rounds
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_q", on_host: true, host_tier: :distro)
+        pkg.define_singleton_method(:installable_versions) {
+          [Ver("1.0.0"), Ver("2.0.0")]
+        }
+        pkgmgr.register(pkg)
+
+        rc, out = run_cli("-s", "host_q:ALL", "-q")
+        assert_equal 0, rc, out
+        assert_match(/Round 1 of 2: host_q:1.0.0/, out)
+        assert_match(/Round 2 of 2: host_q:2.0.0/, out)
+        assert_equal %w[1.0.0 2.0.0],
+                     pkg.get_install_list.map { |i| i.ver.to_s }.sort
+
+        rc, out = run_cli("-C", "host_q:ALL", "-q")
+        assert_equal 1, rc
+        assert_match(/name one version/, out)
+
+        # ALL of a package declaring no versions is its default, once.
+        plain = FakePackage.new("plain")
+        pkgmgr.register(plain)
+        rc, out = run_cli("-s", "plain:ALL", "-q")
+        assert_equal 0, rc, out
+        refute_match(/Round/, out)
+        assert_equal ["1.0.0"], plain.get_install_list.map { |i| i.ver.to_s }
+      end
+    end
+  end
+
   def test_s_refuses_a_version_conflict_and_installs_nothing
     with_fake_tc do
       with_stubbed_externals do

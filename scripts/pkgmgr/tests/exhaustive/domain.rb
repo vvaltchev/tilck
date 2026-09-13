@@ -298,6 +298,9 @@ module Exhaustive
         lines << "-s #{n}:#{v}" << "-s #{n}:#{v} -f" << "-u #{n}:#{v}" \
               << "--mark-auto #{n}:#{v}"
       }
+      # Every version at once, by ALL and by name: once per version.
+      lines << "-s #{n}:ALL" << "-C #{n}:ALL"
+      lines << "-s #{n}:#{vers[0]} #{n}:#{vers[1]}" if vers.length > 1
       # The dependency asked for beside the root that pins it: the
       # request means the pinned version, not the default.
       b.dep_list.select(&:ver).each { |d| lines << "-s #{n} #{d.name}" }

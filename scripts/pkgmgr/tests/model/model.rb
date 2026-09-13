@@ -404,15 +404,50 @@ module Model
   # --- transitions ----------------------------------------------------------
 
   # `-s ALL`: every package that can be installed HERE, less the cross
-  # compilers (expand_install_all in main.rb). Per scope, since what is
-  # installable depends on the arch and board.
+  # compilers. Per scope, since what is installable depends on the
+  # arch and board. `-s X:ALL`: every version X declares, or its
+  # default when it declares none.
   def expand_all(registry, targets, scope)
     return targets.flat_map { |name, ver|
-      next [[name, ver]] if name != :all
-      registry.shapes.reject(&:compiler?)
-              .select { |s| supported?(s, scope, registry) }
-              .map { |s| [s.name, ver] }
+      names = if name != :all then [name]
+              else registry.shapes.reject(&:compiler?)
+                           .select { |s| supported?(s, scope, registry) }
+                           .map(&:name)
+              end
+      names.flat_map { |n|
+        next [[n, ver]] if ver != :all
+        s = registry[n]
+        (s.nil? || s.versions.empty? ? [nil] : s.versions).map { |v| [n, v] }
+      }
     }
+  end
+
+  # SPEC: a package named more than once -- twice by version, or by
+  # X:ALL -- is installed once per version, in rounds: the first
+  # round takes every package's first version, the next the second
+  # versions, and so on, each planned from the world the one before
+  # it leaves. One plan cannot hold two versions of a package: each
+  # pins its own dependencies (a QEMU its compiler), and two pins of
+  # one dependency are a conflict. The implementation once planned
+  # `-s host_qemu:6.2.0 host_qemu:7.2.0` as one plan, in one stack.
+  def rounds_of(targets)
+    rounds = []
+    for t in targets do
+      r = rounds.find { |x| x.none? { |n, _| n == t.first } }
+      r ? r << t : rounds << [t]
+    end
+    return rounds
+  end
+
+  def install_rounds(registry, world, req, scope)
+    rounds = rounds_of(expand_all(registry, req.targets, scope))
+    last = nil
+    for r in rounds do
+      last = install(registry, world, req.with(targets: r), scope)
+      return last if last.rc != 0
+      world = last.world
+    end
+    return rounds.length == 1 ? last : Outcome.new(0, world, "installed")
   end
 
   # SPEC: a version names one the package declares -- exactly, or by
@@ -942,7 +977,7 @@ module Model
       if req.arch == :all || req.board == :all
         install_every(registry, world, req, sc)
       else
-        install(registry, world, req, sc)
+        install_rounds(registry, world, req, sc)
       end
     when :uninstall then uninstall(registry, world, req, sc)
     when :upgrade   then upgrade(registry, world, req, sc)
@@ -989,7 +1024,7 @@ module Model
 
         }
         next if here.empty?
-        o = install(registry, world, req.with(targets: here), s2)
+        o = install_rounds(registry, world, req.with(targets: here), s2)
         return o if o.rc != 0
         world = o.world
       end

@@ -474,6 +474,35 @@ class TestModel < Minitest::Test
     assert_equal "already installed", o.out
   end
 
+  # A package named at two versions -- by name, or by X:ALL -- is
+  # installed once per version, in rounds; one plan cannot hold both,
+  # since each pins its own dependencies. The implementation planned
+  # `-s host_qemu:6.2.0 host_qemu:7.2.0` as one plan in one stack.
+  def test_two_versions_of_a_package_are_two_rounds
+    r = reg(Model::Shape.make("host_q", :stack, versions: %w[1.0.0 2.0.0],
+                              deps: [["host_gcc", nil]]),
+            Model::Shape.make("host_gcc", :stack_cc,
+                              versions: %w[14.4.0 16.2.0]))
+    both = Model.world(k("host_q", "1.0.0", stack(A), origin: :pinned),
+                       k("host_q", "2.0.0", stack(A), origin: :pinned))
+
+    o = go(r, Model.world, "-s host_q:1.0.0 host_q:2.0.0", inv)
+    assert_equal 0, o.rc, o.out
+    assert_equal both, o.world.select { |x| x.name == "host_q" }.to_set
+
+    o = go(r, Model.world, "-s host_q:ALL", inv)
+    assert_equal 0, o.rc, o.out
+    assert_equal both, o.world.select { |x| x.name == "host_q" }.to_set
+
+    # ALL of a package declaring no versions is its default.
+    r2 = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    o = go(r2, Model.world, "-s t:ALL", inv)
+    assert_equal Model.world(k("t", "1.0.0", tgt(I386))), o.world
+
+    # -C takes one version.
+    assert_equal 1, go(r, Model.world, "-C host_q:ALL", inv).rc
+  end
+
   # A pin reaches a dependency: -s host_a installs host_shared at the
   # pinned version, and records it as pinned.
   def test_a_pin_reaches_the_dependency

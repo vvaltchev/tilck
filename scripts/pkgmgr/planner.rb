@@ -976,7 +976,8 @@ module Planner
       blabel = req.every_board? ? board : nil
 
       # ALL expanded inside the arch's scope, so that what is
-      # installable is read for the right arch.
+      # installable is read for the right arch; X:ALL to every
+      # version X can install, or its default when it declares none.
       requested = []
       for name, ver in expand_all(registry, req.targets, sc) do
         t = resolve_target(registry, name, ver)
@@ -984,7 +985,8 @@ module Planner
           if t.is_a?(Refusal)
         full, v, note = t
         notes << note if note
-        requested << [full, v]
+        vs = v == :all ? registry.get(full).installable_versions : [v]
+        (vs.empty? ? [nil] : vs).each { |x| requested << [full, x] }
       end
 
       # Arch AND board support for each requested package, here,
@@ -1010,16 +1012,43 @@ module Planner
         next
       end
 
-      plan = plan_install(registry, world, requested, sc, force: req.force)
-      return Outcome.refused(world, plan.message, acts: acts) \
-        if plan.is_a?(Refusal)
+      # A package named at several versions is installed once per
+      # version, in rounds, each planned from the world the one
+      # before it leaves.
+      rounds = rounds_of(requested)
+      rounds.each_with_index { |round, i|
+        if rounds.length > 1
+          notes << "Round #{i + 1} of #{rounds.length}: " +
+                   round.map { |n, v| v ? "#{n}:#{v}" : n }.join(" ")
+        end
+        plan = plan_install(registry, world, round, sc, force: req.force)
+        return Outcome.refused(world, plan.message, acts: acts) \
+          if plan.is_a?(Refusal)
 
-      acts << Act.make(plan, roots: requested.map(&:first), arch: label,
-                       board: blabel, notes: notes)
-      world = plan.apply(registry, world) if !req.dry
+        acts << Act.make(plan, roots: round.map(&:first), arch: label,
+                         board: blabel, notes: notes)
+        notes = []
+        world = plan.apply(registry, world) if !req.dry
+      }
     end
 
     return Outcome.ok(world, acts: acts)
+  end
+
+  # The rounds of a request: a package named more than once -- twice
+  # by version, or through X:ALL -- goes once per version, the first
+  # round taking every package's first version, the next the second
+  # ones, and so on. One plan cannot hold two versions of a package:
+  # each pins its own dependencies (a QEMU its compiler), and two
+  # pins of one dependency are a conflict -- `-s host_qemu:6.2.0
+  # host_qemu:7.2.0` planned once, into one stack, with one QEMU.
+  def rounds_of(targets)
+    rounds = []
+    for t in targets do
+      r = rounds.find { |x| x.none? { |n, _| n == t.first } }
+      r ? r << t : rounds << [t]
+    end
+    return rounds
   end
 
   # No mode at all: the Tilck stack of this target -- the meta-package
@@ -1155,6 +1184,8 @@ module Planner
     t = resolve_target(registry, name, ver)
     return Outcome.refused(world, t.message) if t.is_a?(Refusal)
     full, v, note = t
+    return Outcome.refused(world, "-C #{full}:ALL: name one version") \
+      if v == :all
     pkg = registry.get(full)
     if !pkg.configurable?
       return Outcome.refused(world, "Package #{pkg.name} does not support " \
