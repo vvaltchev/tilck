@@ -9,8 +9,6 @@ require_relative 'package_manager'
 
 class GccCompiler < Package
 
-  include FileShortcuts
-  include FileUtilsShortcuts
 
   PROJ_NAME = "musl-cross-make"
   CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME, host: true).to_s
@@ -134,33 +132,26 @@ class GccCompiler < Package
   # directory. Rename binaries like i686-linux-musl-gcc to i686-linux-gcc
   # (and fix any symlinks that point to them) to produce a canonical,
   # libc-agnostic tool name that package_manager#with_cc can use.
-  def install_impl_internal(install_dir)
-    chdir("bin") do
-      Dir.children(".").each(&method(:fix_single_file_name))
-    end
-    return true
-  end
-
-  private
-  def fix_single_file_name(name)
-
-    new_name = name.sub("musl-", "")
-
-    if file? name
-
-      mv(name, new_name) unless new_name == name
-
-    elsif symlink? name
-
-      target = readlink(name)
-      new_target = target.sub("musl-", "")
-      if new_target != target || new_name != name
-        rm_f(name)
-        symlink(new_target, new_name)
-      end
-
-    end
-  end
+  # The tarball's tools are named <triple>-musl-<tool>, and the one
+  # symlink in bin/ (cc -> gcc) points at a musl name too; Tilck's
+  # build wants them without the "musl-". Links first, while their
+  # names still match the glob and their targets still say what to
+  # strip; then every entry is renamed. A link whose target is NOT a
+  # musl name would fail the Transform, which is right: in this
+  # tarball that would be news.
+  def build_steps(ver = default_ver) = [
+    Within(dir: "bin", steps: [
+      ForEach(glob: "*musl*", as: "l", kind: :symlink, steps: [
+        Readlink(bind: "t", path: "$l"),
+        Transform(bind: "t", from: "$t", subs: [["musl-", ""]]),
+        Symlink(target: "$t", link: "$l"),
+      ]),
+      ForEach(glob: "*musl*", as: "f", steps: [
+        Transform(bind: "g", from: "$f", subs: [["musl-", ""]]),
+        Move(from: "$f", to: "$g"),
+      ]),
+    ]),
+  ]
 end # class GccCompiler
 
 for name, arch in ALL_ARCHS do
