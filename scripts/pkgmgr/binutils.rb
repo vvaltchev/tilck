@@ -75,73 +75,65 @@ class HostBinutilsPackage < Package
     ["install/bin/strip", false],
   ]
 
-  def install_impl_internal(install_dir)
-
-    # Configure with the path this will live at once installed, NOT the
-    # staging path we are standing in: ld bakes its library search dirs
-    # and ldscripts location into itself from --prefix, and the staging
-    # directory stops existing the moment the install completes.
-    prefix = final_install_prefix(install_dir)
-    destdir = "#{install_dir}/destdir"
+  # $PREFIX, not the staging path we are standing in: ld bakes its
+  # library search dirs and ldscripts location into itself from
+  # --prefix, and staging stops existing the moment the install
+  # completes.
+  def build_steps(ver = nil) = [
 
     # Binutils insists on being configured outside its source tree.
-    FileUtils.mkdir_p("build")
+    Mkdir(path: "build"),
 
-    conf = [
-      "../configure",
-      "--prefix=#{prefix}",
-      "--with-sysroot=#{stack_sysroot}",
+    Within(dir: "build", steps: [
 
-      # No translations: they would pull in the host's gettext, and
-      # nothing here is user-facing enough to want them.
-      "--disable-nls",
-
-      # Recent GCC warns about things older binutils sources trip over;
-      # those warnings are not ours to fix.
-      "--disable-werror",
-
-      # Byte-identical archives across rebuilds: no timestamps, uids or
-      # gids recorded. Cheap, and it keeps rebuild comparisons honest.
-      "--enable-deterministic-archives",
-
-      # gprofng is a profiler, and not why this package exists: this is
-      # the assembler and linker the host stack is built through, and
-      # nothing here has ever run gprofng. It is also what breaks the
-      # build under GCC 15 and later, whose default C23 reads its
-      # `real_func ()` declarations as taking no arguments and refuses
-      # the calls that pass three.
-      "--disable-gprofng",
-    ]
-
-    ok = false
-    chdir("build") do
       # MAKEINFO=true: the docs need texinfo, which is not worth
-      # requiring on the host for a tool nobody reads the info pages of.
-      ok = run_command("configure.log", conf + ["MAKEINFO=true"])
-      next if !ok
+      # requiring on the host for a tool nobody reads the info pages
+      # of.
+      Run(log: "configure.log", argv: [
+        "../configure",
+        "--prefix=$PREFIX",
+        "--with-sysroot=$SYSROOT",
 
-      ok = run_command("build.log", ["make", "-j#{BUILD_PAR}"])
-      next if !ok
+        # No translations: they would pull in the host's gettext, and
+        # nothing here is user-facing enough to want them.
+        "--disable-nls",
+
+        # Recent GCC warns about things older binutils sources trip over;
+        # those warnings are not ours to fix.
+        "--disable-werror",
+
+        # Byte-identical archives across rebuilds: no timestamps, uids or
+        # gids recorded. Cheap, and it keeps rebuild comparisons honest.
+        "--enable-deterministic-archives",
+
+        # gprofng is a profiler, and not why this package exists:
+        # this is the assembler and linker the host stack is built
+        # through, and nothing here has ever run gprofng. It is also
+        # what breaks the build under GCC 15 and later, whose default
+        # C23 reads its `real_func ()` declarations as taking no
+        # arguments and refuses the calls that pass three.
+        "--disable-gprofng",
+        "MAKEINFO=true",
+      ]),
+
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
 
       # ...and stage it through DESTDIR, so the tree we hand to the
       # atomic move is complete while the paths inside it describe
       # where it is going.
-      ok = run_command("install.log",
-                       ["make", "install", "MAKEINFO=true",
-                        "DESTDIR=#{destdir}"])
-    end
-
-    return false if !ok
+      Run(log: "install.log", argv: [
+        "make", "install", "MAKEINFO=true", "DESTDIR=$DESTDIR",
+      ]),
+    ]),
 
     # DESTDIR reproduces the whole absolute prefix beneath it; lift the
     # tree back out to where the atomic move expects it.
-    FileUtils.mv("#{destdir}#{prefix}", "#{install_dir}/install")
+    Move(from: "$DESTDIR$PREFIX", to: "$INSTALL/install"),
 
     # The deliverable is the install prefix; the source and the build
     # tree together are several hundred MB of no further use.
-    prune_build_tree
-    return true
-  end
+    Prune(),
+  ]
 end
 
 pkgmgr.register(HostBinutilsPackage.new())

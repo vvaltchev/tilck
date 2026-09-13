@@ -84,60 +84,37 @@ class GccPrereqPackage < Package
   # The prefix a dependent passes to --with-<name>.
   def prefix_for(ver) = install_prefix(ver) / "install"
 
-  # Where a named dependency of THIS package was installed.
-  #
-  # From the resolution of the request being installed, NOT from this
-  # package's own dep list: mpfr names host_gmp without a version, so
-  # asking mpfr alone answers "gmp's default" -- while the gcc that
-  # asked for all four pinned something else. gcc 16 pins gmp 6.3.0,
-  # and mpfr must link the same one, not 6.2.1.
-  def dep_prefix(name, ver)
-    pkg = pkgmgr.get(name)
-    return pkg.prefix_for(pkgmgr.resolved_ver(name) || pkg.default_ver)
-  end
-
   # Every one of them: out-of-tree configure, make, make install into
   # DESTDIR, then lift the tree into place.
-  def install_impl_internal(install_dir)
+  def build_steps(ver = nil) = [
 
-    ver = installing_ver(install_dir)
-    prefix = final_install_prefix(install_dir)
-    destdir = "#{install_dir}/destdir"
+    Mkdir(path: "build"),
 
-    FileUtils.mkdir_p("build")
+    Within(dir: "build", steps: [
+      Run(log: "configure.log", argv: [
+        "../configure",
+        "--prefix=$PREFIX",
+        "--disable-shared",
+        "--enable-static",
+        *configure_flags(ver),
 
-    conf = [
-      "../configure",
-      "--prefix=#{prefix}",
-      "--disable-shared",
-      "--enable-static",
-      *configure_flags(ver),
+        # The oldest of these -- gmp 6.1.0, pinned by GCC 11 -- fails
+        # its own configure probe under C23 ("no, long long
+        # reliability test 1", then "could not find a working
+        # compiler"). See Package#host_compiler_gnu17.
+        *host_compiler_gnu17,
+      ]),
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+      Run(log: "install.log",
+          argv: ["make", "install", "DESTDIR=$DESTDIR"]),
+    ]),
 
-      # The oldest of these -- gmp 6.1.0, pinned by GCC 11 -- fails its
-      # own configure probe under C23 ("no, long long reliability test
-      # 1", then "could not find a working compiler"). See
-      # Package#host_compiler_gnu17.
-      *host_compiler_gnu17,
-    ]
-
-    ok = false
-
-    chdir("build") do
-      ok = run_command("configure.log", conf) &&
-           run_command("build.log", ["make", "-j#{BUILD_PAR}"]) &&
-           run_command("install.log",
-                       ["make", "install", "DESTDIR=#{destdir}"])
-    end
-
-    return false if !ok
-
-    # Move the staged prefix into place as a whole. NOT "#{...}/." --
+    # Move the staged prefix into place as a whole. NOT "$DESTDIR/." --
     # that is cp's trailing-dot idiom and FileUtils.mv refuses it when
     # the destination exists.
-    FileUtils.mv("#{destdir}#{prefix}", "#{install_dir}/install")
-    prune_build_tree
-    return true
-  end
+    Move(from: "$DESTDIR$PREFIX", to: "$INSTALL/install"),
+    Prune(),
+  ]
 
   # What this one needs told about the others.
   def configure_flags(ver) = []
@@ -184,7 +161,7 @@ class HostMpfrPackage < GccPrereqPackage
     ["install/include/mpfr.h", false],
   ]
 
-  def configure_flags(ver) = ["--with-gmp=#{dep_prefix('host_gmp', ver)}"]
+  def configure_flags(ver) = ["--with-gmp=$host_gmp/install"]
 end
 
 class HostMpcPackage < GccPrereqPackage
@@ -208,8 +185,8 @@ class HostMpcPackage < GccPrereqPackage
   ]
 
   def configure_flags(ver) = [
-    "--with-gmp=#{dep_prefix('host_gmp', ver)}",
-    "--with-mpfr=#{dep_prefix('host_mpfr', ver)}",
+    "--with-gmp=$host_gmp/install",
+    "--with-mpfr=$host_mpfr/install",
   ]
 end
 
@@ -235,7 +212,7 @@ class HostIslPackage < GccPrereqPackage
 
   # isl spells it differently from the other three.
   def configure_flags(ver) = [
-    "--with-gmp-prefix=#{dep_prefix('host_gmp', ver)}",
+    "--with-gmp-prefix=$host_gmp/install",
   ]
 end
 

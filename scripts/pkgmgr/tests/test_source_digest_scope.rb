@@ -70,10 +70,13 @@ class TestSourceDigestIsPerClass < Minitest::Test
 
   # Asking for a name defined twice in a file is ambiguous, and the
   # answer is to say so. Picking one is how this went unnoticed.
+  #
+  # ncurses.rb is the fixture because it holds two packages, the
+  # target one and the host one, each with a recipe of its own.
   def test_an_ambiguous_method_name_is_refused
     f = SourceDigest.source_file_of(NcursesPackage)
     err = assert_raises(RuntimeError) {
-      SourceDigest.method_source(f, :install_impl_internal)
+      SourceDigest.method_source(f, :build_steps)
     }
     assert_match(/defined in 2 classes/, err.message)
   end
