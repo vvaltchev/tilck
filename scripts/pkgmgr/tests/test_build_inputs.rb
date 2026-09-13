@@ -406,13 +406,21 @@ class TestBuildSteps < Minitest::Test
   include TestHelper
   include Recipe::DSL
 
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
   class StepPkg < TestHelper::FakePackage
     attr_accessor :steps, :ran
     def build_steps(ver = nil) = (@steps || [])
   end
 
-  def pkg_with(steps)
-    p = StepPkg.new("stepped")
+  # Registered, because a build context asks the registry for the
+  # package's dependency closure: the tokens its recipe may name.
+  def pkg_with(steps, name: "stepped")
+    p = StepPkg.new(name)
+    pkgmgr.register(p)
     p.steps = steps
     p.ran = []
     # Capture instead of executing: what matters here is WHICH
@@ -508,8 +516,8 @@ class TestBuildSteps < Minitest::Test
   # The steps are the recipe, so changing one is a rebuild.
   def test_steps_are_part_of_the_fingerprint
     with_fake_tc do
-      a = pkg_with([Run(log: "b.log", argv: ["make", "X=1"])])
-      b = pkg_with([Run(log: "b.log", argv: ["make", "X=2"])])
+      a = pkg_with([Run(log: "b.log", argv: ["make", "X=1"])], name: "a")
+      b = pkg_with([Run(log: "b.log", argv: ["make", "X=2"])], name: "b")
       refute_equal a.build_recipe_digest, b.build_recipe_digest
     end
   end

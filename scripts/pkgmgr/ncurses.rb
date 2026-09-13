@@ -147,7 +147,7 @@ class NcursesHostPackage < Package
   # find ncursesw.pc via the pkg-config dir instead.
   def build_env(ver)
 
-    prefix = install_prefix(ver) / "install"
+    prefix = install_token / "install"
 
     return BuildEnv.new(
       include_dirs:    [prefix / "include", prefix / "include" / "ncursesw"],
@@ -243,11 +243,14 @@ class NcursesHostPackage < Package
       # ncurses{,w}6-config is a POSIX shell script with the prefix
       # baked in the same way; derive it from $0's directory
       # (<prefix>/bin/ -> <prefix>). It is named ncurses6-config
-      # without widec and ncursesw6-config with --enable-widec.
+      # without widec and ncursesw6-config with --enable-widec. That
+      # line is the script's only mention of the staged path -- the
+      # rest of it goes through ${prefix} already -- so there is no
+      # second rewrite here, unlike the .pc files above. The helper
+      # this replaces ran one anyway, and it never matched.
       Substitute(path: "$INSTALL/install/bin/ncurses*6-config", subs: [
         [/^prefix="[^"]*"/,
          'prefix="$(cd -- "$(dirname -- "$0")/.." && pwd)"'],
-        ["$INSTALL/install", '${prefix}'],
       ]),
     ]
   end

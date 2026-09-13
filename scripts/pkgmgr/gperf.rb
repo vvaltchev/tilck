@@ -55,7 +55,7 @@ class HostGperfPackage < Package
 
   # What dependents need: gperf on PATH.
   def build_env(ver)
-    return BuildEnv.new(bin_dirs: [install_prefix(ver) / "install" / "bin"])
+    return BuildEnv.new(bin_dirs: [install_token / "install" / "bin"])
   end
 
   def build_steps(ver = default_ver) = [

@@ -147,11 +147,14 @@ class TestQemuStack < Minitest::Test
     end
   end
 
+  # Published as its own token, not as a path: the dependent's build
+  # resolves it, which is what lets the interface exist before the
+  # install does.
   def test_our_python_publishes_its_bin_dir
     with_fake_python do |py, bin|
       dirs = py.build_env(py.default_ver).bin_dirs
       refute_empty dirs, "nothing published, so nothing reaches PATH"
-      assert_equal bin.to_s, dirs.first.to_s,
+      assert_equal "$host_python/bin", dirs.first.to_s,
                    "published #{dirs.first}, which is not its bin dir"
     end
   end

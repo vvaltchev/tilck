@@ -417,8 +417,13 @@ module Recipe
   # the same reason Extract fails: the interesting failure is the one
   # that changes nothing and reports success.
   #
-  # Replacements are LITERAL -- \1 is a backslash and a one, not a
-  # group. Use Extract when a capture is what you want.
+  # A String pattern is expanded before it is matched -- "$INSTALL" is
+  # the whole point of one, the staged path a build baked into a file
+  # -- and then matched literally. A Regexp is used as written: a
+  # token expands to a path, and a path is not something to splice
+  # into a regular expression. Replacements are LITERAL either way:
+  # \1 is a backslash and a one, not a group. Use Extract when a
+  # capture is what you want.
   #
   class Transform < Step
     def self.tag = "transform"
@@ -432,12 +437,13 @@ module Recipe
     def run(ctx)
       text = ctx.expand(from)
       for pattern, replacement in subs do
+        pat = Recipe.pattern_of(ctx, pattern)
         rep = ctx.expand(replacement)
-        if !Recipe.matches?(text, pattern)
-          raise Error, "transform $#{bind}: #{pattern.inspect} matches " \
+        if !Recipe.matches?(text, pat)
+          raise Error, "transform $#{bind}: #{pat.inspect} matches " \
                        "nothing; the rewrite would do nothing"
         end
-        text = text.gsub(pattern) { rep }
+        text = text.gsub(pat) { rep }
       end
       ctx.bind(bind, text)
     end
@@ -470,10 +476,11 @@ module Recipe
         text = File.binread(f)
 
         subs.each_with_index { |(pattern, replacement), i|
-          next if !Recipe.matches?(text, pattern)
+          pat = Recipe.pattern_of(ctx, pattern)
+          next if !Recipe.matches?(text, pat)
           seen[i] = true
           rep = ctx.expand(replacement)
-          text = text.gsub(pattern) { rep }
+          text = text.gsub(pat) { rep }
         }
 
         File.binwrite(f, text)
@@ -481,8 +488,9 @@ module Recipe
 
       seen.each_with_index { |ok, i|
         next if ok
-        raise Error, "substitute: #{subs[i][0].inspect} matches nothing " \
-                     "in any of the #{files.length} file(s) at #{path}"
+        pat = Recipe.pattern_of(ctx, subs[i][0])
+        raise Error, "substitute: #{pat.inspect} matches nothing in any " \
+                     "of the #{files.length} file(s) at #{path}"
       }
     end
 
@@ -788,6 +796,11 @@ module Recipe
 
   def matches?(text, pattern)
     return pattern.is_a?(Regexp) ? !!(text =~ pattern) : text.include?(pattern)
+  end
+
+  # A String pattern with its tokens resolved; a Regexp as written.
+  def pattern_of(ctx, pattern)
+    return pattern.is_a?(String) ? ctx.expand(pattern) : pattern
   end
 
   def check_subs(who, subs)

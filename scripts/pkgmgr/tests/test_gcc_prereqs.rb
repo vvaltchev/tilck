@@ -138,6 +138,9 @@ class TestGccPrereqsAreCompiledAsGnu17 < Minitest::Test
     }
 
     with_fake_tc do |tc|
+      # The build context asks the registry for the package's
+      # dependency closure -- the tokens its recipe may name.
+      pkgmgr.register(pkg)
       Dir.mktmpdir do |d|
         staging = Pathname.new(d) / pkg.pkg_dirname / "6.1.0"
         FileUtils.mkdir_p(staging)

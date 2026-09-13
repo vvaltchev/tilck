@@ -141,7 +141,7 @@ class HostPythonPackage < Package
   # goes looking. Declaring Dep('host_python', true) is the whole of
   # the consumer's side; no package names this one.
   def build_env(ver)
-    return BuildEnv.new(bin_dirs: [install_prefix(ver) / "bin"])
+    return BuildEnv.new(bin_dirs: [install_token / "bin"])
   end
 
   def install_impl_internal(install_dir)
