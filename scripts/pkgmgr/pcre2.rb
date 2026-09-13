@@ -63,10 +63,10 @@ class HostPcre2Package < Package
   def build_flags(ver = nil) = [
       "--disable-static",
       "--enable-jit",           # glib builds GRegex against the JIT
-      "--libdir=#{stack_sysroot}/usr/lib",
+      "--libdir=$SYSROOT/usr/lib",
   ]
 
-  def build_steps(ver = nil) = autotools_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = autotools_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostPcre2Package.new())

@@ -120,7 +120,7 @@ class HostLibrsvgPackage < Package
   # cargo's environment wraps the stack's, not the other way round:
   # with_stack_toolchain puts our compiler at the head of PATH, and
   # nothing may shadow it.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
     Within(env_from: :cargo, steps: meson_stack_steps(build_flags(ver))),
   ]
 end

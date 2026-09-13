@@ -90,7 +90,7 @@ class HostGlibcPackage < Package
     ["install/usr/include/stdio.h", false],
   ]
 
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     # glibc refuses to be configured in its own source tree.
     Mkdir(path: "build"),

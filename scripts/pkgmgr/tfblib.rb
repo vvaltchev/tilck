@@ -45,7 +45,7 @@ class TfblibPackage < Package
   # later -- so the link this package exists to create has been
   # dangling ever since staging was introduced. Nothing noticed
   # because the userapp that needs it is EXTRA_* and off by default.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
     Symlink(target: "$FINAL", link: "$SRC/userapps/extra/tfblib"),
   ]
 

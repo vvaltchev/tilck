@@ -40,7 +40,7 @@ class Acpica < Package
   # applied and fingerprinted by the base class. What is left is not a
   # build at all: acpica ships sources the kernel compiles itself, and
   # the install only has to leave them where its include path expects.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
     Mkdir(path: "3rd_party"),
     Write(path: "3rd_party/README", text: "Directory created by Tilck"),
     Symlink(target: "../source/include", link: "3rd_party/acpi"),

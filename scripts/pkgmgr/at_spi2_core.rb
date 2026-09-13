@@ -102,7 +102,7 @@ class HostAtSpi2CorePackage < Package
       # its own dbus. Both answered from the wrong place. The bus is
       # ours, by path.
       "-Ddefault_bus=dbus-daemon",
-      "-Ddbus_daemon=#{stack_sysroot}/usr/bin/dbus-daemon",
+      "-Ddbus_daemon=$SYSROOT/usr/bin/dbus-daemon",
 
       # Defaults to TRUE, and would want gtk+-2.0: the adaptor that
       # bridges GTK 2 widgets is still built by default two major
@@ -110,7 +110,7 @@ class HostAtSpi2CorePackage < Package
       "-Dgtk2_atk_adaptor=false",
   ]
 
-  def build_steps(ver = nil) = meson_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = meson_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostAtSpi2CorePackage.new())

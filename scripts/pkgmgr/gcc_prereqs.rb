@@ -86,7 +86,7 @@ class GccPrereqPackage < Package
 
   # Every one of them: out-of-tree configure, make, make install into
   # DESTDIR, then lift the tree into place.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     Mkdir(path: "build"),
 

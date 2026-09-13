@@ -59,7 +59,7 @@ class HostFribidiPackage < Package
       "-Dbin=false",     # the CLI tool is not wanted, only the library
   ]
 
-  def build_steps(ver = nil) = meson_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = meson_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostFribidiPackage.new())

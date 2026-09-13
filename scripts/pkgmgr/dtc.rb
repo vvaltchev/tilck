@@ -45,7 +45,7 @@ class DtcPackage < Package
            out: "/dev/null", err: "/dev/null")
   end
 
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     # Build only the static archive — `make libfdt` would also build the
     # host shared library (libfdt-VER.dylib on macOS) using the *host*

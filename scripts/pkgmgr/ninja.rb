@@ -67,7 +67,7 @@ class HostNinjaPackage < Package
   # `install -D` would do both steps at once, but only GNU coreutils
   # has -D: this package is built on FreeBSD and macOS hosts too, whose
   # install(1) does not. mkdir + cp is the portable pair.
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
     # OUR python, not whichever one PATH offers. deps_build_env puts
     # host_python's bin dir at the front, so "python3" resolves to it
     # -- but $PYTHON says which one was meant, and a build that finds

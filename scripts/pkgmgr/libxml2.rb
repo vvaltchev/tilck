@@ -74,7 +74,7 @@ class HostLibxml2Package < Package
       "-Dicu=disabled",
   ]
 
-  def build_steps(ver = nil) = meson_stack_steps(build_flags(ver))
+  def build_steps(ver = default_ver) = meson_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostLibxml2Package.new())

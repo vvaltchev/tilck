@@ -249,6 +249,10 @@ class Package
   def self.stale_str(n, digits: 0) =
     status_str("stale", :makeYellow, n, digits: digits)
 
+  # Complete, current -- and waiting for something that is gone.
+  def self.unusable_str(n, digits: 0) =
+    status_str("unusable", :makeMagenta, n, digits: digits)
+
   def self.found_str(digits: 0) = status_str("found", :makeBlue,
                                              digits: digits)
   def self.broken_str(digits: 0) = status_str("broken", :makeRed,
@@ -684,7 +688,12 @@ class Package
   # install_impl_internal is then hashed instead. See
   # docs/plans/toolchain5.md.
   #
-  def build_steps(ver = nil) = []
+  # The version is never absent: asked without one, a recipe is the
+  # recipe of the version this package installs by default. A nil
+  # would be a third thing to mean, and a flag list that compares it
+  # would fail in the one place nobody runs -- host_qemu's
+  # configure_flags does exactly that.
+  def build_steps(ver = default_ver) = []
 
   # The values behind the tokens, for one install.
   #

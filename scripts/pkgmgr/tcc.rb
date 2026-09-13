@@ -91,7 +91,7 @@ class TccPackage < Package
   # No -j: this build is not parallel-safe, and was not run that way
   # before either.
   #
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     arch = default_arch.gcc_tc    # "i686" or "riscv64"
     cpu = default_arch.name       # "i386" or "riscv64"

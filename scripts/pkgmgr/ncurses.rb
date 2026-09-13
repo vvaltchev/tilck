@@ -39,7 +39,7 @@ class NcursesPackage < Package
     ["install/lib/libncurses.a", false]
   ]
 
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     arch = default_arch().gcc_tc
 
@@ -156,7 +156,7 @@ class NcursesHostPackage < Package
     )
   end
 
-  def build_steps(ver = nil)
+  def build_steps(ver = default_ver)
 
     # At runtime, ncurses needs to find terminfo entries for the
     # user's $TERM. The system ncurses on each host distro has its

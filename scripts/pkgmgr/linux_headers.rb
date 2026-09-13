@@ -60,7 +60,7 @@ class HostLinuxHeadersPackage < Package
     ["install/usr/include/asm-generic/errno.h", false],
   ]
 
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     # The kernel names x86_64 "x86"; both 32- and 64-bit headers come
     # out of that one tree.

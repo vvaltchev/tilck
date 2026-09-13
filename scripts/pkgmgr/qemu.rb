@@ -252,7 +252,7 @@ class HostQemuPackage < Package
     return flags
   end
 
-  def build_steps(ver = nil) = [
+  def build_steps(ver = default_ver) = [
 
     Mkdir(path: "build"),
 
