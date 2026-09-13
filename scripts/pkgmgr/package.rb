@@ -1300,7 +1300,7 @@ class Package
     Dir.children(".").each { |e|
       next if e == "install"
       next if e.end_with?(".log")
-      rm_rf(e)
+      FileUtils.rm_rf(e)
     }
   end
 
@@ -1734,7 +1734,10 @@ class Package
 
     begin
       ok = chdir_install_dir(TC_STAGING, ver) do
-        d = mkpathname(getwd)
+        # Pathname.pwd, not a shortcut: the base class must not need
+        # a mixin its subclasses happen to include for its own flow
+        # to run. The first package to drop the mixins found out.
+        d = Pathname.pwd
 
         return false if !apply_patches(ver)
 
