@@ -44,6 +44,13 @@ require_relative '../system_deps'
 #
 REAL_TC = TC
 
+# A test class that judges the SOURCES, or the harness itself, rather
+# than the package manager's behaviour: the lint, the Ripper tree's
+# self-test, the assertion renderer's, the tables held against
+# upstream tarballs. No mutation operator changes what they look at,
+# so a run that judges a mutant leaves them out (run_all.rb).
+module SourceAudit; end
+
 module NoRealToolchainReads
 
   @@allowed = false

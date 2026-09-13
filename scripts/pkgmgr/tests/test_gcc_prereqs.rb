@@ -21,6 +21,7 @@ require_relative '../main'
 class TestGccPrereqsMatchUpstream < Minitest::Test
 
   include TestHelper
+  include SourceAudit
 
   PKG = HostGccPackage
 

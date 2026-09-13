@@ -15,6 +15,7 @@ require_relative 'ruby_tree'
 class TestRubyTree < Minitest::Test
 
   include TestHelper
+  include SourceAudit
 
   PKGMGR = File.expand_path("..", __dir__)
 

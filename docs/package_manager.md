@@ -860,11 +860,13 @@ installs the case names), the command line is parsed by main's own
 parser into a `Request`, and `Planner.step` and `Model.step` each say
 what world it leaves and with what exit code. Nothing is written and
 nothing is scanned: a case is a value, and costs a fraction of a
-millisecond. About 1.7 million cases; `-t --exhaustive` runs them
-all, one process per shape, in about three minutes, in every toolchain
-workflow and in the package manager's own workflow (`ci-pkgmgr.yml`,
-which also runs the mutation job), and every `-t` runs a fixed-seed
-sample of five thousand in under a second. It self-tests first (a
+millisecond. About 2.2 million cases; `-t --exhaustive` runs them
+all -- each shape cut into parts of forty thousand cases, the parts
+spread over every core, what the cases of a shape share built once --
+in half a minute on a desktop and a few minutes on a CI runner, in
+every toolchain workflow and in the package manager's own workflow
+(`ci-pkgmgr.yml`, which also runs the mutation job), and every `-t`
+runs a fixed-seed sample of five thousand in half a second. It self-tests first (a
 world built in memory equals the scan of the same world built on
 disk, install for install and record for record; the planner and the
 model each answer twice alike; an empty plan applied is the identity;
@@ -882,7 +884,11 @@ opened or not restored, the ways this tree has actually been wrong --
 and the suite must fail. A survivor is a test that does not exist,
 named to the line; a mutant that hangs is a walk without a bound,
 which is a defect in the code. The score to defend is zero of either.
-The unmutated suite must pass first, or nothing is judged.
+The unmutated suite must pass first, or nothing is judged. A mutant
+is dead at its first failure, so the run that judges one stops there,
+runs the sampled lane -- the quickest killer -- before everything
+else, and leaves out the tests that audit the sources rather than the
+behaviour (`SourceAudit`): a dead mutant costs about a second.
 
 What this proves, mechanically, on every commit: for the catalogue of
 shapes and worlds of up to three, the planner's answer equals the

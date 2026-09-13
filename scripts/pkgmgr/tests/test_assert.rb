@@ -41,6 +41,7 @@ end
 class TestAssert < Minitest::Test
 
   include TestHelper
+  include SourceAudit
 
   def test_a_holding_assertion_returns_true
     assert_equal true, AssertProbe.new.holds
