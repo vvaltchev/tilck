@@ -373,7 +373,10 @@ module Exhaustive
     }
   end
 
-  def forget_tables! = @tables = nil
+  def forget_tables!
+    @tables = nil
+    Exhaustive.forget_fixtures!   # the worlds it holds are the tables'
+  end
 
   def count(shape)
     t = tables_for(shape)

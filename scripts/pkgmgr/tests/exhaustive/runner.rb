@@ -75,14 +75,19 @@ module Exhaustive
   end
 
   # The same surroundings with the tree readable: for the one check
-  # that builds a world on disk to hold the value to.
+  # that builds a world on disk to hold the value to. What the cases
+  # share (fixtures_for) names paths under the toolchain of the block
+  # it was built in, so it is forgotten at both ends.
   def on_disk
     h = harness
+    forget_fixtures!
     h.with_fake_tc do
       h.with_stubbed_externals do
         yield
       end
     end
+  ensure
+    forget_fixtures!
   end
 
   # The command line as main reads it, once per distinct line.
@@ -93,8 +98,7 @@ module Exhaustive
 
   # --- one case -------------------------------------------------------------
 
-  # The case's registry, fresh: the registry is reset between cases and
-  # a package must carry nothing over.
+  # The case's registry: the shape's packages, registered fresh.
   def register(shape)
     pkgs = SHAPES.fetch(shape).call
     pkgs.each { |p| pkgmgr.register(p) }
@@ -102,17 +106,45 @@ module Exhaustive
     return pkgs.to_h { |p| [p.name, p] }
   end
 
+  # What the cases of one shape share, built once and kept while the
+  # shape is the one being run: the registry -- a package is bound
+  # per question and carries nothing over, so one set serves every
+  # case -- and, per scope, the model's view of it and each world as
+  # a World and as the model's keys. A world is the same array object
+  # for every case that has it (the tables are built once), so it is
+  # the key. The registry is reset when the shape changes; a case is
+  # then the two steps and the comparison, which is what it costs.
+  Fixtures = Struct.new(:shape, :by_name, :worlds, :keys, :registries,
+                        :invs) do
+    def self.for(shape, by_name)
+      new(shape, by_name, Hash.new { |h, k| h[k] = {}.compare_by_identity },
+          {}.compare_by_identity, {}, {})
+    end
+  end
+
+  def fixtures_for(shape)
+    return @fixtures if @fixtures && @fixtures.shape == shape
+    harness.reset_pkgmgr!
+    @fixtures = Fixtures.for(shape, register(shape))
+    return @fixtures
+  end
+
+  # ...and forgotten whenever the registry is rebuilt behind it: at
+  # the ends of the lane's surroundings, and by the self-tests, which
+  # build registries of their own.
+  def forget_fixtures! = @fixtures = nil
+
   def run_case(c)
 
-    harness.reset_pkgmgr!
-    by_name = register(c.shape)
+    f = fixtures_for(c.shape)
     req = request_of(c.argv)
 
     # -H, as main takes it: the stack the run is in, once the compiler
     # package says it can build it.
     stack = req.stack || STACK_A
     scope = scope_for(c.ctx, stack: stack)
-    world = world_of(c.world, by_name, scope)
+    world = f.worlds[scope][c.world] ||= world_of(c.world, f.by_name, scope)
+    keys = f.keys[c.world] ||= keys_of(c.world)
 
     got = if req.stack && !pkgmgr.stack_compiler&.installable_versions
                                   &.include?(req.stack)
@@ -120,10 +152,11 @@ module Exhaustive
     else
       Planner.step(pkgmgr, world, req, scope)
     end
-    want = Model.step(Bridge.registry(scope), keys_of(c.world),
-                      Model.parse(c.argv), Bridge.inv(scope))
+    reg = f.registries[scope] ||= Bridge.registry(scope)
+    inv = f.invs[scope] ||= Bridge.inv(scope)
+    want = Model.step(reg, keys, Model.parse(c.argv), inv)
 
-    problems = compare(c.argv, keys_of(c.world), got, want)
+    problems = compare(c.argv, keys, got, want)
     detail = problems.empty? ? "" : "#{c}\n#{problems.join("\n\n")}"
     return Result.new(c.id, problems.empty?, detail)
   rescue StandardError => e
@@ -160,7 +193,9 @@ module Exhaustive
   # Each check is a comparison that must come out EQUAL. Returns the
   # problems found, empty when the instrument can be trusted.
   def self_test
-    return world_self_test + in_lane { planner_self_test }
+    problems = world_self_test + in_lane { planner_self_test }
+    forget_fixtures!
+    return problems
   end
 
   # A world built in memory is the world built on disk: for one
@@ -246,6 +281,24 @@ module Exhaustive
     return problems
   end
 
+  # --- the sample -----------------------------------------------------------
+
+  # The fixed-seed sample every `-t` runs (tests/test_exhaustive.rb),
+  # and the first thing a run that judges a mutant does: the cases
+  # that disagree, as Results, empty when all agree. `ids` names the
+  # cases instead of a sample -- the one a failure printed.
+  def sample_problems(n, seed:, ids: nil)
+    ids ||= sample_ids(n, seed: seed)
+    failed = []
+    in_lane do
+      for id in ids do
+        r = run_case(case_by_id(id))
+        failed << r if !r.ok
+      end
+    end
+    return failed
+  end
+
   # --- many cases -----------------------------------------------------------
 
   Summary = Struct.new(:shape, :total, :failed, :seconds)
@@ -255,13 +308,23 @@ module Exhaustive
   # and a lane that says nothing for minutes looks hung.
   PROGRESS_CASES = 500
 
-  def run_shape(shape, limit: nil, progress: nil)
+  # One part of a shape: every PARTS-th case from PART on. A shape is
+  # cut into parts of at most PART_CASES, and the parts of every
+  # shape are the lane's work: with one process per shape, the lane
+  # took as long as its biggest shape however many cores there were
+  # -- ten minutes for target_2v on CI, while the rest sat finished.
+  PART_CASES = 40_000
+
+  def parts_of(shape) = [(count(shape) / PART_CASES.to_f).ceil, 1].max
+
+  def run_shape(shape, part: 0, parts: 1, limit: nil, progress: nil)
     failed = []
     total = 0
     t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     now = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0 }
 
-    each_case([shape]).each { |c|
+    each_case([shape]).each_with_index { |c, i|
+      next if i % parts != part
       break if limit && total >= limit
       total += 1
       r = run_case(c)
@@ -276,9 +339,12 @@ module Exhaustive
 
   PROGRESS_SECONDS = 30
 
-  # The full lane: every shape in its own process, results through a
-  # file each, a summary and every failure printed by the parent --
-  # and, while they run, a progress line per shape every half minute.
+  # The full lane: every part of every shape in a process of its own,
+  # biggest shapes first, results through a file each; a summary per
+  # shape once its parts are all in, every failure printed by the
+  # parent -- and, while they run, a progress line per shape every
+  # half minute. The seconds a shape reports are the CPU seconds of
+  # all its parts.
   def run_all(shapes: SHAPES.keys, limit: nil, jobs: nil)
 
     problems = self_test
@@ -288,28 +354,40 @@ module Exhaustive
       return false
     end
 
-    jobs ||= [Etc.nprocessors, shapes.length].min
+    units = shapes.sort_by { |sh| -count(sh) }.flat_map { |sh|
+      (0...parts_of(sh)).map { |part| [sh, part] }
+    }
+    pending = shapes.to_h { |sh| [sh, parts_of(sh)] }
+    jobs ||= [Etc.nprocessors, units.length].min
     dir = Dir.mktmpdir("pkgmgr-exhaustive-")
     $stdout.sync = true       # progress reaches a log as it happens
-    queue = shapes.dup
+    queue = units
     running = {}
     all_ok = true
 
     print_summary = ->(shape) {
-      s, failed = Marshal.load(File.binread(File.join(dir, shape)))
-      all_ok = false if s.failed > 0
+      parts = (0...parts_of(shape)).map { |part|
+        Marshal.load(File.binread(File.join(dir, "#{shape}.#{part}")))
+      }
+      total = parts.sum { |s, _| s.total }
+      failed = parts.sum { |s, _| s.failed }
+      seconds = parts.sum { |s, _| s.seconds }
+      all_ok = false if failed > 0
       printf("  %-14s %7d cases  %4d failed  %6.1fs\n",
-             s.shape, s.total, s.failed, s.seconds)
-      failed.each { |r| puts; puts r.to_s }
+             shape, total, failed, seconds)
+      parts.each { |_, bad| bad.each { |r| puts; puts r.to_s } }
     }
 
-    # Every shape still running, as far as it has got: read from the
-    # file its process keeps current, printed every PROGRESS_SECONDS.
+    # Every shape with a part running, as far as its parts have got:
+    # read from the files their processes keep current, printed every
+    # PROGRESS_SECONDS.
     print_progress = -> {
-      running.values.sort.each { |shape|
-        f = File.join(dir, "#{shape}.progress")
-        next if !File.exist?(f)
-        done, bad, sec = File.read(f).split.map(&:to_f)
+      running.values.map(&:first).uniq.sort.each { |shape|
+        done = bad = sec = 0
+        Dir.glob(File.join(dir, "#{shape}.*.progress")).each { |f|
+          d, b, s = File.read(f).split.map(&:to_f)
+          done += d; bad += b; sec += s
+        }
         printf("  %-14s %7d/%-7d      %4d failed  %6.1fs ...\n",
                shape, done, count(shape), bad, sec)
       }
@@ -319,24 +397,28 @@ module Exhaustive
 
     while !queue.empty? || !running.empty?
       while running.length < jobs && !queue.empty?
-        shape = queue.shift
+        shape, part = queue.shift
         pid = Process.fork {
           $stdout.reopen(File::NULL)
-          f = File.join(dir, "#{shape}.progress")
+          f = File.join(dir, "#{shape}.#{part}.progress")
           out = in_lane {
-            run_shape(shape, limit: limit, progress: ->(*a) {
+            run_shape(shape, part: part, parts: parts_of(shape),
+                      limit: limit, progress: ->(*a) {
               File.write(f, a.join(" "))
             })
           }
-          File.binwrite(File.join(dir, shape), Marshal.dump(out))
+          File.binwrite(File.join(dir, "#{shape}.#{part}"),
+                        Marshal.dump(out))
           exit!(0)
         }
-        running[pid] = shape
+        running[pid] = [shape, part]
       end
 
       pid = Process.wait(-1, Process::WNOHANG)
       if pid
-        print_summary.call(running.delete(pid))
+        shape, _ = running.delete(pid)
+        pending[shape] -= 1
+        print_summary.call(shape) if pending[shape] == 0
         next
       end
 
