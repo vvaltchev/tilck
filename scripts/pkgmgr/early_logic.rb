@@ -289,13 +289,38 @@ module InitOnly
     exit 1
   end
 
+  # A command as the shell would run it, named by the binary it is:
+  # found on PATH when bare, then followed through every link. "gcc",
+  # "/usr/bin/gcc" and "cc" are one compiler on a machine where they
+  # resolve to one file, and the recipe that names the compiler must
+  # read the same however the environment spelled it: cmake hands
+  # its children CC=/usr/bin/gcc, the shell hands them CC=gcc, and a
+  # record made under one read as stale under the other. A command
+  # that is not found is returned as typed, for detect_cc_info to
+  # report.
+  def canonical_cmd(cmd)
+    path = if cmd.include?("/")
+      cmd
+    else
+      dir = ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).find { |d|
+        f = File.join(d, cmd)
+        File.file?(f) && File.executable?(f)
+      }
+      dir ? File.join(dir, cmd) : cmd
+    end
+    return File.realpath(path)
+  rescue SystemCallError
+    return cmd
+  end
+
   # Determine the host compiler from $CC (defaults to "gcc"): the
-  # command itself, and its family+version. Both are published, because
-  # a recipe that has to tell the compiler which C its sources are
-  # written in needs the command -- and a recipe that guessed "cc" or
-  # "gcc" for itself would be a second answer to a question with one
-  # owner. If $CXX is also set, require that it points to the same
-  # family+version. If only $CXX is set, fail with a clear message.
+  # command itself, canonical, and its family+version. Both are
+  # published, because a recipe that has to tell the compiler which
+  # C its sources are written in needs the command -- and a recipe
+  # that guessed "cc" or "gcc" for itself would be a second answer to
+  # a question with one owner. If $CXX is also set, require that it
+  # points to the same family+version. If only $CXX is set, fail with
+  # a clear message.
   def get_host_cc
     cc  = ENV["CC"].to_s
     cxx = ENV["CXX"].to_s
@@ -307,7 +332,7 @@ module InitOnly
       exit 1
     end
 
-    cc = "gcc" if cc.empty?
+    cc = canonical_cmd(cc.empty? ? "gcc" : cc)
     cc_family, cc_ver = detect_cc_info(cc)
 
     # A CXX nobody named is the family's own: g++ beside gcc, clang++
@@ -316,6 +341,7 @@ module InitOnly
     # names both and asks for CXX -- better than silently pairing a
     # gcc-13 with whatever g++ is.
     cxx = (cc_family == "clang" ? "clang++" : "g++") if cxx.empty?
+    cxx = canonical_cmd(cxx)
     cxx_family, cxx_ver = detect_cc_info(cxx)
 
     if cxx_family != cc_family || cxx_ver != cc_ver
