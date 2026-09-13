@@ -137,7 +137,8 @@ class TestErrorPaths < Minitest::Test
         pkg = FakePackage.new("user")
         pkgmgr.register(pkg)
 
-        out = pkg.expand_tokens("run $PYTHON now", Pathname.new("/tmp"))
+        ctx = Package::BuildCtx.new(pkg, Pathname.new("/tmp"))
+        out = ctx.expand("run $PYTHON now")
         refute_includes out, "$PYTHON", "the token was left unexpanded"
         assert_includes out, "bin/python3"
       end
@@ -152,7 +153,8 @@ class TestErrorPaths < Minitest::Test
       pkg = FakePackage.new("targety")
       pkgmgr.register(pkg)
 
-      out = pkg.expand_tokens("[$SYSROOT]", Pathname.new("/tmp"))
+      ctx = Package::BuildCtx.new(pkg, Pathname.new("/tmp"))
+      out = ctx.expand("[$SYSROOT]")
       assert_equal "[]", out
     end
   end

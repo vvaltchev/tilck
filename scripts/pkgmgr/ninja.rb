@@ -67,18 +67,22 @@ class HostNinjaPackage < Package
   # `install -D` would do both steps at once, but only GNU coreutils
   # has -D: this package is built on FreeBSD and macOS hosts too, whose
   # install(1) does not. mkdir + cp is the portable pair.
-  def build_steps = [
+  def build_steps(ver = nil) = [
     # OUR python, not whichever one PATH offers. deps_build_env puts
     # host_python's bin dir at the front, so "python3" resolves to it
     # -- but $PYTHON says which one was meant, and a build that finds
     # a different interpreter than the one it declared is exactly the
     # ambiguity this dependency exists to remove.
-    Step("bootstrap.log", ["$PYTHON", "./configure.py", "--bootstrap"]),
-    Step("mkdir.log", ["mkdir", "-p", "$INSTALL/install/bin"]),
-    Step("install.log", ["cp", "ninja", "$INSTALL/install/bin/ninja"]),
-  ]
+    Run(log: "bootstrap.log",
+        argv: ["$PYTHON", "./configure.py", "--bootstrap"]),
 
-  def prune_after_build? = true
+    # mkdir and cp were shelled out to. They are file operations, and
+    # a file operation is a step of its own; their two empty logs go
+    # with them.
+    Mkdir(path: "$INSTALL/install/bin"),
+    Copy(from: "ninja", to: "$INSTALL/install/bin/ninja"),
+    Prune(),
+  ]
 end
 
 pkgmgr.register(HostNinjaPackage.new())

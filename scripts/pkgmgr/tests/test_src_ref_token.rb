@@ -29,7 +29,8 @@ class TestSrcRefToken < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("foo")
       with_src("deadbee") do |d|
-        assert_equal "gh=deadbee", pkg.expand_tokens("gh=$SRC_REF", d)
+        ctx = Package::BuildCtx.new(pkg, d)
+        assert_equal "gh=deadbee", ctx.expand("gh=$SRC_REF")
       end
     end
   end
@@ -40,7 +41,8 @@ class TestSrcRefToken < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("foo")
       with_src("  abc123  ") do |d|
-        assert_equal "abc123", pkg.expand_tokens("$SRC_REF", d)
+        ctx = Package::BuildCtx.new(pkg, d)
+        assert_equal "abc123", ctx.expand("$SRC_REF")
       end
     end
   end
@@ -52,7 +54,7 @@ class TestSrcRefToken < Minitest::Test
       pkg = FakePackage.new("foo")
       with_src(nil) do |d|
         err = assert_raises(RuntimeError) {
-          pkg.expand_tokens("$SRC_REF", d)
+          Package::BuildCtx.new(pkg, d).expand("$SRC_REF")
         }
         assert_match(/\.ref_short/, err.message)
       end
@@ -65,7 +67,8 @@ class TestSrcRefToken < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("foo")
       with_src(nil) do |d|
-        out = pkg.expand_tokens("make -j$PAR $INSTALL", d)
+        ctx = Package::BuildCtx.new(pkg, d)
+        out = ctx.expand("make -j$PAR $INSTALL")
         refute_includes out, "$PAR"
         refute_includes out, "$INSTALL"
       end

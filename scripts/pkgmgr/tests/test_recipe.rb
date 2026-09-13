@@ -346,6 +346,76 @@ class TestRecipeTokens < Minitest::Test
     c.bind("specs_dir", "/tmp/somewhere")
     assert_equal "/tmp/somewhere/specs", c.expand("$specs_dir/specs")
   end
+
+  #
+  # $PYTHON needs another package installed and $SRC_REF needs the
+  # source extracted -- both true while building, neither during a
+  # staleness check. A recipe that does not ask must not pay.
+  #
+  def test_a_lazy_token_resolves_only_when_asked
+
+    asked = 0
+    c = ctx({ "PREFIX" => "/opt/x", "LATE" => -> { asked += 1; "here" } })
+
+    assert_equal "/opt/x", c.expand("$PREFIX")
+    assert_equal 0, asked
+
+    assert_equal "here/bin", c.expand("$LATE/bin")
+    assert_equal 1, asked
+  end
+end
+
+#
+# An environment the RUNNER supplies: the recipe names it, the
+# coordinates decide what is in it.
+#
+class TestRecipeAmbient < Minitest::Test
+
+  include Recipe::DSL
+
+  class Recording < Recipe::Ctx
+    attr_reader :entered
+    def ambient(name, &block)
+      (@entered ||= []) << name
+      return block.call
+    end
+  end
+
+  def test_env_from_asks_the_runner
+    Dir.mktmpdir("pkgmgr-recipe-") do |root|
+      c = Recording.new(root: root)
+      Recipe.run([Within(env_from: :stack_toolchain, steps: [
+        Write(path: "made.txt", text: "x"),
+      ])], c)
+
+      assert_equal [:stack_toolchain], c.entered
+      assert_equal "x", File.read("#{root}/made.txt")
+    end
+  end
+
+  # A recipe that asks for an environment nobody supplies is told so,
+  # rather than quietly running without it.
+  def test_an_unknown_ambient_environment_is_refused
+    Dir.mktmpdir("pkgmgr-recipe-") do |root|
+      c = Recipe::Ctx.new(root: root)
+      err = assert_raises(Recipe::Error) {
+        Recipe.run([Within(env_from: :nobody_supplies_this, steps: [])], c)
+      }
+      assert_match(/no ambient environment named/, err.message)
+    end
+  end
+
+  # env_from arrived AFTER the golden digest above was written, and
+  # that test still passes: a new optional field costs nothing. This
+  # is the same fact from the other side -- a recipe that does not use
+  # it hashes as though it did not exist.
+  def test_the_new_field_is_free_until_it_is_used
+    plain = Within(dir: "build", steps: [])
+    assert_equal({ "dir" => "build" }, plain.digest_map)
+    refute_equal Recipe.canon(plain),
+                 Recipe.canon(Within(dir: "build", env_from: :cargo,
+                                     steps: []))
+  end
 end
 
 #
@@ -395,6 +465,25 @@ class TestRecipeExecution < Minitest::Test
 
       assert_empty Dir.glob("#{root}/d/*.la")
       assert File.exist?("#{root}/d/keep.so")
+    end
+  end
+
+  #
+  # Only Mkdir makes a directory. A step that quietly created the one
+  # a typo named would succeed at putting the artifact somewhere
+  # nobody looks.
+  #
+  def test_writing_into_a_directory_that_is_not_there_fails
+    in_tree do |root, c|
+      for steps in [[Write(path: "nope/f.txt", text: "x")],
+                    [Write(path: "f", text: "x"),
+                     Copy(from: "f", to: "nope/f")],
+                    [Write(path: "f", text: "x"),
+                     Move(from: "f", to: "nope/f")],
+                    [Symlink(target: "x", link: "nope/l")]] do
+        err = assert_raises(Recipe::Error) { run_steps(steps, c) }
+        assert_match(/Only Mkdir creates one/, err.message)
+      end
     end
   end
 

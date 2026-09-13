@@ -117,9 +117,12 @@ class HostLibrsvgPackage < Package
     "-Dtests=false",
   ]
 
-  def install_impl_internal(install_dir)
-    with_cargo_env { meson_stack_build(install_dir) }
-  end
+  # cargo's environment wraps the stack's, not the other way round:
+  # with_stack_toolchain puts our compiler at the head of PATH, and
+  # nothing may shadow it.
+  def build_steps(ver = nil) = [
+    Within(env_from: :cargo, steps: meson_stack_steps(build_flags(ver))),
+  ]
 end
 
 pkgmgr.register(HostLibrsvgPackage.new())

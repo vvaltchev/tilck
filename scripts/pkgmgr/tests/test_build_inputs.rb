@@ -364,14 +364,23 @@ class TestBuildIdentity < Minitest::Test
     end
   end
 
-  # A flag that is not declared cannot be passed: the helpers ask the
-  # package for its flags rather than accepting them, so there is no
-  # way to build with an argument that goes unrecorded.
-  def test_the_build_helpers_take_no_flag_argument
-    [:meson_stack_build, :autotools_stack_build].each do |m|
-      params = Package.instance_method(m).parameters
-      assert_equal [[:req, :install_dir]], params,
-                   "#{m} must not accept flags: they would go unrecorded"
+  # An argument that goes unrecorded is impossible by construction
+  # now: build_steps is both what runs and what is hashed, so a flag
+  # reaches a compiler only by being in an argv, and every argv is in
+  # the digest.
+  def test_nothing_reaches_a_build_without_reaching_the_digest
+    with_fake_tc do
+      plain = FakePackage.new("foo")
+      extra = FakePackage.new("foo")
+
+      plain.define_singleton_method(:build_steps) { |v = nil|
+        [Recipe::Run.new(log: "b.log", argv: ["make"])]
+      }
+      extra.define_singleton_method(:build_steps) { |v = nil|
+        [Recipe::Run.new(log: "b.log", argv: ["make", "--undeclared"])]
+      }
+
+      refute_equal plain.build_recipe_digest, extra.build_recipe_digest
     end
   end
 
@@ -384,26 +393,22 @@ end
 
 
 #
-# The declarative step runner.
+# The declarative step runner (see recipe.rb).
 #
-# A step is {dir, env, unset, argv}, which is the smallest unit that
-# covers what the tree actually does -- micropython builds two
+# A Run is a command and a Within is the scope around it -- directory,
+# environment, removals -- which is the smallest vocabulary that
+# covers what the tree actually does: micropython builds two
 # components in two directories, one of which must NOT inherit the
 # cross compiler.
 #
 class TestBuildSteps < Minitest::Test
 
   include TestHelper
+  include Recipe::DSL
 
   class StepPkg < TestHelper::FakePackage
     attr_accessor :steps, :ran
-    def build_steps = (@steps || [])
-  end
-
-  # Package#Step is an instance method; the tests build the struct.
-  def Step(log, argv, dir: nil, env: {}, unset: [])
-    return Package::BuildStep.new(log: log, argv: argv, dir: dir,
-                                  env: env, unset: unset)
+    def build_steps(ver = nil) = (@steps || [])
   end
 
   def pkg_with(steps)
@@ -412,8 +417,8 @@ class TestBuildSteps < Minitest::Test
     p.ran = []
     # Capture instead of executing: what matters here is WHICH
     # command would run, in which directory, with which environment.
-    p.define_singleton_method(:run_command) do |log, argv|
-      @ran << [log, argv, Dir.pwd, ENV["PROBE"], ENV.key?("GONE")]
+    p.define_singleton_method(:run_command) do |log, argv, env: nil|
+      @ran << [log, argv, Dir.pwd, env]
       true
     end
     return p
@@ -421,7 +426,8 @@ class TestBuildSteps < Minitest::Test
 
   def test_tokens_are_expanded
     with_fake_tc do
-      p = pkg_with([Step("b.log", ["make", "-j$PAR", "P=$INSTALL/x"])])
+      p = pkg_with([Run(log: "b.log",
+                        argv: ["make", "-j$PAR", "P=$INSTALL/x"])])
       Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
       _, argv, = p.ran.first
       assert_equal "make", argv[0]
@@ -433,7 +439,8 @@ class TestBuildSteps < Minitest::Test
 
   def test_steps_run_in_order
     with_fake_tc do
-      p = pkg_with([Step("a.log", ["one"]), Step("b.log", ["two"])])
+      p = pkg_with([Run(log: "a.log", argv: ["one"]),
+                    Run(log: "b.log", argv: ["two"])])
       Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
       assert_equal ["a.log", "b.log"], p.ran.map(&:first)
     end
@@ -443,9 +450,10 @@ class TestBuildSteps < Minitest::Test
   # against whatever the failed one did not produce.
   def test_a_failing_step_stops_the_rest
     with_fake_tc do
-      p = pkg_with([Step("a.log", ["one"]), Step("b.log", ["two"])])
-      p.define_singleton_method(:run_command) { |log, argv|
-        @ran << [log, argv, Dir.pwd, nil, false]
+      p = pkg_with([Run(log: "a.log", argv: ["one"]),
+                    Run(log: "b.log", argv: ["two"])])
+      p.define_singleton_method(:run_command) { |log, argv, env: nil|
+        @ran << [log, argv, Dir.pwd, env]
         false
       }
       Dir.mktmpdir { |d| refute p.run_build_steps(Pathname.new(d)) }
@@ -457,41 +465,52 @@ class TestBuildSteps < Minitest::Test
     with_fake_tc do
       Dir.mktmpdir do |d|
         FileUtils.mkdir_p(File.join(d, "sub"))
-        p = pkg_with([Step("b.log", ["x"], dir: "sub")])
+        p = pkg_with([Within(dir: "sub", steps: [
+          Run(log: "b.log", argv: ["x"]),
+        ])])
         FileUtils.chdir(d) { p.run_build_steps(Pathname.new(d)) }
         assert_equal "sub", File.basename(p.ran.first[2])
       end
     end
   end
 
-  def test_env_applies_to_the_step_and_is_restored
+  # The environment goes TO the command rather than into this
+  # process: it is then logged with the command it belongs to, and
+  # there is nothing to restore afterwards.
+  def test_env_goes_to_the_command_not_into_the_process
     with_fake_tc do
-      p = pkg_with([Step("b.log", ["x"], env: { "PROBE" => "set" })])
+      p = pkg_with([Within(env: { "PROBE" => "set" }, steps: [
+        Run(log: "b.log", argv: ["x"]),
+      ])])
       Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
-      assert_equal "set", p.ran.first[3]
+      assert_equal({ "PROBE" => "set" }, p.ran.first[3])
       assert_nil ENV["PROBE"]
     end
   end
 
-  # micropython's mpy-cross must not see the cross compiler.
+  # micropython's mpy-cross must not see the cross compiler. A nil
+  # value is how spawn is told to REMOVE a variable, which is not the
+  # same as setting it to the empty string.
   def test_unset_removes_a_variable_for_the_step_only
     with_fake_tc do
       ENV["GONE"] = "yes"
-      p = pkg_with([Step("b.log", ["x"], unset: ["GONE"])])
+      p = pkg_with([Within(unset: ["GONE"], steps: [
+        Run(log: "b.log", argv: ["x"]),
+      ])])
       Dir.mktmpdir { |d| p.run_build_steps(Pathname.new(d)) }
-      refute p.ran.first[4], "variable should be absent inside the step"
-      assert_equal "yes", ENV["GONE"], "and restored after it"
+      assert_equal({ "GONE" => nil }, p.ran.first[3])
+      assert_equal "yes", ENV["GONE"], "and untouched in this process"
     ensure
       ENV.delete("GONE")
     end
   end
 
-  # The steps are part of the recipe, so changing one is a rebuild.
+  # The steps are the recipe, so changing one is a rebuild.
   def test_steps_are_part_of_the_fingerprint
     with_fake_tc do
-      a = pkg_with([Step("b.log", ["make", "X=1"])]).build_recipe_digest
-      b = pkg_with([Step("b.log", ["make", "X=2"])]).build_recipe_digest
-      refute_equal a, b
+      a = pkg_with([Run(log: "b.log", argv: ["make", "X=1"])])
+      b = pkg_with([Run(log: "b.log", argv: ["make", "X=2"])])
+      refute_equal a.build_recipe_digest, b.build_recipe_digest
     end
   end
 

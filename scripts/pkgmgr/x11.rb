@@ -159,10 +159,7 @@ class X11Package < Package
       "--datarootdir=#{stack_sysroot}/usr/share",
   ]
 
-  def install_impl_internal(install_dir)
-
-    return autotools_stack_build(install_dir)
-  end
+  def build_steps(ver = nil) = autotools_stack_steps(build_flags(ver))
 end
 
 X11_LIBS.each { |spec| pkgmgr.register(X11Package.new(spec)) }

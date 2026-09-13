@@ -38,8 +38,8 @@ class TreecmdPackage < Package
            out: "/dev/null", err: "/dev/null")
   end
 
-  def build_steps = [
-    Step("build.log", ["make", "-j$PAR"]),
+  def build_steps(ver = nil) = [
+    Run(log: "build.log", argv: ["make", "-j$PAR"]),
   ]
 end
 

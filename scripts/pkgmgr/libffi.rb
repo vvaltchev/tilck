@@ -59,14 +59,13 @@ class HostLibffiPackage < Package
       "--disable-multi-os-directory",  # keeps it out of lib64
   ]
 
-  def install_impl_internal(install_dir)
-
+  # autogen runs OUTSIDE the stack's toolchain, as it did: it builds a
+  # configure script with the host's autotools.
+  def build_steps(ver = nil) = [
     # The git tarball has no configure script; autogen builds one.
-    ok = run_command("autogen.log", ["./autogen.sh"])
-    return false if !ok
-
-    return autotools_stack_build(install_dir)
-  end
+    Run(log: "autogen.log", argv: ["./autogen.sh"]),
+    *autotools_stack_steps(build_flags(ver)),
+  ]
 end
 
 pkgmgr.register(HostLibffiPackage.new())

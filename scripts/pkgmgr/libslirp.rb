@@ -73,9 +73,7 @@ class HostLibslirpPackage < Package
     )
   end
 
-  def install_impl_internal(install_dir)
-    return meson_stack_build(install_dir)
-  end
+  def build_steps(ver = nil) = meson_stack_steps(build_flags(ver))
 end
 
 pkgmgr.register(HostLibslirpPackage.new())

@@ -37,7 +37,7 @@ class MicropythonPackage < Package
   # than an override.
   CC_VARS = %w[CC CXX AR NM RANLIB CROSS_PREFIX CROSS_COMPILE].freeze
 
-  def build_steps
+  def build_steps(ver = nil)
 
     mpy_cross = ["make", "V=1", "-j$PAR"]
 
@@ -62,11 +62,16 @@ class MicropythonPackage < Package
     end
 
     return [
-      Step("build.log", mpy_cross, dir: "mpy-cross", unset: CC_VARS),
-      Step("make_submodules.log", ["make", "submodules"],
-           dir: "ports/unix"),
-      Step("build.log", unix_port, dir: "ports/unix",
-           env: { "LDFLAGS_EXTRA" => "-static" }),
+      Within(dir: "mpy-cross", unset: CC_VARS, steps: [
+        Run(log: "build.log", argv: mpy_cross),
+      ]),
+      Within(dir: "ports/unix", steps: [
+        Run(log: "make_submodules.log", argv: ["make", "submodules"]),
+      ]),
+      Within(dir: "ports/unix", env: { "LDFLAGS_EXTRA" => "-static" },
+             steps: [
+        Run(log: "build.log", argv: unix_port),
+      ]),
     ]
   end
 end

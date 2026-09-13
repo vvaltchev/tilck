@@ -56,7 +56,7 @@ class TestRecipeDigestIsReproducible < Minitest::Test
   # a source tree happened to be there -- and on which one.
   def test_src_ref_is_not_resolved_into_the_recipe
     pkg = TccPackage.new
-    steps = pkg.build_steps.map { |s| s.argv.join(" ") }.join(" ")
+    steps = Recipe.all_argv(pkg.build_steps).join(" ")
 
     assert_includes steps, "$SRC_REF",
                     "tcc no longer names the source ref"
