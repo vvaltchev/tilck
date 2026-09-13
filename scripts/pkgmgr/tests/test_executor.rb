@@ -122,6 +122,32 @@ class TestExecutor < Minitest::Test
     end
   end
 
+  # A package that writes several installs from one build -- gnuefi
+  # builds for two arches and noarch -- and installs itself whole:
+  # every one of its installs gets its origin, its mark and its
+  # record, and the tree reads back as the plan said, marks included.
+  def test_a_build_that_writes_several_installs_records_each
+    with_fake_tc do
+      m = FakePackage.new("multi", arch_list: [I386, RV])
+      m.define_singleton_method(:install_archs) { |ver = nil| [I386, RV] }
+      m.define_singleton_method(:install_impl) { |ver|
+        for a in [I386, RV] do
+          FileUtils.mkdir_p(at(scope.with(arch: a)).install_dir(ver))
+        end
+        true
+      }
+      pkgmgr.register(m)
+      before = world_now
+      plan = Planner.plan_install(pkgmgr, before, [["multi", nil]], scope,
+                                  claimed: [])
+      assert_equal :auto, plan.builds.first.mark, "unclaimed: auto"
+      assert_nil run_plan(plan)
+      assert_same_world(plan.apply(pkgmgr, before), tree, "multi-arch build")
+      assert_equal [false, false], tree.installs.map(&:manual)
+      assert_equal [:ok, :ok], tree.installs.map(&:record)
+    end
+  end
+
   # A plan with nothing in it leaves the tree alone.
   def test_an_empty_plan_leaves_the_tree_as_it_was
     with_fake_tc do

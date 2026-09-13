@@ -105,6 +105,40 @@ class TestOrchestration < Minitest::Test
 
   # What the build produced is what the install contains, and the
   # staging tree is gone. Nothing is left half-moved.
+  # A package that installs itself whole -- its own install_impl,
+  # not the base's atomic move (freedoom, gnuefi) -- is recorded like
+  # any other: the executor announces the change, and the install it
+  # reads back gets its origin, its dependencies and its record.
+  # Without that, the world the executor read was the one before
+  # the build, the install was "not there", and --check-for-updates
+  # called it stale for ever.
+  def test_a_package_that_installs_itself_is_recorded
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("self")
+        pkg.define_singleton_method(:install_impl) { |ver|
+          FileUtils.mkdir_p(install_dir(ver))
+          true
+        }
+        pkgmgr.register(pkg)
+
+        rc, _ = run_cli("-s", "self", "-q")
+        assert_equal 0, rc
+
+        inst = pkgmgr.world.of("self").first
+        refute_nil inst
+        assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+        assert inst.default_install
+        assert inst.manual
+        assert_equal({}, InstallDeps.read(inst.path))
+        assert_equal [0, []],
+                     Planner.check_updates(pkgmgr, pkgmgr.world.judged(pkgmgr,
+                                                                      scope),
+                                           scope)
+      end
+    end
+  end
+
   def test_a_successful_install_leaves_nothing_in_staging
     with_fake_tc do
       with_real_commands do
