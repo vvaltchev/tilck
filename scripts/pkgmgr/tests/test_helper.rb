@@ -650,6 +650,14 @@ module TestHelper
     def expected_files(ver = nil) = []
     def default_ver = Ver("1.0.0")
 
+    # The shape every real recipe has: the declared flags reach a
+    # command. Only a step can move the digest, so a fixture that
+    # varies build_flags to make an install read stale needs one
+    # that carries them -- as meson_stack_steps does for real.
+    def build_steps(ver = default_ver)
+      return [Run(log: "build.log", argv: ["fake-build", *build_flags(ver)])]
+    end
+
     # The same wrap GccPackage applies, for the same reason: an
     # install of a cross compiler has to say what it targets.
     def get_install_list

@@ -8,7 +8,6 @@ require_relative 'source_ref'
 require_relative 'package_manager'
 require_relative 'build_env'
 require_relative 'coords'
-require_relative 'source_digest'
 require_relative 'build_inputs'
 require_relative 'recipe'
 require_relative 'postcondition'
@@ -179,8 +178,8 @@ class Package
   # Where this package may run: OS names and host arch names, nil for
   # anywhere. Constructor arguments for most; a package that is the
   # root of a world overrides them instead, because they are then a
-  # statement about the world and not part of the recipe -- see
-  # NON_RECIPE_HOOKS, and host_world_root? beside them.
+  # statement about the world and not part of the recipe; see
+  # host_world_root?.
   def host_os_list = @host_os_list
   def host_arch_list = @host_arch_list
 
@@ -696,9 +695,8 @@ class Package
   # value is a property of the pinned source, and the version already
   # identifies that.
   #
-  # Empty means "this package builds itself imperatively"; its
-  # install_impl_internal is then hashed instead. See
-  # docs/plans/toolchain5.md.
+  # Empty means there is nothing to build -- a metapackage, or a
+  # source-only package; see nothing_to_build?.
   #
   # The version is never absent: asked without one, a recipe is the
   # recipe of the version this package installs by default. A nil
@@ -874,10 +872,6 @@ class Package
       else super
       end
     end
-
-    # prune is the base class's: it is the same operation
-    # prune_build_tree performs, and that one stays only for the
-    # packages the conversion has not reached.
   end
 
   def run_build_steps(install_dir, ver = nil)
@@ -917,114 +911,17 @@ class Package
     return Pathname.glob(base / "**" / "*.diff").sort
   end
 
-  # Base-class helpers whose own source is part of a package's recipe
-  # when it calls them. Changing --wrap-mode in meson_stack_build
-  # altered dependency resolution for 22 packages at once and rebuilt
-  # none of them; listing the helpers here is what catches that,
-  # without making every package depend on all of package.rb.
   # Programs a build must not reach for on the machine. See
   # scripts/pkgmgr/shims/python3.
   SHIMS_DIR = (RUBY_SOURCE_DIR / "shims").to_s
 
-  BUILD_HELPERS = [:host_compiler_gnu17].freeze
-
-  # Hooks that say what a package IS, or whether it may be asked for,
-  # rather than how it is built. The build never calls them: they are
-  # read by the package manager for placement, policy and display, so
-  # changing one cannot change a produced byte.
   #
-  # They are therefore excluded from the fingerprint, for the same
-  # reason comments are blanked out of it. Deleting `enabled?` and a
-  # duplicated `default_cc` from thirty-eight files -- a change that
-  # could not alter a single installed binary -- otherwise condemned
-  # 69 installs to a rebuild, including all three cross compilers.
-  # A safety mechanism that charges hours for edits it can see are
-  # inert is one people learn to switch off.
+  # One digest standing for "how this package is built": the steps,
+  # which are data. What is hashed is exactly what runs, and nothing
+  # else -- the Ruby around a recipe is free to change, and only a
+  # step it emits can move the digest. See recipe.rb.
   #
-  # host_world_root? is the newest of them and the clearest case: it
-  # says whether a package is the root of the world we build a
-  # compiler and an emulator in, which decides what the system tests
-  # skip. It cannot reach a produced byte, and leaving it out cost
-  # twelve rebuilds of GCC and QEMU before anyone noticed.
-  #
-  # installed? decides WHETHER to build, never what is built: gnuefi
-  # overrides it to require every arch it produces, and rewriting that
-  # lookup to use coordinates flagged both of its installs as changed.
-  #
-  # Deliberately short, and deliberately not "everything the build
-  # does not obviously use". default_arch stays IN: zlib's build step
-  # names "#{default_arch.gcc_tc}-linux-ar", so an override of it
-  # really does change the command that runs.
-  # host_os_list and host_arch_list say where a package RUNS, which no
-  # build step reads; declared as overrides by the two world roots,
-  # and hidden from the digest for the same reason host_world_root? is.
-  #
-  # clean_build runs only on a resume, before the build, and only ever
-  # deletes: what the build then produces is what it would have
-  # produced from a fresh extraction. Thirty-six copies of it were
-  # removed from the recipes in one change, which would otherwise
-  # have flagged everything they built.
-  #
-  # sysroot_fragments says what an install publishes into the composed
-  # sysroot -- a view, recomposed from the installs at will -- and is
-  # read after the build, never by it. Teaching QEMU to publish its
-  # binaries would otherwise have condemned every stack's QEMU to a
-  # rebuild for the sake of a symlink.
-  #
-  # get_install_list and get_installable_list read what is on disk
-  # and what could be; the GCC package wraps the first to attach its
-  # target metadata, and teaching that wrapper one more field
-  # (.install_origin's second word) flagged all four prebuilt cross
-  # compilers as rebuilt from something else.
-  #
-  # stack_of_install says which stack an install is judged at, and is
-  # read by the judging, never by the build; own_table is read by the
-  # listing alone.
-  NON_RECIPE_HOOKS = %i[enabled? default? default_cc
-                        host_world_root? installed?
-                        host_os_list host_arch_list
-                        clean_build sysroot_fragments
-                        get_install_list get_installable_list
-                        stack_of_install own_table
-                        postconditions].freeze
-
-  #
-  # One digest standing for "how this package is built".
-  #
-  # Declared flags, plus the source of the methods the package itself
-  # defines, plus any shared build helper it calls. The code is in
-  # here because a third of the tree does something no flag list can
-  # express, and hashing it is the only way to notice a change --
-  # comments excluded, so that rewriting a comment in a 109-line
-  # install method does not cost a rebuild.
-  #
-  def build_recipe_digest(ver = nil)
-
-    # Converted: the recipe IS the steps, and the steps are data. No
-    # source is read, and what is hashed is exactly what runs.
-    steps = build_steps(ver)
-    return Recipe.digest(steps) if !steps.empty?
-
-    # NOT YET CONVERTED. The recipe is still a Ruby method, so its
-    # source is all there is to hash. This branch, SourceDigest and
-    # the Prism dependency all go together once the last package has
-    # a build_steps -- see docs/plans/toolchain5.md.
-    own = SourceDigest.class_source(self.class, upto: Package,
-                                    except: NON_RECIPE_HOOKS)
-    file = SourceDigest.source_file_of(self.class)
-
-    helpers = BUILD_HELPERS.filter_map { |h|
-      next if !own.include?(h.to_s)
-      SourceDigest.method_source(__FILE__, h)
-    }
-
-    # The steps term is empty by construction here -- this branch runs
-    # only when there are none -- but it stays in the digest, so that
-    # CONVERTING a package is the only thing that moves it.
-    return "sha256:" + SourceDigest.digest(
-      build_flags(ver).join(" "), "", own, *helpers
-    )[0, 32]
-  end
+  def build_recipe_digest(ver = nil) = Recipe.digest(build_steps(ver))
 
   # A meta-package, in APT's sense: it builds nothing and installs an
   # empty tree -- a directory with the records every install carries
@@ -1294,33 +1191,6 @@ class Package
       vars.each { |k, v| ENV[k] = v }
       block.call
     end
-  end
-
-  # Discard the build tree, keeping the install prefix and the logs.
-  #
-  # The logs are the record of HOW a package was built, and they are
-  # worth more than the space: warnings a newer compiler raises on older
-  # code often mark undefined behaviour it is about to exploit, and that
-  # signal is only visible in the build log. Deleting them alongside the
-  # source made the question unanswerable without a full rebuild.
-  def prune_build_tree
-
-    # A package configured out of tree — binutils, glibc, gcc, qemu —
-    # writes its logs inside the build directory about to be deleted.
-    # Lift them out first, prefixed with where they came from.
-    Dir.children(".").each do |d|
-      next if d == "install" || !File.directory?(d)
-
-      Dir.glob("#{d}/*.log").each do |log|
-        FileUtils.mv(log, "#{d}-#{File.basename(log)}")
-      end
-    end
-
-    Dir.children(".").each { |e|
-      next if e == "install"
-      next if e.end_with?(".log")
-      FileUtils.rm_rf(e)
-    }
   end
 
   # The shape every portable library build has.

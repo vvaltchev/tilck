@@ -233,6 +233,13 @@ an ordered list of them.
 
 ### Two ways to get a fingerprint, neither of which can be forgotten
 
+**Status, 2026-09-13: there is one way now.** Every package declares
+`build_steps` (or `nothing_to_build?`), the digest is
+`Recipe.digest(build_steps)` and nothing else, and the code
+fingerprint -- `source_digest.rb` and its Prism dependency -- is
+deleted. The step model is in `scripts/pkgmgr/recipe.rb`. What
+follows is the history of how the tree got there.
+
 **A declarative recipe**, for builds that are a command sequence. The
 flags become data that the helper both EXECUTES and RECORDS, so there
 is no separate "remember to publish the flags" step to omit:

@@ -10,7 +10,7 @@
 #   two arches of a version   one arch's recipe was recorded for both
 #   two versions of a package -f removed all of them to rebuild one
 #   two stacks                composing B's sysroot read A's install
-#   two classes in a file     one class's method was hashed for the other
+#   two classes in a file     one class's recipe was hashed for the other
 #   two packages, one source  one package's patches reached the other
 #
 # In every case the suite had exactly one of the thing. So this file
@@ -166,15 +166,17 @@ class TestTwoOfEverything < Minitest::Test
 
   # --- two classes in one file ------------------------------------------
 
-  def test_two_classes_in_one_file_keep_their_own_methods
-    # ncurses.rb is the real pair: same file, same method names, two
-    # genuinely different builds.
-    require_relative '../ncurses'
-
-    t = SourceDigest.own_source(NcursesPackage)
-    h = SourceDigest.own_source(NcursesHostPackage)
-
-    refute_equal t, h, "two classes in one file hash identically"
+  def test_two_classes_in_one_file_keep_their_own_recipes
+    # ncurses.rb is the real pair: same file, same method name, two
+    # genuinely different builds. Under the source-hash scheme this
+    # replaces, one flat table per FILE made the host package's
+    # method answer for the target's.
+    with_fake_tc do
+      t = REAL_PACKAGES.find { |p| p.name == "ncurses" }
+      h = REAL_PACKAGES.find { |p| p.name == "host_ncurses" }
+      refute_equal t.build_recipe_digest, h.build_recipe_digest,
+                   "two classes in one file hash identically"
+    end
   end
 
 end

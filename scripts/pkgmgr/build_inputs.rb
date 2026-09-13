@@ -31,7 +31,10 @@ module BuildInputs
   # Which scheme computed the `recipe` digest in a record.
   #
   #   1  the recipe was the SOURCE of the Ruby that built the package
-  #   2  the recipe is the STEPS, and the steps are data
+  #   2  the recipe is the STEPS where a package declares them, and
+  #      the source where it does not
+  #   3  the recipe is the steps, for every package -- an empty
+  #      recipe included, which under 2 was still hashed as source
   #
   # Recorded but NOT compared. A record written under 1 for a package
   # whose recipe was already a step list is still valid -- the digest
@@ -42,7 +45,7 @@ module BuildInputs
   # because your sources changed" is the wrong thing to say about
   # that.
   #
-  FORMAT = 2
+  FORMAT = 3
 
   # Absolute paths are rewritten to tokens before being recorded, so
   # that the file is stable across machines and still diffable by eye.
