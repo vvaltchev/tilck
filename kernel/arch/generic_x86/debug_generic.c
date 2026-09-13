@@ -6,6 +6,7 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/timer.h>
 
 int debug_qemu_turn_off_machine(void)
 {
@@ -13,6 +14,17 @@ int debug_qemu_turn_off_machine(void)
       return -ENXIO;
 
    outb(0xf4, 0x00);
+
+   /*
+    * QEMU up to 8.2 exits inside the port write, so the line above never
+    * returns. Since 9.0 the write only REQUESTS a shutdown, carried out
+    * by the main loop a moment later while the vCPU keeps running: give
+    * it that moment, or the caller goes on as if the write had failed,
+    * and a machine about to disappear prints a panic on its way out.
+    */
+   for (int i = 0; i < 10; i++)
+      delay_us(100 * 1000);
+
    return -EIO;
 }
 
