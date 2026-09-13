@@ -591,10 +591,10 @@ class PackageManager
 
     for m in stacks do
       inst = m.get_install_list.find { |i| !i.path.nil? && !i.broken }
-      status = inst ? Package::BUILT_STR : Package::NOT_BUILT_STR
       held = inst ? held_by([inst], needs).length - 1 : 0
       here = m.supported? ? "  [ CURRENT ]" : ""
-      printf("%-28s [ %s ] %3d pkgs%s\n", m.name, status, held, here)
+      printf("%-28s %s %3d pkgs%s\n", m.name, Package.stack_cell(!inst.nil?),
+             held, here)
     end
   end
 
@@ -627,12 +627,12 @@ class PackageManager
     # typically; the rest are there for whatever else was built into
     # the stack, which the next table says.
     for v in known do
-      status = built.include?(v) ? Package::BUILT_STR : Package::NOT_BUILT_STR
       here = v == current_host_stack ? "  [ CURRENT ]" : ""
       cc = compilers.find { |i| i.ver == v }
       held = cc ? held_in_stack(v, held_by([cc], needs)) : 0
-      printf("%-20s [ %s ] %3d pkgs, %3d held%s\n",
-             Coords.stack_name(v), status, packages_in_stack(v), held, here)
+      printf("%-20s %s %3d pkgs, %3d held%s\n",
+             Coords.stack_name(v), Package.stack_cell(built.include?(v)),
+             packages_in_stack(v), held, here)
     end
 
     show_held_tables(width: width, needs: needs)

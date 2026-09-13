@@ -236,7 +236,9 @@ class TestCliMatrix < Minitest::Test
         plain = out.gsub(/\e\[[0-9;]*m/, "")
 
         assert_match(/gcc-7\.7\.7\s+\[\s*built\s*\]/, plain)
-        assert_match(/gcc-8\.8\.8\s+\[\s*not built\s*\]/, plain)
+        # Not built is not a fault: the cell is blank, not red.
+        assert_match(/^gcc-8\.8\.8\s+\d+ pkgs/, plain)
+        refute_match(/gcc-8\.8\.8.*built/, plain)
       end
     end
   end
