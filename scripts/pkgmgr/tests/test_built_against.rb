@@ -68,7 +68,7 @@ class TestBuiltAgainst < Minitest::Test
 
   def install_of(pkg)
     fake_install(pkg)
-    return pkg.find_install(pkg.default_ver)
+    return bound(pkg).find_install(pkg.default_ver)
   end
 
   def test_the_record_wins_over_what_is_installed

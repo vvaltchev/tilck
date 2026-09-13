@@ -133,7 +133,7 @@ class TestPortableGating < Minitest::Test
                             arch_list: ALL_HOST_ARCHS.values)
       pkgmgr.register(pkg)
 
-      refute_empty pkg.get_installable_list
+      refute_empty bound(pkg).get_installable_list
     end
   end
 
@@ -173,18 +173,18 @@ class TestFinalInstallPrefix < Minitest::Test
       pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
       staging = pkg.staging_dir(Ver("1.0.0"))
 
-      got = pkg.final_install_prefix(staging).to_s
+      got = bound(pkg).final_install_prefix(staging).to_s
 
       refute_match(/staging/, got)
       assert_match(%r{/foo/1\.0\.0/install\z}, got)
-      assert got.start_with?(pkg.final_install_root.to_s)
+      assert got.start_with?(bound(pkg).final_install_root.to_s)
     end
   end
 
   def test_prefix_follows_the_staged_version
     with_fake_tc do
       pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
-      got = pkg.final_install_prefix(pkg.staging_dir(Ver("2.5.0"))).to_s
+      got = bound(pkg).final_install_prefix(bound(pkg).staging_dir(Ver("2.5.0"))).to_s
       assert_match(%r{/foo/2\.5\.0/install\z}, got)
     end
   end
@@ -526,7 +526,7 @@ class TestStackCompilerNeverUpgrades < Minitest::Test
         with_host_stack(Ver("12.5.0")) { run_cli("-s", "host_gcc") }
         pkgmgr.refresh
 
-        inst = gcc.find_install(Ver("12.5.0"))
+        inst = bound(gcc).find_install(Ver("12.5.0"))
         refute_nil inst
         assert inst.default_install, "the premise: recorded as a default"
 

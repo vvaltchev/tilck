@@ -125,7 +125,6 @@ class HostQemuPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
   def host_world_root? = true
 
   # Where the host world runs: x86_64 Linux, for now. Everything only

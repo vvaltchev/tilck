@@ -73,8 +73,6 @@ class GlycinPackage < Package
   include FileUtilsShortcuts
   include CargoBuild
 
-  def default_arch = HOST_ARCH
-
   # Both halves come out of one tarball and are always the same
   # version, so they share a single entry in the version file even
   # though they install side by side under different names.
@@ -91,7 +89,6 @@ class GlycinPackage < Package
       bin_dirs:        [prefix / "bin"],
     )
   end
-
 
   # Options shared by both halves. glycin's meson passes --target to
   # cargo only under meson.is_cross_build(), so the cross file is not

@@ -51,7 +51,6 @@ class HostLibepoxyPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
   def pkg_dirname = "libepoxy"
 
   def expected_files(ver = nil) = [

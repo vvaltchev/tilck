@@ -56,8 +56,6 @@ class HostBinutilsPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   # In every stack's sysroot, at usr/bin, beside gcc: one binutils
   # serves every stack, and a usr/bin with gcc in it and no ld is half
   # a toolchain.

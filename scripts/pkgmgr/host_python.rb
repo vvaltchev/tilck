@@ -68,7 +68,6 @@ PYTHON_SOURCE = SourceRef.new(
   },
 )
 
-
 #
 # host_python: the interpreter our builds run, instead of whichever
 # one happens to be first on PATH.
@@ -121,8 +120,6 @@ class HostPythonPackage < Package
       default: false,
     )
   end
-
-  def default_arch = HOST_ARCH
 
   # No asset for this platform means no package, rather than a
   # download that 404s halfway through an install. FreeBSD has no

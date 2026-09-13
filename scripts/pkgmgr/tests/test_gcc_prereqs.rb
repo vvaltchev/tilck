@@ -145,7 +145,7 @@ class TestGccPrereqsAreCompiledAsGnu17 < Minitest::Test
       Dir.mktmpdir do |d|
         staging = Pathname.new(d) / pkg.pkg_dirname / "6.1.0"
         FileUtils.mkdir_p(staging)
-        FileUtils.cd(staging) { pkg.install_impl_internal(staging) }
+        FileUtils.cd(staging) { bound(pkg).install_impl_internal(staging) }
       end
     end
 

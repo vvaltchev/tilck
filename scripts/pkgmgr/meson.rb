@@ -62,8 +62,6 @@ class HostMesonPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/bin/meson", false],
     ["install/lib/meson/meson.py", false],

@@ -41,8 +41,6 @@ class HostPcre2Package < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/usr/lib/libpcre2-8.so", false],
     ["install/usr/include/pcre2.h", false],

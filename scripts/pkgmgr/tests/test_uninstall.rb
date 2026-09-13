@@ -95,7 +95,7 @@ class TestUninstallSingle < Minitest::Test
         pkgmgr.refresh()
 
         pkgmgr.uninstall("host_foo", false, false)
-        refute pkg.installed?(Ver("1.0.0"))
+        refute bound(pkg).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -224,11 +224,12 @@ class TestUninstallALL < Minitest::Test
         pkgmgr.register(cc)
         assert_equal 0, run_cli("-s", "gcc-i386-musl").first
         pkgmgr.refresh
-        refute_nil cc.find_install(cc.default_ver)
+        refute_nil bound(cc).find_install(cc.default_ver)
 
         assert_equal 0, run_cli("-u", "gcc-i386-musl").first
         pkgmgr.refresh
-        assert_nil cc.find_install(cc.default_ver), "a named compiler stayed"
+        assert_nil bound(cc).find_install(cc.default_ver),
+                   "a named compiler stayed"
       end
     end
   end
@@ -247,7 +248,7 @@ class TestUninstallALL < Minitest::Test
 
         pkgmgr.uninstall("ALL", false, false)  # force = false
         # Compiler should still be installed
-        assert cc.installed?(Ver("1.0.0"))
+        assert bound(cc).installed?(Ver("1.0.0"))
         # Regular package should be removed
         refute bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
@@ -269,7 +270,7 @@ class TestUninstallALL < Minitest::Test
 
         # Need -c ALL to also match host packages (compiler="syscc")
         pkgmgr.uninstall("ALL", false, true, nil, "ALL", "ALL")
-        refute cc.installed?(Ver("1.0.0"))
+        refute bound(cc).installed?(Ver("1.0.0"))
         refute bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end

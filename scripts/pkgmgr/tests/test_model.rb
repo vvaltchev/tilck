@@ -43,7 +43,8 @@ class TestModel < Minitest::Test
 
   def inv(arch: I386, board: nil, stack: A, os: "linux", host: "x86_64")
     Model::Inv.new(env_arch: arch, env_board: board, default_stack: stack,
-                   host_os: os, host_arch: host)
+                   host: Host.new(os: os, arch: ALL_ARCHS.fetch(host),
+                                  distro: "distro-1.0", cc: "gcc-0.0.0"))
   end
 
   def reg(*shapes) = Model::Registry.new(shapes)
@@ -616,7 +617,7 @@ class TestModelResolvesVersions < Minitest::Test
   def reg(*shapes) = Model::Registry.new(shapes)
   def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
                            default_stack: Ver("14.4.0"),
-                           host_os: "linux", host_arch: "x86_64")
+                           host: Host.env)
 
   def install(r, argv)
     Model.step(r, Set.new, Model.parse(argv), ctx)
@@ -658,7 +659,7 @@ class TestModelRebuild < Minitest::Test
   def reg(*shapes) = Model::Registry.new(shapes)
   def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
                            default_stack: Ver("14.4.0"),
-                           host_os: "linux", host_arch: "x86_64")
+                           host: Host.env)
   def tgt = Coords.new("tilck-i386", "pc", "gcc-#{ALL_ARCHS["i386"].gcc_ver}")
 
   def test_a_changed_record_is_rebuilt_in_place_as_it_was_asked_for
@@ -697,7 +698,7 @@ class TestModelStackCompilerNeverUpgrades < Minitest::Test
                                                default_ver: "14.4.0")])
     inv = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
                          default_stack: Ver("14.4.0"),
-                         host_os: "linux", host_arch: "x86_64")
+                         host: Host.env)
     c = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
     k = Model.key("host_gcc", "12.5.0", c, origin: :default)
 
@@ -715,7 +716,7 @@ class TestModelRebuildPlansItsDependencies < Minitest::Test
 
   def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
                            default_stack: Ver("14.4.0"),
-                           host_os: "linux", host_arch: "x86_64")
+                           host: Host.env)
   def tgt = Coords.new("tilck-i386", "pc", "gcc-#{ALL_ARCHS["i386"].gcc_ver}")
 
   def test_a_missing_dependency_is_installed_and_the_install_rebuilt

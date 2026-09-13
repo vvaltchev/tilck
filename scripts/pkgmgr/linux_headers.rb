@@ -52,8 +52,6 @@ class HostLinuxHeadersPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/usr/include/linux/unistd.h", false],
     ["install/usr/include/asm/unistd.h", false],

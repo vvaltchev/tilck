@@ -63,15 +63,17 @@ module Layout
     v = {
       "ARCH"        => ARCH.name,
       "BOARD"       => BOARD,
-      "HOST_DISTRO" => HOST_DISTRO,
-      "HOST_CC"     => HOST_CC,
+      "HOST_DISTRO" => scope.host.distro,
+      "HOST_CC"     => scope.host.cc,
       "TCROOT"      => TC,
 
-      "PKGS_HOST_PORTABLE" => Coords.new(HOST_OS_ARCH, nil, nil).pkgs_dir,
-      "PKGS_HOST_DISTRO"   => Coords.new(HOST_OS_ARCH, HOST_DISTRO,
+      "PKGS_HOST_PORTABLE" => Coords.new(scope.host.machine, nil,
                                          nil).pkgs_dir,
-      "PKGS_HOST_CC"       => Coords.new(HOST_OS_ARCH, HOST_DISTRO,
-                                         HOST_CC).pkgs_dir,
+      "PKGS_HOST_DISTRO"   => Coords.new(scope.host.machine,
+                                         scope.host.distro, nil).pkgs_dir,
+      "PKGS_HOST_CC"       => Coords.new(scope.host.machine,
+                                         scope.host.distro,
+                                         scope.host.cc).pkgs_dir,
       "PKGS_NOARCH"        => Coords.new("noarch", nil, nil).pkgs_dir,
       "PKGS_TARGET"        => target_pkgs(scope.env_arch, scope),
     }
@@ -85,7 +87,7 @@ module Layout
       v["PKGS_TARGET_#{arch.name}"] = p if p
     end
 
-    for inst in qemu_installs do
+    for inst in qemu_installs(scope) do
       v["QEMU_#{inst.ver}"] = inst.path / "install" / "bin"
     end
 
@@ -95,9 +97,9 @@ module Layout
   # Every QEMU built in a host stack, oldest first; a broken one is
   # not a QEMU anybody can run. None where the host world does not run
   # (host_qemu is x86_64 Linux only, for now).
-  def qemu_installs
+  def qemu_installs(scope = pkgmgr.env_scope)
     q = pkgmgr.get("host_qemu")
-    return [] if q.nil? || !q.host_supported?
+    return [] if q.nil? || !q.at(scope).host_supported?
     return pkgmgr.world.of(q.name).reject(&:broken).sort_by(&:ver)
   end
 

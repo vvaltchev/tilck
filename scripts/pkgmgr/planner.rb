@@ -268,7 +268,7 @@ module Planner
 
     closure = DepResolver.dep_closure(pkg.name, graph(registry, scope))
     for n in [pkg.name] + closure do
-      p = registry.get(n)
+      p = registry.get(n)&.at(scope)
       next if p.nil? || p.host_supported?
       who = n == pkg.name ? "" : " (needs #{n}, which requires it)"
       return "host: #{pkg.name} requires #{p.host_requirement}#{who}"
@@ -449,7 +449,7 @@ module Planner
       a = arch.nil? ? scope.arch : arch_of.call(arch)
       return [
         CoordsFilter.new(machine: "noarch", env: :any, stack: st),
-        CoordsFilter.new(machine: HOST_OS_ARCH, env: :any, stack: st),
+        CoordsFilter.new(machine: scope.host.machine, env: :any, stack: st),
         target_at.call(a, env_of.call(a), :any),
       ]
     end
@@ -481,7 +481,7 @@ module Planner
       return [] if !arch.nil? || !board.nil?
       return [CoordsFilter.exact(at.coords)] if cc.nil? || cc == :any
       return [] if pkg.host_tier != :stack || !cc.is_a?(Version)
-      return [CoordsFilter.exact(Coords.new(HOST_OS_ARCH, nil,
+      return [CoordsFilter.exact(Coords.new(scope.host.machine, nil,
                                             Coords.stack_name(cc)))]
     end
 

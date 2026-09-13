@@ -160,7 +160,7 @@ module Exhaustive
     elsif pkg.host_tier == :stack
       [stack(STACK_A), stack(STACK_B)]
     else
-      [pkg.coords]
+      [pkg.at(Exhaustive.harness.scope).coords]
     end
   end
 
@@ -239,7 +239,7 @@ module Exhaustive
   def scope_for(ctx, stack: STACK_A)
     return Scope.new(arch: ctx.arch, board: ctx.board, stack: stack,
                      env_arch: ctx.arch, env_board: ctx.board,
-                     host_os: HOST_OS, host_arch: HOST_ARCH.name)
+                     host: Host.env)
   end
 
   # --- a world in memory ----------------------------------------------------

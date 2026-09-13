@@ -154,8 +154,7 @@ module Bridge
   # run, or an earlier -H -- which is what the implementation reads.
   def inv(env = self.env)
     return Model::Inv.new(env_arch: env.env_arch, env_board: env.env_board,
-                          default_stack: env.stack,
-                          host_os: env.host_os, host_arch: env.host_arch)
+                          default_stack: env.stack, host: env.host)
   end
 
   # Every installation that is not where its package says an install

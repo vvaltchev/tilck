@@ -50,8 +50,8 @@ class TestGetInstalledCompilers < Minitest::Test
         # get_install_list includes target_arch/libc.
         cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
         target = ARCH
-        cc.define_singleton_method(:read_install_list) {
-          super().map { |info|
+        cc.define_singleton_method(:read_install_list) { |host|
+          super(host).map { |info|
             InstallInfo.new(
               info.pkgname, info.compiler, info.on_host, info.arch,
               info.ver, info.path, info.pkg, info.broken,
@@ -266,8 +266,8 @@ class TestWithCc < Minitest::Test
                            host_tier: :portable, arch_list: ALL_HOST_ARCHS.values)
       cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
       target = ARCH
-      cc.define_singleton_method(:read_install_list) {
-        super().map { |info|
+      cc.define_singleton_method(:read_install_list) { |host|
+        super(host).map { |info|
           InstallInfo.new(
             info.pkgname, info.compiler, info.on_host, info.arch,
             info.ver, info.path, info.pkg, info.broken,

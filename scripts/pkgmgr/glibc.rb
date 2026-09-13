@@ -73,8 +73,6 @@ class HostGlibcPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   # The one package that cannot carry an RPATH to its own libc: the
   # libc in question is this package. Without this, its utilities
   # (getconf, gencat, ...) and its gconv modules report ~290

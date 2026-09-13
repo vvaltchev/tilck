@@ -12,38 +12,38 @@ class TestPackageHostSupported < Minitest::Test
 
   def test_no_constraints
     pkg = FakePackage.new("foo")
-    assert pkg.host_supported?
+    assert bound(pkg).host_supported?
   end
 
   def test_matching_os
     pkg = FakePackage.new("host_foo", on_host: true,
                           host_os_list: [HOST_OS])
-    assert pkg.host_supported?
+    assert bound(pkg).host_supported?
   end
 
   def test_wrong_os
     pkg = FakePackage.new("host_foo", on_host: true,
                           host_os_list: ["nope_os"])
-    refute pkg.host_supported?
+    refute bound(pkg).host_supported?
   end
 
   def test_matching_arch
     pkg = FakePackage.new("host_foo", on_host: true,
                           host_arch_list: [HOST_ARCH.name])
-    assert pkg.host_supported?
+    assert bound(pkg).host_supported?
   end
 
   def test_wrong_arch
     pkg = FakePackage.new("host_foo", on_host: true,
                           host_arch_list: ["nope_arch"])
-    refute pkg.host_supported?
+    refute bound(pkg).host_supported?
   end
 
   def test_both_constraints_match
     pkg = FakePackage.new("host_foo", on_host: true,
                           host_os_list: [HOST_OS],
                           host_arch_list: [HOST_ARCH.name])
-    assert pkg.host_supported?
+    assert bound(pkg).host_supported?
   end
 end
 
@@ -135,7 +135,7 @@ class TestPackageDefault < Minitest::Test
   def test_gated_by_host_os
     pkg = FakePackage.new("host_foo", on_host: true, default: true,
                           host_os_list: ["nope_os"])
-    refute pkg.default?
+    refute bound(pkg).default?
   end
 
   def test_gated_by_board
@@ -203,7 +203,7 @@ class TestPackageInstallReal < Minitest::Test
         pkg = FakePackage.new("host_foo", on_host: true,
                               host_os_list: ["nope_os"])
         pkgmgr.register(pkg)
-        result = pkg.install_impl(Ver("1.0.0"))
+        result = bound(pkg).install_impl(Ver("1.0.0"))
         assert_equal false, result
         assert_empty FakePackage.install_log
       end

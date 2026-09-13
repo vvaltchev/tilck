@@ -120,7 +120,7 @@ class TestPostconditions < Minitest::Test
       pkg = TestHelper::FakePackage.new("host_t", on_host: true)
       out, = capture_io {
         assert Postcondition::Runs.new(argv: ["install/bin/tool", "-v"])
-                 .check(pkg, dir)
+                 .check(bound(pkg), dir)
       }
       assert_match(/tool runs: tool 9.9/, out)
     end
@@ -133,13 +133,13 @@ class TestPostconditions < Minitest::Test
 
       out, = capture_io {
         refute Postcondition::Runs.new(argv: ["sh", "-c", "exit 3"])
-                 .check(pkg, dir)
+                 .check(bound(pkg), dir)
       }
       assert_match(/sh does not run \(exit 3\)/, out)
 
       out, = capture_io {
         refute Postcondition::Runs.new(argv: ["install/bin/absent"])
-                 .check(pkg, dir)
+                 .check(bound(pkg), dir)
       }
       assert_match(/absent cannot be run/, out)
     end

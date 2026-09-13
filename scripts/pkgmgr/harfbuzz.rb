@@ -45,8 +45,6 @@ class HostHarfbuzzPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/usr/lib/libharfbuzz.so", false],
     ["install/usr/include/harfbuzz/hb.h", false],

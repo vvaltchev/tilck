@@ -170,9 +170,9 @@ class TestInstallSelector < Minitest::Test
       pkg = FakePackage.new("host_d", on_host: true, host_tier: :distro,
                             arch_list: ALL_HOST_ARCHS.values)
       pkgmgr.register(pkg)
-      list = installs(pkg, V1, pkg.coords)
+      list = installs(pkg, V1, bound(pkg).coords)
 
-      assert_equal [pkg.coords], matched(sel(pkg, list), list)
+      assert_equal [bound(pkg).coords], matched(sel(pkg, list), list)
       assert_empty matched(sel(pkg, list, arch: "riscv64"), list)
       assert_empty matched(sel(pkg, list, compiler: Ver("9.9.9")), list),
                    "a non-stack package is not built by a stack"
@@ -189,11 +189,11 @@ class TestInstallSelector < Minitest::Test
       n = FakePackage.new("n", arch_list: nil)
       [t, h, n].each { |p| pkgmgr.register(p) }
 
-      list = installs(t, V1, tgt(I386), tgt(RV)) + installs(h, V1, h.coords) +
+      list = installs(t, V1, tgt(I386), tgt(RV)) + installs(h, V1, bound(h).coords) +
              installs(n, V1, n.coords)
       s = pkgmgr.uninstall_selector(nil, "ALL", list)
 
-      assert_equal [tgt(I386), h.coords, n.coords], matched(s, list)
+      assert_equal [tgt(I386), bound(h).coords, bound(n).coords], matched(s, list)
       assert_equal list.map(&:coords),
                    matched(pkgmgr.uninstall_selector(nil, "ALL", list,
                                                      arch: "ALL"), list)

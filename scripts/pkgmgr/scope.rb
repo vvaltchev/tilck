@@ -23,18 +23,17 @@
 require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'coords'
+require_relative 'host'
 
-Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board,
-                    :host_os, :host_arch) do
+Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board, :host) do
 
   # The scope the environment describes: ARCH and BOARD as the shell
-  # set them, the stack named or defaulted. The one place the
-  # constants become a value.
+  # set them, the stack named or defaulted, the host this runs on
+  # (Host.env). The one place the constants become a value.
   def self.env(stack:)
     board = BOARD.blank? ? nil : BOARD
     return new(arch: ARCH, board: board || ARCH.default_board, stack: stack,
-               env_arch: ARCH, env_board: board,
-               host_os: HOST_OS, host_arch: HOST_ARCH.name)
+               env_arch: ARCH, env_board: board, host: Host.env)
   end
 
   def board_of(a)
@@ -48,8 +47,7 @@ Scope = Data.define(:arch, :board, :stack, :env_arch, :env_board,
   def with(arch: self.arch, board: nil, stack: self.stack)
     board ||= arch == self.arch ? self.board : board_of(arch)
     return Scope.new(arch: arch, board: board, stack: stack,
-                     env_arch: env_arch, env_board: env_board,
-                     host_os: host_os, host_arch: host_arch)
+                     env_arch: env_arch, env_board: env_board, host: host)
   end
 
   def to_s = "#{arch.name}/#{board} #{Coords.stack_name(stack)}"

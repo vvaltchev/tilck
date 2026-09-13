@@ -55,7 +55,6 @@ class HostLibslirpPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
   def pkg_dirname = "libslirp"
 
   def expected_files(ver = nil) = [

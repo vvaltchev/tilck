@@ -250,11 +250,11 @@ class TestSysrootHoldsThePrograms < Minitest::Test
       fake_install(gcc, Ver(STACK))
       fake_install(bu)
 
-      gf = gcc.sysroot_fragments(Ver(STACK))
+      gf = bound(gcc).sysroot_fragments(Ver(STACK))
       assert_includes gf.map(&:last), "usr/bin"
       assert gf.any? { |d, at| at == "usr/bin" && d.to_s.end_with?("/bin") }
 
-      bf = bu.sysroot_fragments(Ver(STACK))
+      bf = bound(bu).sysroot_fragments(Ver(STACK))
       assert_equal ["usr/bin"], bf.map(&:last)
     end
   end

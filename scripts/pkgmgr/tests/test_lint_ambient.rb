@@ -40,6 +40,9 @@ class TestLintAmbient < Minitest::Test
     "scope.rb#self.env" =>
       "builds the environment's Scope from ARCH and BOARD: the one " \
       "place the constants become a value",
+    "host.rb#self.env" =>
+      "builds the environment's Host from HOST_OS_ARCH, HOST_DISTRO " \
+      "and HOST_CC: the one place those constants become a value",
     "layout.rb#vars" =>
       "REPORTS the invocation's ARCH/BOARD to CMake, which compares " \
       "them against its own",

@@ -463,13 +463,17 @@ class Package
   def host_supported?
     return false if !own_host_supported?
     return true if !pkgmgr.host_world_names.include?(name)
-    return pkgmgr.host_world_roots.all?(&:own_host_supported?)
+    return pkgmgr.host_world_roots.all? { |r|
+      r.own_host_supported?(scope.host)
+    }
   end
 
-  # Through the hooks, not the ivars: a world root overrides them.
-  def own_host_supported?
-    return false if host_os_list && !host_os_list.include?(HOST_OS)
-    return false if host_arch_list && !host_arch_list.include?(HOST_ARCH.name)
+  # Through the hooks, not the ivars: a world root overrides them. The
+  # host asked about is the scope's; a root is asked, unbound, about
+  # the host of whoever asks.
+  def own_host_supported?(host = scope.host)
+    return false if host_os_list && !host_os_list.include?(host.os)
+    return false if host_arch_list && !host_arch_list.include?(host.arch.name)
     return true
   end
 
@@ -484,7 +488,9 @@ class Package
 
     return "a #{lists.call(self).join(' ')} host" if !own_host_supported?
 
-    roots = pkgmgr.host_world_roots.reject(&:own_host_supported?)
+    roots = pkgmgr.host_world_roots.reject { |r|
+      r.own_host_supported?(scope.host)
+    }
     want = roots.flat_map { |r| lists.call(r) }.uniq.join(" ")
     return "a #{want} host (it belongs to the host world of " \
            "#{roots.map(&:name).join(', ')})"
@@ -566,31 +572,18 @@ class Package
     return Coords.new("noarch", nil, nil) if !on_host && default_arch.nil?
 
     if on_host
-      case @host_tier
-        when :portable
-          # Static, or otherwise needing nothing from the machine and
-          # caring about no particular compiler.
-          Coords.new(HOST_OS_ARCH, nil, nil)
-
-        when :distro
-          # Links the distro's libraries, so it runs only here.
-          Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
-
-        when :compiler
-          # ...and depends on the host C++ ABI, which is a property of
-          # where it can be USED, hence part of the environment.
-          Coords.new(HOST_OS_ARCH, HOST_DISTRO, HOST_CC)
-
-        when :stack
-          # Built by a compiler we built, against a sysroot we
-          # composed: needs nothing from the machine, but belongs to
-          # exactly one stack.
-          #
-          # Goes through the package manager rather than building the
-          # Coords here, so that a missing HOST_VER_GCC raises in one
-          # place instead of quietly producing the stack "gcc-", which
-          # every stack package would then share.
-          pkgmgr.stack_coords(stack_gcc_ver(ver))
+      if @host_tier == :stack
+        # Built by a compiler we built, against a sysroot we composed:
+        # needs nothing from the machine, but belongs to exactly one
+        # stack.
+        #
+        # Goes through the package manager rather than building the
+        # Coords here, so that a missing HOST_VER_GCC raises in one
+        # place instead of quietly producing the stack "gcc-", which
+        # every stack package would then share.
+        pkgmgr.stack_coords(stack_gcc_ver(ver), host: scope.host)
+      else
+        Package.host_coords(@host_tier, scope.host)
       end
     else
       a = default_arch
@@ -1489,7 +1482,7 @@ class Package
            c.stack_ver || "syscc"
          else "syscc"
          end
-    a = on_host ? HOST_ARCH : (arch_list.nil? ? nil : default_arch)
+    a = on_host ? scope.host.arch : (arch_list.nil? ? nil : default_arch)
     return annotate_install(InstallInfo.new(
       name, cc, on_host, a, ver, install_dir(ver), self, false,
       default_install: default_install, manual: manual, coords: c,
@@ -1504,10 +1497,12 @@ class Package
 
   # The reading of the tree a World is built from: this package's
   # directories, at every coordinates it could have been installed
-  # under. Called by World.scan and by nothing else.
-  def read_install_list
+  # under, on `host` -- the reading is of the TREE and asks no scope,
+  # so the host it reads is an argument. Called by World.scan and by
+  # nothing else.
+  def read_install_list(host)
     if on_host
-      return syscc_package_get_install_list()
+      return syscc_package_get_install_list(host)
     else
       if !arch_list.nil?
         return regular_target_package_get_install_list()
@@ -1531,9 +1526,34 @@ class Package
     end
   end
 
-  # The arch a regular target package builds for: the scope's. Host
-  # and noarch packages override it.
-  def default_arch = scope.arch
+  # Where a host package of `tier` lives on `host`: the one rule,
+  # read by coords from the scope's host and by the tree reader from
+  # the host being scanned.
+  def self.host_coords(tier, host)
+    case tier
+      when :portable
+        # Static, or otherwise needing nothing from the machine and
+        # caring about no particular compiler.
+        Coords.new(host.machine, nil, nil)
+      when :distro
+        # Links the distro's libraries, so it runs only here.
+        Coords.new(host.machine, host.distro, nil)
+      when :compiler
+        # ...and depends on the host C++ ABI, which is a property of
+        # where it can be USED, hence part of the environment.
+        Coords.new(host.machine, host.distro, host.cc)
+      else
+        raise ArgumentError, "#{tier.inspect} is not a host tier with " \
+                             "coordinates of its own"
+    end
+  end
+
+  # The arch a package builds for: the host's for a host package,
+  # the scope's for a target one. A noarch package says nil.
+  def default_arch
+    return nil if noarch?
+    return on_host ? scope.host.arch : scope.arch
+  end
 
   # WHICH COMPILER PRODUCES THIS PACKAGE.
   #
@@ -2026,7 +2046,7 @@ class Package
   #
   # The other tiers have one coordinate each and so one directory.
   #
-  def syscc_package_get_install_list
+  def syscc_package_get_install_list(host)
 
     list = []
 
@@ -2034,7 +2054,10 @@ class Package
     # reading is of the TREE and asks no scope. (A stack being
     # installed into for the first time is on disk by the time its
     # first install is looked for.)
-    for c in host_tier == :stack ? stack_coords_on_disk : [coords] do
+    where = if host_tier == :stack then stack_coords_on_disk(host)
+            else [Package.host_coords(host_tier, host)]
+            end
+    for c in where do
       dir = pkg_dir_at(c)
       next if !dir.directory?
 
@@ -2057,7 +2080,7 @@ class Package
           name,                             # package name
           cc,                               # compiler used
           true,                             # runnning on host?
-          HOST_ARCH,                        # arch
+          host.arch,                        # arch
           ver,                              # package version
           dir / d,                          # install path
           self,                             # package object
@@ -2072,9 +2095,11 @@ class Package
     return list
   end
 
-  # The coordinates of every stack on disk.
-  def stack_coords_on_disk
-    return pkgmgr.host_stacks.map { |id| pkgmgr.stack_coords(id) }
+  # The coordinates of every stack on disk, on `host`.
+  def stack_coords_on_disk(host)
+    return pkgmgr.host_stacks(host: host).map { |id|
+      pkgmgr.stack_coords(id, host: host)
+    }
   end
 
   # The stack directories present under one <machine>/<env>: those

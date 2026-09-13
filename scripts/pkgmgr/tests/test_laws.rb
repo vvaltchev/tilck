@@ -24,7 +24,7 @@ class TestLaws < Minitest::Test
       world: world,
       inv: Model::Inv.new(env_arch: I386, env_board: "pc",
                           default_stack: Ver("14.4.0"),
-                          host_os: "linux", host_arch: "x86_64"),
+                          host: Host.env),
       misplaced: [],
     )
   end

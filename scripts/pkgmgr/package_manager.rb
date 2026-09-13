@@ -112,7 +112,7 @@ class PackageManager
   # notes the site. The planner will take a World as an argument.
   def world
     @world = nil if @world && !@world.tc.equal?(TC)   # the tests swap TC
-    return @world ||= World.scan(@packages.values)
+    return @world ||= World.scan(@packages.values, host: env_scope.host)
   end
 
   def installs_changed!
@@ -123,7 +123,7 @@ class PackageManager
   # announced a change have no need of it; the ones at the top of a
   # mode pay the walk up front, where it was always paid.
   def refresh
-    @world = World.scan(@packages.values)
+    @world = World.scan(@packages.values, host: env_scope.host)
   end
 
   # Declared default and supported here: the members of this target's
@@ -488,9 +488,9 @@ class PackageManager
 
     gcc = stack_compiler
 
-    if gcc.nil? || !gcc.host_supported?
+    if gcc.nil? || !gcc.at(scope).host_supported?
       puts
-      puts "  No host stacks on #{HOST_OS}-#{HOST_ARCH.name}: the stack " \
+      puts "  No host stacks on #{scope.host.machine}: the stack " \
            "(our GCC, our glibc, the QEMU matrix) is built for x86_64 " \
            "Linux only, for now."
       puts
@@ -870,7 +870,7 @@ class PackageManager
   # The coordinates of one of OUR stacks: needs nothing from the
   # machine, built by the compiler named -- a StackId, or the version
   # of the plain gcc stack.
-  def stack_coords(stack = nil)
+  def stack_coords(stack = nil, host: env_scope.host)
 
     stack ||= default_stack_cc_ver
 
@@ -880,7 +880,7 @@ class PackageManager
             "stack package would install to the same broken path"
     end
 
-    return Coords.new(HOST_OS_ARCH, nil, Coords.stack_name(stack))
+    return Coords.new(host.machine, nil, Coords.stack_name(stack))
   end
 
   def stack_root(stack = nil) = stack_coords(stack).root
@@ -904,16 +904,17 @@ class PackageManager
   # name had to be parsed to tell them apart. Here the level holds
   # nothing but stacks, and the only question is which spelling each
   # one has.
-  def host_stacks
+  def host_stacks(host: env_scope.host)
 
-    dir = TC / HOST_OS_ARCH / Coords::ANY
+    machine = host.machine
+    dir = TC / machine / Coords::ANY
     return [] if !dir.directory?
 
     # stack_id, not parse_stack: this reads a DIRECTORY, and a
     # directory is only a stack if it is spelled like one. parse_stack
     # is lenient because it reads what a person typed.
     return Dir.children(dir)
-              .filter_map { |d| Coords.new(HOST_OS_ARCH, nil, d).stack_id }
+              .filter_map { |d| Coords.new(machine, nil, d).stack_id }
               .sort
   end
 

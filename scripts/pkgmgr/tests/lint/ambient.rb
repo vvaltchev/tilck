@@ -42,7 +42,8 @@ require_relative '../ruby_tree'
 
 module AmbientLint
 
-  AMBIENT      = %i[ARCH BOARD DEFAULT_BOARD HOST_VER_GCC].freeze
+  AMBIENT      = %i[ARCH BOARD DEFAULT_BOARD HOST_VER_GCC
+                    HOST_OS_ARCH HOST_DISTRO HOST_CC].freeze
   COMPARISONS  = %i[== != eql?].freeze
 
   # `arch` and `compiler` are each a part of a coordinate, and an

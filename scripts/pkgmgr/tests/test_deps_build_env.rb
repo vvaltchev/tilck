@@ -53,9 +53,9 @@ class TestFindInstall < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
 
-        info = pkg.find_install(Ver("1.0.0"))
+        info = bound(pkg).find_install(Ver("1.0.0"))
         refute_nil info
         assert_equal Ver("1.0.0"), info.ver
       end
@@ -67,7 +67,7 @@ class TestFindInstall < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        assert_nil pkg.find_install(Ver("1.0.0"))
+        assert_nil bound(pkg).find_install(Ver("1.0.0"))
       end
     end
   end
@@ -77,8 +77,8 @@ class TestFindInstall < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
-        assert_nil pkg.find_install(Ver("9.9.9"))
+        bound(pkg).install_impl(Ver("1.0.0"))
+        assert_nil bound(pkg).find_install(Ver("9.9.9"))
       end
     end
   end
@@ -99,14 +99,14 @@ class TestFindInstall < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
-        pkg.install_impl(Ver("2.0.0"))
-        pkg.install_impl(Ver("3.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
+        bound(pkg).install_impl(Ver("3.0.0"))
 
         assert_equal 3, pkg.get_install_list.length
 
         for v in ["1.0.0", "2.0.0", "3.0.0"]
-          assert_equal Ver(v), pkg.find_install(Ver(v)).ver
+          assert_equal Ver(v), bound(pkg).find_install(Ver(v)).ver
         end
       end
     end
@@ -117,10 +117,10 @@ class TestFindInstall < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
 
-        assert pkg.installed?(Ver("1.0.0"))
-        assert !pkg.installed?(Ver("2.0.0"))
+        assert bound(pkg).installed?(Ver("1.0.0"))
+        assert !bound(pkg).installed?(Ver("2.0.0"))
       end
     end
   end
@@ -139,9 +139,9 @@ class TestInstallPrefix < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
 
-        prefix = pkg.install_prefix(Ver("1.0.0"))
+        prefix = bound(pkg).install_prefix(Ver("1.0.0"))
         assert prefix.directory?
         assert_equal "1.0.0", prefix.basename.to_s
       end
@@ -153,11 +153,11 @@ class TestInstallPrefix < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
-        pkg.install_impl(Ver("2.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
 
-        p1 = pkg.install_prefix(Ver("1.0.0"))
-        p2 = pkg.install_prefix(Ver("2.0.0"))
+        p1 = bound(pkg).install_prefix(Ver("1.0.0"))
+        p2 = bound(pkg).install_prefix(Ver("2.0.0"))
         refute_equal p1.to_s, p2.to_s
       end
     end
@@ -172,7 +172,9 @@ class TestInstallPrefix < Minitest::Test
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
 
-        e = assert_raises(RuntimeError) { pkg.install_prefix(Ver("1.0.0")) }
+        e = assert_raises(RuntimeError) {
+          bound(pkg).install_prefix(Ver("1.0.0"))
+        }
         assert_match(/foo/, e.message)
         assert_match(/1\.0\.0/, e.message)
         assert_match(/not installed/, e.message)
@@ -214,7 +216,7 @@ class TestPackageBuildEnv < Minitest::Test
       with_stubbed_externals do
         pkg = ProviderPackage.new("host_prov", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
 
         be = pkg.build_env(Ver("1.0.0"))
         assert_equal ["$host_prov/include"], be.include_dirs
@@ -230,8 +232,8 @@ class TestPackageBuildEnv < Minitest::Test
         pkg = VersionedProviderPackage.new("host_vp", on_host: true,
                                            host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
-        pkg.install_impl(Ver("2.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
 
         assert_equal 1, pkg.build_env(Ver("1.0.0")).include_dirs.length
         assert_equal 2, pkg.build_env(Ver("2.0.0")).include_dirs.length
@@ -271,7 +273,7 @@ class TestDepsBuildEnv < Minitest::Test
         c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
         pkgmgr.register(p)
         pkgmgr.register(c)
-        p.install_impl(Ver("1.0.0"))
+        bound(p).install_impl(Ver("1.0.0"))
 
         be = bound(c).deps_build_env
         assert_equal ["$host_prov/include"], be.include_dirs
@@ -288,7 +290,7 @@ class TestDepsBuildEnv < Minitest::Test
         c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["quiet"])
         pkgmgr.register(q)
         pkgmgr.register(c)
-        q.install_impl(Ver("1.0.0"))
+        bound(q).install_impl(Ver("1.0.0"))
 
         assert bound(c).deps_build_env.empty?
       end
@@ -302,8 +304,8 @@ class TestDepsBuildEnv < Minitest::Test
         b = host_pkg(ProviderPackage, "pb")
         c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["pa", "pb"])
         [a, b, c].each { |p| pkgmgr.register(p) }
-        a.install_impl(Ver("1.0.0"))
-        b.install_impl(Ver("1.0.0"))
+        bound(a).install_impl(Ver("1.0.0"))
+        bound(b).install_impl(Ver("1.0.0"))
 
         vars = bound(c).deps_build_env.kconfig_make_vars
         assert_equal 1, vars.count { |v| v.start_with?("HOSTCFLAGS=") }
@@ -323,8 +325,8 @@ class TestDepsBuildEnv < Minitest::Test
         mid  = host_pkg(TestHelper::FakePackage, "mid", deps: ["deep"])
         c    = host_pkg(TestHelper::FakePackage, "consumer", deps: ["mid"])
         [deep, mid, c].each { |p| pkgmgr.register(p) }
-        deep.install_impl(Ver("1.0.0"))
-        mid.install_impl(Ver("1.0.0"))
+        bound(deep).install_impl(Ver("1.0.0"))
+        bound(mid).install_impl(Ver("1.0.0"))
 
         be = bound(c).deps_build_env
         assert_equal 1, be.include_dirs.length
@@ -342,7 +344,7 @@ class TestDepsBuildEnv < Minitest::Test
         c = host_pkg(TestHelper::FakePackage, "consumer",
                      deps: ["near", "mid"])
         [near, far, mid, c].each { |p| pkgmgr.register(p) }
-        [near, far, mid].each { |p| p.install_impl(Ver("1.0.0")) }
+        [near, far, mid].each { |p| bound(p).install_impl(Ver("1.0.0")) }
 
         dirs = bound(c).deps_build_env.include_dirs
         assert_equal 2, dirs.length
@@ -361,7 +363,7 @@ class TestDepsBuildEnv < Minitest::Test
         c = host_pkg(TestHelper::FakePackage, "consumer",
                      deps: ["left", "right"])
         [shared, l, r, c].each { |p| pkgmgr.register(p) }
-        [shared, l, r].each { |p| p.install_impl(Ver("1.0.0")) }
+        [shared, l, r].each { |p| bound(p).install_impl(Ver("1.0.0")) }
 
         dirs = bound(c).deps_build_env.include_dirs
         assert_equal 1, dirs.length
@@ -385,9 +387,9 @@ class TestDepsBuildEnv < Minitest::Test
         pkgmgr.register(c)
 
         # default_ver for FakePackage is 1.0.0; install newer ones too.
-        p.install_impl(Ver("1.0.0"))
-        p.install_impl(Ver("2.0.0"))
-        p.install_impl(Ver("3.0.0"))
+        bound(p).install_impl(Ver("1.0.0"))
+        bound(p).install_impl(Ver("2.0.0"))
+        bound(p).install_impl(Ver("3.0.0"))
         assert_equal 3, p.get_install_list.length
 
         ctx = Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0"))
@@ -407,8 +409,8 @@ class TestDepsBuildEnv < Minitest::Test
         b = host_pkg(ProviderPackage, "pb")
         c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["pa", "pb"])
         [a, b, c].each { |p| pkgmgr.register(p) }
-        a.install_impl(Ver("1.0.0"))
-        b.install_impl(Ver("1.0.0"))
+        bound(a).install_impl(Ver("1.0.0"))
+        bound(b).install_impl(Ver("1.0.0"))
 
         first = bound(c).deps_build_env.include_dirs
         5.times { assert_equal first, bound(c).deps_build_env.include_dirs }
@@ -430,8 +432,8 @@ class TestDepsBuildEnv < Minitest::Test
           dep_list: [Dep("host_prov", true, ver: Ver("2.0.0"))])
         pkgmgr.register(p)
         pkgmgr.register(c)
-        p.install_impl(Ver("1.0.0"))     # the default
-        p.install_impl(Ver("2.0.0"))     # the pinned one
+        bound(p).install_impl(Ver("1.0.0"))     # the default
+        bound(p).install_impl(Ver("2.0.0"))     # the pinned one
 
         ctx = Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0"))
         dirs = bound(c).deps_build_env.expand(ctx).include_dirs
@@ -451,8 +453,8 @@ class TestDepsBuildEnv < Minitest::Test
           dep_list: [Dep("host_prov", true)])
         pkgmgr.register(p)
         pkgmgr.register(c)
-        p.install_impl(Ver("1.0.0"))
-        p.install_impl(Ver("2.0.0"))
+        bound(p).install_impl(Ver("1.0.0"))
+        bound(p).install_impl(Ver("2.0.0"))
 
         # The version is not in the token; it is in what the token
         # resolves to.

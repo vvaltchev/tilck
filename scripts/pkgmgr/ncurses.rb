@@ -118,8 +118,6 @@ class NcursesHostPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   # Built with --enable-widec because busybox's and u-boot's kconfig
   # check-lxdialog.sh prefers -lncursesw over -lncurses. Without the
   # wide-char library in our install tree, the linker falls through
@@ -255,7 +253,6 @@ class NcursesHostPackage < Package
     ]
   end
 end
-
 
 pkgmgr.register(NcursesPackage.new())
 pkgmgr.register(NcursesHostPackage.new())

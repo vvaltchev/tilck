@@ -42,8 +42,6 @@ class HostExpatPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/usr/lib/libexpat.so", false],
     ["install/usr/include/expat.h", false],

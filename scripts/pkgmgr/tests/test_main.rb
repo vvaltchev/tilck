@@ -1585,7 +1585,7 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
   end
 
   def record_of(pkg)
-    return pkg.find_install(pkg.default_ver).path / InstallDeps::FILE
+    return bound(pkg).find_install(pkg.default_ver).path / InstallDeps::FILE
   end
 
   def make_stale(pkg)
@@ -1598,7 +1598,7 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
       with_stubbed_externals do
         gmp, user, = world
         assert_equal 0, run_cli("-s", "host_root").first
-        inst = user.find_install(user.default_ver)
+        inst = bound(user).find_install(user.default_ver)
         assert_equal({ "host_gmp" => Ver("1.0.0") },
                      InstallDeps.read(inst.path))
         assert_equal [Ver("1.0.0")], user.saw
@@ -1656,7 +1656,8 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
         assert_equal 1, rc
         assert_match(/no record of which host_gmp it was built against/, out)
         assert_empty FakePackage.install_log
-        refute_nil user.find_install(user.default_ver), "old install removed"
+        refute_nil bound(user).find_install(user.default_ver),
+                   "old install removed"
       end
     end
   end

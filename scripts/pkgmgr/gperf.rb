@@ -47,8 +47,6 @@ class HostGperfPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/bin/gperf", false],
   ]

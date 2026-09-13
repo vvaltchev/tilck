@@ -139,7 +139,6 @@ class HostGccPackage < Package
     }
   end
 
-  def default_arch = HOST_ARCH
   def host_world_root? = true
 
   # Where the host world runs: x86_64 Linux, for now. Everything only
@@ -429,8 +428,6 @@ class HostGccPackage < Package
   # The system loader GCC hardcodes into its link spec on this host.
   SYSTEM_LOADER = "/lib64/ld-linux-x86-64.so.2"
 
-
-
   #
   # The installed gcc produces portable binaries: compile a trivial
   # program with it and check its interpreter, its rpath and every
@@ -482,7 +479,6 @@ class HostGccPackage < Package
 
     def describe = "the installed gcc produces portable binaries"
   end
-
 
   # --with-gmp and friends. Each is a token: what the resolver bound
   # for this request is what the token resolves to, and the resolver

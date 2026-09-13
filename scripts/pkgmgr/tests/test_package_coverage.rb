@@ -185,8 +185,8 @@ class TestCheckInstallDirCoverage < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
-        pkg.install_impl(Ver("2.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
 
         # Demand a file only from 2.0.0; neither install has it.
         pkg.define_singleton_method(:expected_files) { |ver = nil|

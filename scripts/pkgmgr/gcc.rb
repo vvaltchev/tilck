@@ -9,7 +9,6 @@ require_relative 'package_manager'
 
 class GccCompiler < Package
 
-
   PROJ_NAME = "musl-cross-make"
   CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME, host: true).to_s
 
@@ -61,7 +60,7 @@ class GccCompiler < Package
   # Wrap the base class reading of the tree with target_arch/libc
   # metadata, so PackageManager#get_installed_compilers can select
   # installed cross-compilers for a specific target architecture.
-  def read_install_list = super.map { |info| annotate_install(info) }
+  def read_install_list(host) = super.map { |info| annotate_install(info) }
 
   # An install of a cross compiler says what it targets.
   def annotate_install(info)
@@ -84,7 +83,6 @@ class GccCompiler < Package
   end
 
   def default_ver = @target_arch.gcc_ver
-  def default_arch = HOST_ARCH
 
   # GCC compilers are default based on the target arch being built
   # for: x86 family needs both i386 and x86_64 (UEFI bootloader

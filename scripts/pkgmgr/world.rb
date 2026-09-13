@@ -39,10 +39,10 @@ World = Data.define(:installs, :tc) do
   NON_INSTALL_DIRS = ["cache", "staging"].freeze
 
   # The tree as `packages` see it, plus what none of them claims.
-  def self.scan(packages)
-    claimed = packages.flat_map(&:read_install_list)
+  def self.scan(packages, host: Host.env)
+    claimed = packages.flat_map { |p| p.read_install_list(host) }
     known = claimed.map(&:path).to_set
-    return new(installs: (claimed + orphans_of(known)).freeze, tc: TC)
+    return new(installs: (claimed + orphans_of(known, host)).freeze, tc: TC)
   end
 
   def self.empty = new(installs: [].freeze, tc: nil)
@@ -85,7 +85,7 @@ World = Data.define(:installs, :tc) do
 
   # Walk the whole toolchain and emit an InstallInfo per <pkg>/<ver>
   # directory whose path is not in `known`.
-  def self.orphans_of(known)
+  def self.orphans_of(known, host)
 
     list = []
     return list if !TC.directory?
@@ -96,7 +96,7 @@ World = Data.define(:installs, :tc) do
       m_dir = TC / machine
       next if !m_dir.directory?
 
-      arch_obj, on_host, is_known = machine_to_arch(machine)
+      arch_obj, on_host, is_known = machine_to_arch(machine, host)
       next if !is_known
 
       for env in Dir.children(m_dir).sort
@@ -158,7 +158,7 @@ World = Data.define(:installs, :tc) do
   # identify is skipped rather than scanned: reading its packages
   # would attribute them to a nil architecture and let them show up
   # in listings for a target that does not exist.
-  def self.machine_to_arch(machine)
+  def self.machine_to_arch(machine, host)
 
     return [nil, false, true] if machine == "noarch"
 
@@ -171,6 +171,6 @@ World = Data.define(:installs, :tc) do
 
     # Any other machine is a build host. Only this one's packages can
     # run here, so anything else is another machine's business.
-    return [HOST_ARCH, true, machine == HOST_OS_ARCH]
+    return [host.arch, true, machine == host.machine]
   end
 end

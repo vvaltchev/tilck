@@ -405,16 +405,18 @@ module Main
       ENV:BOARD
       MAIN_DIR
       TC
-      HOST_ARCH
-      HOST_OS
-      HOST_DISTRO
-      HOST_CC
       ARCH
       BOARD
       DEFAULT_BOARD
     ]
 
     list.each { |x| puts "#{x} = #{de.call(x)}" }
+
+    # The host, as the scope carries it (Host.env at the boundary).
+    puts "HOST_ARCH = #{scope.host.arch.name}"
+    puts "HOST_OS = #{scope.host.os}"
+    puts "HOST_DISTRO = #{scope.host.distro}"
+    puts "HOST_CC = #{scope.host.cc}"
 
     # Not a constant: -H moves it, and a run that built into another
     # stack should say so where every other coordinate is printed.

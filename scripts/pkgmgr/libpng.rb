@@ -36,8 +36,6 @@ class HostLibpngPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/usr/lib/libpng16.so", false],
     ["install/usr/include/libpng16/png.h", false],

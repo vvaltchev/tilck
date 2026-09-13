@@ -79,8 +79,6 @@ class GccPrereqPackage < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
-  def default_arch = HOST_ARCH
-
   # The prefix a dependent passes to --with-<name>.
   def prefix_for(ver) = install_prefix(ver) / "install"
 

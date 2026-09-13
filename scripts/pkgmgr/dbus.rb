@@ -46,7 +46,6 @@ class HostDbusPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
   def pkg_dirname = "dbus"
 
   def expected_files(ver = nil) = [

@@ -48,8 +48,6 @@ class HostPixmanPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/usr/lib/libpixman-1.so", false],
     ["install/usr/include/pixman-1/pixman.h", false],

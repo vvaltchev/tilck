@@ -205,11 +205,11 @@ class TestSurvivors < Minitest::Test
     with_fake_tc do
       p = VersionedStackFake.new
       pkgmgr.register(p)
-      refute_equal p.install_dir(V1), p.install_dir(V2)
+      refute_equal bound(p).install_dir(V1), bound(p).install_dir(V2)
 
       fake_install(p, V2)
-      assert_equal p.install_dir(V2), p.find_install(V2).path
-      assert_nil p.find_install(V1)
+      assert_equal bound(p).install_dir(V2), bound(p).find_install(V2).path
+      assert_nil bound(p).find_install(V1)
     end
   end
 
@@ -252,7 +252,7 @@ class TestSurvivors < Minitest::Test
       p = StackReadingCompilerFake.new
       pkgmgr.register(p)
       fake_install(p, V1)
-      inst = p.find_install(V1)
+      inst = bound(p).find_install(V1)
 
       assert_equal :ok, bound(p).build_inputs_state_of(inst)
       with_host_stack(Ver("9.9.9")) {
@@ -667,8 +667,8 @@ class TestSurvivorsToo < Minitest::Test
     with_fake_tc do
       d = distro_pkg("host_d")
       pkgmgr.register(d)
-      list = installs(d, V1, d.coords)
-      assert_equal [CoordsFilter.exact(d.coords)],
+      list = installs(d, V1, bound(d).coords)
+      assert_equal [CoordsFilter.exact(bound(d).coords)],
                    sel(d, list, compiler: "ALL").where
       assert_empty sel(d, list, compiler: Ver("9.9.9")).where,
                    "a non-stack package is not built by a stack"

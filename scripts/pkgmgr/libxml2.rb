@@ -50,7 +50,6 @@ class HostLibxml2Package < Package
     )
   end
 
-  def default_arch = HOST_ARCH
   def pkg_dirname = "libxml2"
 
   def expected_files(ver = nil) = [

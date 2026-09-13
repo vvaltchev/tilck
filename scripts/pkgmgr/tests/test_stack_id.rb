@@ -198,6 +198,11 @@ class TestStackIdOnDisk < Minitest::Test
         assert_equal 1, rc
         assert_match(/Cannot build into #{lto}/, out)
         refute_match(/Unknown host GCC stack/, out)
+
+        # ...and what is no stack at all is unknown, not a crash.
+        rc, out = run_cli("-H", "some-other", "-L", "-q")
+        assert_equal 1, rc
+        assert_match(/Unknown host GCC stack: some-other/, out)
       end
     end
   end

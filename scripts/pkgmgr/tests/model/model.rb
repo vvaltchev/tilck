@@ -170,8 +170,7 @@ module Model
   # The invocation's environment: the shell's ARCH and BOARD, the
   # stack HOST_VER_GCC names, and the host itself (OS and arch names).
   # The flags are in the Request.
-  Inv = Data.define(:env_arch, :env_board, :default_stack, :host_os,
-                    :host_arch)
+  Inv = Data.define(:env_arch, :env_board, :default_stack, :host)
 
   # What the invocation resolves to: the product's own value
   # (scripts/pkgmgr/scope.rb), reused the way Coords and Ver are. It
@@ -215,7 +214,7 @@ module Model
     return Scope.new(arch: arch, board: board,
                      stack: req.stack || inv.default_stack,
                      env_arch: inv.env_arch, env_board: inv.env_board,
-                     host_os: inv.host_os, host_arch: inv.host_arch)
+                     host: inv.host)
   end
 
   # --- placement ------------------------------------------------------------
@@ -269,9 +268,9 @@ module Model
 
   # Where a shape may run, by its own word...
   def own_host_supported?(shape, scope)
-    return false if shape.host_os && !shape.host_os.include?(scope.host_os)
+    return false if shape.host_os && !shape.host_os.include?(scope.host.os)
     return false if shape.host_arch &&
-                    !shape.host_arch.include?(scope.host_arch)
+                    !shape.host_arch.include?(scope.host.arch.name)
     return true
   end
 

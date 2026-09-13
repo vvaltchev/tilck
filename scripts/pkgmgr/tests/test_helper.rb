@@ -58,7 +58,7 @@ module NoRealToolchainReads
   def self.allowed? = @@allowed
   def self.allow!(v) = @@allowed = v
 
-  def read_install_list
+  def read_install_list(host)
     NoRealToolchainReads.check!("#{name}.read_install_list")
     return super
   end
@@ -689,7 +689,7 @@ module TestHelper
 
     # The same annotation GccPackage applies, for the same reason: an
     # install of a cross compiler has to say what it targets.
-    def read_install_list = super.map { |i| annotate_install(i) }
+    def read_install_list(host) = super.map { |i| annotate_install(i) }
 
     def annotate_install(i)
       return i if @fake_target_arch.nil?
@@ -708,12 +708,6 @@ module TestHelper
       return super if on_host
       return nil if arch_list.nil?
       return scope.arch.gcc_ver
-    end
-
-    def default_arch
-      return HOST_ARCH if on_host
-      return nil if arch_list.nil?
-      return scope.arch
     end
 
     def install_impl_internal(install_dir)

@@ -37,8 +37,6 @@ class HostFribidiPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-
   def expected_files(ver = nil) = [
     ["install/usr/lib/libfribidi.so", false],
     ["install/usr/include/fribidi/fribidi.h", false],

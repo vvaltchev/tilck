@@ -44,28 +44,28 @@ class TestHostWorld < Minitest::Test
   # This suite runs on x86_64 Linux, where the whole world is supported.
   def test_the_world_is_supported_on_x86_64_linux
     with_context(HOST_OS: "linux", HOST_ARCH: ALL_HOST_ARCHS["x86_64"]) do
-      unsupported = world.reject { |n| pkg(n).host_supported? }
+      unsupported = world.reject { |n| bound(pkg(n)).host_supported? }
       assert_empty unsupported
     end
   end
 
   def test_the_world_is_hidden_on_macos
     with_context(HOST_OS: "macos") do
-      still = world.select { |n| pkg(n).host_supported? }
+      still = world.select { |n| bound(pkg(n)).host_supported? }
       assert_empty still, "supported on macOS: #{still.join(' ')}"
 
       # ...and only the world is: what Tilck itself needs stays.
-      assert pkg("host_ncurses").host_supported?
-      assert pkg("host_mtools").host_supported?
-      assert pkg("gcc-i386-musl").host_supported?
+      assert bound(pkg("host_ncurses")).host_supported?
+      assert bound(pkg("host_mtools")).host_supported?
+      assert bound(pkg("gcc-i386-musl")).host_supported?
     end
   end
 
   def test_the_world_is_hidden_on_aarch64_linux
     with_context(HOST_OS: "linux", HOST_ARCH: ALL_HOST_ARCHS["aarch64"]) do
-      still = world.select { |n| pkg(n).host_supported? }
+      still = world.select { |n| bound(pkg(n)).host_supported? }
       assert_empty still, "supported on aarch64: #{still.join(' ')}"
-      assert pkg("host_ncurses").host_supported?
+      assert bound(pkg("host_ncurses")).host_supported?
     end
   end
 
@@ -171,14 +171,14 @@ class TestHostWorld < Minitest::Test
     assert_equal %w[host_d host_r], pkgmgr.host_world_names.sort
 
     with_context(HOST_OS: "macos") do
-      refute pkg("host_r").host_supported?
-      refute pkg("host_d").host_supported?, "only the root needs it"
-      assert pkg("host_s").host_supported?, "host_o needs it too"
-      assert pkg("host_o").host_supported?
+      refute bound(pkg("host_r")).host_supported?
+      refute bound(pkg("host_d")).host_supported?, "only the root needs it"
+      assert bound(pkg("host_s")).host_supported?, "host_o needs it too"
+      assert bound(pkg("host_o")).host_supported?
     end
 
     with_context(HOST_OS: "linux") do
-      assert pkg("host_d").host_supported?
+      assert bound(pkg("host_d")).host_supported?
     end
   end
 
@@ -198,9 +198,9 @@ class TestHostWorld < Minitest::Test
     assert_equal %w[host_d host_r1 host_r2], pkgmgr.host_world_names.sort
 
     with_context(HOST_OS: "macos") do
-      assert pkg("host_r2").own_host_supported?, "r2 would run anywhere"
-      refute pkg("host_d").host_supported?, "but the world needs r1 too"
-      refute pkg("host_r2").host_supported?, "and so does r2's world"
+      assert bound(pkg("host_r2")).own_host_supported?, "r2 would run anywhere"
+      refute bound(pkg("host_d")).host_supported?, "but the world needs r1 too"
+      refute bound(pkg("host_r2")).host_supported?, "and so does r2's world"
     end
   end
 end
