@@ -60,18 +60,21 @@ def assert(&expr)
   end
 end
 
+# The prefixes are coloured when the stream they are written to is a
+# terminal: $stdout, which a pipe or a test replaces, not the
+# process's own.
 def info(msg)
-  infoStr = STDOUT.tty?? Term.makeBlue("INFO") : "INFO"
+  infoStr = $stdout.tty?? Term.makeBlue("INFO") : "INFO"
   puts "#{infoStr}: #{msg}"
 end
 
 def warning(msg)
-  warnStr = STDOUT.tty?? Term.makeYellow("WARNING") : "WARNING"
+  warnStr = $stdout.tty?? Term.makeYellow("WARNING") : "WARNING"
   puts "#{warnStr}: #{msg}"
 end
 
 def error(msg)
-  errStr = STDOUT.tty?? Term.makeRed("ERROR") : "ERROR"
+  errStr = $stdout.tty?? Term.makeRed("ERROR") : "ERROR"
   puts "#{errStr}: #{msg}"
 end
 
