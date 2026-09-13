@@ -404,14 +404,18 @@ class Package
   end
 
   public
+
   # host_tier controls where host packages are installed:
   #   :portable  — needs nothing from the machine (static)
   #   :distro    — links the distro's libraries
   #   :compiler  — ...and depends on the host C++ ABI
   #   :stack     — built by a compiler we built, against our sysroot
   #
-  # The tier chooses the coordinates; see Package#coords.
-  #
+  # The tier chooses the coordinates (Package#coords), and these are
+  # the only four: a package declaring another is refused at
+  # registration, not when its coordinates are first asked for.
+  HOST_TIERS = %i[portable distro compiler stack].freeze
+
   # @param source [SourceRef, nil] where the package's source comes
   #   from. Required for packages that use the base class install
   #   flow. May be nil for packages with a custom install_impl that
@@ -431,6 +435,11 @@ class Package
     @source = source
     @on_host = on_host
     @is_compiler = is_compiler
+
+    if !HOST_TIERS.include?(host_tier)
+      raise ArgumentError, "#{name}: host_tier #{host_tier.inspect} is " \
+                           "not one of #{HOST_TIERS.map(&:inspect).join(', ')}"
+    end
     @host_tier = host_tier
     # Accept either an Array of Architecture or the {name => arch}
     # hashes several packages pass (ALL_ARCHS, X86_ARCHS), and store
@@ -1552,7 +1561,8 @@ class Package
 
   # Where a host package of `tier` lives on `host`: the one rule,
   # read by coords from the scope's host and by the tree reader from
-  # the host being scanned.
+  # the host being scanned. The :stack tier is the caller's to place,
+  # since its stack is not the host's to say.
   def self.host_coords(tier, host)
     case tier
       when :portable
@@ -1567,6 +1577,9 @@ class Package
         # where it can be USED, hence part of the environment.
         Coords.new(host.machine, host.distro, host.cc)
       else
+        # Unreachable for a registered package (HOST_TIERS is checked
+        # at construction); said all the same, for a caller that is
+        # not one.
         raise ArgumentError, "#{tier.inspect} is not a host tier with " \
                              "coordinates of its own"
     end

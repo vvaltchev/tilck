@@ -7,6 +7,38 @@ require_relative 'test_helper'
 # or stubbed externals — they just check attribute-based decisions.
 # ---------------------------------------------------------------
 
+# The tier is one of four, and a package declaring another is refused
+# when it is made. It used to get nil coordinates instead, and fail
+# far away on the first path built from them.
+class TestPackageHostTier < Minitest::Test
+
+  include TestHelper
+
+  def test_the_four_tiers_are_accepted
+    for tier in Package::HOST_TIERS do
+      pkg = FakePackage.new("host_t", on_host: true, host_tier: tier)
+      assert_equal tier, pkg.host_tier
+    end
+  end
+
+  def test_an_unknown_tier_is_refused_at_construction
+    e = assert_raises(ArgumentError) {
+      FakePackage.new("host_t", on_host: true, host_tier: :portabel)
+    }
+    assert_match(/host_t: host_tier :portabel is not one of/, e.message)
+    assert_match(/:portable, :distro, :compiler, :stack/, e.message)
+  end
+
+  # ...and the table of coordinates says so too, for a caller that is
+  # not a registered package.
+  def test_the_coordinate_table_refuses_what_is_not_a_tier
+    assert_raises(ArgumentError) {
+      Package.host_coords(:portabel, Host.env)
+    }
+    assert_raises(ArgumentError) { Package.host_coords(:stack, Host.env) }
+  end
+end
+
 class TestPackageHostSupported < Minitest::Test
   include TestHelper
 
