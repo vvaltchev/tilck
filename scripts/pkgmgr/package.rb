@@ -1933,14 +1933,7 @@ class Package
   # empty lines, non-CONFIG lines, and reverse-sort by binary value.
   # Used by busybox and u-boot for reproducible diffs.
   def fix_config_file(path = ".config")
-    data = File.read(path)
-    lines = data.lines()
-    lines = lines[4...] # drop first 4 lines (metadata header)
-    lines.select! { |x| !x.strip.blank? }
-    lines.select! { |x| !x.index("CONFIG_").nil? }
-    lines.map! { |x| x.rstrip }
-    lines = stable_sort(lines) { |x, y| -(x.b <=> y.b) }
-    File.write(path, lines.join("\n") + "\n")
+    File.write(path, Recipe.kconfig_normal_form(File.read(path)))
   end
 
   # What this package offers to packages that depend on it, at `ver`:
