@@ -127,7 +127,11 @@ class GnuefiPackage < Package
     ok = @source.download(ver)
     return false if !ok
 
+    # with_cc sets the compiler; with_target_arch sets WHICH arch this
+    # is, which is what the recipe reads. Both, or build_steps would
+    # answer for the invocation's arch while building another.
     for arch in archs_needed
+      pkgmgr.with_target_arch(arch) do
       pkgmgr.with_cc(arch.name) do |arch_dir|
         chdir_package_base_dir(arch_dir) do
           ok = @source.extract(ver, ver_dirname(ver))
@@ -142,10 +146,11 @@ class GnuefiPackage < Package
             # at all.
             next false if !apply_patches(ver)
 
-            ok = install_impl_internal(d, arch)
+            ok = install_impl_internal(d)
             ok = check_install_dir(d, ver, true) if ok
           end
         end
+      end
       end
       return false if !ok
     end
@@ -153,23 +158,18 @@ class GnuefiPackage < Package
     return ok
   end
 
-  def install_impl_internal(install_dir, arch = nil)
-
-    arch ||= default_arch()
-
-    efi = arch.efi
-    tc = arch.gcc_tc
-
-    ok = run_command("build_#{efi}.log", [
-      "make",
-      "ARCH=#{efi}",
-      "prefix=#{tc}-linux-",
-      "CROSS_COMPILE=",
-      "OS=Linux",
-      "-j#{BUILD_PAR}",
-    ])
-    return false if !ok
-    return true
+  def build_steps(ver = default_ver)
+    arch = default_arch
+    return [
+      Run(log: "build_#{arch.efi}.log", argv: [
+        "make",
+        "ARCH=#{arch.efi}",
+        "prefix=#{arch.gcc_tc}-linux-",
+        "CROSS_COMPILE=",
+        "OS=Linux",
+        "-j$PAR",
+      ]),
+    ]
   end
 end
 

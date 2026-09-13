@@ -77,3 +77,33 @@ class TestRecipeDigestIsReproducible < Minitest::Test
     end
   end
 end
+
+
+#
+# No recipe names this machine. A token stands in for every path that
+# is a property of where the tree happens to be -- the toolchain, the
+# repository, the cache, a dependency's install -- so the digest is a
+# function of the sources and the coordinates and nothing else. This
+# was a probe run by hand during the conversion, and found forty
+# absolute paths; it is a test so that the count stays at zero.
+#
+class TestNoRecipeNamesTheMachine < Minitest::Test
+
+  include TestHelper
+
+  def test_no_converted_recipe_names_an_absolute_path
+    tc, src = TC.to_s, MAIN_DIR.to_s
+    bad = []
+
+    for p in pkgmgr.all_packages do
+      steps = p.build_steps(p.default_ver)
+      for a in Recipe.all_argv(steps) do
+        s = a.to_s
+        bad << "#{p.name}: #{s}" if s.include?(tc) || s.include?(src)
+      end
+    end
+
+    assert_empty bad, "these recipes record where this tree lives:\n  " +
+                      bad.join("\n  ")
+  end
+end

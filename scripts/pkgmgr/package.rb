@@ -1978,6 +1978,15 @@ class Package
   # dependent's build to wherever the install actually is.
   def install_token = Pathname.new("$#{name}")
 
+  # A file in the repository, as a recipe names it: "$SRC/other/...".
+  # The digest records where in the tree, never where the tree is.
+  # A path outside the repository is refused, which is what it should
+  # be: a recipe reads the tree and the coordinates, and nothing else.
+  def src_path(path)
+    rel = Pathname.new(path.to_s).relative_path_from(MAIN_DIR)
+    return "$SRC/#{rel}"
+  end
+
   # The merged build interface published by this package's dependencies,
   # each at the version bound for it, nearest dependency first.
   #

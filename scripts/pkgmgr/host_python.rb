@@ -39,16 +39,6 @@ def python_asset(ver)
   return "cpython-#{ver}+#{build}-#{python_triple}-install_only.tar.gz"
 end
 
-PYTHON_SOURCE = SourceRef.new(
-  name: 'python',
-  url: GITHUB + '/astral-sh/python-build-standalone/releases/download',
-  tarname: ->(ver) { python_asset(ver) },
-  remote_tarname: ->(ver) {
-    "#{PYTHON_BUILDS[Ver(ver.to_s)]}/#{python_asset(ver)}"
-  },
-  fetch_via_git: false,
-)
-
 # Pure-Python wheels installed into it, from the cache rather than
 # from PyPI at build time. The path form without the hash directory
 # is the stable one and redirects to the hashed asset, which our
@@ -61,6 +51,23 @@ PYTHON_WHEELS = {
     url: "https://files.pythonhosted.org/packages/py2.py3/d/distlib",
   },
 }.freeze
+
+PYTHON_SOURCE = SourceRef.new(
+  name: 'python',
+  url: GITHUB + '/astral-sh/python-build-standalone/releases/download',
+  tarname: ->(ver) { python_asset(ver) },
+  remote_tarname: ->(ver) {
+    "#{PYTHON_BUILDS[Ver(ver.to_s)]}/#{python_asset(ver)}"
+  },
+  fetch_via_git: false,
+
+  # The wheels come with the source: fetched into the cache beside
+  # the tarball, and the recipe names them there.
+  extra_files: PYTHON_WHEELS.values.map { |w|
+    { url: w[:url], file: w[:file] }
+  },
+)
+
 
 #
 # host_python: the interpreter our builds run, instead of whichever
@@ -144,25 +151,16 @@ class HostPythonPackage < Package
     return BuildEnv.new(bin_dirs: [install_token / "bin"])
   end
 
-  def install_impl_internal(install_dir)
-
-    py = install_dir / "bin" / "python3"
-
-    for name, w in PYTHON_WHEELS do
-      Cache.download_file(w[:url], w[:file])
-
-      # --no-index and --no-deps: everything comes from the cache, and
-      # a wheel quietly pulling a dependency off PyPI would be exactly
-      # the reach outside the toolchain this package exists to stop.
-      ok = run_command("pip-#{name}.log",
-                       [py.to_s, "-m", "pip", "install",
-                        "--no-index", "--no-deps", "--no-warn-script-location",
-                        (TC_CACHE / w[:file]).to_s])
-      return false if !ok
-    end
-
-    return true
-  end
+  # --no-index and --no-deps: everything comes from the cache, and a
+  # wheel quietly pulling a dependency off PyPI would be exactly the
+  # reach outside the toolchain this package exists to stop.
+  def build_steps(ver = default_ver) = PYTHON_WHEELS.map { |name, w|
+    Run(log: "pip-#{name}.log", argv: [
+      "$INSTALL/bin/python3", "-m", "pip", "install",
+      "--no-index", "--no-deps", "--no-warn-script-location",
+      "$CACHE/#{w[:file]}",
+    ])
+  }
 end
 
 pkgmgr.register(HostPythonPackage.new())

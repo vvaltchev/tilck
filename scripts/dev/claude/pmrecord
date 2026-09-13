@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# pmrecord -- the differential oracle behind the recipe conversion.
+#
+# Records what every package's build WOULD do (see pmrecord.rb), from
+# a worktree of a commit and from the working tree, and diffs them.
+#
+# Usage: pmrecord <sub-command> ...
+#
+#   before <ref>        record from a worktree of <ref> into .before
+#   after               record from the working tree into .after
+#   diff [pkg...]       every package (or the named ones): commands
+#                       that differ, and every other line that differs
+#   show <pkg>          the after-side record of one package
+#
+set -euo pipefail
+
+TILCK_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+OUT=${PMRECORD_DIR:-/tmp/pmrecord-$USER}
+mkdir -p "$OUT"
+
+record() {
+   local dir="$1" into="$2"
+   ( cd "$dir" && PKGMGR_DIR="$dir/scripts/pkgmgr" ARCH="${ARCH:-i386}" \
+        ruby "$HERE/pmrecord.rb" > "$into" 2> "$into.err" )
+   local n; n=$(grep -c '^###' "$into" || true)
+   echo "pmrecord: $n packages -> $into"
+   [ "$n" -gt 0 ] || { echo "pmrecord: nothing recorded; stderr:" >&2; tail -5 "$into.err" >&2; return 1; }
+}
+
+section() { awk -v P="### $2" '$0==P{f=1;next} /^###/{f=0} f' "$1"; }
+
+case "${1:-}" in
+   before)
+      ref="${2:?ref}"
+      wt="$OUT/wt"
+      git -C "$TILCK_ROOT" worktree remove --force "$wt" 2>/dev/null || true
+      git -C "$TILCK_ROOT" worktree add -f "$wt" "$ref" > /dev/null
+      record "$wt" "$OUT/before"
+      git -C "$TILCK_ROOT" worktree remove --force "$wt"
+      ;;
+   after)
+      record "$TILCK_ROOT" "$OUT/after"
+      ;;
+   diff)
+      shift
+      pkgs=("$@")
+      if [ ${#pkgs[@]} -eq 0 ]; then
+         mapfile -t pkgs < <(cat "$OUT/before" "$OUT/after" | grep '^###' | sed 's/^### //' | sort -u)
+      fi
+      # diff and grep exit 1 to say "different" / "no match", which
+      # under set -e would end the loop at the first differing
+      # package -- and did, once.
+      same=0
+      for p in "${pkgs[@]}"; do
+         b=$(section "$OUT/before" "$p"); a=$(section "$OUT/after" "$p")
+         if [ "$b" == "$a" ]; then same=$((same+1)); continue; fi
+         echo "=== $p"
+         rb=$(grep '"run"' <<<"$b" || true); ra=$(grep '"run"' <<<"$a" || true)
+         if [ "$rb" == "$ra" ]; then
+            echo "    commands identical; other lines differ:"
+         else
+            echo "    COMMANDS DIFFER:"
+         fi
+         { diff <(echo "$b") <(echo "$a") || true; } | { grep -E '^[<>]' || true; } \
+            | cut -c1-150 | sed 's/^/    /'
+      done
+      echo "pmrecord: $same of ${#pkgs[@]} identical"
+      ;;
+   show)
+      section "$OUT/after" "${2:?pkg}"
+      ;;
+   -h|--help|help|"")
+      sed -n '/^# Usage:/,/^#$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+      ;;
+   *)
+      echo "pmrecord: unknown sub-command '$1'" >&2; exit 1 ;;
+esac
