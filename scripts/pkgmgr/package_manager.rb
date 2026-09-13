@@ -529,6 +529,14 @@ class PackageManager
     unusable = unusable_installs(installs, needs, missing)
     cannot_use = unusable.keys.to_set
 
+    # What each record says, asked once: show_status needs it for the
+    # stale column and the note below needs it for the count, and
+    # reading every .build_inputs twice to answer the same question
+    # is the kind of thing -l gets slow by.
+    states = installs.to_h { |i|
+      [i, i.pkg ? i.pkg.build_inputs_state_of(i) : nil]
+    }
+
     dump = ->(sections) {
       for msg, l in sections do
         next if l.empty?      # a stack with nothing in it is not news
@@ -536,7 +544,7 @@ class PackageManager
         puts "--- #{msg.center(width)} ---"
         l.map { |x| x.pkgname }.uniq.each { |pkg|
           show_status(pkg, group_by, l.select { |x| x.pkgname == pkg },
-                      digits, unusable: cannot_use)
+                      digits, unusable: cannot_use, states: states)
         }
       end
     }
@@ -552,6 +560,7 @@ class PackageManager
     dump.call(back)
 
     show_unusable(unusable)
+    show_old_format(states)
 
     puts
     puts legend
@@ -705,7 +714,8 @@ class PackageManager
     return max < 2 ? 0 : max.to_s.length
   end
 
-  def show_status(name, group_by, list, digits = 0, unusable: Set.new)
+  def show_status(name, group_by, list, digits = 0, unusable: Set.new,
+                  states: nil)
 
     add_braces = ->(s) { "{#{s}}" }
 
@@ -788,8 +798,9 @@ class PackageManager
         # listing would then disagree with --check-for-updates about
         # the very same install.
         stale = installed.any? { |e|
-          e.pkg &&
-          [:changed, :unknown].include?(e.pkg.build_inputs_state_of(e))
+          next false if e.pkg.nil?
+          st = states ? states[e] : e.pkg.build_inputs_state_of(e)
+          [:changed, :old_format, :unknown].include?(st)
         }
         n = installed.length
         auto = installed.none?(&:manual)
@@ -1389,6 +1400,26 @@ class PackageManager
     end
 
     return bad
+  end
+
+  #
+  # A record written by an older digest scheme holds a number this one
+  # cannot produce. Those installs read stale, and saying only that
+  # would be the listing blaming the sources for something the
+  # fingerprint did -- on a toolchain built before the conversion,
+  # that is most of the tree.
+  #
+  def show_old_format(states)
+
+    n = states.count { |_, s| s == :old_format }
+    return if n.zero?
+
+    puts
+    puts "#{n} install(s) carry a record from an older recipe format, " \
+         "so their"
+    puts "digests cannot be compared. They read stale for that reason, " \
+         "not because"
+    puts "their sources changed."
   end
 
   # The list under the table: the status cell has room for the word

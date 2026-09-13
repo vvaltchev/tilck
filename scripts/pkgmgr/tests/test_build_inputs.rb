@@ -674,3 +674,132 @@ class TestWhatTheFingerprintCounts < Minitest::Test
     assert_equal [], params, "an argument could go unrecorded"
   end
 end
+
+
+#
+# WHICH SCHEME WROTE THE RECORD.
+#
+# A digest computed one way cannot disagree with one computed the
+# other; it can only be incomparable. Saying "built from other
+# sources" about that would be the instrument blaming the sources for
+# something the fingerprint did -- and on a toolchain built before the
+# recipes became data, that is most of the tree.
+#
+class TestRecordFormat < Minitest::Test
+
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def installed_one
+    pkg = FakePackage.new("foo")
+    pkgmgr.register(pkg)
+    pkgmgr.install("foo")
+    pkgmgr.refresh
+    return [pkg, pkg.find_install(Ver("1.0.0"))]
+  end
+
+  def rewrite(inst, recipe: nil, drop_format: false)
+    f = inst.path / BuildInputs::FILE
+    lines = File.read(f).lines
+    lines = lines.reject { |l| l.start_with?("format ") } if drop_format
+    lines = lines.map { |l|
+      l.start_with?("recipe ") && recipe ? "recipe #{recipe}\n" : l
+    }
+    File.write(f, lines.join)
+  end
+
+  # The reader on its own: the line when there is one, 1 when the
+  # record predates the line, and nothing when there is no record.
+  def test_format_of_reads_the_line_and_says_nothing_of_no_record
+    Dir.mktmpdir do |d|
+      dir = Pathname(d)
+      assert_nil BuildInputs.format_of(dir)
+      File.write(dir / BuildInputs::FILE, "recipe sha256:0\n")
+      assert_equal 1, BuildInputs.format_of(dir)
+      File.write(dir / BuildInputs::FILE, "recipe sha256:0\nformat 7\n")
+      assert_equal 7, BuildInputs.format_of(dir)
+    end
+  end
+
+  def test_the_record_says_which_scheme_wrote_it
+    with_fake_tc do
+      with_stubbed_externals do
+        _, inst = installed_one
+        assert_match(/^format #{BuildInputs::FORMAT}$/,
+                     File.read(inst.path / BuildInputs::FILE))
+      end
+    end
+  end
+
+  #
+  # The promise this file has always made, now true on both sides:
+  # adding an informational line cannot make an install look stale.
+  # Only the recorded side was filtered, so `format` -- the first
+  # informational line that is always written -- made eight healthy
+  # installs read changed the moment it existed.
+  #
+  def test_an_informational_line_is_not_part_of_the_comparison
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = installed_one
+        rewrite(inst, drop_format: true)
+        assert_equal :ok, pkg.build_inputs_state_of(inst)
+      end
+    end
+  end
+
+  def test_a_record_from_an_older_scheme_says_so
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = installed_one
+        rewrite(inst, recipe: "sha256:00000000000000000000000000000000",
+                drop_format: true)
+        assert_equal :old_format, pkg.build_inputs_state_of(inst)
+      end
+    end
+  end
+
+  # The same mismatch, recorded by THIS scheme, is a real change.
+  def test_a_mismatch_in_the_current_format_is_a_change
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = installed_one
+        rewrite(inst, recipe: "sha256:00000000000000000000000000000000")
+        assert_equal :changed, pkg.build_inputs_state_of(inst)
+      end
+    end
+  end
+
+  # Both still mean "do not trust this install".
+  def test_either_way_it_needs_attention
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = installed_one
+        rewrite(inst, recipe: "sha256:00000000000000000000000000000000",
+                drop_format: true)
+        assert pkg.build_inputs_changed?(inst)
+      end
+    end
+  end
+
+  # ...and the listing explains which of the two it is.
+  def test_the_listing_explains_an_older_format
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = installed_one
+        rewrite(inst, recipe: "sha256:00000000000000000000000000000000",
+                drop_format: true)
+
+        out = capture_io { pkgmgr.show_status_all }.first
+                .gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/older recipe format/, out)
+        assert_match(/not because\ntheir sources changed/, out)
+      end
+    end
+  end
+end

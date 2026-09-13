@@ -952,12 +952,11 @@ class Package
       SourceDigest.method_source(__FILE__, h)
     }
 
-    steps = build_steps.map { |st|
-      [st.dir, st.unset, st.env, st.argv].inspect
-    }.join("\n")
-
+    # The steps term is empty by construction here -- this branch runs
+    # only when there are none -- but it stays in the digest, so that
+    # CONVERTING a package is the only thing that moves it.
     return "sha256:" + SourceDigest.digest(
-      build_flags(ver).join(" "), steps, own, *helpers
+      build_flags(ver).join(" "), "", own, *helpers
     )[0, 32]
   end
 
@@ -1054,7 +1053,15 @@ class Package
   #   :not_installed  nothing to say
   #   :ok             built from the sources we have
   #   :changed        built from something else
+  #   :old_format     recorded by an older digest scheme, so the two
+  #                   numbers cannot be compared at all
   #   :unknown        no record at all
+  #
+  # :old_format is not :changed. The install may be perfect; what
+  # moved is how a recipe is fingerprinted, and the remedy is not the
+  # same one. Saying "built from other sources" about an install whose
+  # sources did not move would be the instrument lying about which
+  # question it failed to answer.
   #
   # :unknown is reported rather than assumed benign. toolchain5 starts
   # empty, so every install is made by this mechanism and a missing
@@ -1072,10 +1079,24 @@ class Package
     return :unknown if recorded.nil?
 
     current = with_install_context(inst) {
-      BuildInputs.render(recipe: build_recipe_digest(inst.ver),
-                         files: build_files(inst.ver))
+      BuildInputs.comparable_lines(
+        BuildInputs.render(recipe: build_recipe_digest(inst.ver),
+                           files: build_files(inst.ver))
+      )
     }
-    return recorded == current.chomp ? :ok : :changed
+
+    return :ok if recorded == current
+
+    # It disagrees -- but a record written by an older scheme holds a
+    # number this one cannot produce, so the disagreement says
+    # nothing about the sources.
+    # The record is there: comparable was not nil. So format_of has a
+    # number to give.
+    if BuildInputs.format_of(inst.path) < BuildInputs::FORMAT
+      return :old_format
+    end
+
+    return :changed
   end
 
   # Does this install need rebuilding? Both a changed recipe and a
@@ -1098,7 +1119,8 @@ class Package
   # a version says so out loud -- find_install(ver) first, and the nil
   # it may get back is the honest answer to "is there one here".
   def build_inputs_changed?(inst)
-    return [:changed, :unknown].include?(build_inputs_state_of(inst))
+    return [:changed, :old_format,
+            :unknown].include?(build_inputs_state_of(inst))
   end
 
   # What this package needs from the HOST -- things pkgmgr does not

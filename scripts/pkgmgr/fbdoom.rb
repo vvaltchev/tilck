@@ -66,8 +66,13 @@ class FbDoomPackage < Package
       # it out of the fbdoom/ source subdir, then discard everything
       # else so the install tree stays small and matches
       # expected_files.
+      #
+      # The log is kept, which the hand-written loop this replaces did
+      # not do: it lived inside fbdoom/ and went with the source. A
+      # build log costs a few KB and is the only account of how the
+      # binary came to be.
       Move(from: "fbdoom/fbdoom.gz", to: "fbdoom.gz"),
-      Prune(keep: ["fbdoom.gz"]),
+      Prune(keep: ["fbdoom.gz", "*.log"]),
     ]
   end
 end

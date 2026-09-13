@@ -56,9 +56,9 @@ class GnuefiSourcePackage < Package
   def default_arch = nil
   def default_cc = nil
 
-  def install_impl_internal(ignored = nil)
-    return true
-  end
+  # Sources another package builds: extracting the tarball IS the
+  # install.
+  def nothing_to_build? = true
 end
 
 #
