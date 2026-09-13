@@ -293,7 +293,7 @@ class TestWithCc < Minitest::Test
       # Now call the REAL with_cc (not stubbed)
       yielded_dir = nil
       saved_cc = ENV["CC"]
-      pkgmgr.with_cc do |arch_dir|
+      pkgmgr.with_cc(ARCH.name) do |arch_dir|
         yielded_dir = arch_dir
         # Verify env vars are set
         assert_match(/linux-gcc$/, ENV["CC"])

@@ -798,13 +798,16 @@ a question the others cannot:
 **The lint** (`tests/test_lint_ambient.rb`) parses every source file
 (with Ripper, via `tests/ruby_tree.rb`, so that the suite runs on any
 Ruby the package manager does) and fails the suite if anything reads
-`ARCH`, `BOARD` or
-the current stack outside their owners (`pkgmgr.target_arch`,
-`board_for`, `current_host_stack`), compares an installation by part
-of a coordinate (`.arch ==`, `.compiler ==`) outside `InstallSelector`,
-or writes a scope variable outside its `with_*` method. Every logic
-bug the package manager has had was one of those three, and this is
-what makes the class unwritable rather than merely caught. The
+`ARCH` or `BOARD` outside their definitions, the CLI boundary and
+`Scope.env`, or compares an installation by part of a coordinate
+(`.arch ==`, `.compiler ==`) outside `InstallSelector`. There used to
+be a third rule, on scope variables written outside the methods that
+opened and closed them; a scope is a value now (`scope.rb`), handed
+to whoever asks a scoped question, and a package asked one unbound
+raises (`Package::Unbound`) -- there is no block to open and nothing
+to leave open. Every logic bug the package manager has had was one
+of those shapes, and this is what makes the class unwritable rather
+than merely caught. The
 allowlist lives in the test, each entry with a reason, and an entry
 that no longer names a real method fails the test.
 

@@ -971,13 +971,23 @@ found, close the gap rather than working around it.
 
 ## The package manager reads its inputs through their owners
 
-`ARCH`, `BOARD` and the current host stack are read in exactly three
-places: their definitions in `early_logic.rb`, the CLI boundary in
-`main.rb`, and the accessors that own the answer --
-`pkgmgr.target_arch`, `pkgmgr.board_for(arch)`,
-`pkgmgr.current_host_stack`. Everything else asks. Likewise the
-identity of an installation is its `Coords`; nothing selects installs
-by comparing `arch` or `compiler` on their own.
+`ARCH` and `BOARD` are read in exactly three places: their
+definitions in `early_logic.rb`, the CLI boundary in `main.rb`, and
+`Scope.env` (`scripts/pkgmgr/scope.rb`), the one place the constants
+become a value. That value -- the arch and board being built for,
+the stack being built into -- is what every scoped question is
+answered under: `main.rb` builds one `Scope` from its options and
+hands it down, the planner takes it as an argument, and a package
+answers a scoped question (`coords`, `default_arch`, `installed?`,
+`build_steps`, ...) only once bound to one with `pkg.at(scope)`.
+Asked unbound, it raises `Package::Unbound`. There is no
+`pkgmgr.target_arch`, no `with_target_arch { }` and no scope ivar:
+nothing holds a scope, so nothing can be answered from the wrong
+one. Likewise the identity of an installation is its `Coords`;
+nothing selects installs by comparing `arch` or `compiler` on their
+own. What is installed is a `World` (`world.rb`), the tree scanned
+once per announced change; the planner takes that as an argument
+too, and `pkgmgr.world` is the one place the tree is read.
 
 `scripts/pkgmgr/tests/test_lint_ambient.rb` enforces this on every
 run, by parsing the sources. **A new allowlist entry needs a written
@@ -992,13 +1002,15 @@ fix is committed:
 grep -n '\bBOARD\b' scripts/pkgmgr/*.rb     # sixty seconds
 ```
 
-**Why:** every logic bug this package manager has had was the same
-bug -- a question about one installation answered from ambient state
--- and each was fixed where it was found while its siblings stayed.
-`with_install_context` learned to scope the board; `board_supported?`,
-four hundred lines away, kept reading the global and refused to
-rebuild the u-boot that `-f` had just deleted. The grep would have
-found it in the same minute.
+**Why:** every logic bug this package manager had was the same bug
+-- a question about one installation answered from ambient state --
+and each was fixed where it was found while its siblings stayed. The
+block that scoped an install's board learned about boards;
+`board_supported?`, four hundred lines away, kept reading the global
+and refused to rebuild the u-boot that `-f` had just deleted. The
+grep would have found it in the same minute. The scope became a
+value precisely so that this shape cannot be written any more; the
+sweep still applies to every other kind of shared state.
 
 **A pkgmgr logic bug is not fixed until its mutant dies.** The
 package manager's logic core is covered by three instruments, in

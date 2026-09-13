@@ -74,7 +74,7 @@ class TestNoRealInstallers < Minitest::Test
         rc, _ = run_cli("-s", "needy", "-q")
         assert_equal 0, rc
         assert_empty SystemDeps.env.ran, "an installer ran"
-        assert needy.installed?(needy.default_ver)
+        assert bound(needy).installed?(bound(needy).default_ver)
       end
     end
   end

@@ -16,10 +16,6 @@
 # request bound. Nothing it reads comes from a block open somewhere
 # up the stack.
 #
-# TRANSITION (docs/plans/pkgmgr-functional-core.md): the plan's scope
-# is also opened around the run, so that a reader not yet converted
-# to bound packages sees the right stack; the counted fallbacks say
-# which those are, and the block goes when they are gone.
 #
 
 require_relative 'plan'
@@ -43,40 +39,38 @@ module Executor
   # Run every action. Returns nil when all went through, else the name
   # of the package whose build failed.
   def run(registry, plan)
-    return pkgmgr.with_scope(plan.scope) {
-      failed = nil
-      removed = false
-      for a in plan.actions do
-        # The sysroot is a view over what is installed, so a removal
-        # invalidates it exactly as an install does -- every stack,
-        # since a stale symlink is the failure mode hardest to
-        # notice. Recomposed once the removals are done, before
-        # anything is built against it.
-        if removed && !a.is_a?(Remove)
-          recompose_all
-          removed = false
-        end
-        ok = begin
-          case a
-          when Build   then build(registry, a)
-          when Replace then replace(registry, a)
-          when Remove  then removed = true; remove(a)
-          when Mark    then mark(a)
-          else raise "unknown action #{a.inspect}"
-          end
-        rescue RuntimeError => e
-          name = a.is_a?(Build) ? a.name : a.install.pkgname
-          raise Failed.new("#{name}:#{a.respond_to?(:ver) ? a.ver :
-                                        a.install.ver}", e.message)
-        end
-        if !ok
-          failed = a.is_a?(Build) ? a.name : a.install.pkgname
-          break
-        end
+    failed = nil
+    removed = false
+    for a in plan.actions do
+      # The sysroot is a view over what is installed, so a removal
+      # invalidates it exactly as an install does -- every stack,
+      # since a stale symlink is the failure mode hardest to
+      # notice. Recomposed once the removals are done, before
+      # anything is built against it.
+      if removed && !a.is_a?(Remove)
+        recompose_all
+        removed = false
       end
-      recompose_all if removed
-      failed
-    }
+      ok = begin
+        case a
+        when Build   then build(registry, a)
+        when Replace then replace(registry, a)
+        when Remove  then removed = true; remove(a)
+        when Mark    then mark(a)
+        else raise "unknown action #{a.inspect}"
+        end
+      rescue RuntimeError => e
+        name = a.is_a?(Build) ? a.name : a.install.pkgname
+        raise Failed.new("#{name}:#{a.respond_to?(:ver) ? a.ver :
+                                      a.install.ver}", e.message)
+      end
+      if !ok
+        failed = a.is_a?(Build) ? a.name : a.install.pkgname
+        break
+      end
+    end
+    recompose_all if removed
+    return failed
   end
 
   def recompose_all

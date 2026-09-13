@@ -23,8 +23,8 @@ class TestWorld < Minitest::Test
     reset_pkgmgr!
     pkg = FakePackage.new("t", arch_list: [I386, RV])
     pkgmgr.register(pkg)
-    fake_install(pkg, at: pkg.at(pkgmgr.scope.with(arch: I386)).coords)
-    fake_install(pkg, at: pkg.at(pkgmgr.scope.with(arch: RV)).coords)
+    fake_install(pkg, at: pkg.at(scope.with(arch: I386)).coords)
+    fake_install(pkg, at: pkg.at(scope.with(arch: RV)).coords)
     return pkg
   end
 
@@ -64,7 +64,7 @@ class TestWorld < Minitest::Test
       assert_equal 3, w.installs.length
       assert_equal w.claimed + w.orphans, w.installs
 
-      want = pkg.at(pkgmgr.scope.with(arch: RV)).coords
+      want = pkg.at(scope.with(arch: RV)).coords
       found = w.find("t", pkg.default_ver, want)
       assert_equal want, found.coords
       assert_nil w.find("t", Ver("9.9.9"), want)
@@ -81,12 +81,12 @@ class TestWorld < Minitest::Test
         [["bin/t", false]]
       }
       pkgmgr.register(pkg)
-      dir = pkg.install_dir(pkg.default_ver)
+      dir = bound(pkg).install_dir(bound(pkg).default_ver)
       FileUtils.mkdir_p(dir)                     # no bin/t: broken
       w = World.scan([pkg])
       assert_equal 1, w.of("t").length
       assert w.of("t").first.broken
-      assert_nil w.find("t", pkg.default_ver, pkg.coords)
+      assert_nil w.find("t", bound(pkg).default_ver, bound(pkg).coords)
     end
   end
 
@@ -98,7 +98,7 @@ class TestWorld < Minitest::Test
       scanned = World.scan([pkg])
       built = World.of(scanned.installs)
       assert_equal scanned.installs, built.installs
-      want = pkg.at(pkgmgr.scope.with(arch: I386)).coords
+      want = pkg.at(scope.with(arch: I386)).coords
       assert_equal scanned.find("t", pkg.default_ver, want),
                    built.find("t", pkg.default_ver, want)
     end
@@ -121,7 +121,7 @@ class TestWorld < Minitest::Test
       refute_same before, after
       assert_equal 1, after.of("t").length
       assert_equal 1, pkg.get_install_list.length
-      assert pkg.installed?(pkg.default_ver)
+      assert bound(pkg).installed?(bound(pkg).default_ver)
     end
   end
 
@@ -134,10 +134,11 @@ class TestWorld < Minitest::Test
       pkgmgr.register(pkg)
       fake_install(pkg)
       empty = World.empty
-      b = pkg.at(pkgmgr.scope, world: empty)
+      b = pkg.at(scope, world: empty)
       refute b.installed?(pkg.default_ver)
-      assert pkg.installed?(pkg.default_ver), "the registry package: manager's"
-      assert_raises(ArgumentError) { pkg.at(pkgmgr.scope, world: []) }
+      assert bound(pkg).installed?(bound(pkg).default_ver),
+             "bound without a world: the manager's"
+      assert_raises(ArgumentError) { pkg.at(scope, world: []) }
     end
   end
 end

@@ -44,12 +44,6 @@ class TestLintAmbient < Minitest::Test
       "them against its own",
   }.freeze
 
-  SCOPE_SETTERS = %w[
-    package_manager.rb#initialize
-    package_manager.rb#with_scope
-    package_manager.rb#host_stack=
-  ].freeze
-
   R2_PINNED = [].freeze
 
   # Not identity: the listing GROUPS what it shows by the compiler that
@@ -81,7 +75,7 @@ class TestLintAmbient < Minitest::Test
 
     assert_empty left,
                  "these read ARCH/BOARD/HOST_VER_GCC directly. Ask " \
-                 "pkgmgr.target_arch / board_for / current_host_stack, " \
+                 "scope.arch / board_for / current_host_stack, " \
                  "or add an ALLOW entry with a reason:\n#{report(left)}"
   end
 
@@ -96,24 +90,6 @@ class TestLintAmbient < Minitest::Test
 
       assert_includes AmbientLint.methods_of(path), meth,
                       "ALLOW names #{key}, which no longer exists"
-    end
-  end
-
-  # --- R3 ---------------------------------------------------------------
-
-  def test_r3_scope_variables_are_written_only_by_their_scopes
-    left = of(:R3).reject { |v| SCOPE_SETTERS.include?(v.where) }
-
-    assert_empty left,
-                 "a scope variable written outside its with_* method " \
-                 "is a scope that can be left open:\n#{report(left)}"
-  end
-
-  def test_the_scope_setters_exist
-    for key in SCOPE_SETTERS do
-      file, meth = key.split("#", 2)
-      assert_includes AmbientLint.methods_of(PKGMGR / file), meth,
-                      "SCOPE_SETTERS names #{key}, which no longer exists"
     end
   end
 
@@ -161,11 +137,6 @@ class TestLintAmbient < Minitest::Test
     assert_equal ["planted.rb#a", "planted.rb#a", "planted.rb#b"],
                  found.map(&:where)
 
-    scope = AmbientLint.scan_source("class PackageManager\n" \
-                                    "  def x = (@scope = 1)\nend\n",
-                                    file: "package_manager.rb")
-    assert_equal [:R3], scope.map(&:rule)
-    assert_equal ["package_manager.rb#x"], scope.map(&:where)
   end
 
   # A string is not a read, and a comment is not a read. A grep would

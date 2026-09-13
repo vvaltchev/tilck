@@ -58,7 +58,7 @@ module Layout
                       "gcc-#{arch.gcc_ver}").pkgs_dir
   end
 
-  def vars(scope = pkgmgr.scope)
+  def vars(scope = pkgmgr.env_scope)
 
     v = {
       "ARCH"        => ARCH.name,
@@ -98,10 +98,10 @@ module Layout
   def qemu_installs
     q = pkgmgr.get("host_qemu")
     return [] if q.nil? || !q.host_supported?
-    return q.get_install_list.reject(&:broken).sort_by(&:ver)
+    return pkgmgr.world.of(q.name).reject(&:broken).sort_by(&:ver)
   end
 
-  def print_vars(scope = pkgmgr.scope)
+  def print_vars(scope = pkgmgr.env_scope)
     vars(scope).each { |k, val| puts "#{k}=#{val}" }
   end
 end

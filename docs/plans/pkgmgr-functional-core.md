@@ -1,6 +1,13 @@
 # Package manager: a functional planning core
 
-Status: PLAN (2026-09-13). Nothing below is in the tree. It follows
+Status: steps 5.1 to 5.6 IN THE TREE (2026-09-14); step 5.7, the
+lanes, pending. The plan below is as written before the work; the
+commits record what each step found (`git log --grep 'Functional
+core'`). Two departures worth knowing: a bound package is a clone
+(the tests stub behaviour on singleton classes) and carries the
+world and the request's versions beside the scope; and `pkgmgr.world`
+stays as the one place the tree is read -- a scan is not a scope --
+so an unbound package raises only for a SCOPED question. It follows
 the correctness work in `pkgmgr-correctness-proof.md` (lint, model,
 laws, exhaustive lane, mutation) and the recipe conversion in
 `toolchain5.md` (every recipe is step data). Sizes are estimates.

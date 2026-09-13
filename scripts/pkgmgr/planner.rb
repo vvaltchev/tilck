@@ -89,7 +89,8 @@ module Planner
   # The version of each direct dependency `pkg` at `ver` is built
   # against: what the request bound it to. What InstallDeps records.
   # Every caller binds the closure first (bind), and a direct
-  # dependency is in the closure, so there is no other rung.
+  # dependency is in the closure, so there is no other rung. `pkg`
+  # is bound: a stack's dependencies are asked at a scope.
   def against_of(pkg, ver, bound)
     return pkg.dep_list_for(ver).to_h { |d| [d.name, bound.fetch(d.name)] }
   end
@@ -197,7 +198,7 @@ module Planner
         name: name, ver: ver, scope: scope,
         origin: named.include?(name) || moved ? :pinned : :default,
         mark: mark, bound: bound,
-        against: against_of(pkg, ver, bound)
+        against: against_of(pkg.at(scope), ver, bound)
       )
     end
 
@@ -317,8 +318,8 @@ module Planner
     # What each was built against, all of it settled before anything
     # is planned around it.
     against = stale.map { |pkg, inst|
-      sc = pkg.scope_at(inst, scope)
-      versions, ambiguous = deps_of_install(registry, world, pkg, inst, sc)
+      versions, ambiguous = deps_of_install(registry, world, pkg, inst,
+                                            scope)
       if !ambiguous.empty?
         return Refusal.new(message:
           "#{pkg.name}:#{inst.ver} has no record of which " \
@@ -354,7 +355,7 @@ module Planner
         name: pkg.name, ver: inst.ver, scope: sc,
         origin: inst.default_install ? :default : :pinned,
         mark: inst.manual ? :manual : :auto, bound: sub.bound,
-        against: against_of(pkg, inst.ver, sub.bound)
+        against: against_of(pkg.at(sc), inst.ver, sub.bound)
       ))
     end
 
@@ -639,14 +640,21 @@ module Planner
   # again. Recorded at install time; an install from before the record
   # is asked the only other way there is -- which version of each
   # dependency is present -- and cannot be answered when more than one
-  # is. Returns [versions, ambiguous], the second naming the
-  # dependencies with two installs and no record.
+  # is. One present and none: the REQUEST's default, not the
+  # install's. An install at a stack whose compiler is gone was built
+  # by that compiler, but no record says so, and putting a compiler
+  # back to rebuild an install nothing can use is not this question's
+  # to decide: the model answers the default in effect, and so does
+  # this. `scope` is the request's; the recipe is asked at the
+  # install's own. Returns [versions, ambiguous], the second naming
+  # the dependencies with two installs and no record.
   def deps_of_install(registry, world, pkg, inst, scope)
 
     recorded = InstallDeps.read(inst.path)
     ambiguous = []
+    sc = pkg.scope_at(inst, scope)
 
-    versions = pkg.dep_list_for(inst.ver).to_h { |d|
+    versions = pkg.at(sc).dep_list_for(inst.ver).to_h { |d|
       next [d.name, recorded[d.name]] if recorded.key?(d.name)
       next [d.name, d.ver] if d.ver
       dep = registry.get(d.name)
@@ -676,7 +684,7 @@ module Planner
 
     pkg = inst.pkg
     sc = pkg.scope_at(inst, scope)
-    versions, ambiguous = deps_of_install(registry, world, pkg, inst, sc)
+    versions, ambiguous = deps_of_install(registry, world, pkg, inst, scope)
 
     wanted = versions.flat_map { |n, v|
       dep = registry.get(n)

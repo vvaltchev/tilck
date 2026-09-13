@@ -157,7 +157,7 @@ class TestInstallSelector < Minitest::Test
       a, b = Ver("7.7.7"), Ver("8.8.8")
       list = installs(pkg, V1, stack(a), stack(b))
 
-      pkgmgr.with_host_stack(a) {
+      with_host_stack(a) {
         assert_equal [stack(a)], matched(sel(pkg, list), list)
         assert_equal [stack(b)],
                      matched(sel(pkg, list, compiler: b), list)

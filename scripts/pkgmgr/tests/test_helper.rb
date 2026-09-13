@@ -299,8 +299,7 @@ module TestHelper
     # command line, and a landmine for a test process, where one
     # `run_cli("-H", "7.7.7", ...)` silently moved the stack for
     # every test that ran afterwards.
-    pm.instance_variable_set(:@stack, nil)
-    pm.instance_variable_set(:@scope, nil)
+    pm.default_stack = nil
     # The resolution of the last request, which resolve_install_plan
     # sets and nothing unsets: a test that read resolved_ver after
     # another test's `-s` saw that test's answer.
@@ -353,11 +352,12 @@ module TestHelper
   def fake_install(pkg, ver = nil, at: nil, record: :ok, origin: :default,
                    mark: :manual)
 
-    ver ||= pkg.default_ver
-    dir = at ? pkg.pkg_dir_at(at) / pkg.ver_dirname(ver) : pkg.install_dir(ver)
+    b = bound(pkg)
+    ver ||= b.default_ver
+    dir = at ? b.pkg_dir_at(at) / b.ver_dirname(ver) : b.install_dir(ver)
     FileUtils.mkdir_p(dir)
 
-    for name, is_dir in pkg.expected_files(ver) do
+    for name, is_dir in b.expected_files(ver) do
       path = dir / name
 
       if is_dir
@@ -375,9 +375,9 @@ module TestHelper
 
     case record
     when :ok
-      inst = pkg.get_install_list.find { |i| i.path == dir }
+      inst = pkgmgr.world.of(pkg.name).find { |i| i.path == dir }
       raise "fake_install: #{dir} is not seen by #{pkg.name}" if inst.nil?
-      pkg.write_build_inputs(inst)
+      bound(pkg).write_build_inputs(inst)
     when :changed
       # A record of the CURRENT format naming other sources: changed,
       # not merely from an older scheme.
@@ -409,6 +409,27 @@ module TestHelper
       FileUtils.mkdir_p(dir)
       yield dir
     end
+  end
+
+  # The environment's scope, as Main would build it with no flags:
+  # the shell's ARCH and BOARD (which with_context swaps), and the
+  # stack the configuration names (which with_host_stack swaps).
+  def scope = pkgmgr.env_scope
+
+  # A package bound to that scope: what a test asking a package about
+  # itself means, unless it says another. The world is the manager's,
+  # read when asked and not before.
+  def bound(pkg) = pkg.at(scope)
+
+  # What HOST_VER_GCC says, for the block: the stack the environment's
+  # scope names. Configuration, swapped the way with_context swaps the
+  # constants.
+  def with_host_stack(ver)
+    prev = pkgmgr.instance_variable_get(:@default_stack)
+    pkgmgr.default_stack = ver
+    yield
+  ensure
+    pkgmgr.default_stack = prev
   end
 
   def with_fake_tc

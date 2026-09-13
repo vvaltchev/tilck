@@ -98,7 +98,7 @@ class TestLaws < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         rc, _ = run_cli("-s", "foo", "-q")
         assert_equal 0, rc
-        assert pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        assert bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end
   end

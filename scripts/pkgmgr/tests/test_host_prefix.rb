@@ -72,7 +72,7 @@ class TestSourceExtraFiles < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("host_p", on_host: true)
       pkgmgr.register(pkg)
-      ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
+      ctx = Package::BuildCtx.new(bound(pkg), Pathname.new("/x/1.0.0"))
       assert_equal "#{TC_CACHE}/some.whl", ctx.expand("$CACHE/some.whl")
     end
   end
@@ -152,7 +152,7 @@ class TestSystemDepPrefix < Minitest::Test
       with_env(backend) do
         pkg = NeedsSsl.new("host_needs_ssl", on_host: true)
         pkgmgr.register(pkg)
-        ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
+        ctx = Package::BuildCtx.new(bound(pkg), Pathname.new("/x/1.0.0"))
 
         assert_empty backend.asked, "nothing asked until a step names it"
         assert_equal "-I/opt/homebrew/opt/ssl/include",
@@ -168,7 +168,7 @@ class TestSystemDepPrefix < Minitest::Test
       with_env(FakeBackend.new(:brew, {})) do
         pkg = NeedsSsl.new("host_needs_ssl", on_host: true)
         pkgmgr.register(pkg)
-        ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
+        ctx = Package::BuildCtx.new(bound(pkg), Pathname.new("/x/1.0.0"))
         err = assert_raises(Recipe::Error) { ctx.expand("$openssl/include") }
         assert_match(/OpenSSL headers and libraries was not found/,
                      err.message)
@@ -181,7 +181,7 @@ class TestSystemDepPrefix < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("host_plain", on_host: true)
       pkgmgr.register(pkg)
-      ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
+      ctx = Package::BuildCtx.new(bound(pkg), Pathname.new("/x/1.0.0"))
       assert_raises(Recipe::Error) { ctx.expand("$openssl") }
     end
   end
@@ -225,7 +225,7 @@ class TestStackTokens < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("host_x", on_host: true, host_tier: :stack)
       pkgmgr.register(pkg)
-      ctx = Package::BuildCtx.new(pkg, Pathname.new("/x/1.0.0"))
+      ctx = Package::BuildCtx.new(bound(pkg), Pathname.new("/x/1.0.0"))
       assert_equal "-j#{BUILD_PAR}", ctx.expand("-j$PAR"),
                    "an unrelated token must not resolve the stack"
       err = assert_raises(RuntimeError) { ctx.expand("$STACK_GCC/gcc") }

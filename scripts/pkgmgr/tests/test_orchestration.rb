@@ -207,7 +207,7 @@ class TestOrchestration < Minitest::Test
         pkgmgr.register(a)
         pkgmgr.register(b)
 
-        pkgmgr.with_host_stack(stack) do
+        with_host_stack(stack) do
           assert pkgmgr.install("host_a")
           assert pkgmgr.install("host_b")
           pkgmgr.refresh

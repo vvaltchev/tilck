@@ -217,34 +217,29 @@ class Package
   # A package in the registry is a declaration. Where it installs,
   # which arch it builds for, which stack it belongs to: those are
   # questions about one INVOCATION, and asking them binds the package
-  # to a Scope first. A bound package is a shallow copy with one
-  # field set, so the scope an answer was computed under is visible
-  # at the call site that asked, and cannot be some block open up
-  # the stack.
+  # to a Scope first. A bound package is a copy with the scope set, so
+  # the scope an answer was computed under is visible at the call site
+  # that asked, and cannot be some state up the stack: asked unbound,
+  # it raises.
   #
   #   pkg.at(scope).coords(ver)     # this scope, visibly
-  #   pkg.coords(ver)               # TRANSITION: the invocation's, counted
+  #   pkg.coords(ver)               # Unbound
   #
-  # The transition (docs/plans/pkgmgr-functional-core.md, step 5.1):
-  # an unbound package answers from pkgmgr.scope and notes the site
-  # that asked. The sites are printed at the end of a test run and
-  # driven to zero step by step; then the fallback goes and an
-  # unbound question raises Unbound.
+  # Beside the scope, a binding may carry the World the question is
+  # about (what is installed; the registry's own scan otherwise) and
+  # the versions a request bound (Plan#bound; none otherwise).
   class Unbound < StandardError; end
-
-  # file basename => Set of line numbers that asked an unbound
-  # package a scoped question, and the same for one asked what is
-  # installed without a World in hand (step 5.2). Read by
-  # tests/run_all.rb's summary and by test_scope.rb's ceilings.
-  UNBOUND_READS = Hash.new { |h, k| h[k] = Set.new }
-  UNBOUND_WORLD_READS = Hash.new { |h, k| h[k] = Set.new }
-  UNBOUND_VERSION_READS = Hash.new { |h, k| h[k] = Set.new }
 
   # A copy bound to `s`; to `world` when the caller holds one, so
   # that what is installed is this value and not the tree as the
   # manager last read it; and to `versions`, the map a request bound
   # (Plan#bound), which is what a build reads its dependencies'
   # versions through.
+  #
+  # clone, not dup: a package's behaviour may sit on its singleton
+  # class (the tests stub default_ver and install_impl_internal that
+  # way), and dup would leave it behind. A build that writes state on
+  # the instance writes it on the copy, which is why no package does.
   def at(s, world: nil, versions: nil)
     raise ArgumentError, "#{name}: not a Scope: #{s.inspect}" \
       if !s.is_a?(Scope)
@@ -252,9 +247,6 @@ class Package
       if !world.nil? && !world.is_a?(World)
     raise ArgumentError, "#{name}: not a Hash: #{versions.inspect}" \
       if !versions.nil? && !versions.is_a?(Hash)
-    # clone, not dup: a package's behaviour may sit on its singleton
-    # class (the tests stub default_ver and install_impl_internal
-    # that way), and dup would leave it behind.
     b = clone(freeze: false)
     b.instance_variable_set(:@scope, s)
     b.instance_variable_set(:@world, world) if world
@@ -263,9 +255,7 @@ class Package
   end
 
   # A dependency, bound exactly as this package is: with the world
-  # and versions it was handed, or without them -- a dependency that
-  # then asks what is installed reads the fallback and is counted,
-  # and one that only publishes its build interface never reads it.
+  # and versions it was handed, or without them.
   def bound_dep(dep_name)
     return pkgmgr.get(dep_name)&.at(scope, world: @world,
                                     versions: @versions)
@@ -275,32 +265,24 @@ class Package
 
   def scope
     return @scope if @scope
-    Package.note_unbound_read(UNBOUND_READS, caller_locations(1, 12))
-    return pkgmgr.scope
+    raise Unbound, "#{name}: asked a scoped question unbound -- bind it " \
+                   "with Package#at(scope) first"
   end
 
   # What is installed, as this package sees it: the World it was
-  # bound with, else (TRANSITION, counted) the manager's.
-  def world
-    return @world if @world
-    Package.note_unbound_read(UNBOUND_WORLD_READS, caller_locations(1, 12))
-    return pkgmgr.world
-  end
+  # bound with, else the registry's scan of the tree -- which is not
+  # a scope, and lies only when a writer forgot to say it wrote.
+  def world = @world || pkgmgr.world
 
   # The versions the request being served bound, name => Version:
   # the map this package was bound with (Plan#bound, through the
   # executor). The version of a dependency comes from here, NOT from
   # this package's own dep list: mpfr names host_gmp without a
   # version, so asking mpfr alone answers gmp's default, while the
-  # gcc that asked for all four pinned something else. Unbound
-  # (TRANSITION, counted), there is no request being served and the
-  # map is empty; a reader that needs one falls to own_resolution.
-  def versions
-    return @versions if @versions
-    Package.note_unbound_read(UNBOUND_VERSION_READS,
-                              caller_locations(1, 12))
-    return {}
-  end
+  # gcc that asked for all four pinned something else. Unbound, there
+  # is no request being served and the map is empty; a reader that
+  # needs one falls to own_resolution.
+  def versions = @versions || {}
 
   def resolved_ver(dep_name) = versions[dep_name]
 
@@ -503,7 +485,7 @@ class Package
   #
   # The board that applies to the arch this package would be built
   # FOR, which is not always the global one -- the same reason
-  # arch_supported? reads pkgmgr.target_arch. `-a riscv64` from an
+  # arch_supported? reads the scope's arch. `-a riscv64` from an
   # i386 shell asked whether u-boot supported the board "pc", refused
   # to install it, and had already force-removed it by then.
   def board_supported?
@@ -632,7 +614,8 @@ class Package
   # answers for the invocation's ARCH/BOARD pair and is right for the
   # startup validation that uses it. A recipe needs the board of the
   # installation it is building or being judged against, which under
-  # with_install_context is not the same thing.
+  # the scope of the install being judged (scope_at) is not the same
+  # thing.
   def board_bsp
 
     return nil if on_host
@@ -892,7 +875,7 @@ class Package
       "STACK_GCC"      => -> { stack_toolchain_bins[0].to_s },
       "STACK_BINUTILS" => -> { stack_toolchain_bins[1].to_s },
       "PAR"     => BUILD_PAR.to_s,
-      "PYTHON"  => -> { pkgmgr.python_interpreter.to_s },
+      "PYTHON"  => -> { python_interpreter.to_s },
       "SRC_REF" => -> { source_ref_short(install_dir) },
       **dependency_tokens,
       **system_dep_tokens,
@@ -914,6 +897,15 @@ class Package
                                "on this host"
       }]
     }
+  end
+
+  # The interpreter our builds run: host_python's, installed.
+  def python_interpreter
+    py = pkgmgr.python_pkg && bound_dep(pkgmgr.python_pkg.name)
+    inst = py&.find_install(py.default_ver)
+    raise "host_python is not installed: there is no interpreter to " \
+          "run the build with" if inst.nil?
+    return inst.path / "bin" / "python3"
   end
 
   # One lazy token per package in the dependency closure. A package
@@ -1103,13 +1095,6 @@ class Package
     return scope.with(arch: inst.arch, board: board)
   end
 
-  # TRANSITION: evaluate `block` under the scope an install describes
-  # from the invocation's, for callers that do not yet bind the
-  # package with it. Reads the manager's scope, as the block openers
-  # it replaced did.
-  def with_install_context(inst, &block)
-    return pkgmgr.with_scope(scope_at(inst, pkgmgr.scope), &block)
-  end
 
   # The target architectures ONE install of this version writes.
   #
@@ -1442,7 +1427,8 @@ class Package
     #
     #   The directory (BUILD_SYSTEM_HEADER_DIR) that should contain
     #   system headers does not exist: .../gcc-16.2.0/sysroot/usr/include
-    inst = pkgmgr.with_host_stack(gcc_ver) { find_install(default_ver) }
+    me = at(scope.with(stack: gcc_ver), world: world)
+    inst = me.find_install(me.default_ver)
     return [] if inst.nil?
 
     # Belt and braces: the install must live in that stack. It does,
@@ -1705,9 +1691,7 @@ class Package
 
         if !on_host && (a = default_arch) && !a.nil?
           # Target package: need cross-compiler in PATH. Pass the
-          # arch name explicitly so with_target_arch scoping is
-          # respected — with_cc() with no arg defaults to ARCH
-          # which might differ from target_arch.
+          # arch name: the scope this package is bound to.
           pkgmgr.with_cc(a.name) do |_arch_dir|
             ok = install_impl_internal(d)
           end
@@ -1983,7 +1967,7 @@ class Package
       return false
     end
 
-    pkgmgr.with_cc() do |arch_dir|
+    pkgmgr.with_cc(default_arch.name) do |arch_dir|
       chdir_install_dir(arch_dir, ver) do
         return config_impl
       end
@@ -2011,9 +1995,11 @@ class Package
 
     list = []
 
-    # all_stack_coords is already a set: the current stack joins the
-    # ones on disk without repeating.
-    for c in host_tier == :stack ? all_stack_coords : [coords] do
+    # A :stack package may be installed in every stack on disk; the
+    # reading is of the TREE and asks no scope. (A stack being
+    # installed into for the first time is on disk by the time its
+    # first install is looked for.)
+    for c in host_tier == :stack ? stack_coords_on_disk : [coords] do
       dir = pkg_dir_at(c)
       next if !dir.directory?
 
@@ -2051,12 +2037,9 @@ class Package
     return list
   end
 
-  # The coordinates of every stack on disk, plus the current one --
-  # which may not be on disk yet, during its own first install.
-  def all_stack_coords
-
-    out = pkgmgr.host_stacks.map { |v| pkgmgr.stack_coords(Ver(v)) }
-    return out | [coords]
+  # The coordinates of every stack on disk.
+  def stack_coords_on_disk
+    return pkgmgr.host_stacks.map { |v| pkgmgr.stack_coords(Ver(v)) }
   end
 
   # The stack directories present under one <machine>/<env>.

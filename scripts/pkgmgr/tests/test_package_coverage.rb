@@ -37,7 +37,7 @@ class TestApplyPatchesCoverage < Minitest::Test
             FileUtils.cd(workdir) do
               # stub system("patch", ...) to succeed
               pkg.define_singleton_method(:system) { |*args| true }
-              result = pkg.apply_patches(Ver("1.0.0"))
+              result = bound(pkg).apply_patches(Ver("1.0.0"))
               assert_equal true, result
             end
           end
@@ -61,7 +61,7 @@ class TestApplyPatchesCoverage < Minitest::Test
           Dir.mktmpdir do |workdir|
             FileUtils.cd(workdir) do
               pkg.define_singleton_method(:system) { |*args| true }
-              result = pkg.apply_patches(Ver("1.0.0"))
+              result = bound(pkg).apply_patches(Ver("1.0.0"))
               assert_equal true, result
             end
           end
@@ -82,7 +82,7 @@ class TestApplyPatchesCoverage < Minitest::Test
             FileUtils.cd(workdir) do
               # stub system("patch", ...) to FAIL
               pkg.define_singleton_method(:system) { |*args| false }
-              result = pkg.apply_patches(Ver("1.0.0"))
+              result = bound(pkg).apply_patches(Ver("1.0.0"))
               assert_equal false, result
             end
           end
@@ -237,7 +237,7 @@ class TestInstallImplNoSource < Minitest::Test
       pkg = FakePackage.new("foo", source: nil)
       pkgmgr.register(pkg)
       assert_raises(NotImplementedError) {
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
       }
     end
   end
@@ -257,7 +257,7 @@ class TestConfigureCoverage < Minitest::Test
         pkg = FakePackage.new("foo")
         pkg.define_singleton_method(:configurable?) { true }
         pkgmgr.register(pkg)
-        result = pkg.configure
+        result = bound(pkg).configure
         assert_equal false, result
       end
     end
@@ -272,7 +272,7 @@ class TestConfigureCoverage < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        result = pkg.configure
+        result = bound(pkg).configure
         assert_equal true, result
       end
     end
@@ -292,14 +292,14 @@ class TestConfigureCoverage < Minitest::Test
           true
         }
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
-        pkg.install_impl(Ver("2.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
 
-        assert_equal true, pkg.configure(Ver("2.0.0"))
+        assert_equal true, bound(pkg).configure(Ver("2.0.0"))
         assert_equal 1, seen.length
         assert_match(%r{/foo/2\.0\.0\z}, seen.first)
 
-        assert_equal true, pkg.configure(Ver("1.0.0"))
+        assert_equal true, bound(pkg).configure(Ver("1.0.0"))
         assert_match(%r{/foo/1\.0\.0\z}, seen.last)
       end
     end
@@ -312,9 +312,9 @@ class TestConfigureCoverage < Minitest::Test
         pkg.define_singleton_method(:configurable?) { true }
         pkg.define_singleton_method(:config_impl) { true }
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
 
-        assert_equal false, pkg.configure(Ver("9.9.9"))
+        assert_equal false, bound(pkg).configure(Ver("9.9.9"))
       end
     end
   end

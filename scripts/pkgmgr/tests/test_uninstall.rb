@@ -206,8 +206,8 @@ class TestUninstallALL < Minitest::Test
         pkgmgr.refresh()
 
         pkgmgr.uninstall("ALL", false, false)
-        refute pkgmgr.get("a").installed?(Ver("1.0.0"))
-        refute pkgmgr.get("b").installed?(Ver("1.0.0"))
+        refute bound(pkgmgr.get("a")).installed?(Ver("1.0.0"))
+        refute bound(pkgmgr.get("b")).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -249,7 +249,7 @@ class TestUninstallALL < Minitest::Test
         # Compiler should still be installed
         assert cc.installed?(Ver("1.0.0"))
         # Regular package should be removed
-        refute pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        refute bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -270,7 +270,7 @@ class TestUninstallALL < Minitest::Test
         # Need -c ALL to also match host packages (compiler="syscc")
         pkgmgr.uninstall("ALL", false, true, nil, "ALL", "ALL")
         refute cc.installed?(Ver("1.0.0"))
-        refute pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        refute bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -292,7 +292,7 @@ class TestUninstallALL < Minitest::Test
         # riscv64 install should be gone
         refute rv_dir.exist?
         # i386 install should remain
-        assert pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        assert bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -306,7 +306,7 @@ class TestUninstallALL < Minitest::Test
 
         # Uninstall with compiler=ALL should include this package
         pkgmgr.uninstall("ALL", false, false, nil, "ALL", nil)
-        refute pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        refute bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -334,7 +334,7 @@ class TestUninstallVersions < Minitest::Test
 
         # Uninstall only version 1.0.0
         pkgmgr.uninstall("foo", false, false, Ver("1.0.0"))
-        refute pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        refute bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
         assert v2_dir.directory?  # 2.0.0 still there
       end
     end
@@ -470,12 +470,12 @@ class TestUninstallVersions < Minitest::Test
                               host_tier: :stack,
                               arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
-        pkgmgr.with_host_stack(Ver("7.7.7")) { pkgmgr.install("host_thing") }
+        with_host_stack(Ver("7.7.7")) { pkgmgr.install("host_thing") }
         pkgmgr.refresh()
 
         out = capture_stdout {
           # Looking from a stack that has no install of it.
-          pkgmgr.with_host_stack(Ver("8.8.8")) {
+          with_host_stack(Ver("8.8.8")) {
             pkgmgr.uninstall("host_thing", false, false)
           }
         }
@@ -625,7 +625,7 @@ class TestUninstallVersions < Minitest::Test
         # Uninstall without specifying version — default_ver is 1.0.0,
         # which IS installed, so only 1.0.0 gets removed
         pkgmgr.uninstall("foo", false, false)
-        refute pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        refute bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
         assert v2_dir.directory?  # 2.0.0 untouched
       end
     end

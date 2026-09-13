@@ -34,7 +34,8 @@ class TestRecipeDigestIsReproducible < Minitest::Test
               TccPackage].freeze
 
   def digest_from(dir, pkg)
-    return Dir.chdir(dir) { pkg.build_recipe_digest(pkg.default_ver) }
+    b = bound(pkg)
+    return Dir.chdir(dir) { b.build_recipe_digest(b.default_ver) }
   end
 
   def test_the_digest_does_not_depend_on_the_working_directory
@@ -56,7 +57,7 @@ class TestRecipeDigestIsReproducible < Minitest::Test
   # a source tree happened to be there -- and on which one.
   def test_src_ref_is_not_resolved_into_the_recipe
     pkg = TccPackage.new
-    steps = Recipe.all_argv(pkg.build_steps).join(" ")
+    steps = Recipe.all_argv(bound(pkg).build_steps).join(" ")
 
     assert_includes steps, "$SRC_REF",
                     "tcc no longer names the source ref"

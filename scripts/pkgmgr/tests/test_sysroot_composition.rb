@@ -38,8 +38,8 @@ class TestSysrootCompositionAcrossStacks < Minitest::Test
   # Install `pkg` into one specific stack, with a file in it so the
   # composed sysroot has something to link.
   def install_into(pkg, stack, rel = "usr/include/stdio.h")
-    pkgmgr.with_host_stack(Ver(stack)) do
-      dir = pkg.coords.pkgs_dir / pkg.pkg_dirname / "1.0.0" / "install"
+    with_host_stack(Ver(stack)) do
+      dir = bound(pkg).coords.pkgs_dir / pkg.pkg_dirname / "1.0.0" / "install"
       FileUtils.mkdir_p(File.dirname(dir / rel))
       File.write(dir / rel, "x")
       pkgmgr.installs_changed!
@@ -56,7 +56,7 @@ class TestSysrootCompositionAcrossStacks < Minitest::Test
 
       # Asked from OUTSIDE that stack, exactly as the recompose loop
       # does.
-      frags = pkg.sysroot_fragments(Ver(OTHER))
+      frags = bound(pkg).sysroot_fragments(Ver(OTHER))
 
       refute_empty frags,
                    "no fragment for the stack that actually has the package"
@@ -75,7 +75,7 @@ class TestSysrootCompositionAcrossStacks < Minitest::Test
 
       # The package is installed in the DEFAULT stack only, so the
       # other stack has nothing to contribute.
-      assert_empty pkg.sysroot_fragments(Ver(OTHER)),
+      assert_empty bound(pkg).sysroot_fragments(Ver(OTHER)),
                    "a fragment from another stack leaked in"
     end
   end
@@ -176,8 +176,8 @@ class TestSysrootCompositionAcrossStacks < Minitest::Test
       assert File.exist?(root / "usr" / "include" / "stdio.h")
 
       # Uninstall it for real, the way --clean does.
-      pkgmgr.with_host_stack(Ver(OTHER)) do
-        FileUtils.rm_rf(pkg.coords.pkgs_dir)
+      with_host_stack(Ver(OTHER)) do
+        FileUtils.rm_rf(bound(pkg).coords.pkgs_dir)
       end
       pkgmgr.refresh()
 
@@ -203,8 +203,9 @@ class TestSysrootHoldsThePrograms < Minitest::Test
 
   # A QEMU install in one stack, at its own prefix, with a binary.
   def qemu_install(pkg, ver)
-    pkgmgr.with_host_stack(Ver(STACK)) do
-      bin = pkg.coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" / "bin"
+    with_host_stack(Ver(STACK)) do
+      bin = bound(pkg).coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" /
+            "bin"
       FileUtils.mkdir_p(bin)
       pkg.expected_files.each { |f, _| FileUtils.touch(bin.parent.parent / f) }
       File.write(bin / "qemu-system-i386", ver)

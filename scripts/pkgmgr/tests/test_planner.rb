@@ -36,7 +36,7 @@ class TestPlanner < Minitest::Test
   def world_now = World.of(World.scan(pkgmgr.all_packages).installs)
 
   def plan(requested, **kw)
-    return Planner.plan_install(pkgmgr, world_now, requested, pkgmgr.scope,
+    return Planner.plan_install(pkgmgr, world_now, requested, scope,
                                 **kw)
   end
 
@@ -177,7 +177,7 @@ class TestPlanner < Minitest::Test
                           arch_list: ALL_HOST_ARCHS.values,
                           dep_list: [Dep("host_gcc", true)])
       [gcc, s].each { |p| pkgmgr.register(p) }
-      pkgmgr.host_stack = Ver("7.7.7")
+      pkgmgr.default_stack = Ver("7.7.7")
 
       p = plan([["host_gcc", Ver("8.8.8")]])
       assert_equal Ver("8.8.8"), p.scope.stack
@@ -219,7 +219,7 @@ class TestPlanner < Minitest::Test
                            arch_list: ALL_HOST_ARCHS.values,
                            target_arch: ARCH)
       [t, cc].each { |p| pkgmgr.register(p) }
-      assert_equal [cc_name], Planner.graph(pkgmgr, pkgmgr.scope)["t"]
+      assert_equal [cc_name], Planner.graph(pkgmgr, scope)["t"]
       assert_equal [cc_name, "t"], plan([["t", nil]]).builds.map(&:name)
     end
   end
@@ -266,7 +266,7 @@ class TestPlanner < Minitest::Test
   # --- -u, --mark, --autoremove: on values -----------------------------------
 
   def uninstall(name, **kw)
-    return Planner.plan_uninstall(pkgmgr, world_now, name, pkgmgr.scope, **kw)
+    return Planner.plan_uninstall(pkgmgr, world_now, name, scope, **kw)
   end
 
   def test_uninstall_takes_the_default_here_else_everything_here
@@ -305,7 +305,7 @@ class TestPlanner < Minitest::Test
     with_fake_tc do
       t = FakePackage.new("t", arch_list: [I386, RV])
       pkgmgr.register(t)
-      fake_install(t, at: t.at(pkgmgr.scope.with(arch: RV)).coords)
+      fake_install(t, at: t.at(scope.with(arch: RV)).coords)
       p = uninstall("t")                       # the scope's arch: i386
       assert_empty p.removes
       assert_match(/t: nothing matched/, p.notes.join("\n"))
@@ -340,7 +340,7 @@ class TestPlanner < Minitest::Test
       p = uninstall("ALL")
       assert_empty p.removes
       assert_empty p.notes
-      c = Planner.plan_clean(pkgmgr, world_now, pkgmgr.scope)
+      c = Planner.plan_clean(pkgmgr, world_now, scope)
       assert_empty c.removes
       assert_empty c.notes
     end
@@ -351,10 +351,10 @@ class TestPlanner < Minitest::Test
     with_fake_tc do
       t = FakePackage.new("t", arch_list: [I386, RV])
       pkgmgr.register(t)
-      fake_install(t, at: t.at(pkgmgr.scope.with(arch: I386)).coords)
-      fake_install(t, at: t.at(pkgmgr.scope.with(arch: RV)).coords)
+      fake_install(t, at: t.at(scope.with(arch: I386)).coords)
+      fake_install(t, at: t.at(scope.with(arch: RV)).coords)
       assert_equal 1, uninstall("ALL").removes.length
-      c = Planner.plan_clean(pkgmgr, world_now, pkgmgr.scope)
+      c = Planner.plan_clean(pkgmgr, world_now, scope)
       assert_equal 2, c.removes.length
     end
   end
@@ -364,16 +364,16 @@ class TestPlanner < Minitest::Test
       _, b, c = chain
       fake_install(c, mark: :auto)
       fake_install(b, mark: :manual)
-      p = Planner.plan_mark(pkgmgr, world_now, "c", true, pkgmgr.scope)
+      p = Planner.plan_mark(pkgmgr, world_now, "c", true, scope)
       assert_equal ["c"], p.marks.map { |m| m.install.pkgname }
       assert p.marks.first.manual
       assert_empty p.notes, "a match has nothing to say"
-      gone = Planner.plan_mark(pkgmgr, world_now, "c", true, pkgmgr.scope,
+      gone = Planner.plan_mark(pkgmgr, world_now, "c", true, scope,
                                ver: Ver("9.9.9"))
       assert_empty gone.marks
       assert_match(/9.9.9 is not installed/, gone.notes.join("\n"))
       refute_match(/nothing matched/, gone.notes.join("\n"))
-      p2 = Planner.plan_mark(pkgmgr, world_now, "a", false, pkgmgr.scope)
+      p2 = Planner.plan_mark(pkgmgr, world_now, "a", false, scope)
       assert_empty p2.marks
       assert_match(/a: nothing matched, so nothing was marked/,
                    p2.notes.join("\n"))
@@ -393,7 +393,7 @@ class TestPlanner < Minitest::Test
       [t, h, cc].each { |p| pkgmgr.register(p) }
       [t, h, cc].each { |p| fake_install(p) }
       installs, needs, = Planner.install_graph(pkgmgr, world_now,
-                                               pkgmgr.scope)
+                                               scope)
       by = installs.to_h { |i| [i.pkgname, i] }
       assert_equal [cc.name], needs[by["t"]].map(&:pkgname)
       assert_empty needs[by["host_h"]]
@@ -412,7 +412,7 @@ class TestPlanner < Minitest::Test
       [top, mid, base, gone].each { |p| pkgmgr.register(p) }
       [top, mid, base].each { |p| fake_install(p) }
       bad = Planner.unusable(*Planner.install_graph(pkgmgr, world_now,
-                                                    pkgmgr.scope))
+                                                    scope))
       words = bad.to_h { |i, w| [i.pkgname, w] }
       assert_equal({ "base" => ["gone 1.0.0"], "mid" => ["base 1.0.0"],
                      "top" => ["mid 1.0.0"] }, words,
@@ -427,12 +427,13 @@ class TestPlanner < Minitest::Test
       fake_install(c, mark: :auto)
       fake_install(b, mark: :auto)
       fake_install(a, mark: :auto)
-      p = Planner.plan_autoremove(pkgmgr, world_now, pkgmgr.scope)
+      p = Planner.plan_autoremove(pkgmgr, world_now, scope)
       assert_equal %w[a b c], p.removes.map { |r| r.install.pkgname }
 
-      InstallOrigin.write(a.install_dir(a.default_ver), true, true)
+      ba = bound(a)
+      InstallOrigin.write(ba.install_dir(ba.default_ver), true, true)
       pkgmgr.installs_changed!
-      p2 = Planner.plan_autoremove(pkgmgr, world_now, pkgmgr.scope)
+      p2 = Planner.plan_autoremove(pkgmgr, world_now, scope)
       assert_empty p2.removes, "a manual root holds its closure"
       assert_match(/Nothing to remove/, p2.notes.join("\n"))
     end
@@ -450,7 +451,7 @@ class TestPlanner < Minitest::Test
     return p
   end
 
-  def judged = world_now.judged(pkgmgr, pkgmgr.scope)
+  def judged = world_now.judged(pkgmgr, scope)
 
   # An install made as the default whose default moved wants the new
   # one; a pinned install is left alone.
@@ -459,16 +460,16 @@ class TestPlanner < Minitest::Test
       t = two_versions("t")
       fake_install(t, Ver("1.0.0"), origin: :default, mark: :manual)
       assert_equal ["t"], Planner.upgradable(pkgmgr, world_now,
-                                             pkgmgr.scope).map(&:name)
-      p = Planner.plan_upgrade(pkgmgr, world_now, pkgmgr.scope)
+                                             scope).map(&:name)
+      p = Planner.plan_upgrade(pkgmgr, world_now, scope)
       assert_equal [["t", Ver("2.0.0"), :manual]],
                    p.builds.map { |b| [b.name, b.ver, b.mark] },
                    "the new version inherits the old one's mark"
 
-      FileUtils.rm_rf(t.install_dir(Ver("1.0.0")))
+      FileUtils.rm_rf(bound(t).install_dir(Ver("1.0.0")))
       fake_install(t, Ver("1.0.0"), origin: :pinned)
-      assert_empty Planner.upgradable(pkgmgr, world_now, pkgmgr.scope)
-      p = Planner.plan_upgrade(pkgmgr, world_now, pkgmgr.scope)
+      assert_empty Planner.upgradable(pkgmgr, world_now, scope)
+      p = Planner.plan_upgrade(pkgmgr, world_now, scope)
       assert_empty p.builds
       assert_match(/up to date/, p.notes.join("\n"))
     end
@@ -485,9 +486,9 @@ class TestPlanner < Minitest::Test
       w = judged
       assert_equal %i[changed ok unknown],
                    %w[c b a].map { |n| w.of(n).first.record }
-      stale = Planner.stale_installs(pkgmgr, w, pkgmgr.scope)
+      stale = Planner.stale_installs(pkgmgr, w, scope)
       assert_equal %w[c a], stale.map { |p, _| p.name }
-      rc, lines = Planner.check_updates(pkgmgr, w, pkgmgr.scope)
+      rc, lines = Planner.check_updates(pkgmgr, w, scope)
       assert_equal 2, rc
       assert_equal ["NEEDS_REBUILD a c"], lines
     end
@@ -498,7 +499,7 @@ class TestPlanner < Minitest::Test
       _, _, c = chain
       fake_install(c)
       assert_raises(ArgumentError) {
-        Planner.stale_installs(pkgmgr, world_now, pkgmgr.scope)
+        Planner.stale_installs(pkgmgr, world_now, scope)
       }
     end
   end
@@ -513,7 +514,7 @@ class TestPlanner < Minitest::Test
       fake_install(t, record: :changed, origin: :pinned, mark: :auto)
       t.define_singleton_method(:dep_list) { [Dep("grown", false)] }
 
-      p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      p = Planner.plan_rebuild(pkgmgr, judged, scope)
       assert_equal %w[grown], p.actions.grep(Build).map(&:name)
       r = p.replaces.first
       assert_equal "t", r.install.pkgname
@@ -532,7 +533,7 @@ class TestPlanner < Minitest::Test
       fake_install(d, Ver("1.0.0"))
       fake_install(d, Ver("2.0.0"))
       fake_install(u, record: :changed)      # a fake install has no record
-      r = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      r = Planner.plan_rebuild(pkgmgr, judged, scope)
       assert_kind_of Refusal, r
       assert_match(/host_u:1.0.0 has no record of which host_d/, r.message)
     end
@@ -545,10 +546,10 @@ class TestPlanner < Minitest::Test
       with_context(ARCH: RV, BOARD: "qemu-virt") do   # inside: the fake
         t = FakePackage.new("t", arch_list: [RV])     # tc sets ARCH too
         pkgmgr.register(t)
-        nano = pkgmgr.scope.with(arch: RV, board: "licheerv-nano")
+        nano = scope.with(arch: RV, board: "licheerv-nano")
         fake_install(t, at: t.at(nano).coords, record: :changed)
         t.instance_variable_set(:@board_list, ["qemu-virt"])  # dropped
-        p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+        p = Planner.plan_rebuild(pkgmgr, judged, scope)
         assert_empty p.actions
         assert_match(/Left as it is: t:1.0.0 .*does not build for board/,
                      p.notes.join("\n"))
@@ -569,7 +570,7 @@ class TestPlanner < Minitest::Test
       [a, b].each { |p|
         p.define_singleton_method(:dep_list) { [Dep("grown", false)] }
       }
-      p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      p = Planner.plan_rebuild(pkgmgr, judged, scope)
       assert_equal ["grown"], p.actions.grep(Build).map(&:name)
       assert_equal %w[a b], p.replaces.map { |r| r.install.pkgname }.sort
     end
@@ -586,7 +587,7 @@ class TestPlanner < Minitest::Test
       fake_install(d, Ver("1.0.0"))
       inst = fake_install(u, record: :changed)
       InstallDeps.write(inst, { "host_d" => Ver("1.0.0") })
-      r = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      r = Planner.plan_rebuild(pkgmgr, judged, scope)
       assert_kind_of Refusal, r
       assert_match(/Version conflict/, r.message)
     end
@@ -609,16 +610,44 @@ class TestPlanner < Minitest::Test
                           arch_list: ALL_HOST_ARCHS.values,
                           dep_list: [Dep("host_gcc", true)])
       [gcc, s].each { |p| pkgmgr.register(p) }
-      pkgmgr.host_stack = Ver("7.7.7")
+      pkgmgr.default_stack = Ver("7.7.7")
       fake_install(gcc)
       fake_install(s, at: pkgmgr.stack_coords(Ver("8.8.8")),
                    record: :changed, mark: :auto)
 
-      p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      p = Planner.plan_rebuild(pkgmgr, judged, scope)
       assert_equal [Replace], p.actions.map(&:class)
       b = p.replaces.first.build
       assert_equal Ver("8.8.8"), b.scope.stack
       assert_equal [:default, :auto], [b.origin, b.mark]
+    end
+  end
+
+  # ...and a dependency it has no record of, none of which is
+  # installed, is taken at the REQUEST's default -- the stack in
+  # effect for the stack compiler -- not at the install's: the
+  # install's coordinates name a compiler nothing here can put back.
+  # The model says the same (stack/7/0/51).
+  def test_rebuild_takes_an_unrecorded_dependency_at_the_request_default
+    with_fake_tc do
+      gcc = FakePackage.new("host_gcc", **HOST)
+      gcc.define_singleton_method(:installable_versions) {
+        [Ver("7.7.7"), Ver("8.8.8")]
+      }
+      gcc.define_singleton_method(:default_ver) { scope.stack }
+      s = FakePackage.new("host_s", on_host: true, host_tier: :stack,
+                          arch_list: ALL_HOST_ARCHS.values,
+                          dep_list: [Dep("host_gcc", true)])
+      [gcc, s].each { |p| pkgmgr.register(p) }
+      pkgmgr.default_stack = Ver("7.7.7")
+      fake_install(s, at: pkgmgr.stack_coords(Ver("8.8.8")),
+                   record: :changed)
+
+      p = Planner.plan_rebuild(pkgmgr, judged, scope)
+      assert_equal [Build, Replace], p.actions.map(&:class)
+      assert_equal ["host_gcc", Ver("7.7.7")],
+                   [p.actions.first.name, p.actions.first.ver]
+      assert_equal Ver("8.8.8"), p.replaces.first.build.scope.stack
     end
   end
 
@@ -628,7 +657,7 @@ class TestPlanner < Minitest::Test
       lib = FakePackage.new("lib")
       opt = FakePackage.new("opt")
       [d, lib, opt].each { |p| pkgmgr.register(p) }
-      list = Planner.installable(pkgmgr, pkgmgr.scope)
+      list = Planner.installable(pkgmgr, scope)
       assert_equal [["lib", "default"], ["dflt", "default"],
                     ["opt", "optional"]], list
     end
@@ -641,8 +670,8 @@ class TestPlanner < Minitest::Test
       a, _, c = chain
       fake_install(c)
       w = world_now
-      p1 = Planner.plan_install(pkgmgr, w, [["a", nil]], pkgmgr.scope)
-      p2 = Planner.plan_install(pkgmgr, w, [["a", nil]], pkgmgr.scope)
+      p1 = Planner.plan_install(pkgmgr, w, [["a", nil]], scope)
+      p2 = Planner.plan_install(pkgmgr, w, [["a", nil]], scope)
       assert_equal p1, p2
       assert_equal p1.builds.map(&:name), %w[b a]
     end

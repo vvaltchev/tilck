@@ -41,14 +41,15 @@ class TestTilckStack < Minitest::Test
   # its board's boot.
   def test_the_members_are_the_defaults_of_the_stacks_own_target
     with_the_real_packages do
-      i386 = pkgmgr.get("tilck-i386-pc").dep_list.map(&:name)
+      i386 = bound(pkgmgr.get("tilck-i386-pc")).dep_list.map(&:name)
       assert_includes i386, "gcc-i386-musl"
       assert_includes i386, "gcc-x86_64-musl"
       assert_includes i386, "gnuefi"
       refute_includes i386, "gcc-riscv64-musl"
       refute_includes i386, "uboot"
 
-      nano = pkgmgr.get("tilck-riscv64-licheerv-nano").dep_list.map(&:name)
+      nano = bound(pkgmgr.get("tilck-riscv64-licheerv-nano")).dep_list
+      nano = nano.map(&:name)
       assert_includes nano, "gcc-riscv64-musl"
       assert_includes nano, "licheerv_nano_boot"
       refute_includes nano, "uboot"

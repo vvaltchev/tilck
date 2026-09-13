@@ -56,9 +56,9 @@ module Exhaustive
             arch_list: ALL_HOST_ARCHS.values, dep_list: dep_list)
     end
 
-    def default_ver = pkgmgr.current_host_stack
+    def default_ver = scope.stack
     def installable_versions = [STACK_A, STACK_B]
-    def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_host_stack
+    def stack_gcc_ver(ver = nil) = ver || scope.stack
     # ...and the third: an install of it belongs to the stack it
     # defines, which is where what it needs is looked for.
     def stack_of_install(inst) = stack_gcc_ver(inst.ver)
@@ -177,9 +177,10 @@ module Exhaustive
   def candidates(pkgs, narrow: false)
     out = []
     for p in pkgs do
-      for v in p.installable_versions.empty? ? [p.default_ver]
-                                              : p.installable_versions do
-        origins = v == p.default_ver ? [:default] : [:default, :pinned]
+      b = p.at(Exhaustive.harness.scope)
+      for v in b.installable_versions.empty? ? [b.default_ver]
+                                              : b.installable_versions do
+        origins = v == b.default_ver ? [:default] : [:default, :pinned]
         coords = narrow ? coords_for(p).first(1) : coords_for(p)
         records = narrow ? [:ok] : [:ok, :changed]
         marks = [:manual, :auto]
@@ -233,8 +234,9 @@ module Exhaustive
 
     for p in pkgs do
       n = p.name
-      vers = p.installable_versions.empty? ? [p.default_ver]
-                                           : p.installable_versions
+      b = p.at(Exhaustive.harness.scope)
+      vers = b.installable_versions.empty? ? [b.default_ver]
+                                           : b.installable_versions
       lines << "-s #{n}" << "-s #{n} -f" << "-u #{n}" << "-u #{n}:ALL" \
             << "-u #{n} -a riscv64" << "-u #{n} -a ALL" << "-C #{n}" \
             << "--mark-auto #{n}" << "--mark-manual #{n}" \
@@ -245,12 +247,12 @@ module Exhaustive
       }
       # The dependency asked for beside the root that pins it: the
       # request means the pinned version, not the default.
-      p.dep_list.select(&:ver).each { |d| lines << "-s #{n} #{d.name}" }
+      b.dep_list.select(&:ver).each { |d| lines << "-s #{n} #{d.name}" }
       # A version the package does not offer, and a series alone.
       # Every package here declares its versions, so the first is
       # refused at the door and the second names the one release of
       # its series -- or is refused too, when the series has two.
-      if !p.installable_versions.empty?
+      if !b.installable_versions.empty?
         lines << "-s #{n}:9.9.9" << "-u #{n}:9.9.9"
         vers.map(&:series).uniq.each { |sr| lines << "-s #{n}:#{sr}" }
       end
@@ -296,7 +298,7 @@ module Exhaustive
   # run and 165 in another, by test order alone.
   def tables_for(shape)
     @tables ||= {}
-    @tables[shape] ||= pkgmgr.with_host_stack(STACK_A) {
+    @tables[shape] ||= Exhaustive.harness.with_host_stack(STACK_A) {
       pkgs = SHAPES.fetch(shape).call
       cands = candidates(pkgs, narrow: NARROW.include?(shape))
       Tables.new(worlds(cands), argv_lines(pkgs))

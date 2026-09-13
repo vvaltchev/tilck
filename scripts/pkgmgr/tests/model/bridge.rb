@@ -22,6 +22,10 @@ module Bridge
 
   # --- registry -------------------------------------------------------------
 
+  # The bridge reads at the environment's scope: what the model's Inv
+  # describes, and what a run with no flags resolves to.
+  def env = pkgmgr.env_scope
+
   def registry
     return Model::Registry.new(pkgmgr.all_packages.map { |p| shape_of(p) })
   end
@@ -47,15 +51,15 @@ module Bridge
       pkg.host_tier
     end
 
-    ia = pkg.install_archs(pkg.default_ver)
+    ia = pkg.at(env).install_archs(pkg.at(env).default_ver)
     ia = nil if ia == [nil]
 
     return Model::Shape.new(
       name: pkg.name,
       kind: kind,
       versions: pkg.installable_versions,
-      default_ver: pkg.default_ver,
-      deps: pkg.dep_list.map { |d| [d.name, d.ver] },
+      default_ver: pkg.at(env).default_ver,
+      deps: pkg.at(env).dep_list.map { |d| [d.name, d.ver] },
       arch_list: arch_names(pkg.arch_list),
       board_list: pkg.board_list,
       default: pkg.marked_default?,
@@ -107,7 +111,8 @@ module Bridge
       # decision downstream -- rebuild, report stale, refuse to build
       # against it -- is the same one.
       { ok: :ok, changed: :changed, old_format: :changed,
-        unknown: :missing }.fetch(pkg.build_inputs_state_of(inst))
+        unknown: :missing }.fetch(pkg.at(env, world: pkgmgr.world)
+                                     .build_inputs_state_of(inst))
     else
       BuildInputs.comparable(inst.path).nil? ? :missing : :ok
     end
@@ -128,7 +133,7 @@ module Bridge
   # run, or an earlier -H -- which is what the implementation reads.
   def inv
     return Model::Inv.new(env_arch: ARCH, env_board: BOARD,
-                          default_stack: pkgmgr.current_host_stack,
+                          default_stack: env.stack,
                           host_os: HOST_OS, host_arch: HOST_ARCH.name)
   end
 
@@ -142,7 +147,7 @@ module Bridge
     for p in pkgmgr.all_packages do
       for i in p.get_install_list do
         next if i.path.nil? || i.broken
-        want = p.at(p.scope_at(i, pkgmgr.scope)).coords(i.ver)
+        want = p.at(p.scope_at(i, env)).coords(i.ver)
         next if want == i.coords
         out << "#{p.name}@#{i.ver} is at #{i.coords}, its package says #{want}"
       end

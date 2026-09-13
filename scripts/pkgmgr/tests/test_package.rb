@@ -58,21 +58,21 @@ class TestPackageBoardSupported < Minitest::Test
   def test_matching_board
     with_context(BOARD: "test-board") do
       pkg = FakePackage.new("foo", board_list: ["test-board"])
-      assert pkg.board_supported?
+      assert bound(pkg).board_supported?
     end
   end
 
   def test_wrong_board
     with_context(BOARD: "other-board") do
       pkg = FakePackage.new("foo", board_list: ["test-board"])
-      refute pkg.board_supported?
+      refute bound(pkg).board_supported?
     end
   end
 
   def test_nil_board_with_board_list
     with_context(BOARD: nil) do
       pkg = FakePackage.new("foo", board_list: ["test-board"])
-      refute pkg.board_supported?
+      refute bound(pkg).board_supported?
     end
   end
 end
@@ -82,7 +82,7 @@ class TestPackageArchSupported < Minitest::Test
 
   def test_all_archs
     pkg = FakePackage.new("foo", arch_list: ALL_ARCHS.values)
-    assert pkg.arch_supported?
+    assert bound(pkg).arch_supported?
   end
 
   def test_nil_means_noarch
@@ -100,7 +100,7 @@ class TestPackageArchSupported < Minitest::Test
     with_context(ARCH: ALL_ARCHS["i386"]) do
       pkg = FakePackage.new("foo",
                             arch_list: Archs("riscv64"))
-      refute pkg.arch_supported?
+      refute bound(pkg).arch_supported?
     end
   end
 
@@ -108,7 +108,7 @@ class TestPackageArchSupported < Minitest::Test
     with_context(ARCH: ALL_ARCHS["i386"]) do
       pkg = FakePackage.new("foo",
                             arch_list: Archs("i386"))
-      assert pkg.arch_supported?
+      assert bound(pkg).arch_supported?
     end
   end
 end
@@ -121,14 +121,14 @@ class TestPackageDefault < Minitest::Test
   end
 
   def test_true_when_set
-    assert FakePackage.new("foo", default: true).default?
+    assert bound(FakePackage.new("foo", default: true)).default?
   end
 
   def test_gated_by_arch
     with_context(ARCH: ALL_ARCHS["i386"]) do
       pkg = FakePackage.new("foo", default: true,
                             arch_list: Archs("riscv64"))
-      refute pkg.default?
+      refute bound(pkg).default?
     end
   end
 
@@ -142,14 +142,14 @@ class TestPackageDefault < Minitest::Test
     with_context(BOARD: "other-board") do
       pkg = FakePackage.new("foo", default: true,
                             board_list: ["test-board"])
-      refute pkg.default?
+      refute bound(pkg).default?
     end
   end
 
   def test_passes_all_gates
     pkg = FakePackage.new("foo", default: true,
                           arch_list: [ARCH])
-    assert pkg.default?
+    assert bound(pkg).default?
   end
 end
 
@@ -174,7 +174,7 @@ class TestPackageInstallReal < Minitest::Test
         result = pkgmgr.install("foo")
         assert result
         assert_equal ["foo"], FakePackage.install_log
-        assert pkg.installed?(Ver("1.0.0"))
+        assert bound(pkg).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -216,7 +216,7 @@ class TestPackageInstallReal < Minitest::Test
         with_stubbed_externals do
           pkg = FakePackage.new("foo", board_list: ["test-board"])
           pkgmgr.register(pkg)
-          result = pkg.install_impl(Ver("1.0.0"))
+          result = bound(pkg).install_impl(Ver("1.0.0"))
           assert_equal false, result
           assert_empty FakePackage.install_log
         end
@@ -255,7 +255,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
   def test_not_installed
     with_fake_tc do
       pkg = FakePackage.new("foo")
-      refute pkg.needs_upgrade?
+      refute bound(pkg).needs_upgrade?
     end
   end
 
@@ -265,7 +265,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkg = FakePackage.new("foo")
         pkgmgr.register(pkg)
         pkgmgr.install("foo")  # installs at default_ver (1.0.0)
-        refute pkg.needs_upgrade?
+        refute bound(pkg).needs_upgrade?
       end
     end
   end
@@ -281,7 +281,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
 
       pkg = FakePackage.new("foo")
       pkgmgr.register(pkg)
-      assert pkg.needs_upgrade?
+      assert bound(pkg).needs_upgrade?
     end
   end
 
@@ -298,7 +298,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo")               # no version named
 
-        inst = pkg.find_install(Ver("1.0.0"))
+        inst = bound(pkg).find_install(Ver("1.0.0"))
         assert_equal "default manual",
                      (inst.path / InstallOrigin::FILE).read.strip
         assert inst.default_install
@@ -313,7 +313,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo", Ver("1.0.0"))  # version named explicitly
 
-        inst = pkg.find_install(Ver("1.0.0"))
+        inst = bound(pkg).find_install(Ver("1.0.0"))
         assert_equal "pinned manual",
                      (inst.path / InstallOrigin::FILE).read.strip
         refute inst.default_install
@@ -333,7 +333,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
 
       pkg = FakePackage.new("foo")
       pkgmgr.register(pkg)
-      refute pkg.needs_upgrade?
+      refute bound(pkg).needs_upgrade?
     end
   end
 
@@ -348,8 +348,8 @@ class TestPackageNeedsUpgrade < Minitest::Test
 
       pkg = FakePackage.new("foo")
       pkgmgr.register(pkg)
-      assert pkg.find_install(Ver("0.9.0")).default_install
-      assert pkg.needs_upgrade?
+      assert bound(pkg).find_install(Ver("0.9.0")).default_install
+      assert bound(pkg).needs_upgrade?
     end
   end
 
@@ -359,7 +359,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkg = FakePackage.new("foo")
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
-        refute pkg.needs_upgrade?
+        refute bound(pkg).needs_upgrade?
       end
     end
   end
@@ -374,7 +374,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkgmgr.install("foo", Ver("0.9.0"))  # pinned
         pkgmgr.install("foo")                # default (1.0.0), marked
 
-        refute pkg.needs_upgrade?
+        refute bound(pkg).needs_upgrade?
       end
     end
   end
