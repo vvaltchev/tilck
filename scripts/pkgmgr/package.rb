@@ -663,6 +663,8 @@ class Package
   #   $PREFIX    the install prefix under $FINAL
   #   $DESTDIR   where `make install` stages it first
   #   $SYSROOT   the stack's composed sysroot
+  #   $STACK_GCC        the bin dir of the compiler that names the stack
+  #   $STACK_BINUTILS   ...and of its binutils
   #   $PAR       the build parallelism
   #   $PYTHON    the interpreter host_python installed
   #   $SRC_REF   the short git ref the source was fetched at
@@ -731,6 +733,13 @@ class Package
       "PREFIX"  => -> { final_install_prefix(install_dir).to_s },
       "DESTDIR" => "#{install_dir}/destdir",
       "SYSROOT" => (on_host ? stack_sysroot.to_s : ""),
+
+      # The STACK's compiler, not $host_gcc: a request may pin host_gcc
+      # to something else for its own build (qemu does), while every
+      # package in the stack is compiled by the one that names it --
+      # with_stack_toolchain says so, and a cross file must agree.
+      "STACK_GCC"      => -> { stack_toolchain_bins[0].to_s },
+      "STACK_BINUTILS" => -> { stack_toolchain_bins[1].to_s },
       "PAR"     => BUILD_PAR.to_s,
       "PYTHON"  => -> { pkgmgr.python_interpreter.to_s },
       "SRC_REF" => -> { source_ref_short(install_dir) },
@@ -749,8 +758,8 @@ class Package
   def system_dep_tokens
     return system_deps(default_ver).select(&:token).to_h { |d|
       [d.token, -> {
-        d.prefix(SystemDeps.env) or
-          raise Recipe::Error, "$#{d.token}: no prefix for #{d.what} " \
+        d.location(SystemDeps.env) or
+          raise Recipe::Error, "$#{d.token}: #{d.what} was not found " \
                                "on this host"
       }]
     }
@@ -905,9 +914,7 @@ class Package
   # scripts/pkgmgr/shims/python3.
   SHIMS_DIR = (RUBY_SOURCE_DIR / "shims").to_s
 
-  BUILD_HELPERS = [
-    :meson_stack_build, :stack_install, :host_compiler_gnu17,
-  ].freeze
+  BUILD_HELPERS = [:host_compiler_gnu17].freeze
 
   # Hooks that say what a package IS, or whether it may be asked for,
   # rather than how it is built. The build never calls them: they are
@@ -1363,30 +1370,6 @@ class Package
   def meson_stack_steps(flags) = stack_steps(meson_commands(flags))
   def autotools_stack_steps(flags) = stack_steps(autotools_commands(flags))
 
-  #
-  # TRANSITIONAL: the imperative form of meson_stack_steps, kept for
-  # the two glycin packages alone. They write a cargo cross file whose
-  # content is full of this machine's compiler paths, which needs a
-  # token vocabulary the conversion has not reached yet; until then
-  # their recipe is still hashed from its source. Delete this, and
-  # stack_install with it, when glycin lands.
-  #
-  def stack_install(install_dir, &block)
-
-    sysroot_usr = "#{stack_sysroot}/usr"
-    destdir = "#{install_dir}/destdir"
-    ok = false
-
-    ctx = BuildCtx.new(self, install_dir)
-    with_stack_toolchain(ctx) { ok = block.call(sysroot_usr, destdir) }
-    return false if !ok
-
-    FileUtils.mkdir_p("#{install_dir}/install")
-    FileUtils.mv("#{destdir}#{sysroot_usr}", "#{install_dir}/install/usr")
-
-    prune_build_tree
-    return true
-  end
 
   # ./configure && make && make install, the shape most of the X11 and
   # freetype side of the QEMU closure uses.
@@ -1410,20 +1393,6 @@ class Package
   # have gone straight through. With nofallback the same situation is
   # a hard error naming the dependency and the version it wanted,
   # which is then a package we add deliberately.
-  def meson_stack_build(install_dir)
-
-    return stack_install(install_dir) do |prefix, destdir|
-      run_command("configure.log",
-                  ["meson", "setup", "build",
-                   "--prefix=#{prefix}", "--libdir=lib",
-                   "--buildtype=release",
-                   "--wrap-mode=nofallback", *build_flags]) &&
-      run_command("build.log", ["ninja", "-C", "build"]) &&
-      run_command("install.log",
-                  ["meson", "install", "-C", "build",
-                   "--destdir=#{destdir}"])
-    end
-  end
 
   # A check the package runs AFTER the sysroot has been composed.
   #

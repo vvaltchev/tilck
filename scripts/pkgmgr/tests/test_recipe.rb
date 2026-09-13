@@ -471,6 +471,20 @@ class TestRecipeExecution < Minitest::Test
     end
   end
 
+  # A placeholder the build needs and a tarball may or may not ship:
+  # written only if absent, so one shipped is never overwritten.
+  def test_write_if_absent_keeps_what_is_there
+    in_tree do |root, c|
+      run_steps([
+        Write(path: "shipped", text: "real"),
+        Write(path: "shipped", text: "", if_absent: true),
+        Write(path: "missing", text: "", if_absent: true),
+      ], c)
+      assert_equal "real", File.read("#{root}/shipped")
+      assert_equal "", File.read("#{root}/missing")
+    end
+  end
+
   #
   # Only Mkdir makes a directory. A step that quietly created the one
   # a typo named would succeed at putting the artifact somewhere

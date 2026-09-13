@@ -85,8 +85,8 @@ class TestSourceDigestIsPerClass < Minitest::Test
   # looked up this way.
   def test_a_unique_method_name_still_resolves
     f = SourceDigest.source_file_of(Package)
-    src = SourceDigest.method_source(f, :meson_stack_build)
-    assert_includes src, "meson"
+    src = SourceDigest.method_source(f, :host_compiler_gnu17)
+    assert_includes src, "gnu17"
   end
 
   # A recipe shared by several packages lives on their common parent,

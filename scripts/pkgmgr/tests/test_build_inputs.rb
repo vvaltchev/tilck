@@ -599,10 +599,10 @@ class TestMultiByteSource < Minitest::Test
   # The real file that broke it.
   def test_the_real_package_rb_can_be_hashed
     src = SourceDigest.method_source(
-      File.expand_path("../package.rb", __dir__), :meson_stack_build
+      File.expand_path("../package.rb", __dir__), :host_compiler_gnu17
     )
     refute_empty src
-    assert_includes src, "meson"
+    assert_includes src, "gnu17"
   end
 
   # A recipe is only a recipe AT some coordinates, and the stack is
