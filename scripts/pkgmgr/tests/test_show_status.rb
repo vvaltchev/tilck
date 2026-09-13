@@ -731,7 +731,8 @@ class TestShowStatusAll < Minitest::Test
         plain = out.gsub(/\e\[[0-9;]*m/, "")
 
         assert_match(/gcc-1\.0\.0\s+\[\s*built\s*\].*CURRENT/, plain)
-        assert_match(/gcc-2\.0\.0\s+\[\s*not built\s*\]/, plain)
+        assert_match(/^gcc-2\.0\.0\s+\d+ pkgs/, plain)
+        refute_match(/gcc-2\.0\.0.*built/, plain)
         refute_match(/gcc-2\.0\.0.*CURRENT/, plain)
       end
     end

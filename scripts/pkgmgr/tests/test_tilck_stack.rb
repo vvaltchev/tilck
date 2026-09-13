@@ -113,7 +113,7 @@ class TestTilckStack < Minitest::Test
         assert_match(/\A\n---\s+Tilck stacks\s+---/, plain)
         assert_match(/^tilck-i386-pc\s+\[ built\s+\]\s+1 pkgs\s+\[ CURRENT \]/,
                      plain)
-        assert_match(/^tilck-riscv64-qemu-virt\s+\[ not built \]\s+0 pkgs$/,
+        assert_match(/^tilck-riscv64-qemu-virt\s+0 pkgs$/,
                      plain)
         refute_match(/^tilck-i386-pc\s+\[ installed/, plain,
                      "a stack is not a line in a section")

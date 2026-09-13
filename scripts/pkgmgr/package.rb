@@ -195,7 +195,7 @@ class Package
   def target? = !on_host && !arch_list.nil?
   def noarch? = !on_host && arch_list.nil?
 
-  STATUS_LEN    = 9              # "installed", "not built"
+  STATUS_LEN    = 9              # "installed"
   COUNT_GAP     = 3              # the " (" and the ")" around a count
 
   # The width of a status cell, given how many digits the widest count
@@ -264,9 +264,13 @@ class Package
 
   # For stacks rather than packages: a stack is BUILT when the
   # compiler that names it is installed, since that is what makes it
-  # usable as one. No count -- nothing in that listing has one.
-  BUILT_STR     = status_str("built", :makeGreen)
-  NOT_BUILT_STR = status_str("not built", :makeRed)
+  # usable as one. One that is not built is not wrong, and its cell
+  # is blank: a red "not built" beside every stack nobody asked for
+  # read as a fault. No count -- nothing in that listing has one.
+  def self.stack_cell(built)
+    return "[ #{status_str("built", :makeGreen)} ]" if built
+    return " " * (status_cell(0) + 4)
+  end
 
   public
   # host_tier controls where host packages are installed:
