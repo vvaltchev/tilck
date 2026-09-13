@@ -4,6 +4,16 @@ Status: IMPLEMENTED (2026-09-03). Steps 0-7 are in the tree; the
 numbers below were the plan's estimates, and the sections that
 follow record what was found on the way.
 
+Update 2026-09-13: the lint and the mutator no longer parse with
+Prism. Both read `tests/ruby_tree.rb`, a Ripper tree with byte
+ranges reconstructed from the token stream, so that the suite runs
+on the system Ruby 3.2 of Ubuntu 24.04 with no gem installed;
+`source_digest.rb` is gone with the recipe conversion (every recipe
+is step data now, see toolchain5.md). Where this file says "Prism
+node", read "node of that tree"; the rules and operators are the
+same, verified site for site against the Prism versions before the
+switch.
+
   step 0  three ambient readers fixed, Layout.board_of deleted
   step 1  lint: tests/lint/ambient.rb, test_lint_ambient.rb
   step 2  model: tests/model/model.rb, test_model.rb (19 cases)
@@ -137,8 +147,9 @@ Re-reading it against the code:
   (shape, world, ctx, argv) and a one-line replay command.
 - **M9. Budget.** Default `-t` stays under 15 s. The full
   enumeration is its own lane.
-- **M10. No gems.** The mutator is homegrown on Prism (already used
-  by `source_digest.rb`; Ruby 3.4.7 ships Prism 1.5.1). Equivalent
+- **M10. No gems.** The mutator is homegrown on the parser in the
+  standard library (Prism at first; Ripper since 2026-09-13, so
+  that a 3.2 needs nothing installed). Equivalent
   mutants need an annotation grammar, and a test that annotations
   still point at live sites.
 - **M11. Staleness and origin are state.** A world key carries
@@ -172,10 +183,12 @@ laws → exhaustive → mutation → wiring. Sizes are lines of Ruby.
 
 ### Step 1 -- the lint (~150 lines)
 
-Files: `scripts/pkgmgr/tests/lint/ambient.rb` (the Prism walker,
-shared with the mutator), `scripts/pkgmgr/tests/test_lint_ambient.rb`.
+Files: `scripts/pkgmgr/tests/lint/ambient.rb` (the tree walker,
+sharing its parser with the mutator),
+`scripts/pkgmgr/tests/test_lint_ambient.rb`.
 
-Rules, each a Prism node predicate:
+Rules, each a node predicate (Prism's node names as planned; the
+Ripper tree has the same distinctions):
 
 - **R1 ambient constants.** Any `Prism::ConstantReadNode` whose name
   is in `ARCH BOARD DEFAULT_BOARD HOST_VER_GCC` outside the
@@ -389,7 +402,7 @@ nothing.
 Files: `scripts/dev/claude/pmmutate` (dispatcher: `sites`, `run`,
 `report`, `check-annotations`); `scripts/pkgmgr/tests/mutation/{operators,driver}.rb`.
 
-Operators (Prism node rewrites, exact list):
+Operators (node rewrites, exact list):
 
 | # | site | mutant |
 |---|---|---|
