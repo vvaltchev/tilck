@@ -96,15 +96,36 @@ class TestNoRecipeNamesTheMachine < Minitest::Test
     tc, src = TC.to_s, MAIN_DIR.to_s
     bad = []
 
-    for p in pkgmgr.all_packages do
-      steps = p.build_steps(p.default_ver)
-      for a in Recipe.all_argv(steps) do
-        s = a.to_s
-        bad << "#{p.name}: #{s}" if s.include?(tc) || s.include?(src)
+    # The real recipes, in the real registry -- a recipe asks its
+    # dependencies for their interfaces -- whatever fakes an earlier
+    # test left registered.
+    with_real_registry do
+      for p in REAL_PACKAGES do
+        b = p.at(scope)
+        # A recipe is only a recipe where its package builds: u-boot
+        # for an arch with no board has no configuration to name.
+        next if !b.supported?
+        steps = b.build_steps(b.default_ver)
+        for a in Recipe.all_argv(steps) do
+          s = a.to_s
+          bad << "#{p.name}: #{s}" if s.include?(tc) || s.include?(src)
+        end
       end
     end
 
     assert_empty bad, "these recipes record where this tree lives:\n  " +
                       bad.join("\n  ")
+  end
+
+  # The real package set registered for the block, and whatever was
+  # there before put back after it.
+  def with_real_registry
+    held = pkgmgr.instance_variable_get(:@packages)
+    reset_pkgmgr!
+    REAL_PACKAGES.each { |p| pkgmgr.register(p) }
+    yield
+  ensure
+    pkgmgr.instance_variable_set(:@packages, held)
+    pkgmgr.installs_changed!
   end
 end

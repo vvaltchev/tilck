@@ -3,18 +3,25 @@
 # THE RUNNER: one case, many cases, and the check that the comparison
 # works before it is believed.
 #
-# One case is: reset, build the shape's registry, build the world with
-# fake_install (record and origin included), open the context, take a
-# snapshot, run Main.main on the argv, take another, and hand the two
-# to the laws -- L1 is the model's verdict, L2..L4 the others. A case
-# passes when the laws are silent.
+# One case is: reset, build the shape's registry, build the world IN
+# MEMORY (a World of the installs the candidates stand for, with no
+# tree behind them), parse the argv with main's own parser into a
+# Request, hand it to the planner (Planner.step) and to the model
+# (Model.step), and compare the world each says the command line
+# leaves, and the exit code. Nothing is written and nothing is
+# scanned: what a command line does is a value, and the two values
+# are compared. What the executor makes of a plan is judged once per
+# kind of action, on disk, in test_executor.rb; and the laws around
+# every command line the suite drives compare the planner's answer
+# with the tree as well (tests/laws.rb, L1_executor).
 #
 # The self-test comes first, always. A comparison that cannot find a
 # subject equal to itself has no business reporting differences: the
-# runner checks that a snapshot equals a second snapshot of the same
-# tree, that the model gives one answer twice, and that a world built
-# by fake_install reads back exactly as it was built -- and refuses to
-# run the lane if any of those fail.
+# runner checks that a world built in memory equals the scan of the
+# same world built on disk, that the planner and the model each give
+# one answer twice, that an empty plan applied is the identity, and
+# that a planted disagreement is seen -- and refuses to run the lane
+# if any of those fail.
 #
 # The full lane forks one process per shape: the cases of a shape are
 # independent and a process keeps its own package manager singleton,
@@ -45,50 +52,102 @@ module Exhaustive
 
   def harness = (@harness ||= Harness.new)
 
-  # --- one case -------------------------------------------------------------
+  # --- the lane's surroundings ---------------------------------------------
 
-  def run_case(c)
-
-    h = harness
-    h.reset_pkgmgr!
-    TestHelper::FakePackage.clear_log!
-
-    h.with_fake_tc do
-      h.with_context(ARCH: c.ctx.arch, BOARD: c.ctx.board) do
-        h.with_stubbed_externals do
-          pkgs = SHAPES.fetch(c.shape).call
-          pkgs.each { |p| pkgmgr.register(p) }
-          by_name = pkgs.to_h { |p| [p.name, p] }
-
-          # The stack in effect: what -H would otherwise set.
-          pkgmgr.default_stack = STACK_A
-
-          for cand in c.world do
-            h.fake_install(by_name.fetch(cand.name), cand.ver,
-                           at: cand.coords, record: cand.record,
-                           origin: cand.origin, mark: cand.mark)
-          end
-
-          # The world before the command is the world just built. The
-          # self-test asserts that a built world reads back exactly as
-          # built, so reading it back here would only pay for a scan.
-          before = Bridge::Snapshot.new(registry: Bridge.registry,
-                                        world: keys_of(c.world),
-                                        inv: Bridge.inv, misplaced: [])
-          run_main(c.argv)
-          after = Bridge.snapshot
-
-          broken = Laws.check(c.argv, before, after)
-          detail = broken.map(&:to_s).join("\n\n")
-          detail = "#{c}\n#{detail}" if !broken.empty?
-          return Result.new(c.id, broken.empty?, detail)
-        end
+  # What every case runs inside: a fake toolchain, so that no path
+  # names the real one and the arches have their fake compiler
+  # version; the externals stubbed; and the manager's own reading of
+  # the tree refused, since the world is an argument here and a
+  # planner that read the tree behind the argument's back would read
+  # an empty one and be wrong in silence.
+  def in_lane
+    on_disk do
+      pm = pkgmgr
+      pm.define_singleton_method(:world) {
+        raise "the lane's world is an argument: nothing reads the tree"
+      }
+      begin
+        yield
+      ensure
+        pm.singleton_class.send(:remove_method, :world)
       end
     end
   end
 
-  # The candidates of a world as the model's keys: what the tree built
-  # from them reads back as.
+  # The same surroundings with the tree readable: for the one check
+  # that builds a world on disk to hold the value to.
+  def on_disk
+    h = harness
+    h.with_fake_tc do
+      h.with_stubbed_externals do
+        yield
+      end
+    end
+  end
+
+  # The command line as main reads it, once per distinct line.
+  def request_of(argv)
+    @requests ||= {}
+    @requests[argv] ||= Main.request_of(Main.parse_options(argv.dup))
+  end
+
+  # --- one case -------------------------------------------------------------
+
+  # The case's registry, fresh: the registry is reset between cases and
+  # a package must carry nothing over.
+  def register(shape)
+    pkgs = SHAPES.fetch(shape).call
+    pkgs.each { |p| pkgmgr.register(p) }
+    pkgmgr.default_stack = STACK_A
+    return pkgs.to_h { |p| [p.name, p] }
+  end
+
+  def run_case(c)
+
+    harness.reset_pkgmgr!
+    by_name = register(c.shape)
+    req = request_of(c.argv)
+
+    # -H, as main takes it: the stack the run is in, once the compiler
+    # package says it can build it.
+    stack = req.stack || STACK_A
+    scope = scope_for(c.ctx, stack: stack)
+    world = world_of(c.world, by_name, scope)
+
+    got = if req.stack && !pkgmgr.stack_compiler&.installable_versions
+                                  &.include?(req.stack)
+      Outcome.refused(world, "Unknown host GCC stack: #{req.stack}")
+    else
+      Planner.step(pkgmgr, world, req, scope)
+    end
+    want = Model.step(Bridge.registry(scope), keys_of(c.world),
+                      Model.parse(c.argv), Bridge.inv(scope))
+
+    problems = compare(c.argv, keys_of(c.world), got, want)
+    detail = problems.empty? ? "" : "#{c}\n#{problems.join("\n\n")}"
+    return Result.new(c.id, problems.empty?, detail)
+  rescue StandardError => e
+    return Result.new(c.id, false, "#{c}\nraised #{e.class}: #{e.message}\n" +
+                                   e.backtrace.first(8).join("\n"))
+  end
+
+  # The planner's outcome against the model's: the world each leaves,
+  # and the exit code. Words, empty when they agree.
+  def compare(argv, before, got, want)
+    out = []
+    left = Bridge.keys_of_world(got.world)
+    if left != want.world
+      out << "L1_planner  #{argv.join(' ')}\n" +
+             Laws.worlds(before, left, want.world, subject: "planner")
+    end
+    if got.rc != want.rc
+      out << "rc  #{argv.join(' ')}\n  planner: #{got.rc}\n" \
+             "  model:   #{want.rc}"
+    end
+    return out
+  end
+
+  # The candidates of a world as the model's keys.
   def keys_of(cands)
     return cands.map { |x|
       Model::Key.new(name: x.name, ver: x.ver, coords: x.coords,
@@ -96,74 +155,92 @@ module Exhaustive
     }.to_set
   end
 
-  def run_main(argv)
-    old = $stdout
-    $stdout = StringIO.new
-    begin
-      Main.main(argv.dup)
-    rescue SystemExit
-      nil
-    ensure
-      $stdout = old
-    end
-  end
-
   # --- the self-test --------------------------------------------------------
 
   # Each check is a comparison that must come out EQUAL. Returns the
   # problems found, empty when the instrument can be trusted.
   def self_test
+    return world_self_test + in_lane { planner_self_test }
+  end
+
+  # A world built in memory is the world built on disk: for one
+  # two-install world per shape, fake_install each candidate, scan
+  # the tree, and hold the scan to the value -- every field of every
+  # install, path included, and the record once judged.
+  def world_self_test
 
     problems = []
     h = harness
 
-    # A world built by fake_install reads back as it was built, twice.
-    c = each_case(["target_2v"]).find { |x| x.world.length == 2 }
-    h.reset_pkgmgr!
+    for shape in SHAPES.keys do
+      c = each_case([shape]).find { |x| x.world.length == 2 }
+      next if c.nil?
+      h.reset_pkgmgr!
+      by_name = register(shape)
 
-    h.with_fake_tc do
-      h.with_context(ARCH: c.ctx.arch, BOARD: c.ctx.board) do
-        h.with_stubbed_externals do
-          pkgs = SHAPES.fetch(c.shape).call
-          pkgs.each { |p| pkgmgr.register(p) }
-          by_name = pkgs.to_h { |p| [p.name, p] }
-          pkgmgr.default_stack = STACK_A
-
+      # A tree of its own per shape, under the case's context.
+      on_disk do
+        h.with_context(ARCH: c.ctx.arch, BOARD: c.ctx.board) do
+          scope = scope_for(c.ctx)
+          built = world_of(c.world, by_name, scope)
           c.world.each { |cand|
             h.fake_install(by_name.fetch(cand.name), cand.ver,
                            at: cand.coords, record: cand.record,
                            origin: cand.origin, mark: cand.mark)
           }
-
-          one = Bridge.snapshot
-          two = Bridge.snapshot
-          want = keys_of(c.world)
-
-          if one.world != two.world
-            problems << "two snapshots of one tree differ"
+          read = World.scan(pkgmgr.all_packages)
+          if read.installs.to_set != built.installs.to_set
+            problems << "#{shape}: the world built in memory is not the " \
+                        "world on disk:\n  memory: " \
+                        "#{built.installs.map(&:to_s)}\n  disk:   " \
+                        "#{read.installs.map(&:to_s)}"
           end
-
-          if one.world != want
-            problems << "the world read back is not the world built:\n" \
-                        "  built: #{want.map(&:to_s).sort}\n" \
-                        "  read:  #{one.world.map(&:to_s).sort}"
-          end
-
-          # The model gives one answer twice.
-          req = Model.parse(c.argv)
-          a = Model.step(one.registry, one.world, req, one.inv)
-          b = Model.step(one.registry, one.world, req, one.inv)
-          problems << "the model is not deterministic" if a != b
-
-          # ...and a planted disagreement is seen.
-          wrong = Bridge::Snapshot.new(registry: one.registry,
-                                       world: Set.new, inv: one.inv,
-                                       misplaced: [])
-          if Laws.check(["-l", "-q"], one, wrong).empty?
-            problems << "a planted disagreement went unreported"
+          judged = read.judged(pkgmgr, scope)
+          a = Bridge.keys_of_world(built).map(&:to_s).sort
+          b = Bridge.keys_of_world(judged).map(&:to_s).sort
+          if a != b
+            problems << "#{shape}: the records differ once judged:\n" \
+                        "  memory: #{a}\n  disk:   #{b}"
           end
         end
       end
+    end
+
+    return problems
+  end
+
+  # The planner and the model each give one answer twice, an empty
+  # plan applied is the identity, and a planted disagreement is seen.
+  def planner_self_test
+
+    problems = []
+    h = harness
+    c = each_case(["target_2v"]).find { |x| x.world.length == 2 }
+    h.reset_pkgmgr!
+    by_name = register(c.shape)
+    scope = scope_for(c.ctx)
+    world = world_of(c.world, by_name, scope)
+    req = request_of(c.argv)
+    a = Bridge.keys_of_world(Planner.step(pkgmgr, world, req, scope).world)
+    b = Bridge.keys_of_world(Planner.step(pkgmgr, world, req, scope).world)
+    problems << "the planner is not deterministic" if a != b
+
+    reg = Bridge.registry(scope)
+    ask = -> { Model.step(reg, keys_of(c.world), Model.parse(c.argv),
+                          Bridge.inv(scope)) }
+    problems << "the model is not deterministic" if ask.call != ask.call
+
+    same = Plan.new(actions: [], scope: scope, bound: {}, notes: [])
+               .apply(pkgmgr, world)
+    if same.installs.to_set != world.installs.to_set
+      problems << "an empty plan applied is not the identity"
+    end
+
+    # ...and a planted disagreement is seen.
+    wrong = Outcome.ok(World.of([]))
+    if compare(c.argv, keys_of(c.world), wrong,
+               Model::Outcome.new(0, keys_of(c.world), "")).empty?
+      problems << "a planted disagreement went unreported"
     end
 
     return problems
@@ -246,9 +323,11 @@ module Exhaustive
         pid = Process.fork {
           $stdout.reopen(File::NULL)
           f = File.join(dir, "#{shape}.progress")
-          out = run_shape(shape, limit: limit, progress: ->(*a) {
-            File.write(f, a.join(" "))
-          })
+          out = in_lane {
+            run_shape(shape, limit: limit, progress: ->(*a) {
+              File.write(f, a.join(" "))
+            })
+          }
           File.binwrite(File.join(dir, shape), Marshal.dump(out))
           exit!(0)
         }

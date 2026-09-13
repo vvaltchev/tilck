@@ -89,6 +89,47 @@ class TestLaws < Minitest::Test
     assert_raises(ArgumentError) { run_cli("-h", laws: false) }
   end
 
+  # L1 asked of the planner: a snapshot whose keys say one thing and
+  # whose world value says another gives the model and the planner
+  # different questions, and the two answers are held to each other.
+  def test_l1_planner_sees_a_planner_that_disagrees_with_the_model
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkgmgr.register(FakePackage.new("foo"))
+        run_cli("-s", "foo", "-q")
+        before = Bridge.snapshot
+        assert_equal 1, before.installs.installs.length
+
+        other = Coords.new("tilck-riscv64", "qemu-virt", "gcc-#{FAKE_GCC_VER}")
+        planted = before.dup
+        planted.world = before.world +
+                        [Model.key("foo", "1.0.0", other, mark: :auto)]
+        broken = Laws.check(%w[-u foo -q], planted, before)
+        assert_includes broken.map(&:law), :L1_planner
+        assert_match(/only in model:\n\s+foo@1.0.0 tilck-riscv64/,
+                     broken.find { |v| v.law == :L1_planner }.to_s)
+      end
+    end
+  end
+
+  # L1 asked of the executor: the planner says foo goes, the tree
+  # still has it.
+  def test_l1_executor_sees_a_tree_the_plan_does_not_explain
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        pkgmgr.register(FakePackage.new("foo"))
+        run_cli("-s", "foo", "-q")
+        before = Bridge.snapshot
+        broken = Laws.check(%w[-u foo -q], before, before)
+        assert_equal [:L1_model, :L1_executor], broken.map(&:law)
+        assert_match(/only in implementation:\n\s+foo@1.0.0/,
+                     broken.last.to_s)
+      end
+    end
+  end
+
   # ...and the laws really run around a real command line: a world the
   # implementation and the model agree on passes, end to end.
   def test_the_laws_run_around_a_command_line

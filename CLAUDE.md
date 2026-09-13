@@ -1020,11 +1020,15 @@ this order of authority, and a fix touches all three:
    contract. If the bug is a wrong answer, the model already says the
    right one, or the model is wrong and is fixed first. Every
    historical bug is a case in `test_model.rb`.
-2. **The exhaustive lane** (`-t --exhaustive`; sampled in every
-   `-t`) diffs the implementation against the model over every
-   world of two installations. A bug it did not catch means a shape
+2. **The exhaustive lane** (`-t --exhaustive`, minutes; sampled in
+   every `-t`) diffs the planner against the model over every world
+   of up to three installations, in memory: a case is a value, and
+   the two answers are compared. A bug it did not catch means a shape
    or a command line is missing from `tests/exhaustive/domain.rb`:
-   add it, and the lane fails before the fix and passes after.
+   add it, and the lane fails before the fix and passes after. What
+   the executor makes of a plan is judged on disk once per kind of
+   action (`tests/test_executor.rb`), and around every command line
+   the suite drives (the laws' L1_executor).
 3. **Mutation** (`-t --mutation`; `scripts/dev/claude/pmmutate run
    --file F` for one file) must be able to *express* the bug as an
    operator and the suite must kill it. If

@@ -53,6 +53,9 @@ class TestLintAmbient < Minitest::Test
   R2_ALLOW = {
     "package_manager.rb#show_status_all" =>
       "display grouping by compiler; candidates carry no coordinates",
+    "request.rb#every_arch?" =>
+      "a Request's -a, which is a scope or a filter, not an " \
+      "installation's arch",
   }.freeze
 
   # Parsed once for the class, not once per test: 80 files through

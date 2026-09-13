@@ -37,7 +37,7 @@ module Mutation
   # Whole files in scope.
   FILES = %w[coords.rb install_selector.rb dep_resolver.rb
              version_solver.rb build_inputs.rb layout.rb
-             tilck_stack.rb planner.rb plan.rb].freeze
+             tilck_stack.rb planner.rb plan.rb request.rb].freeze
 
   # Files where only these methods are in scope.
   METHODS = {
@@ -50,7 +50,7 @@ module Mutation
       regular_target_package_get_install_list
       noarch_package_get_install_list stack_coords_on_disk stack_gcc_ver
       default_cc install_archs get_install_list read_install_list
-      stack_of_install
+      stack_of_install future_install with_mark
     ],
     "package_manager.rb" => %w[
       env_scope stack_coords uninstall
@@ -59,13 +59,13 @@ module Mutation
       host_world_names compute_host_world_names host_world_roots
       get_stale_packages get_stale_installs get_upgradable_packages
       built_against deps_of_install with_resolved_versions replace
-      mark needs_of_install coords_of_install_for
-      autoremove install_graph held_by held_in_stack refresh
+      needs_of_install coords_of_install_for
+      install_graph held_by held_in_stack refresh
       installs_changed!
       build_dep_graph clean get_installed_compilers
     ],
-    "main.rb" => %w[expand_install_all select_host_stack requested_arch
-                    unsupported_reason resolve_version],
+    "main.rb" => %w[select_host_stack requested_arch request_of
+                    run_outcome run_act],
   }.freeze
 
   Mutant = Struct.new(:site, :file) do

@@ -162,4 +162,23 @@ class TestScope < Minitest::Test
       end
     end
   end
+
+  # An arch with no boards installs under the env ANY, and an install
+  # there scopes to its arch at no board -- which is what the arch
+  # answers for its default board too.
+  def test_an_install_of_a_boardless_arch_scopes_to_no_board
+    a64 = ALL_ARCHS["aarch64"]
+    assert_nil a64.boards, "the fixture: aarch64 declares no boards"
+    with_fake_tc do
+      reset_pkgmgr!
+      t = FakePackage.new("t", arch_list: [a64])
+      pkgmgr.register(t)
+      fake_install(t, at: t.at(scope.with(arch: a64)).coords)
+      inst = pkgmgr.world.of("t").first
+      refute_nil inst, "the scan finds an install under the env ANY"
+      assert_equal Coords::ANY, inst.coords.env
+      sc = t.at(scope).scope_at(inst)
+      assert_equal [a64, a64.default_board], [sc.arch, sc.board]
+    end
+  end
 end

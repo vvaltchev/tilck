@@ -13,7 +13,14 @@
 #                  the world before and the same argv. The whole
 #                  contract, applied to whatever the test happened to
 #                  set up. Skipped, and counted, when the argv is
-#                  outside the model's grammar.
+#                  outside the model's grammar. Asked three ways, so
+#                  that a disagreement names its layer: the tree
+#                  against the model (L1_model), the planner's own
+#                  answer -- Planner.step on the world before, its
+#                  plans applied (Plan#apply) -- against the model
+#                  (L1_planner), and the tree against the planner's
+#                  answer (L1_executor): a plan the executor did not
+#                  carry out as written.
 #   L2  DRY-RUN    -d anywhere in argv: the world is unchanged. Checked
 #                  even when L1 cannot parse the line.
 #   L3  PLACEMENT  every installation on disk sits exactly where its
@@ -64,6 +71,18 @@ module Laws
         out << Violation.new(:L1_model, argv, worlds(before.world, after.world,
                                                    expected.world))
       end
+
+      planned = planned(argv, before)
+      if planned && planned != expected.world
+        out << Violation.new(:L1_planner, argv,
+                             worlds(before.world, planned, expected.world,
+                                    subject: "planner"))
+      end
+      if planned && after.world != planned
+        out << Violation.new(:L1_executor, argv,
+                             worlds(before.world, after.world, planned,
+                                    oracle: "planner"))
+      end
     end
 
     if argv.include?("-d") && before.world != after.world
@@ -106,14 +125,39 @@ module Laws
     return nil
   end
 
-  def worlds(before, after, expected)
+  # The world the planner says the argv leaves, as keys: the command
+  # line parsed by main's own parser into a Request, stepped from the
+  # world before (judged, as the snapshot holds it), its plans
+  # applied. nil when the snapshot carries no world, when the line is
+  # not one main parses, or when -H names a stack the compiler cannot
+  # build -- main refuses that before planning.
+  def planned(argv, before)
+    return nil if before.installs.nil?
+    require_relative '../main'
+    begin
+      opts = Main.parse_options(argv.dup)
+    rescue OptionParser::ParseError
+      return nil
+    end
+    req = Main.request_of(opts)
+    if req.stack
+      gcc = pkgmgr.stack_compiler
+      return nil if gcc.nil? || !gcc.installable_versions.include?(req.stack)
+    end
+    scope = Scope.env(stack: req.stack || pkgmgr.default_stack_cc_ver)
+    out = Planner.step(pkgmgr, before.installs, req, scope)
+    return Bridge.keys_of_world(out.world)
+  end
+
+  def worlds(before, after, expected, subject: "implementation",
+             oracle: "model")
     fmt = ->(w) { w.map(&:to_s).sort.map { |s| "    #{s}" }.join("\n") }
     return [
       "  before:", fmt.call(before),
-      "  implementation:", fmt.call(after),
-      "  model:", fmt.call(expected),
-      "  only in implementation:", fmt.call(after - expected),
-      "  only in model:", fmt.call(expected - after),
+      "  #{subject}:", fmt.call(after),
+      "  #{oracle}:", fmt.call(expected),
+      "  only in #{subject}:", fmt.call(after - expected),
+      "  only in #{oracle}:", fmt.call(expected - after),
     ].join("\n")
   end
 end

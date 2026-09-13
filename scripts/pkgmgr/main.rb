@@ -111,8 +111,6 @@ module Main
   # host_mconf transitively depends on host_ncurses via the package's
   # dep_list, so the latter is pulled in automatically by the dep
   # resolver.
-  CONTRIB_EXTRA_PACKAGES = %w[host_mconf].freeze
-
   def read_gcc_ver_defaults
     conf = MAIN_DIR / "other" / "gcc_tc_conf"
     for name, arch in ALL_ARCHS do
@@ -122,58 +120,18 @@ module Main
     end
   end
 
-  # Resolve user-supplied package name (possibly a substring) to a full
-  # registered package name. On success returns the full name, logging
-  # a short->full translation if one happened. On failure prints an
-  # error message and returns nil — the caller should exit non-zero.
+  # A name as typed to the registered one (Planner.resolve_name), for
+  # the modes that print as they go: the full name, or nil once the
+  # refusal is printed.
   def resolve_pkg_name(input)
-    full, matches = pkgmgr.resolve_name(input)
-    return full if full && full == input
-
-    if full
-      info "Matched '#{input}' -> '#{full}'"
-      return full
-    end
-
-    if matches.empty?
-      error "Package not found: #{input}"
+    r = Planner.resolve_name(pkgmgr, input)
+    if r.is_a?(Refusal)
+      r.message.each_line { |l| error l.chomp }
       return nil
     end
-
-    shown = matches.first(3).join(", ")
-    suffix = matches.length > 3 ? ", ..." : ""
-    error "Ambiguous package name '#{input}' matches: #{shown}#{suffix}"
-    return nil
-  end
-
-  # A requested version, against what the package can install.
-  #
-  # Most packages install one version, their default, and a request
-  # for another is taken as written: nothing here knows the answer
-  # before the download does. The few that offer a choice declare it
-  # in installable_versions, and there a request has to name one of
-  # them -- exactly, or by a series that picks one: `host_qemu:6` is
-  # 6.2.0. Anything else is refused here, at the door.
-  #
-  # `host_qemu:6` used to pass this point as the version "6", choose
-  # the right compiler out of its series, build that compiler and the
-  # whole GTK stack beneath it, and then ask for qemu-6.tar.xz.
-  #
-  # Returns the version, nil for "the default", or :refused, having
-  # said why.
-  def resolve_version(name, ver_str)
-    return nil if ver_str.nil?
-
-    ver = Ver(ver_str)
-    choices = pkgmgr.get(name).installable_versions
-    return ver if choices.empty? || choices.include?(ver)
-
-    hits = choices.select { |v| v.to_s.start_with?("#{ver_str}.") }
-    return hits.first if hits.length == 1
-
-    error "#{name}:#{ver_str} is not a version #{name} can install"
-    error "Available: #{choices.join(', ')}"
-    return :refused
+    full, note = r
+    info note if note
+    return full
   end
 
   # -----------------------------------------------------------
@@ -941,7 +899,7 @@ module Main
       'install packages useful for contributors: host_mconf',
       '(plus its host_ncurses dep). Intended to be run once, like:',
       './scripts/build_toolchain --contrib. Packages listed in',
-      'CONTRIB_EXTRA_PACKAGES are appended to the normal default',
+      'Planner::CONTRIB_EXTRAS are appended to the normal default',
       'set before the plan is resolved. [FLAG]'
     ) { @opts[:contrib] = true }
 
@@ -994,19 +952,6 @@ module Main
     return opts
   end
 
-  # Expand "ALL" entries in `install_list` into every installable
-  # non-compiler package for the pkgmgr's current target_arch. Called
-  # inside the with_target_arch scope so arch_supported? sees the
-  # right arch. Compilers are reached via -S ALL or as implicit deps.
-  # Why `name` cannot be installed here, or nil. Asked of the package
-  # AND its closure, before -f removes anything: a root whose
-  # dependency the host cannot build fails at the door, not after the
-  # old install is gone. Host first (a package inherits its world's
-  # host), then, for a target package, the arch and the board.
-  def unsupported_reason(name, scope)
-    return Planner.unsupported_reason(pkgmgr, pkgmgr.get(name), scope)
-  end
-
   # The arch an invocation is about: `-a <arch>` when given, else the
   # shell's. This is the one place the CLI turns ARCH into a scope;
   # everything below the boundary reads the scope it is handed.
@@ -1014,15 +959,45 @@ module Main
     return arch_opt ? ALL_ARCHS[arch_opt] : ARCH
   end
 
-  def expand_install_all(install_list, scope)
-    install_list.flat_map { |x|
-      raw, ver = x.split(":")
-      next [x] unless raw == "ALL"
-      pkgmgr.all_packages
-            .reject(&:is_compiler)
-            .reject { |p| p.at(scope).get_installable_list.empty? }
-            .map { |p| "#{p.name}:#{ver}" }
-    }
+  # The parsed options as a Request (request.rb): the one value the
+  # planner is handed. The modes the planner has no say in (--deps,
+  # -L, the help) are :other.
+  def request_of(o)
+    words = ->(list) { list.map { |w| Request.target(w) } }
+    mode, targets =
+      if !o[:install].blank?      then [:install, words.call(o[:install])]
+      elsif !o[:uninstall].blank? then [:uninstall, words.call(o[:uninstall])]
+      elsif o[:config]            then [:configure, words.call([o[:config]])]
+      elsif !o[:mark_manual].blank?
+        [:mark_manual, words.call(o[:mark_manual])]
+      elsif !o[:mark_auto].blank? then [:mark_auto, words.call(o[:mark_auto])]
+      elsif o[:upgrade]           then [:upgrade, []]
+      elsif o[:rebuild]           then [:rebuild, []]
+      elsif o[:autoremove]        then [:autoremove, []]
+      elsif o[:clean]             then [:clean, []]
+      elsif o[:list]              then [:list, []]
+      elsif o[:check_for_updates] then [:check_updates, []]
+      elsif o[:list_installable]  then [:installable, []]
+      elsif o[:print_layout]      then [:layout, []]
+      elsif o[:just_context]      then [:context, []]
+      elsif o[:help] || o[:self_test] || o[:list_stacks] || !o[:deps].blank?
+        [:other, []]
+      else [:default, []]
+      end
+
+    arch = if o[:arch] == "ALL" then :all
+           elsif o[:arch] then ALL_ARCHS.fetch(o[:arch])
+           end
+    cc = case o[:compiler]
+         when nil, "syscc" then o[:compiler]
+         when "ALL"        then :all
+         else Ver(o[:compiler])
+         end
+    stack = o[:host_gcc] ? Coords.parse_stack(o[:host_gcc]) : nil
+
+    return Request.make(mode, targets: targets, force: o[:force],
+                        dry: o[:dry_run], arch: arch, cc: cc, stack: stack,
+                        contrib: !!o[:contrib])
   end
 
   # -H names a stack, either as it is spelled everywhere else --
@@ -1168,12 +1143,12 @@ module Main
       exec(RbConfig.ruby, *args)
     end
 
-    if options[:clean]
+    req = request_of(options)
+
+    if req.mode == :clean
       pkgmgr.refresh()
-      n = pkgmgr.clean(options[:dry_run], scope: scope)
-      info "#{options[:dry_run] ? "Would remove" : "Removed"}: " \
-           "#{n} installation(s)"
-      return 0
+      return run_outcome(Planner.step(pkgmgr, pkgmgr.world, req, scope),
+                         req, scope)
     end
 
     if options[:print_layout]
@@ -1181,11 +1156,11 @@ module Main
       return 0
     end
 
-    if options[:check_for_updates]
+    if req.mode == :check_updates
       judged = pkgmgr.world.judged(pkgmgr, scope)
-      rc, lines = Planner.check_updates(pkgmgr, judged, scope)
-      lines.each { |l| puts l }
-      return rc
+      out = Planner.step(pkgmgr, judged, req, scope)
+      out.notes.each { |l| puts l }
+      return out.rc
     end
 
     pkgmgr.refresh()
@@ -1264,19 +1239,81 @@ module Main
       return 0
     end
 
-    if options[:upgrade]
-      plan = Planner.plan_upgrade(pkgmgr, pkgmgr.world, scope)
-      if plan.is_a?(Refusal)
-        error plan.message
+    # Everything that changes the tree: one Request, one step, the
+    # acts it comes to printed and run in order. --rebuild reads the
+    # records, so its world is judged first.
+    world = pkgmgr.world
+    world = world.judged(pkgmgr, scope) if req.mode == :rebuild
+    return run_outcome(Planner.step(pkgmgr, world, req, scope), req, scope)
+  end # method main()
+
+  # --- running what a step came to ------------------------------------------
+
+  # Print and run an Outcome: its notes, then each act -- an arch
+  # label, the act's notes, its plan -- and last the refusal, if the
+  # step ended in one after the acts before it. An act whose run
+  # fails ends the run there, as it always did.
+  def run_outcome(out, req, scope)
+    out.notes.each { |n| info n }
+    for act in out.acts do
+      info "Architecture: #{act.arch.name}" if act.arch
+      act.notes.each { |n| info n }
+      rc = run_act(act, req, scope)
+      return rc if rc != 0
+    end
+    out.message&.each_line { |l| error l.chomp }
+    return out.rc
+  end
+
+  # One act, the way its mode says it: what to print around the plan,
+  # and whether to hand it to the executor.
+  def run_act(act, req, scope)
+    plan = act.plan
+    dry = req.dry
+
+    case req.mode
+    when :configure
+      return 0 if dry
+      name, v = act.roots
+      pkg = pkgmgr.get(name)
+      return pkg.at(scope, world: pkgmgr.world).configure(v) ? 0 : 1
+
+    when :install
+      return 0 if plan.nil?          # an arch skipped, and said
+      plan.notes.each { |n| info n }
+
+      # Say so when the stack is not the one the context printed. A
+      # pin moves it -- asking for QEMU 7 asks for GCC 12 -- and a
+      # run whose header says gcc-14.4.0 while it writes into
+      # gcc-12.5.0 has told the user the wrong thing about the only
+      # coordinate that decides where its work lands.
+      if plan.scope.stack != scope.stack
+        info "Building into the #{Coords.stack_name(plan.scope.stack)} stack"
+      end
+
+      show_removals(plan, dry) if req.force
+      show_marks(plan, dry)
+
+      if plan.builds.empty?
+        Executor.run(pkgmgr, plan) if !dry
+        info "All requested packages are already installed"
+        return 0
+      end
+
+      show_plan(plan, act.roots, @opts[:ascii])
+
+      # Everything the plan needs from the host, checked as one batch
+      # before the first build starts. A missing Rust toolchain has
+      # to stop the run here, not forty minutes in when a configure
+      # script finally goes looking.
+      pairs = plan.builds.map { |b| [b.name, b.ver] }
+      if !SystemDeps.check_plan(pairs, dry_run: dry)
+        error "Could not install: unmet system dependencies"
         return 1
       end
-      plan.notes.each { |n| info n }
-      return 0 if plan.builds.empty?
 
-      info "Packages to upgrade: #{plan.builds.map(&:name).join(', ')}"
-
-      if options[:dry_run]
-        info "Dry run (-d): nothing upgraded"
+      if dry
+        info "Dry run (-d): nothing installed"
         return 0
       end
 
@@ -1286,27 +1323,66 @@ module Main
         return 1
       end
       return 0
-    end
 
-    if options[:rebuild]
-      # Every stale install rebuilt where it is, at its version,
-      # against what it was built against, as it was asked for. What
-      # cannot be known is refused before anything moves; what cannot
-      # be built here is left as it is, and said.
-      judged = pkgmgr.world.judged(pkgmgr, scope)
-      plan = Planner.plan_rebuild(pkgmgr, judged, scope)
-      if plan.is_a?(Refusal)
-        error plan.message
-        return 1
-      end
+    when :default
       plan.notes.each { |n| info n }
-      return 0 if plan.empty?
+      show_marks(plan, dry)
 
-      if options[:dry_run]
-        info "Dry run (-d): nothing rebuilt"
+      if plan.builds.empty?
+        Executor.run(pkgmgr, plan) if !dry
+        info "All default packages are installed and up to date"
         return 0
       end
 
+      upgrade_names = act.upgrades & plan.builds.map(&:name)
+      if !upgrade_names.empty?
+        info "Packages to upgrade: #{upgrade_names.join(', ')}"
+      end
+
+      # Roots are the top-level defaults/upgrades that actually have
+      # work to do -- already-up-to-date packages drop out of the plan
+      # and thus also out of the root list, so the tree is not
+      # cluttered with bare no-op roots.
+      plan_set = Set.new(plan.builds.map(&:name))
+      show_plan(plan, act.roots.select { |n| plan_set.include?(n) },
+                @opts[:ascii])
+
+      # The one mode that never checked -d. Found by the exhaustive
+      # lane: `-d` with no mode installed the defaults.
+      if dry
+        info "Dry run (-d): nothing installed"
+        return 0
+      end
+
+      failed = Executor.run(pkgmgr, plan)
+      if failed
+        error "Could not install: #{failed}"
+        return 1
+      end
+      return 0
+
+    when :upgrade
+      plan.notes.each { |n| info n }
+      return 0 if plan.builds.empty?
+      info "Packages to upgrade: #{plan.builds.map(&:name).join(', ')}"
+      if dry
+        info "Dry run (-d): nothing upgraded"
+        return 0
+      end
+      failed = Executor.run(pkgmgr, plan)
+      if failed
+        error "Could not install: #{failed}"
+        return 1
+      end
+      return 0
+
+    when :rebuild
+      plan.notes.each { |n| info n }
+      return 0 if plan.empty?
+      if dry
+        info "Dry run (-d): nothing rebuilt"
+        return 0
+      end
       begin
         failed = Executor.run(pkgmgr, plan)
       rescue Executor::Failed => e
@@ -1316,281 +1392,48 @@ module Main
         error e.message
         failed = e.name
       end
-
       if failed
         error "Could not rebuild: #{failed}"
         return 1
       end
       return 0
-    end
 
-    if options[:config]
-      raw, v = options[:config].split(":")
-      name = resolve_pkg_name(raw)
-      return 1 if !name
-      pkg = pkgmgr.get(name)
-      if !pkg.configurable?
-        error "Package #{pkg.name} does not support reconfiguration"
-        return 1
-      end
-      v = resolve_version(name, v)
-      return 1 if v == :refused
-
-      # -C was the one destructive mode that ignored -d. It runs the
-      # package's own configuration tool and rewrites its .config, so
-      # "show me what this would do" has to be answerable here like
-      # everywhere else.
-      if options[:dry_run]
-        info "Dry run (-d): would reconfigure #{pkg.name} " \
-             "#{v || pkg.at(scope).default_ver}, rewriting its build " \
-             "configuration"
-        return 0
-      end
-
-      return pkg.at(scope, world: pkgmgr.world).configure(v) ? 0 : 1
-    end
-
-    if !options[:install].blank?
-
-      # Determine which arch(es) to install for.
-      arch_opt = options[:arch]
-      if arch_opt == "ALL"
-        targets = ALL_ARCHS.values
-      else
-        targets = [requested_arch(arch_opt)]
-      end
-
-      for target in targets do
-        sc = scope.with(arch: target)
-
-        # When iterating ALL archs, show which one we're on.
-        if targets.length > 1
-          info "Architecture: #{target.name}"
-        end
-
-        # Expand "ALL" entries now, inside the arch scope, so
-        # get_installable_list uses the correct arch.
-        expanded = expand_install_all(options[:install], sc)
-
-        # Parse "name:ver" pairs, resolving short names.
-        requested = expanded.map { |s|
-          raw, ver = s.split(":")
-          name = resolve_pkg_name(raw)
-          return 1 if !name
-          ver = resolve_version(name, ver)
-          return 1 if ver == :refused
-          [name, ver]
-        }
-
-        # Validate arch AND board support for each explicitly
-        # requested package, here, before -f has removed anything.
-        # The board used to be checked only inside the install,
-        # after the forced removal: `-s ub -f` on the wrong board
-        # deleted the install and then refused to rebuild it.
-        arch_ok = true
-        for name, _ver in requested do
-          where = unsupported_reason(name, sc)
-          next if where.nil?
-
-          if targets.length > 1
-            # -a ALL: skip this arch gracefully.
-            info "Skipping #{name}: not supported on #{where}"
-            arch_ok = false
-            break
-          else
-            error "Package #{name} is not supported for #{where}"
-            return 1
-          end
-        end
-        next if !arch_ok
-
-        # The plan: what to remove, re-mark and build, at which
-        # coordinates and versions, decided once from the world as it
-        # is. The stack it builds into is the one the request
-        # resolves to -- `-s host_gcc:13.4.0` builds the 13.4.0 stack
-        # -- and everything after reads it from the plan.
-        plan = Planner.plan_install(pkgmgr, pkgmgr.world, requested,
-                                    sc, force: options[:force])
-        if plan.is_a?(Refusal)
-          error plan.message
-          return 1
-        end
-        plan.notes.each { |n| info n }
-
-        # Say so when the stack is not the one the context printed.
-        # A pin moves it -- asking for QEMU 7 asks for GCC 12 -- and
-        # a run whose header says gcc-14.4.0 while it writes into
-        # gcc-12.5.0 has told the user the wrong thing about the
-        # only coordinate that decides where its work lands.
-        if plan.scope.stack != scope.stack
-          info "Building into the " \
-               "#{Coords.stack_name(plan.scope.stack)} stack"
-        end
-
-        show_removals(plan, options[:dry_run]) if options[:force]
-        show_marks(plan, options[:dry_run])
-
-        if plan.builds.empty?
-          Executor.run(pkgmgr, plan) if !options[:dry_run]
-          info "All requested packages are already installed"
-          next
-        end
-
-        show_plan(plan, requested.map(&:first), options[:ascii])
-
-        # Everything the plan needs from the host, checked as one
-        # batch before the first build starts. A missing Rust
-        # toolchain has to stop the run here, not forty minutes in
-        # when a configure script finally goes looking.
-        pairs = plan.builds.map { |b| [b.name, b.ver] }
-        if !SystemDeps.check_plan(pairs, dry_run: options[:dry_run])
-          error "Could not install: unmet system dependencies"
-          return 1
-        end
-
-        if options[:dry_run]
-          info "Dry run (-d): nothing installed"
-          next
-        end
-
-        failed = Executor.run(pkgmgr, plan)
-        if failed
-          error "Could not install: #{failed}"
-          return 1
-        end
+    when :uninstall, :clean
+      return 0 if plan.nil?
+      plan.notes.each { |n| warning n }
+      pkgmgr.say_removals(plan, dry)
+      Executor.run(pkgmgr, plan) if !dry
+      if req.mode == :clean
+        info "#{dry ? "Would remove" : "Removed"}: " \
+             "#{plan.removes.length} installation(s)"
       end
       return 0
-    end
 
-    for manual, key in [[true, :mark_manual], [false, :mark_auto]] do
-      next if options[key].blank?
-      for entry in options[key] do
-        raw, v = entry.split(":")
-        if raw == "ALL"
-          name = raw
-        else
-          name = resolve_pkg_name(raw)
-          return 1 if !name
-          v = resolve_version(name, v) if v != 'ALL'
-          return 1 if v == :refused
-        end
-        pkgmgr.mark(name, manual, options[:dry_run], options[:force],
-                    v == 'ALL' ? v : Ver(v),
-                    options[:compiler], options[:arch], scope: scope)
+    when :mark_manual, :mark_auto
+      return 0 if plan.nil?
+      plan.notes.each { |n| warning n }
+      p = "[DRY RUN] " if dry
+      how = req.mode == :mark_manual ? "manually installed"
+                                     : "automatically installed"
+      for m in plan.marks do
+        i = m.install
+        puts "#{p}Mark #{i.pkgname}:#{i.ver} at #{i.coords} as #{how}"
       end
+      Executor.run(pkgmgr, plan) if !dry
       return 0
-    end
 
-    if options[:autoremove]
-      n = pkgmgr.autoremove(options[:dry_run], scope: scope)
-      info "#{options[:dry_run] ? "Would remove" : "Removed"}: " \
-           "#{n} installation(s)" if n > 0
+    when :autoremove
+      plan.notes.each { |n| info n }
+      pkgmgr.say_removals(plan, dry)
+      Executor.run(pkgmgr, plan) if !dry
+      n = plan.removes.length
+      info "#{dry ? "Would remove" : "Removed"}: #{n} installation(s)" if n > 0
       return 0
+
+    else
+      raise ArgumentError, "no act for #{req.mode.inspect}"
     end
-
-    if !options[:uninstall].blank?
-      for entry in options[:uninstall] do
-        raw, v = entry.split(":")
-        # "ALL" is a literal keyword for uninstall mode; don't resolve it.
-        if raw == "ALL"
-          name = raw
-        elsif pkgmgr.orphan_names.include?(raw)
-          # An install on disk that no registered package claims, e.g.
-          # left behind by a package rename. `-l` lists it as "found",
-          # so it must be removable by that same name.
-          name = raw
-        else
-          name = resolve_pkg_name(raw)
-          return 1 if !name
-          v = resolve_version(name, v) if v != 'ALL'
-          return 1 if v == :refused
-        end
-        pkgmgr.uninstall(
-          name,
-          options[:dry_run],
-          options[:force],
-          v == 'ALL' ? v : Ver(v),
-          options[:compiler],
-          options[:arch],
-          scope: scope,
-        )
-      end
-      return 0
-    end
-
-    # No mode flag specified: install the Tilck stack of this target --
-    # the meta-package whose dependencies are the default set -- AND
-    # upgrade any installed package whose version was bumped.
-    defaults = pkgmgr.tilck_stacks.select { |m| m.at(scope).supported? }
-    upgrades = Planner.upgradable(pkgmgr, pkgmgr.world, scope)
-    if defaults.empty?
-      info "No Tilck stack is defined for #{scope.arch.name}/" \
-           "#{scope.board_of(scope.arch)}: nothing to install " \
-           "by default"
-    end
-    all = (defaults + upgrades).uniq(&:name)
-
-    # --contrib: append the contributor-only extras (host_mconf)
-    # on top of the default set. Silently skip any that aren't
-    # registered — the list is under our control.
-    if options[:contrib]
-      CONTRIB_EXTRA_PACKAGES.each do |name|
-        pkg = pkgmgr.get(name)
-        next if pkg.nil?
-        next if all.any? { |p| p.name == name }
-        all << pkg
-      end
-    end
-
-    # The default set (and what --contrib adds to it) is claimed --
-    # being a default is being wanted -- so one of them already here
-    # as a dependency becomes the user's; the upgrades beside it are
-    # upgrades, and inherit the mark of what they replace.
-    claimed = all.map(&:name) - (upgrades.map(&:name) - defaults.map(&:name))
-    plan = Planner.plan_install(pkgmgr, pkgmgr.world,
-                                all.map { |p| [p.name, nil] }, scope,
-                                claimed: claimed)
-    if plan.is_a?(Refusal)
-      error plan.message
-      return 1
-    end
-    plan.notes.each { |n| info n }
-    show_marks(plan, options[:dry_run])
-
-    if plan.builds.empty?
-      Executor.run(pkgmgr, plan) if !options[:dry_run]
-      info "All default packages are installed and up to date"
-      return 0
-    end
-
-    upgrade_names = upgrades.map(&:name) & plan.builds.map(&:name)
-    if !upgrade_names.empty?
-      info "Packages to upgrade: #{upgrade_names.join(', ')}"
-    end
-
-    # Roots are the top-level defaults/upgrades that actually have work
-    # to do -- already-up-to-date packages drop out of the plan and thus
-    # also out of the root list, so the tree is not cluttered with bare
-    # no-op roots.
-    plan_set = Set.new(plan.builds.map(&:name))
-    show_plan(plan, all.map(&:name).select { |n| plan_set.include?(n) },
-              options[:ascii])
-
-    # The one mode that never checked -d. Found by the exhaustive
-    # lane: `-d` with no mode installed the defaults.
-    if options[:dry_run]
-      info "Dry run (-d): nothing installed"
-      return 0
-    end
-
-    failed = Executor.run(pkgmgr, plan)
-    if failed
-      error "Could not install: #{failed}"
-      return 1
-    end
-
-    return 0
-  end # method main()
+  end
 end # module Main
 
 if __FILE__ == $0

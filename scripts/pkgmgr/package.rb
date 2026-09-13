@@ -161,6 +161,15 @@ class InstallInfo
 
   def compiler? = !@target_arch.nil?
 
+  # The same installation, re-marked: what a Mark does to a world.
+  def with_mark(manual)
+    return InstallInfo.new(@pkgname, @compiler, @on_host, @arch, @ver,
+                           @path, @pkg, @broken, @target_arch, @libc,
+                           default_install: @default_install,
+                           coords: @coords, manual: manual,
+                           record: @record)
+  end
+
   # The same installation, with what its record says about it:
   # :ok, :changed, :old_format or :unknown (Package#build_inputs_state_of).
   def with_record(state)
@@ -1459,6 +1468,35 @@ class Package
   # ones included, so that a failed earlier install can be reported
   # and removed.
   def get_install_list = world.of(name)
+
+  # The reading of one install of `ver` at this binding's coordinates,
+  # as read_install_list reads it once it is complete and recorded:
+  # what a Build adds to a world (Plan#apply). Field for field what
+  # the list readers produce -- the compiler off the coordinates for
+  # a :stack install, the cross compiler's version for a target one
+  # -- so that a world a plan was applied to equals the scan of the
+  # tree the executor left, which is what the executor is judged by.
+  def future_install(ver, default_install:, manual:)
+    # mutation: equivalent -- no package's coordinates vary by version
+    c = coords(ver)
+    cc = if !on_host then (arch_list.nil? ? nil : c.stack_ver)
+         elsif host_tier == :stack
+           # mutation: equivalent -- a stack's coordinates always parse
+           c.stack_ver || "syscc"
+         else "syscc"
+         end
+    a = on_host ? HOST_ARCH : (arch_list.nil? ? nil : default_arch)
+    return annotate_install(InstallInfo.new(
+      name, cc, on_host, a, ver, install_dir(ver), self, false,
+      default_install: default_install, manual: manual, coords: c,
+      record: :ok
+    ))
+  end
+
+  # What a package adds to the reading of each of its installs: a
+  # cross compiler says which arch it targets. The list readers and
+  # future_install both pass through here, so the two readings agree.
+  def annotate_install(info) = info
 
   # The reading of the tree a World is built from: this package's
   # directories, at every coordinates it could have been installed

@@ -822,28 +822,41 @@ dry-run changes nothing, determinism) hold.
 
 **The laws** (`tests/laws.rb`) run around every command line the
 suite drives, inside `TestHelper#run_cli`: the world after equals what
-the model computes (L1); `-d` changed nothing (L2); every installation
-sits where its package says, judged at its own coordinates (L3);
-everything installed carries a record that reads ok (L4); what the
-package manager holds about the tree is what the tree says (L5 -- the
-world is scanned once per announced change, and a change nobody
-announced is a world that lies). A test about
-`-l`'s output is thereby also a test that `-l` changed nothing. The
-runner prints how many lines were judged and how many fell outside
-the model's grammar.
+the model computes (L1, asked three ways: the tree against the model,
+the planner's own answer -- `Planner.step` on the world before, its
+plans applied with `Plan#apply` -- against the model, and the tree
+against the planner's answer, so that a disagreement names its
+layer); `-d` changed nothing (L2); every installation sits where its
+package says, judged at its own coordinates (L3); everything
+installed carries a record that reads ok (L4); what the package
+manager holds about the tree is what the tree says (L5 -- the world
+is scanned once per announced change, and a change nobody announced
+is a world that lies). A test about `-l`'s output is thereby also a
+test that `-l` changed nothing. The runner prints how many lines were
+judged and how many fell outside the model's grammar.
 
 **The exhaustive lane** (`tests/exhaustive/`) is the theorem. For
-fifteen registry shapes -- one feature each -- it enumerates every
-world of at most two installations, every invocation context, and
-every command line in the grammar, and hands each case to the laws.
-About sixty-six thousand cases; `-t --exhaustive` runs them all,
-one process per shape, in every toolchain workflow and in the
-package manager's own workflow (`ci-pkgmgr.yml`, which also runs the
-mutation job), and every `-t` runs a fixed-seed sample of a thousand. It self-tests first (a
-snapshot equals a second snapshot, a world reads back as built, a
-planted disagreement is seen) and refuses to run otherwise. A failure
-prints its id, the world, the argv and both worlds; `--case ID`
-replays it.
+seventeen registry shapes -- one feature each -- it enumerates every
+world of at most three installations, every invocation context, and
+every command line in the grammar, and asks the planner and the model
+the same question: the world is built in memory (`World.of` the
+installs the case names), the command line is parsed by main's own
+parser into a `Request`, and `Planner.step` and `Model.step` each say
+what world it leaves and with what exit code. Nothing is written and
+nothing is scanned: a case is a value, and costs a fraction of a
+millisecond. About 1.7 million cases; `-t --exhaustive` runs them
+all, one process per shape, in about three minutes, in every toolchain
+workflow and in the package manager's own workflow (`ci-pkgmgr.yml`,
+which also runs the mutation job), and every `-t` runs a fixed-seed
+sample of five thousand in under a second. It self-tests first (a
+world built in memory equals the scan of the same world built on
+disk, install for install and record for record; the planner and the
+model each answer twice alike; an empty plan applied is the identity;
+a planted disagreement is seen) and refuses to run otherwise. A
+failure prints its id, the world, the argv and both worlds; `--case
+ID` replays it. What the executor makes of a plan is judged on disk,
+once per kind of action, in `tests/test_executor.rb`: the tree it
+leaves must equal the world the plan says it leaves.
 
 **Mutation** (`-t --mutation`, or `scripts/dev/claude/pmmutate` to
 run a subset) is the certificate that the above is enough. Each of ~450 sites in the logic core is
@@ -856,14 +869,15 @@ which is a defect in the code. The score to defend is zero of either.
 The unmutated suite must pass first, or nothing is judged.
 
 What this proves, mechanically, on every commit: for the catalogue of
-shapes and worlds of two, the implementation's effect on the tree and
-its answers equal the model's; the implementation reads its inputs
-only through their owners; and every line of the logic core is
-defended by a test that fails if it is wrong. What it does not prove:
-worlds of three or more (the bound rises when a bug appears there --
-none has), shapes outside the catalogue (add one when a package with
-a new feature appears), and anything about the real recipes or the
-network.
+shapes and worlds of up to three, the planner's answer equals the
+model's, and what the executor makes of a plan is what the plan says,
+for every kind of action and around every command line the suite
+drives; the implementation reads its inputs only through their
+owners; and every line of the logic core is defended by a test that
+fails if it is wrong. What it does not prove: worlds of four or more
+(the bound rises when a bug appears there -- none has), shapes
+outside the catalogue (add one when a package with a new feature
+appears), and anything about the real recipes or the network.
 
 When a logic bug is found, the fix touches all four: the model says
 the right answer (or is corrected first), a shape or a line is added

@@ -23,14 +23,18 @@ module Bridge
   # --- registry -------------------------------------------------------------
 
   # The bridge reads at the environment's scope: what the model's Inv
-  # describes, and what a run with no flags resolves to.
+  # describes, and what a run with no flags resolves to. A lane that
+  # builds its own scope (the exhaustive lane, one per context) hands
+  # it in.
   def env = pkgmgr.env_scope
 
-  def registry
-    return Model::Registry.new(pkgmgr.all_packages.map { |p| shape_of(p) })
+  def registry(env = self.env)
+    return Model::Registry.new(pkgmgr.all_packages.map { |p|
+      shape_of(p, env)
+    })
   end
 
-  def shape_of(pkg)
+  def shape_of(pkg, env = self.env)
 
     # A cross compiler is the one host package whose installs carry a
     # target arch. GccPackage keeps it in @target_arch; the fake keeps
@@ -103,20 +107,26 @@ module Bridge
     return keys.to_set
   end
 
+  # :old_format is :changed to the model: what moved is how a recipe
+  # is fingerprinted rather than the recipe, but every decision
+  # downstream -- rebuild, report stale, refuse to build against it --
+  # is the same one.
+  RECORDS = { ok: :ok, changed: :changed, old_format: :changed,
+              unknown: :missing }.freeze
+
   def key_of(pkg, inst)
 
     record = if pkg
-      # :old_format is :changed to the model: what moved is how a
-      # recipe is fingerprinted rather than the recipe, but every
-      # decision downstream -- rebuild, report stale, refuse to build
-      # against it -- is the same one.
-      { ok: :ok, changed: :changed, old_format: :changed,
-        unknown: :missing }.fetch(pkg.at(env, world: pkgmgr.world)
-                                     .build_inputs_state_of(inst))
+      RECORDS.fetch(pkg.at(env, world: pkgmgr.world)
+                       .build_inputs_state_of(inst))
     else
       BuildInputs.comparable(inst.path).nil? ? :missing : :ok
     end
 
+    return key_with(inst, record)
+  end
+
+  def key_with(inst, record)
     return Model::Key.new(
       name: inst.pkgname,
       ver: inst.ver,
@@ -127,14 +137,25 @@ module Bridge
     )
   end
 
+  # A World as keys, each install's record as the world carries it:
+  # for a judged world (World#judged) what its record says, for one a
+  # plan was applied to (Plan#apply) what the plan left. No disk is
+  # read: this is how a world the planner computed is compared.
+  def keys_of_world(world)
+    return world.installs.select { |i| !i.broken }.map { |i|
+      raise ArgumentError, "#{i.pkgname}: an unjudged world" if i.record.nil?
+      key_with(i, RECORDS.fetch(i.record))
+    }.to_set
+  end
+
   # --- invocation -----------------------------------------------------------
 
   # The stack is the one in effect -- a with_host_stack around the
   # run, or an earlier -H -- which is what the implementation reads.
-  def inv
-    return Model::Inv.new(env_arch: ARCH, env_board: BOARD,
+  def inv(env = self.env)
+    return Model::Inv.new(env_arch: env.env_arch, env_board: env.env_board,
                           default_stack: env.stack,
-                          host_os: HOST_OS, host_arch: HOST_ARCH.name)
+                          host_os: env.host_os, host_arch: env.host_arch)
   end
 
   # Every installation that is not where its package says an install
@@ -160,18 +181,24 @@ module Bridge
   # package manager's install lists held that the disk does not say,
   # and the reverse: the trace of a writer that moved, removed or
   # rewrote an installation and did not say installs_changed!.
+  # `installs` is the same world as the product's own value, judged:
+  # what the planner is handed to answer the same command line.
   Snapshot = Struct.new(:registry, :world, :inv, :misplaced, :stale,
-                        keyword_init: true)
+                        :installs, keyword_init: true)
 
   def snapshot
     held = world(fresh: false)
-    fresh = world
+    pkgmgr.installs_changed!
+    pkgmgr.refresh
+    judged = pkgmgr.world.judged(pkgmgr, env)
+    fresh = keys_of_world(judged)
     stale = if held == fresh then []
             else ["the install lists disagree with the disk:\n" \
                   "  held, not on disk: #{(held - fresh).map(&:to_s).sort}\n" \
                   "  on disk, not held: #{(fresh - held).map(&:to_s).sort}"]
             end
     return Snapshot.new(registry: registry, world: fresh, inv: inv,
-                        misplaced: misplaced, stale: stale)
+                        misplaced: misplaced, stale: stale,
+                        installs: judged)
   end
 end

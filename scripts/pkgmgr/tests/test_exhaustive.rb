@@ -2,11 +2,11 @@
 #
 # THE EXHAUSTIVE LANE, SAMPLED.
 #
-# The full enumeration (tests/exhaustive/) is some three hundred
-# thousand cases and belongs to CI: `-t --exhaustive`. The default
-# suite runs a fixed-seed sample of it here, so that every local run
-# still asks the model a thousand questions the tests did not think
-# of, in about the time the rest of the suite takes.
+# The full enumeration (tests/exhaustive/) is some two million cases
+# and belongs to CI: `-t --exhaustive`, minutes. The default suite
+# runs a fixed-seed sample of it here, so that every local run still
+# asks the model five thousand questions the tests did not think of,
+# in under a second.
 #
 #   --seed N     a different sample (the seed is printed on failure)
 #   --case ID    one case, by the id a failure prints
@@ -20,7 +20,7 @@ require_relative 'exhaustive/runner'
 
 class TestExhaustive < Minitest::Test
 
-  SAMPLE = 1000
+  SAMPLE = 5000
 
   def seed = ($exhaustive_seed || 20260903).to_i
 
@@ -33,9 +33,11 @@ class TestExhaustive < Minitest::Test
                            : Exhaustive.sample_ids(SAMPLE, seed: seed)
     failed = []
 
-    for id in ids do
-      r = Exhaustive.run_case(Exhaustive.case_by_id(id))
-      failed << r if !r.ok
+    Exhaustive.in_lane do
+      for id in ids do
+        r = Exhaustive.run_case(Exhaustive.case_by_id(id))
+        failed << r if !r.ok
+      end
     end
 
     assert_empty failed,
@@ -68,11 +70,14 @@ class TestExhaustive < Minitest::Test
     end
   end
 
-  # The bound is two, and the domain says so: no world has three.
+  # The bound is what the domain says it is, and it is reached: the
+  # shape the bugs needed two of has worlds of three.
   def test_no_world_exceeds_the_bound
     for shape in Exhaustive::SHAPES.keys do
       big = Exhaustive.tables_for(shape).worlds.map(&:length).max
-      assert big <= 2, "#{shape}: a world of #{big}"
+      assert big <= Exhaustive::BOUND, "#{shape}: a world of #{big}"
     end
+    assert_equal Exhaustive::BOUND,
+                 Exhaustive.tables_for("target_2v").worlds.map(&:length).max
   end
 end

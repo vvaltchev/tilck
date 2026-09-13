@@ -3,17 +3,19 @@
 # THE DOMAIN: every small world, every context, every command line.
 #
 # Not a sample. For each registry shape in the catalogue, the lane
-# enumerates every world of at most two installations that shape can
-# have, every invocation context, and every command line in the
-# grammar, and asks the implementation and the model the same
-# question. The claim it establishes is bounded and exact: for these
-# shapes and these worlds and these lines, the two agree.
+# enumerates every world of at most three installations that shape
+# can have, every invocation context, and every command line in the
+# grammar, and asks the planner and the model the same question. The
+# claim it establishes is bounded and exact: for these shapes and
+# these worlds and these lines, the two agree.
 #
-# Two installations is not an arbitrary bound. Every logic bug this
-# package manager has had manifested with exactly two of something --
-# two boards, two versions, two stacks, two arches -- and a fixture
-# with one of each cannot tell "the right one" from "the only one".
-# When a bug ever appears at three, the bound goes to three.
+# Two installations was the bound while a case cost a tree on disk.
+# Every logic bug this package manager has had manifested with
+# exactly two of something -- two boards, two versions, two stacks,
+# two arches -- and a fixture with one of each cannot tell "the right
+# one" from "the only one". A case is a value now, and three costs
+# what two did before, so three it is: the two the bugs need, and one
+# beside them to be the wrong one nobody meant.
 #
 # Shapes are small on purpose: one feature each, so a failure names
 # the feature. A shape for a new package feature is added when the
@@ -198,14 +200,17 @@ module Exhaustive
     return out
   end
 
-  # Every world of at most `max` installations: the empty one, each
-  # candidate alone, each pair that is not two records of one place.
-  def worlds(cands, max: 2)
+  # How many installations a world may hold.
+  BOUND = 3
+
+  # Every world of at most `max` installations: the empty one, and
+  # every set of up to `max` candidates no two of which are records
+  # of one place.
+  def worlds(cands, max: BOUND)
     out = [[]]
-    out += cands.map { |c| [c] } if max >= 1
-    if max >= 2
-      cands.combination(2).each { |a, b|
-        out << [a, b] if !a.same_place?(b)
+    for n in 1..max do
+      cands.combination(n).each { |w|
+        out << w if w.combination(2).none? { |a, b| a.same_place?(b) }
       }
     end
     return out
@@ -222,6 +227,49 @@ module Exhaustive
     Ctx.new(RV, "qemu-virt"),
     Ctx.new(RV, "licheerv-nano"),
   ].freeze
+
+  # The invocation's scope for a context: what Scope.env builds from
+  # the shell's ARCH and BOARD, built from the context instead, in the
+  # lane's stack. No constant is swapped: the scope IS the context.
+  def scope_for(ctx, stack: STACK_A)
+    return Scope.new(arch: ctx.arch, board: ctx.board, stack: stack,
+                     env_arch: ctx.arch, env_board: ctx.board,
+                     host_os: HOST_OS, host_arch: HOST_ARCH.name)
+  end
+
+  # --- a world in memory ----------------------------------------------------
+
+  # The scope at which `pkg` installs at `c`, from `scope`: coords_for
+  # run backwards. A target's machine and env name its arch and
+  # board; a :stack install's stack names its stack.
+  def scope_of_coords(pkg, c, scope)
+    if c.machine.start_with?("tilck-")
+      arch = ALL_ARCHS.fetch(c.machine.delete_prefix("tilck-"))
+      return scope.with(arch: arch, board: c.env)
+    end
+    return scope.with(stack: c.stack_ver) if pkg.on_host &&
+                                              pkg.host_tier == :stack
+    return scope
+  end
+
+  # One candidate as the installation it stands for, in memory: read
+  # the way the scan reads one fake_install made (the self-test holds
+  # the two to equality), its record as the candidate says.
+  def install_of(cand, pkg, scope)
+    sc = scope_of_coords(pkg, cand.coords, scope)
+    return pkg.at(sc).future_install(
+      cand.ver, default_install: cand.origin == :default,
+      manual: cand.mark == :manual
+    ).with_record(cand.record)
+  end
+
+  # A case's world, as the product's own value, with no tree behind
+  # it. `by_name` is the case's registry.
+  def world_of(cands, by_name, scope)
+    return World.of(cands.map { |x|
+      install_of(x, by_name.fetch(x.name), scope)
+    })
+  end
 
   # --- the grammar ----------------------------------------------------------
 
@@ -262,14 +310,16 @@ module Exhaustive
       end
       if p.on_host && p.host_tier == :stack
         lines << "-s #{n} -H #{STACK_B}" << "-u #{n} -c #{STACK_B}" \
-              << "-u #{n} -H #{STACK_B}" << "--mark-auto #{n} -c #{STACK_B}"
+              << "-u #{n} -H #{STACK_B}" << "--mark-auto #{n} -c #{STACK_B}" \
+              << "-u #{n} -c ALL" << "--mark-auto #{n} -c ALL"
       end
     end
 
     lines << "-s ALL" << "-u ALL" << "-u ALL -f" << "-u ALL -a ALL" \
           << "-u ALL -c #{TestHelper::FAKE_GCC_VER}" << "--upgrade" \
           << "--rebuild" << "--autoremove" << "--mark-auto ALL" \
-          << "--mark-manual ALL" << "--mark-auto ALL -f" << "--clean" << ""
+          << "--mark-manual ALL" << "--mark-auto ALL -f" << "--clean" \
+          << "--clean -f" << ""
 
     lines = lines.uniq
     lines += lines.map { |l| "#{l} -d".strip }

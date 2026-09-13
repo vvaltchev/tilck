@@ -1,7 +1,7 @@
 # Package manager: a functional planning core
 
-Status: steps 5.1 to 5.6 IN THE TREE (2026-09-14); step 5.7, the
-lanes, pending. The plan below is as written before the work; the
+Status: DONE, steps 5.1 to 5.8 in the tree (2026-09-14). The plan
+below is as written before the work; the
 commits record what each step found (`git log --grep 'Functional
 core'`). Two departures worth knowing: a bound package is a clone
 (the tests stub behaviour on singleton classes) and carries the
@@ -478,6 +478,18 @@ the ambient read.
 Before 5.1 and after 5.7, on this machine: the full exhaustive lane's
 wall time and case count, `pmmutate count`, the suite's wall time.
 The numbers go in `package_manager.md`.
+
+Measured (2026-09-14, 24 cores):
+
+| | before 5.1 | after 5.7 |
+|---|---|---|
+| exhaustive lane, cases | 400,110 (bound 2) | 1,715,718 (bound 3) |
+| exhaustive lane, wall | ~70 min on CI; 30 min for one shape here | 188 s (target_2v alone 178 s) |
+| one case | ~13 ms (a tree on disk) | ~0.15 ms (a value) |
+| `-t`, the sampled lane | 1,000 cases, ~10 s | 5,000 cases, ~0.7 s |
+| `-t`, the whole suite | ~40 s (17 s with a warm cache) | ~10 s |
+| `pmmutate count` | 445 sites, 12 files | 588 sites, 13 files |
+| mutation lane, CI | ~50 min | (measured after this lands) |
 
 ## 6. What becomes structural, what stays semantic
 
