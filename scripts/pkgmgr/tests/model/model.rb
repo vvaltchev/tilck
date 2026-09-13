@@ -205,7 +205,9 @@ module Model
     if arch_is_scope && req.arch.is_a?(Architecture)
       arch = req.arch
     end
-    board = if arch == inv.env_arch && inv.env_board
+    board = if arch_is_scope && req.board.is_a?(String)
+      req.board
+    elsif arch == inv.env_arch && inv.env_board
       inv.env_board
     else
       arch.default_board
@@ -561,14 +563,16 @@ module Model
     shape = registry[name]
 
     # An orphan -- on disk, no package -- has nothing to say where it
-    # lives, so -a and -c are read directly as coordinates: an arch's
-    # machine, a stack. With neither, every copy of it goes.
+    # lives, so -a, -b and -c are read directly as coordinates: an
+    # arch's machine, a board's env, a stack. With none, every copy of
+    # it goes.
     if shape.nil?
       cc = req.cc == :all ? nil : req.cc
       return keys_of(world, name).select { |k|
         (cc.nil? || k.coords.stack == "gcc-#{cc}") &&
         (req.arch.nil? || req.arch == :all ||
-         k.coords.machine == "tilck-#{req.arch.name}")
+         k.coords.machine == "tilck-#{req.arch.name}") &&
+        (req.board.nil? || req.board == :all || k.coords.env == req.board)
       }.to_set
     end
 
@@ -598,11 +602,12 @@ module Model
     cc = req.cc == :all ? nil : req.cc     # -c ALL: no constraint
 
     if shape.noarch?
-      return req.arch.nil? && cc.nil?
+      return req.arch.nil? && req.board.nil? && cc.nil?
     end
 
     if shape.host?
       return false if !req.arch.nil?        # an arch means nothing here
+      return false if !req.board.nil?       # nor a board
       return c == coords_of(shape, scope) if cc.nil?
       return false if !shape.stack?         # nor a compiler, unless :stack
       return c == coords_of(shape, scope, stack: cc)
@@ -620,11 +625,12 @@ module Model
       if req.arch == :all
         # every board of every arch, and every compiler
         c.machine == want.machine && (cc.nil? || c.stack == "gcc-#{cc}")
-      elsif cc
-        c.machine == want.machine && c.env == want.env &&
-          c.stack == "gcc-#{cc}"
       else
-        c == want
+        # the arch's board, the one -b names, or every one for -b ALL;
+        # the compiler -c names, else the coordinates' own
+        env_ok = req.board == :all || c.env == (req.board || want.env)
+        stack_ok = cc ? c.stack == "gcc-#{cc}" : c.stack == want.stack
+        c.machine == want.machine && env_ok && stack_ok
       end
     }
   end
@@ -650,7 +656,8 @@ module Model
       else
         a = req.arch || scope.arch
         k.coords.machine == "tilck-#{a.name}" &&
-          k.coords.env == scope.board_of(a)
+          (req.board == :all ||
+           k.coords.env == (req.board || scope.board_of(a)))
       end
     }.to_set
   end
@@ -662,9 +669,7 @@ module Model
     end
     targets, refused = resolve_versions(registry, req.targets)
     return Outcome.new(1, world, refused) if refused
-    req = Request.new(mode: req.mode, targets: targets, force: req.force,
-                      dry: req.dry, arch: req.arch, cc: req.cc,
-                      stack: req.stack, contrib: false)
+    req = req.with(targets: targets, contrib: false)
     gone = select(registry, world, req, scope)
     return Outcome.new(0, world, "dry run") if req.dry
     return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
@@ -679,9 +684,7 @@ module Model
     end
     targets, refused = resolve_versions(registry, req.targets)
     return Outcome.new(1, world, refused) if refused
-    req = Request.new(mode: req.mode, targets: targets, force: req.force,
-                      dry: req.dry, arch: req.arch, cc: req.cc,
-                      stack: req.stack, contrib: false)
+    req = req.with(targets: targets, contrib: false)
     picked = select(registry, world, req, scope)
     return Outcome.new(0, world, "dry run") if req.dry
     return Outcome.new(0, remarked(world, picked, mark), "marked")
@@ -731,8 +734,8 @@ module Model
   # Ruby, which NEVER_REMOVE keeps from everything.
   def clean(registry, world, req, scope)
     all = Request.new(mode: :uninstall, targets: [[:all, :all]],
-                      force: false, dry: req.dry, arch: :all, cc: nil,
-                      stack: nil, contrib: false)
+                      force: false, dry: req.dry, arch: :all, board: nil,
+                      cc: nil, stack: nil, contrib: false)
     return uninstall(registry, world, all, scope)
   end
 
@@ -757,8 +760,8 @@ module Model
     roots = upgradable(registry, world, scope).map { |n| [n, nil] }
     return Outcome.new(0, world, "up to date") if roots.empty?
     plain = Request.new(mode: :install, targets: roots, force: false,
-                        dry: req.dry, arch: nil, cc: nil, stack: nil,
-                        contrib: false)
+                        dry: req.dry, arch: nil, board: nil, cc: nil,
+                        stack: nil, contrib: false)
     # An upgrade claims nothing: the new version is the user's exactly
     # as much as the old was.
     return install(registry, world, plain, scope, claimed: [])
@@ -864,8 +867,8 @@ module Model
     names |= upgradable(registry, world, scope)
     return Outcome.new(0, world, "nothing to do") if names.empty?
     plain = Request.new(mode: :install, targets: names.map { |n| [n, nil] },
-                        force: false, dry: req.dry, arch: nil, cc: nil,
-                        stack: nil, contrib: false)
+                        force: false, dry: req.dry, arch: nil, board: nil,
+                        cc: nil, stack: nil, contrib: false)
     return install(registry, world, plain, scope, claimed: claimed)
   end
 
@@ -925,12 +928,15 @@ module Model
   SCOPED_BY_ARCH = %i[install default installable].freeze
 
   def step(registry, world, req, inv)
+    if (why = board_refusal(req, inv))
+      return Outcome.new(1, world, why)
+    end
     sc = scope(inv, req, arch_is_scope: SCOPED_BY_ARCH.include?(req.mode))
 
     case req.mode
     when :install
-      if req.arch == :all
-        install_every_arch(registry, world, req, sc)
+      if req.arch == :all || req.board == :all
+        install_every(registry, world, req, sc)
       else
         install(registry, world, req, sc)
       end
@@ -950,23 +956,38 @@ module Model
     end
   end
 
-  # `-s X -a ALL`: once per arch, threading the world through.
+  # SPEC: -b names one arch's board. With -a ALL it is refused, and
+  # so is a board the arch in effect does not have -- for every mode,
+  # at the door, before anything is read.
+  def board_refusal(req, inv)
+    return nil if !req.board.is_a?(String)
+    return "one arch's board" if req.arch == :all
+    a = req.arch.is_a?(Architecture) ? req.arch : inv.env_arch
+    return a.all_boards.include?(req.board) ? nil : "unknown board"
+  end
+
+  # `-s X -a ALL`: once per arch, threading the world through; `-b
+  # ALL`: once per board of each arch, the same way.
   #
   # SPEC: a root this arch cannot build is skipped, and the others are
   # still installed. The implementation skips the whole arch as soon
   # as one root is unsupported, while printing that it skipped the
   # package.
-  def install_every_arch(registry, world, req, sc)
-    for a in ALL_ARCHS.values do
-      s2 = sc.with(arch: a)
-      here = expand_all(registry, req.targets, s2).select { |n, _|
-        s = registry[n]
-        s.nil? || !s.target? || supported?(s, s2, registry)
-      }
-      next if here.empty?
-      o = install(registry, world, req.with(targets: here), s2)
-      return o if o.rc != 0
-      world = o.world
+  def install_every(registry, world, req, sc)
+    archs = req.arch == :all ? ALL_ARCHS.values : [sc.arch]
+    for a in archs do
+      for b in (req.board == :all ? a.all_boards : [nil]) do
+
+        s2 = sc.with(arch: a, board: b)
+        here = expand_all(registry, req.targets, s2).select { |n, _|
+          s = registry[n]
+          s.nil? || !s.target? || supported?(s, s2, registry)
+        }
+        next if here.empty?
+        o = install(registry, world, req.with(targets: here), s2)
+        return o if o.rc != 0
+        world = o.world
+      end
     end
     return Outcome.new(0, world, "installed")
   end
@@ -977,7 +998,8 @@ module Model
   # that main.rb's own reading of it is under test too.
   #
   #   -s X[:V] (repeatable)  -u X[:V]  -S ARCH  -U ARCH  -f  -d
-  #   -a ARCH|ALL  -c VER  -H STACK  --upgrade  --clean  -C X[:V]
+  #   -a ARCH|ALL  -b BOARD|ALL  -c VER  -H STACK  --upgrade  --clean
+  #   -C X[:V]
   #   -l  --check-for-updates  --list-installable  --print-layout
   #   (nothing)  -> the default install
   def parse(argv)
@@ -985,7 +1007,7 @@ module Model
     mode = :default
     targets = []
     force = dry = false
-    arch = cc = stack = nil
+    arch = board = cc = stack = nil
     a = argv.dup
 
     split = ->(s) {
@@ -1013,6 +1035,9 @@ module Model
       when "-a"
         x = a.shift
         arch = x == "ALL" ? :all : ALL_ARCHS[x]
+      when "-b"
+        x = a.shift
+        board = x == "ALL" ? :all : x
       when "-c"
         x = a.shift
         cc = x == "ALL" ? :all : Ver(x)
@@ -1035,7 +1060,9 @@ module Model
     end
 
     return Request.new(mode: mode, targets: targets, force: force, dry: dry,
-                       arch: arch, cc: cc, stack: stack, contrib: false)
+                       arch: arch, board: board, cc: cc, stack: stack,
+                       contrib: false)
+
   end
 
   # --- worlds ---------------------------------------------------------------

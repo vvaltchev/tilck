@@ -307,6 +307,15 @@ module Exhaustive
       if !p.on_host && !p.arch_list.nil?
         lines << "-s #{n} -a riscv64" << "-s #{n} -a ALL" \
               << "-u #{n} -c #{TestHelper::FAKE_GCC_VER}"
+        # -b: a scope for -s (one board, every board, of one arch or
+        # of every arch), a filter for -u and the marks; a board the
+        # arch does not have, and a name beside -a ALL, are refused.
+        lines << "-s #{n} -b licheerv-nano" << "-s #{n} -b ALL" \
+              << "-s #{n} -a riscv64 -b ALL" << "-s #{n} -a ALL -b ALL" \
+              << "-s #{n} -b pc" << "-s #{n} -a ALL -b pc" \
+              << "-u #{n} -b ALL" << "-u #{n} -b licheerv-nano" \
+              << "-u #{n} -a riscv64 -b licheerv-nano" \
+              << "--mark-auto #{n} -b ALL"
       end
       if p.on_host && p.host_tier == :stack
         lines << "-s #{n} -H #{STACK_B}" << "-u #{n} -c #{STACK_B}" \
@@ -319,7 +328,11 @@ module Exhaustive
           << "-u ALL -c #{TestHelper::FAKE_GCC_VER}" << "--upgrade" \
           << "--rebuild" << "--autoremove" << "--mark-auto ALL" \
           << "--mark-manual ALL" << "--mark-auto ALL -f" << "--clean" \
-          << "--clean -f" << ""
+          << "--clean -f" << "" << "-u ALL -b ALL" \
+          << "-u ALL -a riscv64 -b licheerv-nano" \
+          << "-a riscv64" << "-b licheerv-nano" \
+          << "-a riscv64 -b licheerv-nano"
+
 
     lines = lines.uniq
     lines += lines.map { |l| "#{l} -d".strip }

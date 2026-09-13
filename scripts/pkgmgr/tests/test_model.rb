@@ -193,6 +193,74 @@ class TestModel < Minitest::Test
     refute_includes names, ["rv_only", "tilck-i386"]
   end
 
+  # -b is to the board what -a is to the arch: a scope for -s, every
+  # board of the arch for ALL; a filter for -u. A board belongs to one
+  # arch, so a name the arch does not have, or a name beside -a ALL,
+  # is refused before anything is touched.
+  def test_install_with_b_ALL_covers_every_board_of_the_arch
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[riscv64]),
+            Model::Shape.make("gcc-riscv64-musl", :cross_cc,
+                              target_arch: "riscv64"))
+    o = go(r, Model.world, "-s t -a riscv64 -b ALL",
+           inv(arch: I386, board: "pc"))
+
+    assert_equal 0, o.rc, o.out
+    at = o.world.select { |x| x.name == "t" }.map { |x| x.coords }.to_set
+    assert_equal [tgt(RV, "qemu-virt"), tgt(RV, "licheerv-nano")].to_set, at
+  end
+
+  def test_install_at_a_named_board
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[riscv64]),
+            Model::Shape.make("gcc-riscv64-musl", :cross_cc,
+                              target_arch: "riscv64"))
+    o = go(r, Model.world, "-s t -b licheerv-nano",
+           inv(arch: RV, board: "qemu-virt"))
+
+    assert_equal 0, o.rc, o.out
+    at = o.world.select { |x| x.name == "t" }.map { |x| x.coords }
+    assert_equal [tgt(RV, "licheerv-nano")], at
+  end
+
+  def test_a_board_of_another_arch_is_refused_at_the_door
+    r = reg(Model::Shape.make("t", :target))
+    w = Model.world(k("t", "1.0.0", tgt(I386, "pc"), record: :changed))
+
+    o = go(r, w, "-s t -b licheerv-nano -f", inv)
+    assert_equal 1, o.rc
+    assert_equal w, o.world, "refused, so -f removed nothing"
+
+    o = go(r, w, "-s t -a ALL -b pc", inv)
+    assert_equal 1, o.rc
+    assert_equal w, o.world
+
+    o = go(r, w, "-u t -b licheerv-nano", inv)
+    assert_equal 1, o.rc
+    assert_equal w, o.world
+  end
+
+  def test_uninstall_with_b_selects_boards_of_the_arch_only
+    r = reg(Model::Shape.make("t", :target))
+    w = Model.world(k("t", "1.0.0", tgt(I386, "pc")),
+                    k("t", "1.0.0", tgt(RV, "qemu-virt")),
+                    k("t", "1.0.0", tgt(RV, "licheerv-nano")))
+
+    # -b ALL from an i386 shell: i386's boards, which is pc alone.
+    o = go(r, w, "-u t -b ALL", inv)
+    assert_equal 0, o.rc
+    assert_equal [tgt(RV, "qemu-virt"), tgt(RV, "licheerv-nano")].to_set,
+                 o.world.map(&:coords).to_set
+
+    o = go(r, w, "-u t -a riscv64 -b ALL", inv)
+    assert_equal [tgt(I386, "pc")], o.world.map(&:coords)
+
+    o = go(r, w, "-u t -a riscv64 -b licheerv-nano", inv)
+    assert_equal [tgt(I386, "pc"), tgt(RV, "qemu-virt")].to_set,
+                 o.world.map(&:coords).to_set
+
+    o = go(r, w, "-u ALL -b ALL", inv(arch: RV, board: "qemu-virt"))
+    assert_equal [tgt(I386, "pc")], o.world.map(&:coords)
+  end
+
   # --upgrade installs the new default beside an old DEFAULT install
   # and leaves a pinned one alone.
   def test_upgrade_moves_defaults_and_leaves_pins

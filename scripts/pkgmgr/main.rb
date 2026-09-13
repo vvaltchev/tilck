@@ -458,6 +458,7 @@ module Main
       skip_install_pkgs: false,
       just_context: false,
       dry_run: false,
+      board: nil,
       list: false,
       list_installable: false,
       deps: [],
@@ -676,7 +677,8 @@ module Main
     }
 
     p.on('--system-tests',
-         'After unit tests: install all pkgs, build for all archs [FLAG]') {
+         'After unit tests: install all pkgs and build Tilck for the',
+         'archs -a names and the boards -b names [FLAG]') {
       @opts[:system_tests] = true
     }
 
@@ -875,6 +877,23 @@ module Main
     end
 
     p.on(
+      '-b', '--board BOARD',
+      'Board of the target arch for the current operation, the way -a',
+      'names the arch: a scope for the modes that build (-s and the',
+      'default install), a filter for -u and the marks. A board belongs',
+      'to one arch, so a name is refused with -a ALL. The special value',
+      'ALL means every board of the arch. [OPTION]'
+    ) do |value|
+
+      known = ALL_ARCHS.values.any? { |a| a.all_boards.include?(value) }
+      if value != "ALL" && !known
+        raise OptionParser::InvalidArgument, "Unknown board: #{value}"
+      end
+
+      @opts[:board] = value
+    end
+
+    p.on(
       '-q', 'Be quiet: skip the bootstrap logging [FLAG]'
     ) { @opts[:quiet] = 1 }
 
@@ -956,11 +975,21 @@ module Main
     return opts
   end
 
-  # The arch an invocation is about: `-a <arch>` when given, else the
-  # shell's. This is the one place the CLI turns ARCH into a scope;
-  # everything below the boundary reads the scope it is handed.
-  def requested_arch(arch_opt)
-    return arch_opt ? ALL_ARCHS[arch_opt] : ARCH
+  # The scope a query (--list-installable, --deps) is asked at: the
+  # invocation's, at the arch -a names and the board -b names. ALL on
+  # either is the scope's own -- a query is asked at one place. A
+  # board the arch does not have is refused here, as the planner
+  # refuses it for the modes it plans (Planner.board_refusal); nil,
+  # having said why.
+  def requested_scope(scope, o)
+    arch = ALL_ARCHS[o[:arch]] || scope.arch
+    board = o[:board] == "ALL" ? nil : o[:board]
+    if board && !arch.all_boards.include?(board)
+
+      error "Unknown board #{board} for #{arch.name}"
+      return nil
+    end
+    return scope.with(arch: arch, board: board)
   end
 
   # The parsed options as a Request (request.rb): the one value the
@@ -992,6 +1021,7 @@ module Main
     arch = if o[:arch] == "ALL" then :all
            elsif o[:arch] then ALL_ARCHS.fetch(o[:arch])
            end
+    board = o[:board] == "ALL" ? :all : o[:board]
     cc = case o[:compiler]
          when nil, "syscc" then o[:compiler]
          when "ALL"        then :all
@@ -1000,8 +1030,8 @@ module Main
     stack = o[:host_gcc] ? Coords.parse_stack(o[:host_gcc]) : nil
 
     return Request.make(mode, targets: targets, force: o[:force],
-                        dry: o[:dry_run], arch: arch, cc: cc, stack: stack,
-                        contrib: !!o[:contrib])
+                        dry: o[:dry_run], arch: arch, board: board, cc: cc,
+                        stack: stack, contrib: !!o[:contrib])
   end
 
   # -H names a stack, either as it is spelled everywhere else --
@@ -1140,6 +1170,7 @@ module Main
       args << "--all-build-types" if options[:all_build_types]
       args << "--run-also-tilck-tests" if options[:run_tilck_tests]
       args << "--test-arch" << options[:arch] if options[:arch]
+      args << "--test-board" << options[:board] if options[:board]
       args += options[:test_args] if options[:test_args]
       # exec into a fresh Ruby process so Coverage.start runs before
       # any pkgmgr modules are loaded (coverage only tracks files
@@ -1203,7 +1234,8 @@ module Main
       # order so a consumer installing in listed order keeps each -s
       # step small. Respects -a <arch>: `--list-installable -a riscv64`
       # shows riscv64's set. See Planner.installable for the tags.
-      sc = scope.with(arch: requested_arch(options[:arch]))
+      sc = requested_scope(scope, options)
+      return 1 if sc.nil?
       for name, tag in Planner.installable(pkgmgr, sc) do
         puts "#{name} #{tag}"
       end
@@ -1211,7 +1243,8 @@ module Main
     end
 
     if !options[:deps].blank?
-      sc = scope.with(arch: requested_arch(options[:arch]))
+      sc = requested_scope(scope, options)
+      return 1 if sc.nil?
       begin
         graph = Planner.graph(pkgmgr, sc)
         installed = Set.new
@@ -1260,7 +1293,11 @@ module Main
   def run_outcome(out, req, scope)
     out.notes.each { |n| info n }
     for act in out.acts do
-      info "Architecture: #{act.arch.name}" if act.arch
+      if act.arch
+        info "Architecture: #{act.arch.name}" +
+             (act.board ? ", board: #{act.board}" : "")
+      end
+
       act.notes.each { |n| info n }
       rc = run_act(act, req, scope)
       return rc if rc != 0

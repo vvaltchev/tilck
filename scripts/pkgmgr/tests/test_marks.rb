@@ -130,6 +130,28 @@ class TestMarks < Minitest::Test
     end
   end
 
+  # A version on the target follows -u's rule: none named is the
+  # default if it is here, ALL is every one here.
+  def test_mark_ALL_takes_every_version_and_none_takes_the_default
+    with_fake_tc do
+      with_stubbed_externals do
+        t = FakePackage.new("t")
+        pkgmgr.register(t)
+        run_cli("-s", "t", "-q")
+        run_cli("-s", "t:2.0.0", "-q")
+
+        rc, _ = run_cli("--mark-auto", "t", "-q")
+        assert_equal 0, rc
+        assert_equal :auto, mark_of(t, "1.0.0")
+        assert_equal :manual, mark_of(t, "2.0.0")
+
+        rc, _ = run_cli("--mark-auto", "t:ALL", "-q")
+        assert_equal 0, rc
+        assert_equal :auto, mark_of(t, "2.0.0")
+      end
+    end
+  end
+
   def test_mark_dry_run_writes_nothing
     with_fake_tc do
       with_stubbed_externals do
@@ -158,6 +180,30 @@ class TestMarks < Minitest::Test
         by_machine = marks(t).to_h { |(_, c), m| [c.machine, m] }
         assert_equal({ "tilck-i386" => :manual, "tilck-riscv64" => :auto },
                      by_machine)
+      end
+    end
+  end
+
+  # -b narrows the same way, to every board of the arch for ALL --
+  # not the arch's default board alone.
+  def test_mark_takes_the_board_modifier
+    with_fake_tc do
+      with_stubbed_externals do
+        t = FakePackage.new("t")
+        pkgmgr.register(t)
+        with_context(ARCH: I386, BOARD: nil) { pkgmgr.install("t") }
+        with_context(ARCH: RV, BOARD: "qemu-virt") { pkgmgr.install("t") }
+        with_context(ARCH: RV, BOARD: "licheerv-nano") { pkgmgr.install("t") }
+
+        with_context(ARCH: I386, BOARD: nil) do
+          rc, _ = run_cli("--mark-auto", "t", "-a", "riscv64", "-b", "ALL",
+                          "-q")
+          assert_equal 0, rc
+        end
+
+        by_env = marks(t).to_h { |(_, c), m| [c.env, m] }
+        assert_equal({ "pc" => :manual, "qemu-virt" => :auto,
+                       "licheerv-nano" => :auto }, by_env)
       end
     end
   end

@@ -118,6 +118,122 @@ class TestCliMatrix < Minitest::Test
     end
   end
 
+  # -b narrows the same way -a does: every board of the arch for ALL,
+  # one board by name -- and only the arch's, since a board belongs
+  # to one arch.
+  def test_u_with_b_ALL_removes_every_board_of_the_arch
+    with_fake_tc do
+      with_stubbed_externals do
+        install_target_spread
+        before = snapshot
+
+        rc, _ = with_context(ARCH: ALL_ARCHS[RV], BOARD: "qemu-virt") {
+          run_cli("-u", "spread", "-b", "ALL", "-q")
+        }
+        assert_equal 0, rc
+
+        gone = before - snapshot
+        assert_equal 2, gone.length,
+                     "removed #{gone.length} trees, not two:\n" + gone.join("\n")
+        assert gone.all? { |p| p.include?("tilck-riscv64/") },
+               "-b ALL reached another arch:\n#{gone.join("\n")}"
+      end
+    end
+  end
+
+  def test_u_with_a_named_board_removes_that_board_only
+    with_fake_tc do
+      with_stubbed_externals do
+        install_target_spread
+        before = snapshot
+
+        # From an i386 shell: -a names the arch, -b its board.
+        rc, _ = run_cli("-u", "spread", "-a", "riscv64",
+                        "-b", "licheerv-nano", "-q")
+        assert_equal 0, rc
+
+        gone = before - snapshot
+        assert_equal 1, gone.length,
+                     "removed #{gone.length} trees, not one:\n" + gone.join("\n")
+        assert_includes gone.first, "tilck-riscv64/licheerv-nano/"
+      end
+    end
+  end
+
+  # An orphan has no package to say where it lives, so -b is read as
+  # a coordinate: the board's env, every env for ALL.
+  def test_u_of_an_orphan_reads_b_as_a_coordinate
+    with_fake_tc do
+      with_stubbed_externals do
+        install_target_spread
+        reset_pkgmgr!                       # unclaimed: four orphans now
+        pkgmgr.refresh
+
+        # No package claims them, so they are counted on disk.
+        on_disk = -> { Dir.glob("#{TC}/tilck-*/*/*/pkgs/spread/*").sort }
+        before = on_disk.call
+        assert_equal 4, before.length, before.join("\n")
+
+        rc, _ = run_cli("-u", "spread", "-a", "riscv64",
+                        "-b", "licheerv-nano", "-q")
+        assert_equal 0, rc
+        gone = before - on_disk.call
+        assert_equal 1, gone.length, gone.join("\n")
+        assert_includes gone.first, "tilck-riscv64/licheerv-nano/"
+
+        rc, _ = run_cli("-u", "spread", "-a", "riscv64", "-b", "ALL", "-q")
+        assert_equal 0, rc
+        gone = before - on_disk.call
+        assert_equal 2, gone.length, gone.join("\n")
+        assert gone.all? { |p| p.include?("tilck-riscv64/") }
+      end
+    end
+  end
+
+  # A board means nothing to a package that has no board: -b names
+  # nothing of theirs, so it selects nothing -- as -a does.
+  def test_u_with_b_selects_no_host_or_noarch_package
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("noarch_foo", arch_list: nil))
+        pkgmgr.register(FakePackage.new("host_thing", on_host: true,
+                                        host_tier: :distro))
+        pkgmgr.install("noarch_foo")
+        pkgmgr.install("host_thing")
+        before = snapshot
+
+        for name in %w[noarch_foo host_thing] do
+          rc, out = run_cli("-u", name, "-b", "ALL", "-q")
+          assert_equal 0, rc
+          assert_match(/nothing matched/, out)
+          rc, out = run_cli("-u", name, "-b", "pc", "-q")
+          assert_equal 0, rc
+          assert_match(/nothing matched/, out)
+        end
+        assert_equal before, snapshot, "-b took a package with no board"
+      end
+    end
+  end
+
+  def test_u_ALL_with_b_ALL_takes_every_board_of_the_arch_only
+    with_fake_tc do
+      with_stubbed_externals do
+        install_target_spread
+        before = snapshot
+
+        rc, _ = with_context(ARCH: ALL_ARCHS[RV], BOARD: "qemu-virt") {
+          run_cli("-u", "ALL", "-b", "ALL", "-q")
+        }
+        assert_equal 0, rc
+
+        gone = before - snapshot
+        spread = gone.select { |p| p.include?("/spread/") }
+        assert_equal 2, spread.length, gone.join("\n")
+        assert spread.all? { |p| p.include?("tilck-riscv64/") }
+      end
+    end
+  end
+
   # A dry run is a question, not a command.
   def test_u_dry_run_removes_nothing
     with_fake_tc do

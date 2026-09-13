@@ -100,8 +100,8 @@ The package manager handles three categories of packages:
 # Run with code coverage
 ./scripts/build_toolchain -t --coverage
 
-# System tests: install all packages + build for all architectures
-./scripts/build_toolchain -t --system-tests -a ALL
+# System tests: install all packages + build for every arch and board
+./scripts/build_toolchain -t --system-tests -a ALL -b ALL
 
 # Dry-run: see what would happen without executing
 ./scripts/build_toolchain -t -d --system-tests --all-build-types -a ALL
@@ -182,6 +182,14 @@ until an install for one silently answered for the other: `-s ALL` with
 left the board without a C library — every package reporting as already
 installed on the strength of the qemu-virt build in a different
 directory.
+
+The board is named the way the arch is: `BOARD=` in the environment, or
+`-b <board>` beside `-a <arch>`. `-b` is a scope for the modes that
+build (`-s`, the default install) and a filter for `-u` and the marks,
+and `-b ALL` means every board of the arch — `-s zlib -a riscv64 -b ALL`
+builds zlib for qemu-virt and for licheerv-nano, `-u zlib -b ALL` takes
+both. A board belongs to one arch, so a name is refused for an arch
+that does not have it, and refused beside `-a ALL` (use `-b ALL`).
 
 **New axes become values, never levels.** A fourth coordinate would put
 the schema back where toolchain4 ended up, with a directory name whose
@@ -576,7 +584,7 @@ leaving what another QEMU or the user still wants.
 
 `--mark-manual PKG[:VER]` and `--mark-auto PKG[:VER]` move an install from
 one side to the other. They select exactly what `-u` would with the same
-arguments — the same `-a`, `-c`, version and `ALL` rules, the cross
+arguments — the same `-a`, `-b`, `-c`, version and `ALL` rules, the cross
 compilers left out of `ALL` unless `-f` — and `-d` shows the selection
 without writing it.
 
@@ -769,8 +777,12 @@ System tests install real packages, build Tilck, and optionally run Tilck's
 own test suites:
 
 ```bash
-# Install all packages + build for all architectures
+# Install all packages + build for all architectures, at their default board
 ./scripts/build_toolchain -t --system-tests -a ALL
+
+# ...for every board of every arch (i386/pc, x86_64/pc, riscv64/qemu-virt,
+# riscv64/licheerv-nano)
+./scripts/build_toolchain -t --system-tests -a ALL -b ALL
 
 # Also run all 11 build generator configurations
 ./scripts/build_toolchain -t --system-tests --all-build-types -a ALL
@@ -785,8 +797,12 @@ own test suites:
 ./scripts/build_toolchain -t -d --system-tests --all-build-types -a ALL
 ```
 
-System tests wipe the toolchain (except cache and Ruby) before each architecture,
-then install all default + optional packages from the cached archives.
+System tests wipe the toolchain once (keeping the cache, Ruby and the host
+world), then, for each target -- an arch at a board -- install every default
+and optional package from the cached archives and build Tilck with the
+`EXTRA_*` flags of the optional packages installed. Tilck's own tests run
+only at an arch's default board, which is the one QEMU boots.
+
 
 ### Correctness guarantees
 

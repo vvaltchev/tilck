@@ -102,15 +102,18 @@ end
 # target for -u -- and the world every plan leaves, threaded through
 # Plan#apply. An act is a plan with what to say beside it: the roots
 # the request named (for the tree main draws), the arch when the run
-# is per arch, notes to print first, and which of the builds are
-# upgrades. An act with no plan is a note alone (an arch skipped). A
-# dry run has its acts and leaves the world as it was. `message` is
-# why the exit code is not zero, or nil.
-Act = Data.define(:plan, :roots, :arch, :notes, :upgrades) do
-  def self.make(plan, roots: [], arch: nil, notes: [], upgrades: [])
-    new(plan: plan, roots: roots, arch: arch, notes: notes,
+# is per arch and the board when it is per board too, notes to print
+# first, and which of the builds are upgrades. An act with no plan is
+# a note alone (an arch skipped). A dry run has its acts and leaves
+# the world as it was. `message` is why the exit code is not zero, or
+# nil.
+Act = Data.define(:plan, :roots, :arch, :board, :notes, :upgrades) do
+  def self.make(plan, roots: [], arch: nil, board: nil, notes: [],
+                upgrades: [])
+    new(plan: plan, roots: roots, arch: arch, board: board, notes: notes,
         upgrades: upgrades)
   end
+
 end
 
 Outcome = Data.define(:rc, :world, :acts, :notes, :message) do
