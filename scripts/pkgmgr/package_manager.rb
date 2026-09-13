@@ -479,8 +479,12 @@ class PackageManager
       inst = world.of(m.name).find { |i| !i.path.nil? && !i.broken }
       held = inst ? held_by([inst], needs).length - 1 : 0
       here = m.at(scope).supported? ? "  [ CURRENT ]" : ""
-      printf("%-28s %s %3d pkgs%s\n", m.name, Package.stack_cell(!inst.nil?),
-             held, here)
+      # The compiler, as the stack's manifest names it: what the
+      # host stacks say in their own column.
+      manifest = inst ? StackManifest.read(inst.coords) : nil
+      cc = manifest ? "  #{manifest}" : ""
+      printf("%-28s %s %3d pkgs%s%s\n", m.name,
+             Package.stack_cell(!inst.nil?), held, cc, here)
     end
   end
 
@@ -501,9 +505,16 @@ class PackageManager
     built = compilers.map { |i| StackId.of(i.ver) }
 
     # Every stack the compiler could define, and every one on disk --
-    # a variant or foreign stack among them, listed as it is.
+    # a variant or foreign stack among them, listed as it is. A stack
+    # is built when its compiler is where its manifest says, whatever
+    # this invocation would call that place today; a stack from before
+    # the record, when the compiler of its version is installed.
+    on_disk = host_stacks(host: scope.host)
     known = (gcc.installable_versions.map { |v| StackId.of(v) } + built +
-             host_stacks).uniq.sort
+             on_disk).uniq.sort
+    built |= on_disk.select { |id|
+      !gcc.at(scope).stack_compiler_dir(id.ver).nil?
+    }
 
     needs ||= install_graph(scope: scope).last
 

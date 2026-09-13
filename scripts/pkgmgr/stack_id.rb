@@ -24,8 +24,11 @@
 #
 require_relative 'version'
 
-StackId = Data.define(:family, :ver, :variant) do
+StackId = Data.define(:family, :ver, :variant)
 
+# The constants live on the class: inside the define block they would
+# land at the top level, as GCC and GRAMMAR of everything.
+class StackId
   GRAMMAR = /\A([a-z][a-z0-9_]*)-(\d+(?:\.\d+)*)(?:-([a-z0-9][a-z0-9_.-]*))?\z/
 
   # The one family the tool builds into today.

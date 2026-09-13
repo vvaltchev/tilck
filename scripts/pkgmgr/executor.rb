@@ -19,6 +19,7 @@
 #
 
 require_relative 'plan'
+require_relative 'stack_manifest'
 # InstallOrigin and InstallDeps are package.rb's, loaded by the time
 # anything here runs.
 
@@ -70,7 +71,62 @@ module Executor
       end
     end
     recompose_all if removed
+    write_missing_manifests(registry)
     return failed
+  end
+
+  # A stack from before manifests gets one, derived the way the code
+  # used to guess: from the compiler install whose version it names,
+  # wherever that install is now. Once per run, after the actions,
+  # so that a tree from before the record catches up the first time
+  # anything is written to it and never needs telling.
+  def write_missing_manifests(registry)
+    scope = pkgmgr.env_scope
+    for pkg in registry.all_packages do
+      for inst in pkgmgr.world.of(pkg.name) do
+        next if inst.broken
+        bound = pkg.at(scope, world: pkgmgr.world)
+        pairs = bound.stacks_defined(inst.ver, InstallDeps.read(inst.path),
+                                     compiler_at: inst.coords)
+        for c, m in pairs do
+          next if !c.root.directory? || StackManifest.read(c)
+          StackManifest.write(c, m)
+        end
+      end
+    end
+
+    # A host stack whose compiler the world no longer sees -- the
+    # distro env moved, and the compiler is under the old one -- is
+    # exactly the stack that needs its manifest most. Its compiler is
+    # looked for under every env of this host, by the version the
+    # stack names, and recorded where it is found.
+    gcc = pkgmgr.stack_compiler
+    return if gcc.nil?
+    bound = gcc.at(scope, world: pkgmgr.world)
+    for id in pkgmgr.host_stacks(host: scope.host) do
+      stack = pkgmgr.stack_coords(id, host: scope.host)
+      next if StackManifest.read(stack)
+      at = compiler_anywhere(bound, id.ver, scope.host)
+      next if at.nil?
+      dir = bound.pkg_dir_at(at) / bound.ver_dirname(id.ver)
+      for c, m in bound.stacks_defined(id.ver, InstallDeps.read(dir),
+                                       compiler_at: at) do
+        StackManifest.write(c, m) if !StackManifest.read(c)
+      end
+    end
+  end
+
+  # The coordinates under `host`'s machine, whatever the env, holding
+  # a complete install of `pkg` at `ver`; nil when none does.
+  def compiler_anywhere(pkg, ver, host)
+    machine = TC / host.machine
+    return nil if !machine.directory?
+    for env in Dir.children(machine).sort do
+      c = Coords.new(host.machine, env, nil)
+      dir = pkg.pkg_dir_at(c) / pkg.ver_dirname(ver)
+      return c if dir.directory? && pkg.check_install_dir(dir, ver)
+    end
+    return nil
   end
 
   def recompose_all
@@ -188,6 +244,13 @@ module Executor
       pkg.at(sc, versions: action.bound).write_build_inputs(i)
     end
     pkgmgr.installs_changed!
+
+    # The stacks this install defines, if any -- a compiler's -- said
+    # where they live, so that nothing has to guess a stack's compiler
+    # from its name.
+    for c, m in pkg.stacks_defined(ver, action.against) do
+      StackManifest.write(c, m)
+    end
 
     # The sysroot is a view over what is installed, so it is stale the
     # moment that changes. Recomposed whenever the package contributes

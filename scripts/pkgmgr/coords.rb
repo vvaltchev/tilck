@@ -103,6 +103,14 @@ class Coords
   # The three coordinates as a path fragment, for messages.
   def to_s = @key
 
+  # The inverse of to_s: what a record wrote, read back. Exactly three
+  # levels, as the schema promises.
+  def self.from_s(str)
+    parts = str.to_s.split("/")
+    raise ArgumentError, "not coordinates: #{str.inspect}" if parts.length != 3
+    return new(*parts)
+  end
+
   def ==(other)
     return false if !other.is_a?(Coords)
     return to_s == other.to_s

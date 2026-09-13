@@ -171,6 +171,20 @@ class HostGccPackage < Package
   # offered to take the glibc of every other stack.
   def stack_of_install(inst) = stack_gcc_ver(inst.ver)
 
+  # The host stack this version defines: its manifest names this
+  # compiler, where this host keeps it, the glibc it was built with,
+  # and the host that built it.
+  def stacks_defined(ver, against, compiler_at: nil)
+    stack = pkgmgr.stack_coords(ver, host: scope.host)
+    at = compiler_at || coords(ver)
+    return [[stack, StackManifest.new(kind: :host, compiler_name: name,
+                                      compiler_ver: ver,
+                                      compiler_at: at.to_s,
+                                      libc: "host_glibc",
+                                      libc_ver: against["host_glibc"],
+                                      host: scope.host.to_s)]]
+  end
+
   # The stack's compiler runtime comes from the gcc that NAMES the
   # stack, so composing gcc-11.5.0 grafts 11.5.0's libstdc++ even when
   # another gcc is the default. Its binaries go in beside, at usr/bin:
@@ -181,11 +195,11 @@ class HostGccPackage < Package
   def sysroot_fragments(gcc_ver = nil)
 
     gcc_ver ||= default_ver
-    inst = find_install(gcc_ver)
-    return [] if inst.nil?
+    dir = stack_compiler_dir(gcc_ver)
+    return [] if dir.nil?
 
-    lib64 = inst.path / "install" / "lib64"
-    frags = [[inst.path / "install" / "bin", "usr/bin"]]
+    lib64 = dir / "install" / "lib64"
+    frags = [[dir / "install" / "bin", "usr/bin"]]
     frags << [lib64, "usr/lib"] if lib64.directory?
     return frags
   end

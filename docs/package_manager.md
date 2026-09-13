@@ -227,6 +227,35 @@ host compiler — a GCC bump can change the C++ ABI, so the whole set is
 rebuilt beside the old one rather than in place, and several stacks
 coexist as siblings without a new level.
 
+A stack says what it is made of in a manifest at its own root,
+`<machine>/<env>/<stack>/stack.conf` (`scripts/pkgmgr/stack_manifest.rb`),
+one format for host stacks and Tilck stacks alike:
+
+```
+format      1
+kind        host | target
+compiler    <package> <version>
+compiler_at <machine>/<env>/<stack>     host stacks only
+libc        <package> <version>
+host        <machine> <distro> <cc>     host stacks only
+```
+
+A stack's compiler does not live in the stack it defines -- `host_gcc` is
+a `:distro` package under the distro's env, a cross compiler a `:portable`
+one under the host's -- and the association used to be a naming
+coincidence, the stack `gcc-14.4.0` being `host_gcc 14.4.0`'s because
+both spell 14.4.0. The manifest records it instead, written by the executor
+when a compiler is installed (`Package#stacks_defined`) and backfilled for
+stacks from before the record the first time anything is written to the
+tree. A host stack is one machine's, so its compiler's coordinates are
+recorded as written, and the listing and the sysroot composition find the
+compiler there even after the distro env has moved underneath it. A
+target stack is every host's -- a Linux and a Darwin host both build into
+`tilck-i386/pc/gcc-13.3.0/` with their own prebuilt cross compiler -- so
+its manifest names the compiler by identity and each host locates its own
+copy through the registry. Unknown keys are ignored, so a later format can
+add fields.
+
 The tier is **declared** per package and never inferred from a build's
 outcome: `--prefix` and RPATH are baked in at configure time, so the
 directory has to be known before anything is built. The portability audit

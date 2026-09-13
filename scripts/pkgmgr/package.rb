@@ -8,6 +8,7 @@ require_relative 'source_ref'
 require_relative 'package_manager'
 require_relative 'build_env'
 require_relative 'coords'
+require_relative 'stack_manifest'
 require_relative 'scope'
 require_relative 'world'
 require_relative 'planner'
@@ -1488,6 +1489,29 @@ class Package
       default_install: default_install, manual: manual, coords: c,
       record: :ok
     ))
+  end
+
+  # The stacks an install of `ver` DEFINES, as [coords, manifest]
+  # pairs: a compiler's answer (host_gcc names the host stack of its
+  # version, a cross compiler the target stack of its version at
+  # every board of its arch), empty for everything else. `against` is
+  # what the install was built against, for the libc the stack holds;
+  # `compiler_at` is where the install is -- its own coordinates when
+  # it is being built, or wherever a record found it.
+  def stacks_defined(ver, against, compiler_at: nil) = []
+
+  # This host's install of this package as the compiler of the host
+  # stack of `ver`: where that stack's manifest says it is -- which
+  # survives the distro env moving underneath it -- else where this
+  # package would put it today. A directory, or nil. Asked of the
+  # stack compiler by the listing and by the sysroot composition.
+  def stack_compiler_dir(ver)
+    m = StackManifest.read(pkgmgr.stack_coords(ver, host: scope.host))
+    if m && (c = m.compiler_coords) && m.compiler_name == name
+      dir = pkg_dir_at(c) / ver_dirname(ver)
+      return dir if check_install_dir(dir, ver)
+    end
+    return find_install(ver)&.path
   end
 
   # What a package adds to the reading of each of its installs: a

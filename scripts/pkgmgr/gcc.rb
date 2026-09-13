@@ -43,6 +43,20 @@ class GccCompiler < Package
     )
   end
 
+  # The target stacks this version defines: one per board of its
+  # arch, each with the same manifest -- this compiler, by identity,
+  # and the musl it bundles. No compiler_at and no host: a target
+  # stack is every host's, and each locates its own copy of the
+  # compiler through the registry.
+  def stacks_defined(ver, against, compiler_at: nil)
+    m = StackManifest.new(kind: :target, compiler_name: name,
+                          compiler_ver: ver, compiler_at: nil, libc: libc,
+                          libc_ver: VER_MUSL, host: nil)
+    return target_arch.all_boards.map { |b|
+      [Coords.new("tilck-#{target_arch.name}", b, Coords.stack_name(ver)), m]
+    }
+  end
+
   def expected_files(ver = nil) = [
     "bin/#{target_arch.gcc_tc}-linux-gcc",
     "bin/#{target_arch.gcc_tc}-linux-g++",

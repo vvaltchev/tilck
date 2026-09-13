@@ -35,7 +35,8 @@ module Mutation
   MAIN_DIR = File.expand_path("../..", PKGMGR)      # the repository
 
   # Whole files in scope.
-  FILES = %w[coords.rb stack_id.rb host.rb install_selector.rb dep_resolver.rb
+  FILES = %w[coords.rb stack_id.rb host.rb stack_manifest.rb
+             install_selector.rb dep_resolver.rb
              version_solver.rb build_inputs.rb layout.rb
              tilck_stack.rb planner.rb plan.rb request.rb].freeze
 
