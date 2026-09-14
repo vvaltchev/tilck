@@ -44,17 +44,41 @@ module VersionSolver
   # and is named here.
   class CycleError < StandardError; end
 
-  # A walk over a lambda-defined graph has no edge count to bound it
-  # by up front, so it keeps a budget as it goes: every entry it
-  # dequeues was a root or a dependency of a name it expanded, so the
-  # dequeues can never exceed the roots plus the dependencies seen.
-  # One more is a walk that is broken -- a queue fed nils, a loop
-  # condition inverted -- and it stops.
+  # INTERNAL ERROR: a walk that cannot end, which only a bug in this
+  # code can produce. Never a user's mistake and never a property of
+  # the packages: a cycle is named as CycleError, a conflict as
+  # ConflictError, and this is neither. It exists because the package
+  # manager once sat in an infinite loop, and a hang is the one
+  # failure nothing downstream can report; raising is what turns a
+  # hung terminal into a stack trace naming the bug.
   #
-  # The budget cannot see a graph that is simply infinite (every name
-  # depending on a new one), because such a graph pays for each step
-  # as it takes it. That is what the cap on distinct names is for. No
-  # closure in this tree comes to a tenth of it.
+  # Two tripwires, for two ways a walk breaks:
+  #
+  #   the step budget   a walk over a lambda-defined graph has no edge
+  #                     count to bound it by up front, so it keeps a
+  #                     budget as it goes: every entry it dequeues was
+  #                     a root or a dependency of a name it expanded,
+  #                     so the dequeues can never exceed the roots
+  #                     plus the dependencies seen. One more is a
+  #                     queue fed nils, or a loop condition inverted.
+  #
+  #   MAX_NAMES         the budget cannot see a graph that is simply
+  #                     infinite -- a dep_list_for that answers a new
+  #                     name on every call -- because such a graph
+  #                     pays for each step as it takes it, and the
+  #                     `seen` set that keeps a diamond from being
+  #                     expanded twice grows without bound. So the
+  #                     distinct names are capped, at a number no
+  #                     honest closure comes near: the biggest in
+  #                     this tree is a QEMU stack, 55 names, and a
+  #                     registry of a thousand packages is still a
+  #                     closure of at most a thousand. Reaching it is
+  #                     a bug in dep_list_for or in this walk, and the
+  #                     message says so.
+  #
+  # The number is deliberately NOT derived from the registry: the walk
+  # asks a lambda, not a registry, and a bound that read the registry
+  # would be answered by the same code it is meant to distrust.
   class NonTerminatingWalk < StandardError; end
 
   MAX_NAMES = 1_000
@@ -125,7 +149,11 @@ module VersionSolver
       steps += 1
 
       if steps > budget
-        raise NonTerminatingWalk, "version walk from #{roots.map(&:first)}"
+        raise NonTerminatingWalk,
+              "INTERNAL ERROR (a bug in the package manager, not in " \
+              "the packages): the version walk from " \
+              "#{roots.map(&:first)} took more steps than its graph " \
+              "has edges"
       end
 
       if path[0...-1].include?(name)
@@ -138,8 +166,12 @@ module VersionSolver
       seen.add(name)
 
       if seen.size > MAX_NAMES
-        raise NonTerminatingWalk, "more than #{MAX_NAMES} names from " \
-                                  "#{roots.map(&:first)}"
+        raise NonTerminatingWalk,
+              "INTERNAL ERROR (a bug in the package manager, not in " \
+              "the packages): the version walk from " \
+              "#{roots.map(&:first)} reached more than #{MAX_NAMES} " \
+              "distinct names, which no closure has; a dep_list_for " \
+              "is answering new names without end"
       end
 
       # mutation: equivalent -- the fixpoint iteration reaches the same binding

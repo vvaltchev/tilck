@@ -18,11 +18,14 @@ module DepResolver
   class CycleError < StandardError; end
   class MissingDepError < StandardError; end
 
-  # A walk that took more steps than a finite graph allows. Not a
-  # cycle -- cycles are named as such -- but a walk that is broken:
-  # a loop condition inverted, a queue fed nils, a graph that grows
-  # under the walk. Raised rather than hung, because a hang is the
-  # one failure that nothing downstream can report.
+  # INTERNAL ERROR: a walk that took more steps than a finite graph
+  # allows, which only a bug in this code can produce. Not a cycle --
+  # cycles are named as such -- but a walk that is broken: a loop
+  # condition inverted, a queue fed nils, a graph that grows under
+  # the walk. Raised rather than hung, because the package manager
+  # once sat in an infinite loop and a hang is the one failure that
+  # nothing downstream can report. See VersionSolver::NonTerminatingWalk
+  # for the walks over a lambda-defined graph.
   class NonTerminatingWalk < StandardError; end
 
   module_function
@@ -128,7 +131,11 @@ module DepResolver
 
     while !queue.empty?
       n, path = queue.shift
-      raise NonTerminatingWalk, "dep_closure(#{name})" if (steps += 1) > limit
+      if (steps += 1) > limit
+        raise NonTerminatingWalk,
+              "INTERNAL ERROR (a bug in the package manager): " \
+              "dep_closure(#{name}) took more steps than its graph has edges"
+      end
       check_cycle(n, path)
       next if seen.include?(n)
       seen.add(n)
@@ -167,8 +174,12 @@ module DepResolver
 
     while !queue.empty?
       name, path = queue.shift
-      raise NonTerminatingWalk, "resolve(#{requested.join(', ')})" \
-        if (steps += 1) > limit
+      if (steps += 1) > limit
+        raise NonTerminatingWalk,
+              "INTERNAL ERROR (a bug in the package manager): " \
+              "resolve(#{requested.join(', ')}) took more steps than its " \
+              "graph has edges"
+      end
       check_cycle(name, path)
       next if needed.include?(name)  # mutation: equivalent -- a Set adds once
       next if installed.include?(name)

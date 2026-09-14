@@ -357,12 +357,17 @@ class TestWalksTerminate < Minitest::Test
     assert_match(/a -> b -> a/, e.message)
   end
 
+  # The one failure the visited set and the step budget cannot see: a
+  # dep_list_for that answers a new name on every call pays for each
+  # step and never revisits. It is a bug in our code, and the error
+  # says so rather than blaming the packages.
   def test_an_endless_version_walk_stops
     deps = ->(n, _v) { [Dep("#{n}x", true)] }
-    assert_raises(VersionSolver::NonTerminatingWalk) {
+    e = assert_raises(VersionSolver::NonTerminatingWalk) {
       VersionSolver.resolve([["a", nil]], deps_of: deps,
                             default_of: ->(_n) { Ver("1.0.0") })
     }
+    assert_match(/INTERNAL ERROR.*bug in the package manager/, e.message)
   end
 
   # The cap is exact too: a chain of exactly MAX_NAMES names resolves,
