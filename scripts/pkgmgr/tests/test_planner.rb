@@ -538,6 +538,21 @@ class TestPlanner < Minitest::Test
     end
   end
 
+  # What is behind is decided at THESE coordinates: an old default
+  # install of the same package for another arch is that arch's to
+  # upgrade, and says nothing about this one.
+  def test_an_old_install_at_other_coordinates_is_not_this_scope_s_upgrade
+    with_fake_tc do
+      t = FakePackage.new("t", versions: ["1.0.0", "2.0.0"])
+      pkgmgr.register(t)
+      fake_install(t, Ver("1.0.0"))
+      fake_install(t, Ver("0.9.0"), at: t.at(scope.with(arch: RV)).coords)
+      refute bound(t).needs_upgrade?
+      assert_equal [0, []], Planner.check_updates(pkgmgr, judged, scope)
+      assert t.at(scope.with(arch: RV), world: judged).needs_upgrade?
+    end
+  end
+
   # A compiler that declares no choice offers any version: an install
   # of it is never behind for being at one.
   def test_a_compiler_declaring_no_versions_is_never_behind
