@@ -45,10 +45,10 @@ class TestHostGccVersionDecisions < Minitest::Test
   # The regression itself: with the default at 14.4.0, asking about
   # 11.5.0 must still answer about 11.5.0.
   def test_the_answer_does_not_follow_the_default
-    assert_equal Ver("14.4.0"), @pkg.default_ver,
+    assert_equal Ver("14.4.0"), bound(@pkg).default_ver,
                  "this test assumes the default is 14.4.0"
 
-    refute_includes @pkg.version_conf_args(@pkg.default_ver),
+    refute_includes @pkg.version_conf_args(bound(@pkg).default_ver),
                     "--disable-libsanitizer"
     assert_includes @pkg.version_conf_args(Ver("11.5.0")),
                     "--disable-libsanitizer"
@@ -86,7 +86,7 @@ class TestHostGccVersionDecisions < Minitest::Test
 
   def test_the_loader_does_not_follow_the_default_either
     with_fake_tc do
-      pkgmgr.with_host_stack(Ver("16.2.0")) do
+      with_host_stack(Ver("16.2.0")) do
         assert @pkg.stack_loader(Ver("11.5.0"))
                    .include?("gcc-11.5.0"),
                "stack_loader must answer about its argument"
@@ -108,7 +108,7 @@ class TestHostGccVersionDecisions < Minitest::Test
     with_fake_tc do
       assert_equal Ver("11.5.0"),
                    @pkg.installing_ver(@pkg.staging_dir(Ver("11.5.0")))
-      refute_equal @pkg.default_ver,
+      refute_equal bound(@pkg).default_ver,
                    @pkg.installing_ver(@pkg.staging_dir(Ver("11.5.0")))
     end
   end
@@ -175,8 +175,8 @@ class TestHostGccRecipe < Minitest::Test
   # names two different sysroots -- and $SYSROOT names neither.
   def test_the_stack_sysroot_is_the_stack_the_compiler_defines
     with_fake_tc do
-      a = Package::BuildCtx.new(@pkg, @pkg.staging_dir(Ver("11.5.0")))
-      b = Package::BuildCtx.new(@pkg, @pkg.staging_dir(Ver("14.4.0")))
+      a = Package::BuildCtx.new(bound(@pkg), @pkg.staging_dir(Ver("11.5.0")))
+      b = Package::BuildCtx.new(bound(@pkg), @pkg.staging_dir(Ver("14.4.0")))
       assert_includes a.expand("$STACK_SYSROOT"), "gcc-11.5.0"
       assert_includes b.expand("$STACK_SYSROOT"), "gcc-14.4.0"
       refute_includes a.expand("$SYSROOT"), "gcc-11.5.0"
@@ -188,8 +188,8 @@ class TestHostGccRecipe < Minitest::Test
     with_fake_tc do
       p = FakePackage.new("host_lib", on_host: true, host_tier: :stack)
       pkgmgr.register(p)
-      ctx = Package::BuildCtx.new(p, p.staging_dir(Ver("1.0.0")))
-      assert_equal p.stack_sysroot.to_s, ctx.expand("$SYSROOT")
+      ctx = Package::BuildCtx.new(bound(p), p.staging_dir(Ver("1.0.0")))
+      assert_equal bound(p).stack_sysroot.to_s, ctx.expand("$SYSROOT")
       assert_equal ctx.expand("$SYSROOT"), ctx.expand("$STACK_SYSROOT")
     end
   end

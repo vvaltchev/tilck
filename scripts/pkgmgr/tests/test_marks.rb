@@ -169,8 +169,8 @@ class TestMarks < Minitest::Test
         s = FakePackage.new("host_s", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(s)
-        pkgmgr.with_host_stack(a) { pkgmgr.install("host_s") }
-        pkgmgr.with_host_stack(b) { pkgmgr.install("host_s") }
+        with_host_stack(a) { pkgmgr.install("host_s") }
+        with_host_stack(b) { pkgmgr.install("host_s") }
 
         rc, _ = run_cli("--mark-auto", "host_s", "-c", b.to_s, "-q")
         assert_equal 0, rc
@@ -334,7 +334,7 @@ class TestMarks < Minitest::Test
                               dep_list: [Dep("host_libc", true)])
         gcc.define_singleton_method(:installable_versions) { [a, b] }
         gcc.define_singleton_method(:stack_gcc_ver) { |v = nil|
-          v || pkgmgr.current_host_stack
+          v || scope.stack
         }
         gcc.define_singleton_method(:stack_of_install) { |i| i.ver }
         pkgmgr.register(libc)
@@ -342,12 +342,12 @@ class TestMarks < Minitest::Test
 
         # gcc A, asked for by name, with its libc in stack A; a libc in
         # stack B that nothing needs. The stack in effect is B.
-        pkgmgr.with_host_stack(a) {
+        with_host_stack(a) {
           pkgmgr.install("host_libc", manual: false)
           pkgmgr.install("host_gcc", a)
         }
-        pkgmgr.with_host_stack(b) { pkgmgr.install("host_libc", manual: false) }
-        pkgmgr.host_stack = b
+        with_host_stack(b) { pkgmgr.install("host_libc", manual: false) }
+        pkgmgr.default_stack = b
 
         rc, out = run_cli("--autoremove", "-q")
         assert_equal 0, rc

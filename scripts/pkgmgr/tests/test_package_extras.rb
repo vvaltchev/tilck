@@ -81,7 +81,7 @@ class TestApplyPatches < Minitest::Test
         # The patch directory exists but is empty
         with_fake_patches(pkg) do |_patch_dir|
           Dir.mktmpdir do |dir|
-            FileUtils.cd(dir) { assert pkg.apply_patches(Ver("1.0.0")) }
+            FileUtils.cd(dir) { assert bound(pkg).apply_patches(Ver("1.0.0")) }
           end
         end
       end

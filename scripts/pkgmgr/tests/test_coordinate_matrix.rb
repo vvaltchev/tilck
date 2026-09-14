@@ -92,7 +92,7 @@ class TestCoordinateMatrix < Minitest::Test
   def inst_of(pkg, ver, &scope)
     scope.call {
       pkg.get_install_list.find { |i|
-        i.ver == ver && !i.path.nil? && i.coords == pkg.coords(ver)
+        i.ver == ver && !i.path.nil? && i.coords == bound(pkg).coords(ver)
       }
     }
   end
@@ -158,8 +158,8 @@ class TestCoordinateMatrix < Minitest::Test
                         arch_list: ALL_HOST_ARCHS.values)
     pkgmgr.register(pkg)
 
-    sa = ->(&blk) { pkgmgr.with_host_stack(STACK_A, &blk) }
-    sb = ->(&blk) { pkgmgr.with_host_stack(STACK_B, &blk) }
+    sa = ->(&blk) { with_host_stack(STACK_A, &blk) }
+    sb = ->(&blk) { with_host_stack(STACK_B, &blk) }
 
     sa.call { pkgmgr.install("host_stacky") }
     sb.call { pkgmgr.install("host_stacky") }
@@ -272,15 +272,15 @@ class TestCoordinateMatrix < Minitest::Test
   # one a recipe sees.
   def test_board_bsp_follows_the_install_not_the_invocation
     with_axis(:board) do |p|
-      from_own = p.scope_b.call { p.pkg.board_bsp }
+      from_own = p.scope_b.call { bound(p.pkg).board_bsp }
       from_other = p.scope_a.call {
-        p.pkg.with_install_context(p.b) { p.pkg.board_bsp }
+        p.pkg.at(p.pkg.scope_at(p.b, scope)).board_bsp
       }
 
       assert_equal "licheerv-nano", from_own.basename.to_s
       assert_equal from_own, from_other,
                    "the BSP path followed the invocation's board"
-      refute_equal from_own, p.scope_a.call { p.pkg.board_bsp },
+      refute_equal from_own, p.scope_a.call { bound(p.pkg).board_bsp },
                    "both boards resolve to one BSP, so this proves nothing"
     end
   end
@@ -292,7 +292,7 @@ class TestCoordinateMatrix < Minitest::Test
     # The lookup everything else is built on.
     define_method("test_#{axis}_find_install_returns_its_own") do
       with_axis(axis) do |p|
-        found = p.scope_a.call { p.pkg.find_install(p.ver_a) }
+        found = p.scope_a.call { bound(p.pkg).find_install(p.ver_a) }
         refute_nil found, "#{axis}: found nothing in its own scope"
         assert_equal p.a.path, found.path,
                      "#{axis}: find_install answered about the other one"
@@ -329,8 +329,8 @@ class TestCoordinateMatrix < Minitest::Test
     # as stale.
     define_method("test_#{axis}_staleness_is_judged_where_it_lives") do
       with_axis(axis) do |p|
-        from_own = p.scope_b.call { p.pkg.build_inputs_state_of(p.b) }
-        from_other = p.scope_a.call { p.pkg.build_inputs_state_of(p.b) }
+        from_own = p.scope_b.call { bound(p.pkg).build_inputs_state_of(p.b) }
+        from_other = p.scope_a.call { bound(p.pkg).build_inputs_state_of(p.b) }
 
         assert_equal :ok, from_own,
                      "#{axis}: a fresh install is not ok in its own scope"
@@ -423,10 +423,10 @@ class TestCoordinateMatrix < Minitest::Test
 
         for scope in [p.scope_a, p.scope_b] do
           assert_equal :changed,
-                       scope.call { p.pkg.build_inputs_state_of(p.a) },
+                       scope.call { bound(p.pkg).build_inputs_state_of(p.a) },
                        "#{axis}: a clobbered record still reads as ok"
           assert_equal :ok,
-                       scope.call { p.pkg.build_inputs_state_of(p.b) },
+                       scope.call { bound(p.pkg).build_inputs_state_of(p.b) },
                        "#{axis}: one install's broken record condemned " \
                        "the other"
         end
@@ -446,7 +446,7 @@ class TestCoordinateMatrix < Minitest::Test
 
         for scope, want in views do
           other = want.equal?(p.a) ? p.b : p.a
-          dirs = scope.call { user.deps_build_env.include_dirs }
+          dirs = scope.call { bound(user).deps_build_env.include_dirs }
 
           assert_includes dirs, (want.path / "include").to_s,
                           "#{axis}: the dependent got no path from the " \

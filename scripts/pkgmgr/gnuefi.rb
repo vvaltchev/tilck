@@ -106,7 +106,7 @@ class GnuefiPackage < Package
   def installed?(ver)
     list = get_install_list()
     archs_needed.all? do |arch|
-      want = pkgmgr.with_target_arch(arch) { coords(ver) }
+      want = at(scope.with(arch: arch)).coords(ver)
       list.any? { |x| x.ver == ver && x.coords == want && !x.broken }
     end
   end
@@ -127,35 +127,39 @@ class GnuefiPackage < Package
     ok = @source.download(ver)
     return false if !ok
 
-    # with_cc sets the compiler; with_target_arch sets WHICH arch this
-    # is, which is what the recipe reads. Both, or build_steps would
-    # answer for the invocation's arch while building another.
+    # with_cc sets the compiler; the copy bound at that arch is WHICH
+    # arch this is, which is what the recipe reads. Both, or
+    # build_steps would answer for the invocation's arch while
+    # building another.
     for arch in archs_needed
-      pkgmgr.with_target_arch(arch) do
-      pkgmgr.with_cc(arch.name) do |arch_dir|
-        chdir_package_base_dir(arch_dir) do
-          ok = @source.extract(ver, ver_dirname(ver))
-          return false if !ok
-          ok = chdir_install_dir(arch_dir, ver) do
-            d = mkpathname(getwd)
-
-            # This package extracts the tarball once per arch and so
-            # replaces the base class's install_impl wholesale --
-            # which is where patches are normally applied. Apply them
-            # here, per extraction, or they are silently not applied
-            # at all.
-            next false if !apply_patches(ver)
-
-            ok = install_impl_internal(d)
-            ok = check_install_dir(d, ver, true) if ok
-          end
-        end
-      end
-      end
+      ok = at(scope.with(arch: arch)).build_one_arch(ver)
       return false if !ok
     end
 
     return ok
+  end
+
+  # One arch's build, by the copy bound to it.
+  def build_one_arch(ver)
+    pkgmgr.with_cc(default_arch.name) do |arch_dir|
+      chdir_package_base_dir(arch_dir) do
+        return false if !@source.extract(ver, ver_dirname(ver))
+        return chdir_install_dir(arch_dir, ver) do
+          d = mkpathname(getwd)
+
+          # This package extracts the tarball once per arch and so
+          # replaces the base class's install_impl wholesale --
+          # which is where patches are normally applied. Apply them
+          # here, per extraction, or they are silently not applied
+          # at all.
+          next false if !apply_patches(ver)
+
+          ok = install_impl_internal(d)
+          ok = check_install_dir(d, ver, true) if ok
+          ok
+        end
+      end
+    end
   end
 
   def build_steps(ver = default_ver)

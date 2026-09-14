@@ -57,7 +57,7 @@ class TestTwoOfEverything < Minitest::Test
 
       for b in RV.boards do
         with_context(ARCH: RV, BOARD: b) do
-          assert_equal b, pkg.find_install(V1).coords.env,
+          assert_equal b, bound(pkg).find_install(V1).coords.env,
                        "board #{b} resolved to another board's install"
         end
       end
@@ -78,7 +78,8 @@ class TestTwoOfEverything < Minitest::Test
 
       for a in [I386, RV] do
         with_context(ARCH: a, BOARD: nil) do
-          assert_equal "tilck-#{a.name}", pkg.find_install(V1).coords.machine,
+          assert_equal "tilck-#{a.name}",
+                       bound(pkg).find_install(V1).coords.machine,
                        "#{a.name} resolved to another arch's install"
         end
       end
@@ -98,8 +99,8 @@ class TestTwoOfEverything < Minitest::Test
       touch(base / V2.to_s)
       pkgmgr.refresh()
 
-      assert_equal V1, pkg.find_install(V1).ver
-      assert_equal V2, pkg.find_install(V2).ver
+      assert_equal V1, bound(pkg).find_install(V1).ver
+      assert_equal V2, bound(pkg).find_install(V2).ver
       assert_equal 2, pkg.get_install_list.length
     end
   end
@@ -116,15 +117,15 @@ class TestTwoOfEverything < Minitest::Test
       default = pkgmgr.default_stack_cc_ver.to_s
 
       for s in [default, OTHER_STACK] do
-        pkgmgr.with_host_stack(Ver(s)) do
-          touch(pkg.coords.pkgs_dir / "p" / V1.to_s)
+        with_host_stack(Ver(s)) do
+          touch(bound(pkg).coords.pkgs_dir / "p" / V1.to_s)
         end
       end
       pkgmgr.refresh()
 
       for s in [default, OTHER_STACK] do
-        pkgmgr.with_host_stack(Ver(s)) do
-          assert_equal "gcc-#{s}", pkg.find_install(V1).coords.stack,
+        with_host_stack(Ver(s)) do
+          assert_equal "gcc-#{s}", bound(pkg).find_install(V1).coords.stack,
                        "stack #{s} resolved to another stack's install"
         end
       end
@@ -143,9 +144,9 @@ class TestTwoOfEverything < Minitest::Test
       stacks = [pkgmgr.default_stack_cc_ver.to_s, OTHER_STACK]
 
       for s in stacks do
-        pkgmgr.with_host_stack(Ver(s)) do
-          touch(pkg.coords.pkgs_dir / "p" / V1.to_s)
-          touch(pkg.coords.pkgs_dir / "p" / V2.to_s)
+        with_host_stack(Ver(s)) do
+          touch(bound(pkg).coords.pkgs_dir / "p" / V1.to_s)
+          touch(bound(pkg).coords.pkgs_dir / "p" / V2.to_s)
         end
       end
       pkgmgr.refresh()
@@ -154,8 +155,8 @@ class TestTwoOfEverything < Minitest::Test
 
       for s in stacks do
         for v in [V1, V2] do
-          pkgmgr.with_host_stack(Ver(s)) do
-            i = pkg.find_install(v)
+          with_host_stack(Ver(s)) do
+            i = bound(pkg).find_install(v)
             assert_equal v, i.ver
             assert_equal "gcc-#{s}", i.coords.stack
           end
@@ -174,7 +175,7 @@ class TestTwoOfEverything < Minitest::Test
     with_fake_tc do
       t = REAL_PACKAGES.find { |p| p.name == "ncurses" }
       h = REAL_PACKAGES.find { |p| p.name == "host_ncurses" }
-      refute_equal t.build_recipe_digest, h.build_recipe_digest,
+      refute_equal bound(t).build_recipe_digest, bound(h).build_recipe_digest,
                    "two classes in one file hash identically"
     end
   end

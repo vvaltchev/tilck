@@ -349,10 +349,10 @@ class TestShowStatusAll < Minitest::Test
         # The stack compiler as the real one: its default version is
         # the stack in effect, which is what a stack package's
         # dependency on it resolves to and records.
-        gcc.define_singleton_method(:default_ver) { pkgmgr.current_host_stack }
+        gcc.define_singleton_method(:default_ver) { scope.stack }
         gcc.define_singleton_method(:installable_versions) { [a] }
         gcc.define_singleton_method(:stack_gcc_ver) { |v = nil|
-          v || pkgmgr.current_host_stack
+          v || scope.stack
         }
         gcc.define_singleton_method(:stack_of_install) { |i| i.ver }
         emu = FakePackage.new("host_emu", on_host: true, host_tier: :stack,
@@ -364,13 +364,13 @@ class TestShowStatusAll < Minitest::Test
                               arch_list: ALL_HOST_ARCHS.values)
         [libc, gcc, emu, lib].each { |x| pkgmgr.register(x) }
 
-        pkgmgr.with_host_stack(a) {
+        with_host_stack(a) {
           pkgmgr.install("host_libc", manual: false)
           pkgmgr.install("host_gcc", a, manual: false)
           pkgmgr.install("host_lib", manual: false)
           pkgmgr.install("host_emu")
         }
-        pkgmgr.host_stack = a
+        pkgmgr.default_stack = a
 
         out = capture_stdout { pkgmgr.show_status_all }
         plain = out.gsub(/\e\[[0-9;]*m/, "")
@@ -492,7 +492,7 @@ class TestShowStatusAll < Minitest::Test
         pkgmgr.refresh()
 
         out = capture_stdout { pkgmgr.show_status_all }
-        stack = pkgmgr.current_host_stack
+        stack = scope.stack
         here = "Host packages built by GCC #{stack} [ CURRENT ]"
 
         refute_nil line_for(out, here, "host_thing"),
@@ -516,12 +516,12 @@ class TestShowStatusAll < Minitest::Test
         pkgmgr.register(pkg)
 
         other = Ver("9.9.9")
-        pkgmgr.with_host_stack(other) { pkgmgr.install("host_thing") }
+        with_host_stack(other) { pkgmgr.install("host_thing") }
         pkgmgr.refresh()
 
         out = capture_stdout { pkgmgr.show_status_all(nil, true) }
         here = "Host packages built by GCC " \
-               "#{pkgmgr.current_host_stack} [ CURRENT ]"
+               "#{scope.stack} [ CURRENT ]"
         there = "Host packages built by GCC #{other}"
 
         assert_match(/installed/, line_for(out, there, "host_thing").to_s,
@@ -726,7 +726,7 @@ class TestShowStatusAll < Minitest::Test
         pkgmgr.refresh()
 
         out = capture_stdout {
-          pkgmgr.with_host_stack(Ver("1.0.0")) { pkgmgr.show_stacks }
+          with_host_stack(Ver("1.0.0")) { pkgmgr.show_stacks }
         }
         plain = out.gsub(/\e\[[0-9;]*m/, "")
 
@@ -749,8 +749,8 @@ class TestShowStatusAll < Minitest::Test
                               arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
 
-        here = pkg.coords.to_s
-        there = pkgmgr.with_host_stack(Ver("7.7.7")) { pkg.coords.to_s }
+        here = bound(pkg).coords.to_s
+        there = with_host_stack(Ver("7.7.7")) { bound(pkg).coords.to_s }
 
         refute_equal here, there
         assert_includes there, "gcc-7.7.7"

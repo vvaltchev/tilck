@@ -377,61 +377,6 @@ Minitest.after_run {
          "grammar#{Term::RESET}"
   end
 
-  # The transition to bound packages (docs/plans/pkgmgr-functional-
-  # core.md): how many sites asked an unbound package a scoped
-  # question during this run. Three groups: the CORE -- the files
-  # that decide -- which is gated against the ceiling the last step
-  # of the conversion left (test_scope.rb) and only ever goes down;
-  # the recipes, converted wholesale when the executor binds them
-  # and reached or not by test order, so printed and not gated; and
-  # the tests, converted in the last step. A run over the ceiling
-  # fails, because a new unbound read is the bug class this whole
-  # arc exists to make unwritable.
-  # UNBOUND_SITES=1 lists the lines, for the step that converts them.
-  if defined?(Package::UNBOUND_READS) && defined?(TestScope)
-   for kind, table, ceiling in [
-     [:scope, Package::UNBOUND_READS, TestScope::UNBOUND_CEILING],
-     [:world, Package::UNBOUND_WORLD_READS,
-      TestScope::UNBOUND_WORLD_CEILING],
-     [:version, Package::UNBOUND_VERSION_READS,
-      TestScope::UNBOUND_VERSION_CEILING]] do
-    groups = table.group_by { |f, _|
-      if f.start_with?("test_") || TestScope::HARNESS.include?(f)
-        :tests
-      elsif TestScope::CORE.include?(f)
-        :core
-      else
-        :recipes
-      end
-    }
-    line = ->(g) {
-      per = (groups[g] || []).map { |f, l| [f, l.length] }
-                             .sort_by { |f, n| [-n, f] }
-      [per.sum { |_, n| n }, per.map { |f, n| "#{f} #{n}" }.join(", ")]
-    }
-    core, core_s = line.call(:core)
-    over = core > ceiling
-    color = over ? Term::RED256 : Term::DIM
-    puts "  #{color}unbound #{kind} reads, core: #{core} sites " \
-         "(ceiling #{ceiling}) -- #{core_s}#{Term::RESET}"
-    for g in %i[recipes tests] do
-      n, s = line.call(g)
-      puts "  #{Term::DIM}unbound #{kind} reads, #{g}: #{n} sites -- " \
-           "#{s}#{Term::RESET}"
-    end
-    if ENV["UNBOUND_SITES"] == "1"
-      table.sort.each { |f, lines|
-        puts "    #{f}: #{lines.sort.join(' ')}"
-      }
-    end
-    if over
-      puts "  #{Term::RED256}#{Term::BOLD}UNBOUND #{kind.upcase} READS " \
-           "OVER THE CEILING: a question is asked of a registry " \
-           "package at a new site; bind it with Package#at#{Term::RESET}"
-      $unit_tests_passed = false
-    end
-   end
-  end
   puts
 
   # The full enumeration: every shape, every world of at most two

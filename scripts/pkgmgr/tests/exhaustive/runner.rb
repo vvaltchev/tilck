@@ -61,7 +61,7 @@ module Exhaustive
           by_name = pkgs.to_h { |p| [p.name, p] }
 
           # The stack in effect: what -H would otherwise set.
-          pkgmgr.host_stack = STACK_A
+          pkgmgr.default_stack = STACK_A
 
           for cand in c.world do
             h.fake_install(by_name.fetch(cand.name), cand.ver,
@@ -127,7 +127,7 @@ module Exhaustive
           pkgs = SHAPES.fetch(c.shape).call
           pkgs.each { |p| pkgmgr.register(p) }
           by_name = pkgs.to_h { |p| [p.name, p] }
-          pkgmgr.host_stack = STACK_A
+          pkgmgr.default_stack = STACK_A
 
           c.world.each { |cand|
             h.fake_install(by_name.fetch(cand.name), cand.ver,
@@ -173,24 +173,35 @@ module Exhaustive
 
   Summary = Struct.new(:shape, :total, :failed, :seconds)
 
-  def run_shape(shape, limit: nil)
+  # `progress`, when given, is told (done, failed, seconds) every
+  # PROGRESS_CASES cases: a shape of sixty thousand runs for minutes,
+  # and a lane that says nothing for minutes looks hung.
+  PROGRESS_CASES = 500
+
+  def run_shape(shape, limit: nil, progress: nil)
     failed = []
     total = 0
     t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    now = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0 }
 
     each_case([shape]).each { |c|
       break if limit && total >= limit
       total += 1
       r = run_case(c)
       failed << r if !r.ok
+      if progress && total % PROGRESS_CASES == 0
+        progress.call(total, failed.length, now.call)
+      end
     }
 
-    dt = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
-    return [Summary.new(shape, total, failed.length, dt), failed]
+    return [Summary.new(shape, total, failed.length, now.call), failed]
   end
 
+  PROGRESS_SECONDS = 30
+
   # The full lane: every shape in its own process, results through a
-  # file each, a summary and every failure printed by the parent.
+  # file each, a summary and every failure printed by the parent --
+  # and, while they run, a progress line per shape every half minute.
   def run_all(shapes: SHAPES.keys, limit: nil, jobs: nil)
 
     problems = self_test
@@ -215,20 +226,47 @@ module Exhaustive
       failed.each { |r| puts; puts r.to_s }
     }
 
+    # Every shape still running, as far as it has got: read from the
+    # file its process keeps current, printed every PROGRESS_SECONDS.
+    print_progress = -> {
+      running.values.sort.each { |shape|
+        f = File.join(dir, "#{shape}.progress")
+        next if !File.exist?(f)
+        done, bad, sec = File.read(f).split.map(&:to_f)
+        printf("  %-14s %7d/%-7d      %4d failed  %6.1fs ...\n",
+               shape, done, count(shape), bad, sec)
+      }
+    }
+
+    last = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
     while !queue.empty? || !running.empty?
       while running.length < jobs && !queue.empty?
         shape = queue.shift
         pid = Process.fork {
           $stdout.reopen(File::NULL)
-          out = run_shape(shape, limit: limit)
+          f = File.join(dir, "#{shape}.progress")
+          out = run_shape(shape, limit: limit, progress: ->(*a) {
+            File.write(f, a.join(" "))
+          })
           File.binwrite(File.join(dir, shape), Marshal.dump(out))
           exit!(0)
         }
         running[pid] = shape
       end
 
-      pid = Process.wait
-      print_summary.call(running.delete(pid))
+      pid = Process.wait(-1, Process::WNOHANG)
+      if pid
+        print_summary.call(running.delete(pid))
+        next
+      end
+
+      sleep 1
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) - last >=
+         PROGRESS_SECONDS
+        print_progress.call
+        last = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      end
     end
 
     FileUtils.rm_rf(dir)

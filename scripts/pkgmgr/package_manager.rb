@@ -30,71 +30,25 @@ class PackageManager
       read_config_versions("host_pkg_versions", "HOST_VER_")
     @world = nil          # what is installed, scanned once per change
     @host_world = nil     # memoized host_world_names, per registry
-    @scope = nil          # the scope a with_* block opened; nil = the
-                          # environment's (see #scope)
-    @stack = nil          # the stack -H named for the whole invocation
+    @default_stack = nil  # what HOST_VER_GCC would say, when a test
+                          # says otherwise (default_stack=)
   end
 
-  # THE INVOCATION'S SCOPE (scope.rb): the arch and board being built
-  # for, the stack being built into, and the environment.
-  #
-  # TRANSITION (docs/plans/pkgmgr-functional-core.md, step 5.1). Every
-  # scoped question will be asked of a package BOUND to a scope
-  # (Package#at); until every asker has one in hand, this is what an
-  # unbound package falls back to, and the three readers below are
-  # its three fields. The count of such fallbacks is printed at the
-  # end of every test run and only ever goes down; at zero this
-  # method, the with_* openers and the readers go.
-  #
-  # The environment's scope is built on every read rather than held,
-  # because ARCH and BOARD are constants a test swaps under it.
-  def scope
-    return @scope || Scope.env(stack: @stack || default_stack_cc_ver)
-  end
+  # THE ENVIRONMENT'S SCOPE (scope.rb): what an invocation resolves to
+  # before any flag moves it -- the shell's ARCH and BOARD, and the
+  # stack the configuration names. A function of constants and the
+  # version table, computed on every read because the tests swap the
+  # constants. Main builds its scope from this and its options; the
+  # methods below take a scope and default to this one, for the tests
+  # that call them directly. Nothing here remembers a scope: a
+  # question about one installation is answered from the scope in
+  # hand, or not at all (Package::Unbound).
+  def env_scope = Scope.env(stack: default_stack_cc_ver)
 
-  # Run `block` under `s`. Nests: the scope open before is put back
-  # on exit, whether the block returned or raised.
-  def with_scope(s, &block)
-    assert { s.is_a?(Scope) }
-    prev = @scope
-    @scope = s
-    begin
-      return block.call
-    ensure
-      @scope = prev
-    end
-  end
-
-  # The openers, as the callers still spell them: `-a <arch>` moves
-  # the arch (and the board follows Scope#board_of), an install's
-  # coordinates move the arch and the board together, and a stack
-  # request (`-s host_gcc:13.4.0`, or a :stack install being judged)
-  # moves the stack.
-  def with_target_arch(arch, &block)
-    assert { arch.is_a?(Architecture) }
-    return with_scope(scope.with(arch: arch), &block)
-  end
-
-  def with_target_coords(arch, board, &block)
-    return with_scope(scope.with(arch: arch, board: board), &block)
-  end
-
-  def with_host_stack(gcc_ver, &block)
-    return with_scope(scope.with(stack: gcc_ver), &block)
-  end
-
-  # The readers. Each is one field of the scope in effect.
-  def target_arch = scope.arch
-  def board_for(arch) = scope.board_of(arch)
-  def current_host_stack = scope.stack
-
-  # Set the stack for the whole invocation, which is what -H does.
-  # with_host_stack is for internal work that looks at another stack
-  # and has to put this one back; a choice made on the command line
-  # has no "back" to return to.
-  def host_stack=(gcc_ver)
-    @stack = gcc_ver
-  end
+  # What HOST_VER_GCC says, unless a test says otherwise: the stack the
+  # environment's scope names. Configuration, not scope -- a test that
+  # sets it is a test whose version table reads differently.
+  attr_writer :default_stack
 
   # The package that provides a stack's compiler.
   #
@@ -146,17 +100,6 @@ class PackageManager
     return world - reachable
   end
 
-  def python_interpreter
-
-    pkg = python_pkg
-    inst = pkg&.find_install(pkg.default_ver)
-
-    raise "host_python is not installed: there is no interpreter to " \
-          "run the build with" if inst.nil?
-
-    return inst.path / "bin" / "python3"
-  end
-
   # WHAT IS INSTALLED (world.rb): the tree, scanned once and held
   # until a writer says it changed. Whatever moves, removes or
   # rewrites an installation calls installs_changed!, and the next
@@ -185,15 +128,17 @@ class PackageManager
 
   # Declared default and supported here: the members of this target's
   # Tilck stack, which is what its meta-package depends on.
-  def get_default_packages
-    @packages.values.select(&:default?)
+  def get_default_packages(scope: env_scope)
+    return @packages.values.select { |p| p.at(scope).default? }
   end
 
   # The Tilck stacks, every target's: what the no-mode run installs
   # where it applies, and what the listing opens with.
   def tilck_stacks = @packages.values.select(&:metapackage?)
 
-  def get_upgradable_packages = Planner.upgradable(self, world, scope)
+  def get_upgradable_packages(scope: env_scope)
+    return Planner.upgradable(self, world, scope)
+  end
 
   # Installed, but not from the sources we have now: a patch was
   # added, a flag changed, or the code that drives the build did.
@@ -208,11 +153,13 @@ class PackageManager
   # happened not to be selected. [package, install] pairs, with the
   # dependencies first: a stale glibc is rebuilt before the gcc that
   # links it.
-  def get_stale_installs
+  def get_stale_installs(scope: env_scope)
     return Planner.stale_installs(self, world.judged(self, scope), scope)
   end
 
-  def get_stale_packages = get_stale_installs.map(&:first).uniq
+  def get_stale_packages(scope: env_scope)
+    return get_stale_installs(scope: scope).map(&:first).uniq
+  end
 
   # Remove exactly what a forced reinstall is about to recreate.
   #
@@ -230,14 +177,14 @@ class PackageManager
   #
   # (It read as "all versions, current arch" because "ALL" was passed
   # in the `ver` slot of uninstall's positional list, never the arch.)
-  def force_remove(name, ver = nil)
+  def force_remove(name, ver = nil, scope: env_scope)
 
     pkg = @packages.values.find { |p| p.name == name }
 
     # An orphan has no package object to ask where it would be
     # rebuilt, so every copy of it goes -- which is what the selector
     # does for an orphan with no version named.
-    return uninstall(name, false, false) if pkg.nil?
+    return uninstall(name, false, false, scope: scope) if pkg.nil?
 
     # Ask where the install about to run will write, and remove exactly
     # that. Not the arch: an arch covers every board built for it, so a
@@ -260,7 +207,7 @@ class PackageManager
     # arch: the coordinates ARE the compiler and the arch. A version
     # that is not there is not an error -- the selector says so and
     # names nothing, and -f on it is simply an install.
-    return uninstall(name, false, false, v, coords: wanted)
+    return uninstall(name, false, false, v, coords: wanted, scope: scope)
   end
 
   # An install list never holds a candidate (those have no path), so
@@ -344,8 +291,8 @@ class PackageManager
     [nil, starts + ends + middle]
   end
 
-  def with_cc(arch_name = nil, &block)
-    arch = arch_name ? ALL_ARCHS[arch_name] : target_arch
+  def with_cc(arch_name, &block)
+    arch = ALL_ARCHS.fetch(arch_name)
     arch_gcc = arch.gcc_tc
     arch_dir = Coords.new("tilck-#{arch.name}", arch.default_board,
                           "gcc-#{arch.gcc_ver}").pkgs_dir
@@ -369,10 +316,11 @@ class PackageManager
     end
   end
 
-  def show_status_all(group_by = nil, all_compilers = false)
+  def show_status_all(group_by = nil, all_compilers = false,
+                      scope: env_scope)
 
-    curr_cc = target_arch.gcc_ver
-    curr_host_cc = current_host_stack
+    curr_cc = scope.arch.gcc_ver
+    curr_host_cc = scope.stack
 
     list_with_paths = world.installs
     by_path = {}
@@ -386,7 +334,9 @@ class PackageManager
 
     # The stacks' meta-packages have a table of their own at the top
     # and would be a line saying nothing in a section.
-    installable = @packages.values.flat_map(&:get_installable_list)
+    installable = @packages.values.flat_map { |p|
+      p.at(scope).get_installable_list
+    }
     list = (by_path.values() + installable).reject { |x|
       x.pkg&.metapackage?
     }
@@ -490,9 +440,9 @@ class PackageManager
     # stack only, and a reader who saw nothing of a QEMU built into
     # another one asked, reasonably, how they were to know there was
     # more.
-    show_tilck_stacks(width: width, needs: needs)
+    show_tilck_stacks(width: width, needs: needs, scope: scope)
     dump.call(front)
-    show_stacks(width: width, needs: needs)
+    show_stacks(width: width, needs: needs, scope: scope)
     dump.call(back)
 
     show_unusable(unusable)
@@ -516,25 +466,25 @@ class PackageManager
   # The Tilck stacks, one line each: built when its meta-package is
   # installed, with how many packages it holds, and which one this
   # invocation's ARCH and BOARD name.
-  def show_tilck_stacks(width: 40, needs: nil)
+  def show_tilck_stacks(width: 40, needs: nil, scope: env_scope)
 
     stacks = tilck_stacks
     return if stacks.empty?
-    needs ||= install_graph.last
+    needs ||= install_graph(scope: scope).last
 
     puts
     puts "--- #{"Tilck stacks".center(width)} ---"
 
     for m in stacks do
-      inst = m.get_install_list.find { |i| !i.path.nil? && !i.broken }
+      inst = world.of(m.name).find { |i| !i.path.nil? && !i.broken }
       held = inst ? held_by([inst], needs).length - 1 : 0
-      here = m.supported? ? "  [ CURRENT ]" : ""
+      here = m.at(scope).supported? ? "  [ CURRENT ]" : ""
       printf("%-28s %s %3d pkgs%s\n", m.name, Package.stack_cell(!inst.nil?),
              held, here)
     end
   end
 
-  def show_stacks(width: 40, needs: nil)
+  def show_stacks(width: 40, needs: nil, scope: env_scope)
 
     gcc = stack_compiler
 
@@ -547,13 +497,13 @@ class PackageManager
       return
     end
 
-    compilers = gcc.get_install_list.reject { |i| i.path.nil? || i.broken }
+    compilers = world.of(gcc.name).reject { |i| i.path.nil? || i.broken }
     built = compilers.map(&:ver)
 
     known = (gcc.installable_versions + built +
              host_stacks.map { |v| Ver(v) }).uniq.sort
 
-    needs ||= install_graph.last
+    needs ||= install_graph(scope: scope).last
 
     puts
     puts "--- #{"Host stacks".center(width)} ---"
@@ -563,7 +513,7 @@ class PackageManager
     # typically; the rest are there for whatever else was built into
     # the stack, which the next table says.
     for v in known do
-      here = v == current_host_stack ? "  [ CURRENT ]" : ""
+      here = v == scope.stack ? "  [ CURRENT ]" : ""
       cc = compilers.find { |i| i.ver == v }
       held = cc ? held_in_stack(v, held_by([cc], needs)) : 0
       printf("%-20s %s %3d pkgs, %3d held%s\n",
@@ -590,7 +540,7 @@ class PackageManager
     for pkg in @packages.values do
       title = pkg.own_table
       next if title.nil?
-      rows = pkg.get_install_list.reject { |i| i.path.nil? || i.broken }
+      rows = world.of(pkg.name).reject { |i| i.path.nil? || i.broken }
                 .sort_by(&:ver)
       next if rows.empty?
 
@@ -735,7 +685,8 @@ class PackageManager
         # the very same install.
         stale = installed.any? { |e|
           next false if e.pkg.nil?
-          st = states ? states[e] : e.pkg.build_inputs_state_of(e)
+          st = states ? states[e] : e.pkg.at(env_scope, world: world)
+                                        .build_inputs_state_of(e)
           [:changed, :old_format, :unknown].include?(st)
         }
         n = installed.length
@@ -777,7 +728,8 @@ class PackageManager
   #                        package. Changes over time. It might not be possible
   #                        to install older versions of the package that were
   #                        supported before
-  def install(pkg, ver = nil, default_install: nil, manual: true)
+  def install(pkg, ver = nil, default_install: nil, manual: true,
+              scope: env_scope)
 
     name = pkg.is_a?(String) ? pkg : pkg.name
     pkg = get_smart(pkg)
@@ -798,7 +750,7 @@ class PackageManager
     # default_arch as the source of truth for "the arch this package builds
     # for in the current invocation context".
     if pkg.target?
-      a = pkg.default_arch
+      a = pkg.at(scope).default_arch
       if a.nil? || !pkg.arch_list.include?(a)
         a_name = a.nil? ? "<nil>" : a.name
         error "Package #{pkg.name} is not supported for arch #{a_name}"
@@ -815,18 +767,17 @@ class PackageManager
     # better: it names the version, because the install has one, and
     # says how that install was asked for, because the record does.
     default_install = ver.nil? if default_install.nil?
-    ver ||= pkg.default_ver()
+    ver ||= pkg.at(scope).default_ver
 
-    # TRANSITION: one Build, executed, bound to the versions this
-    # package resolves as the whole request. Every mode plans whole
-    # requests (Planner) and runs them (Executor); this is the entry
-    # the tests still use.
+    # One Build, executed, bound to the versions this package resolves
+    # as the whole request. Every mode plans whole requests (Planner)
+    # and runs them (Executor); this is the entry the tests use.
     bound = Planner.bind(self, [[pkg.name, ver]], scope).first
     action = Build.new(
       name: pkg.name, ver: ver, scope: scope,
       origin: default_install ? :default : :pinned,
       mark: manual ? :manual : :auto, bound: bound,
-      against: Planner.against_of(pkg, ver, bound)
+      against: Planner.against_of(pkg.at(scope), ver, bound)
     )
     return Executor.build(self, action)
   end
@@ -842,7 +793,7 @@ class PackageManager
   # arch, the dep points at that arch's compiler automatically.
   # stacks: false leaves the Tilck stacks' meta-packages with no
   # dependencies, for the one derivation that must not ask them.
-  def build_dep_graph(stacks: true)
+  def build_dep_graph(stacks: true, scope: env_scope)
     return Planner.graph(self, scope, stacks: stacks)
   end
 
@@ -865,9 +816,10 @@ class PackageManager
   def validate_versions
 
     missing = []
+    scope = env_scope
 
     for pkg in @packages.values
-      next if !pkg.default_ver.nil?
+      next if !pkg.at(scope).default_ver.nil?
       fname = pkg.on_host ? "host_pkg_versions" : "pkg_versions"
       missing << "#{pkg.name} (expected in other/#{fname})"
     end
@@ -896,15 +848,15 @@ class PackageManager
   # An explicit pin displaces a default, and says so at info level: a
   # default quietly not being used is exactly the kind of thing worth
   # seeing in the log.
-  def resolved_versions(name, ver = nil)
-    return resolved_versions_for([[name, ver]])
+  def resolved_versions(name, ver = nil, scope: env_scope)
+    return resolved_versions_for([[name, ver]], scope: scope)
   end
 
   # Same, for several requested packages at once. They must be resolved
   # together, not one at a time and merged: two of them pinning the
   # same dependency to different versions is a conflict, and merging
   # per-root results would silently let the last one win.
-  def resolved_versions_for(pairs)
+  def resolved_versions_for(pairs, scope: env_scope)
     bound, notes = Planner.bind(self, pairs, scope)
     notes.each { |n| info n }
     return bound
@@ -936,7 +888,9 @@ class PackageManager
   # means changing HOST_VER_GCC and rebuilding, which is a coherent
   # operation. host_gcc is the exception, because a compiler has to
   # belong to ITS OWN stack — see HostGccPackage#stack_gcc_ver.
-  def default_stack_cc_ver = get_config_ver("gcc", host: true)
+  def default_stack_cc_ver
+    return @default_stack || get_config_ver("gcc", host: true)
+  end
 
   # The GCC versions of our stacks that exist on disk.
   #
@@ -970,7 +924,7 @@ class PackageManager
   # reports that rather than passing silently.
   def audit_tools(gcc_ver = nil)
 
-    bu = get("host_binutils")
+    bu = get("host_binutils")&.at(env_scope, world: world)
     bu_inst = bu&.find_install(bu.default_ver)
     readelf = bu_inst ? bu_inst.path / "install/bin/readelf" : "readelf"
 
@@ -1034,7 +988,10 @@ class PackageManager
   def compose_stack_sysroot(gcc_ver = nil)
 
     gcc_ver ||= default_stack_cc_ver
-    fragments = @packages.values.flat_map { |p| p.sysroot_fragments(gcc_ver) }
+    at_stack = env_scope.with(stack: gcc_ver)
+    fragments = @packages.values.flat_map { |p|
+      p.at(at_stack, world: world).sysroot_fragments(gcc_ver)
+    }
 
     # No fragments has two very different causes, and only one of
     # them is a bug.
@@ -1075,7 +1032,8 @@ class PackageManager
   # `-u X:V -a A` would remove, `--mark-auto X:V -a A` marks. Returns
   # how many were marked; says so when nothing matched, for the same
   # reason uninstall does.
-  def mark(name, manual, dry, force, ver = nil, compiler = nil, arch = nil)
+  def mark(name, manual, dry, force, ver = nil, compiler = nil, arch = nil,
+           scope: env_scope)
 
     plan = Planner.plan_mark(self, world, name, manual, scope, ver: ver,
                              compiler: compiler, arch: arch, force: force)
@@ -1098,20 +1056,22 @@ class PackageManager
   end
 
   # The installations one install needs (Planner.needs_of).
-  def needs_of_install(pkg, inst)
+  def needs_of_install(pkg, inst, scope: env_scope)
     return Planner.needs_of(self, world, inst, scope)
   end
 
   # Where an install of `pkg` at `ver` would write, from the current
   # scope: the -f question, asked for a dependency.
-  def coords_of_install_for(pkg, ver)
+  def coords_of_install_for(pkg, ver, scope: env_scope)
     return Planner.coords_of_install_for(pkg, ver, scope)
   end
 
   # Every installation, and what each one needs among them
   # (Planner.install_graph): what --autoremove walks and the listing
   # counts.
-  def install_graph = Planner.install_graph(self, world, scope)
+  def install_graph(scope: env_scope)
+    return Planner.install_graph(self, world, scope)
+  end
 
   # Installations that cannot be used, and what they are waiting for
   # (Planner.unusable): {install => [words]}.
@@ -1160,7 +1120,7 @@ class PackageManager
   # Remove every automatically installed installation that nothing
   # kept still needs -- apt's autoremove (Planner.plan_autoremove).
   # -d lists without removing.
-  def autoremove(dry)
+  def autoremove(dry, scope: env_scope)
     plan = Planner.plan_autoremove(self, world, scope)
     plan.notes.each { |n| info n }
     say_removals(plan, dry)
@@ -1178,38 +1138,38 @@ class PackageManager
 
   # Replace an install with a fresh build of the same version
   # (Executor.replace); an install that is not there is an install.
-  def replace(pkg, ver, default_install:, manual: true)
+  def replace(pkg, ver, default_install:, manual: true, scope: env_scope)
 
     inst = pkg.at(scope, world: world).find_install(ver)
     if inst.nil?
       return install(pkg, ver, default_install: default_install,
-                               manual: manual)
+                               manual: manual, scope: scope)
     end
 
     bound = Planner.bind(self, [[pkg.name, ver]], scope).first
     build = Build.new(name: pkg.name, ver: ver, scope: scope,
                       origin: default_install ? :default : :pinned,
                       mark: manual ? :manual : :auto, bound: bound,
-                      against: Planner.against_of(pkg, ver, bound))
+                      against: Planner.against_of(pkg.at(scope), ver, bound))
     return Executor.replace(self, Replace.new(install: inst, build: build))
   end
 
   # The version of each dependency `pkg` at `ver` is built against:
   # the one the request resolved, else the dependency's own pin, else
   # its default. What InstallDeps records.
-  def built_against(pkg, ver)
+  def built_against(pkg, ver, scope: env_scope)
     bound = Planner.bind(self, [[pkg.name, ver]], scope).first
-    return Planner.against_of(pkg, ver, bound)
+    return Planner.against_of(pkg.at(scope), ver, bound)
   end
 
   # What an install was built against (Planner.deps_of_install):
   # [versions, ambiguous].
-  def deps_of_install(pkg, inst)
+  def deps_of_install(pkg, inst, scope: env_scope)
     return Planner.deps_of_install(self, world, pkg, inst, scope)
   end
 
-  def dep_closure(name)
-    return DepResolver.dep_closure(name, build_dep_graph)
+  def dep_closure(name, scope: env_scope)
+    return DepResolver.dep_closure(name, build_dep_graph(scope: scope))
   end
 
   # TRANSITION: the install plan as the tests still read it -- [name,
@@ -1217,7 +1177,7 @@ class PackageManager
   # meant -- computed by the Planner.
   #
   # Raises the solver's errors, as it always did.
-  def resolve_install_plan(requested_pairs)
+  def resolve_install_plan(requested_pairs, scope: env_scope)
 
     Planner.bind(self, requested_pairs, scope)   # raises on a conflict
     plan = Planner.plan_install(self, world, requested_pairs, scope)
@@ -1298,7 +1258,7 @@ class PackageManager
   # and a GTK-enabled QEMU to prove that busybox builds is hours of
   # rebuilding for a question neither answers.
   # --clean: what Planner.plan_clean says, printed, then run unless dry.
-  def clean(dry, except: [], force: false)
+  def clean(dry, except: [], force: false, scope: env_scope)
     plan = Planner.plan_clean(self, world, scope, except: except,
                               force: force)
     plan.notes.each { |n| warning n }
@@ -1310,7 +1270,7 @@ class PackageManager
   # WHICH installations `-u` means, as one value (Planner.selector).
   # Returns nil, having said why, when a named version is not there.
   def uninstall_selector(pkg, name, install_list, ver: nil, compiler: nil,
-                         arch: nil, coords: nil)
+                         arch: nil, coords: nil, scope: env_scope)
     sel = Planner.selector(self, pkg, name, install_list, scope, ver: ver,
                            compiler: compiler, arch: arch, coords: coords)
     if sel.is_a?(Refusal)
@@ -1321,7 +1281,7 @@ class PackageManager
   end
 
   # The coordinates an uninstall of `pkg` is about (Planner.uninstall_where).
-  def uninstall_where(pkg, all_pkgs, cc, arch)
+  def uninstall_where(pkg, all_pkgs, cc, arch, scope: env_scope)
     return Planner.uninstall_where(self, pkg, all_pkgs, cc, arch, scope)
   end
 
@@ -1331,7 +1291,7 @@ class PackageManager
   # run, how many would be: a caller that reports "removed nothing"
   # when it selected fifty is worse than one that says nothing at all.
   def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
-                arch = nil, coords: nil, except: [])
+                arch = nil, coords: nil, except: [], scope: env_scope)
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"

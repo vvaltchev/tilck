@@ -173,8 +173,8 @@ class TestCliMatrix < Minitest::Test
                               arch_list: ALL_HOST_ARCHS.values)
         gcc.define_singleton_method(:installable_versions) { [a, b] }
         pkgmgr.register(gcc)
-        pkgmgr.with_host_stack(a) { pkgmgr.install("host_thing") }
-        pkgmgr.with_host_stack(b) { pkgmgr.install("host_thing") }
+        with_host_stack(a) { pkgmgr.install("host_thing") }
+        with_host_stack(b) { pkgmgr.install("host_thing") }
         pkgmgr.refresh
 
         before = snapshot

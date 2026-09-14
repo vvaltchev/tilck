@@ -28,7 +28,9 @@ class TestErrorPaths < Minitest::Test
   # wrapper that cannot start.
   def test_asking_for_the_interpreter_without_one_installed
     with_fake_tc do
-      err = assert_raises(RuntimeError) { pkgmgr.python_interpreter }
+      err = assert_raises(RuntimeError) {
+        bound(FakePackage.new("x")).python_interpreter
+      }
       assert_match(/host_python is not installed/, err.message)
     end
   end
@@ -137,7 +139,7 @@ class TestErrorPaths < Minitest::Test
         pkg = FakePackage.new("user")
         pkgmgr.register(pkg)
 
-        ctx = Package::BuildCtx.new(pkg, Pathname.new("/tmp"))
+        ctx = Package::BuildCtx.new(bound(pkg), Pathname.new("/tmp"))
         out = ctx.expand("run $PYTHON now")
         refute_includes out, "$PYTHON", "the token was left unexpanded"
         assert_includes out, "bin/python3"
@@ -188,7 +190,9 @@ class TestErrorPaths < Minitest::Test
       begin
         arch.gcc_ver = nil
         err = assert_raises(RuntimeError) {
-          with_context(ARCH: arch, BOARD: nil) { pkg.coords(Ver("1.0.0")) }
+          with_context(ARCH: arch, BOARD: nil) {
+            bound(pkg).coords(Ver("1.0.0"))
+          }
         }
         assert_match(/not.*set yet|gcc-/, err.message)
       ensure

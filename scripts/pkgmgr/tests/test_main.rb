@@ -187,7 +187,7 @@ class TestExpandInstallAll < Minitest::Test
         FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
       )
 
-      result = Main.expand_install_all(["ALL"])
+      result = Main.expand_install_all(["ALL"], scope)
       names = result.map { |s| s.split(":").first }.sort
       assert_equal ["bar", "foo"], names
     end
@@ -199,7 +199,7 @@ class TestExpandInstallAll < Minitest::Test
       pkgmgr.register(FakePackage.new("universal"))
       pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
 
-      result = Main.expand_install_all(["ALL"])
+      result = Main.expand_install_all(["ALL"], scope)
       names = result.map { |s| s.split(":").first }
       assert_includes names, "universal"
       refute_includes names, "other_only"
@@ -211,7 +211,7 @@ class TestExpandInstallAll < Minitest::Test
       pkgmgr.register(FakePackage.new("foo"))
       pkgmgr.register(FakePackage.new("bar"))
 
-      result = Main.expand_install_all(["custom", "ALL"])
+      result = Main.expand_install_all(["custom", "ALL"], scope)
       names = result.map { |s| s.split(":").first }
       assert_includes names, "custom"
       assert_includes names, "foo"
@@ -229,13 +229,11 @@ class TestExpandInstallAll < Minitest::Test
       pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
       pkgmgr.register(FakePackage.new("universal"))
 
-      pkgmgr.with_target_arch(rv) do
-        result = Main.expand_install_all(["ALL"])
-        names = result.map { |s| s.split(":").first }
-        assert_includes names, "rv_pkg"
-        assert_includes names, "universal"
-        refute_includes names, "i3_pkg"
-      end
+      result = Main.expand_install_all(["ALL"], scope.with(arch: rv))
+      names = result.map { |s| s.split(":").first }
+      assert_includes names, "rv_pkg"
+      assert_includes names, "universal"
+      refute_includes names, "i3_pkg"
     end
   end
 end
@@ -415,7 +413,7 @@ class TestMainDumpContext < Minitest::Test
   end
 
   def test_dump_context
-    output = capture_stdout { Main.dump_context }
+    output = capture_stdout { Main.dump_context(scope) }
     assert_match(/MAIN_DIR/, output)
     assert_match(/TC/, output)
     assert_match(/HOST_ARCH/, output)
@@ -547,7 +545,8 @@ class TestMainIntegration < Minitest::Test
         assert_equal 0, result
         assert_includes FakePackage.install_log, "dflt"
         refute_includes FakePackage.install_log, "opt"
-        assert stack.installed?(stack.default_ver), "the stack itself"
+        assert bound(stack).installed?(bound(stack).default_ver),
+               "the stack itself"
       end
     end
   end
@@ -679,7 +678,7 @@ class TestMainDryRunInstall < Minitest::Test
         # Dry-run force message, no actual uninstall.
         assert_match(/Would force-remove: foo/, out)
         # Package still installed (nothing was removed).
-        assert pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        assert bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -706,7 +705,8 @@ class TestMainDryRunInstall < Minitest::Test
 end
 
 # ---------------------------------------------------------------
-# Tests for -a <arch> / with_target_arch in install mode.
+# Tests for -a <arch>: a package answers for the arch of the scope it
+# is bound to, and for no other.
 # ---------------------------------------------------------------
 
 class TestTargetArchScope < Minitest::Test
@@ -716,101 +716,46 @@ class TestTargetArchScope < Minitest::Test
     reset_pkgmgr!
   end
 
-  def test_target_arch_defaults_to_ARCH
-    assert_equal ARCH, pkgmgr.target_arch
+  def test_the_environment_scope_is_ARCH
+    assert_equal ARCH, scope.arch
   end
 
-  def test_with_target_arch_overrides_and_restores
-    x64 = ALL_ARCHS["x86_64"]
-    assert_equal ARCH, pkgmgr.target_arch
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64, pkgmgr.target_arch
-    end
-
-    assert_equal ARCH, pkgmgr.target_arch
-  end
-
-  def test_with_target_arch_nests_correctly
-    x64 = ALL_ARCHS["x86_64"]
-    rv  = ALL_ARCHS["riscv64"]
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64, pkgmgr.target_arch
-
-      pkgmgr.with_target_arch(rv) do
-        assert_equal rv, pkgmgr.target_arch
-      end
-
-      assert_equal x64, pkgmgr.target_arch
-    end
-
-    assert_equal ARCH, pkgmgr.target_arch
-  end
-
-  def test_with_target_arch_restores_on_exception
-    x64 = ALL_ARCHS["x86_64"]
-    begin
-      pkgmgr.with_target_arch(x64) do
-        raise "boom"
-      end
-    rescue RuntimeError
-    end
-    assert_equal ARCH, pkgmgr.target_arch
-  end
-
-  def test_default_arch_reads_target_arch
+  def test_default_arch_is_the_bound_scopes
     x64 = ALL_ARCHS["x86_64"]
     pkg = FakePackage.new("foo")
-    assert_equal ARCH, pkg.default_arch
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64, pkg.default_arch
-    end
-
-    assert_equal ARCH, pkg.default_arch
+    assert_equal ARCH, bound(pkg).default_arch
+    assert_equal x64, pkg.at(scope.with(arch: x64)).default_arch
+    assert_equal ARCH, bound(pkg).default_arch, "a binding is a copy"
   end
 
-  def test_default_cc_reads_target_arch
+  def test_default_cc_is_the_bound_scopes
     # Ensure gcc_ver is set for the test arch (read_gcc_ver_defaults
     # only runs in main(), not in tests).
     x64 = ALL_ARCHS["x86_64"]
     saved = x64.gcc_ver
     x64.gcc_ver ||= FAKE_GCC_VER
     pkg = FakePackage.new("foo")
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64.gcc_ver, pkg.default_cc
-    end
+    assert_equal x64.gcc_ver, pkg.at(scope.with(arch: x64)).default_cc
   ensure
     x64.gcc_ver = saved
   end
 
-  def test_arch_supported_reads_target_arch
+  def test_arch_supported_is_the_bound_scopes
     rv = ALL_ARCHS["riscv64"]
     x64 = ALL_ARCHS["x86_64"]
     pkg = FakePackage.new("rv_only", arch_list: [rv])
-
-    pkgmgr.with_target_arch(rv) do
-      assert pkg.arch_supported?
-    end
-
-    pkgmgr.with_target_arch(x64) do
-      refute pkg.arch_supported?
-    end
+    assert pkg.at(scope.with(arch: rv)).arch_supported?
+    refute pkg.at(scope.with(arch: x64)).arch_supported?
   end
 
-  def test_build_dep_graph_uses_target_arch
+  def test_build_dep_graph_uses_the_scopes_arch
     rv = ALL_ARCHS["riscv64"]
     pkgmgr.register(
       FakePackage.new("gcc-riscv64-musl", on_host: true, is_compiler: true)
     )
     pkgmgr.register(FakePackage.new("foo"))
-
-    pkgmgr.with_target_arch(rv) do
-      graph = pkgmgr.build_dep_graph
-      assert_includes graph["foo"], "gcc-riscv64-musl"
-    end
+    graph = pkgmgr.build_dep_graph(scope: scope.with(arch: rv))
+    assert_includes graph["foo"], "gcc-riscv64-musl"
   end
 
   def test_build_dep_graph_default_uses_ARCH
@@ -1309,8 +1254,8 @@ class TestMainRebuild < Minitest::Test
     assert_equal 0, rc
     pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
     pkgmgr.refresh
-    inst = pkg.find_install(pkg.default_ver)
-    assert_equal :changed, pkg.build_inputs_state_of(inst)
+    inst = bound(pkg).find_install(bound(pkg).default_ver)
+    assert_equal :changed, bound(pkg).build_inputs_state_of(inst)
     FakePackage.clear_log!
     return inst
   end
@@ -1342,8 +1287,8 @@ class TestMainRebuild < Minitest::Test
         assert_equal ["foo"], FakePackage.install_log
 
         pkgmgr.refresh
-        after = foo.find_install(foo.default_ver)
-        assert_equal :ok, foo.build_inputs_state_of(after)
+        after = bound(foo).find_install(bound(foo).default_ver)
+        assert_equal :ok, bound(foo).build_inputs_state_of(after)
         assert_equal before.coords, after.coords
         assert_equal before.ver, after.ver
         assert after.default_install, "a default install came back pinned"
@@ -1363,8 +1308,8 @@ class TestMainRebuild < Minitest::Test
         assert_match(/Installs to rebuild/, out)
         assert_match(/nothing rebuilt/, out)
         assert_empty FakePackage.install_log
-        inst = foo.find_install(foo.default_ver)
-        assert_equal :changed, foo.build_inputs_state_of(inst)
+        inst = bound(foo).find_install(bound(foo).default_ver)
+        assert_equal :changed, bound(foo).build_inputs_state_of(inst)
       end
     end
   end
@@ -1446,8 +1391,8 @@ class TestMainRebuildKeepsTheOldTreeOnFailure < Minitest::Test
         assert_equal 0, run_cli("-s", "once").first
         pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
         pkgmgr.refresh
-        before = pkg.find_install(pkg.default_ver)
-        assert_equal :changed, pkg.build_inputs_state_of(before)
+        before = bound(pkg).find_install(bound(pkg).default_ver)
+        assert_equal :changed, bound(pkg).build_inputs_state_of(before)
 
         rc, out = run_cli("--rebuild", laws: false,
                           because: "a build that fails is outside the " \
@@ -1456,10 +1401,10 @@ class TestMainRebuildKeepsTheOldTreeOnFailure < Minitest::Test
         assert_match(/Could not rebuild: once/, out)
 
         pkgmgr.refresh
-        after = pkg.find_install(pkg.default_ver)
+        after = bound(pkg).find_install(bound(pkg).default_ver)
         refute_nil after, "the old install is gone"
         assert_equal before.path, after.path
-        assert_equal :changed, pkg.build_inputs_state_of(after),
+        assert_equal :changed, bound(pkg).build_inputs_state_of(after),
                      "the old install came back as something else"
         refute (TC_STAGING / "replaced" / "once").exist?,
                "the tree set aside was left under staging"
@@ -1497,7 +1442,7 @@ class TestMainRebuildKeepsTheOldTreeOnARaise < Minitest::Test
         assert_equal 0, run_cli("-s", "raisy").first
         pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
         pkgmgr.refresh
-        before = pkg.find_install(pkg.default_ver)
+        before = bound(pkg).find_install(bound(pkg).default_ver)
 
         rc, out = run_cli("--rebuild", laws: false,
                           because: "a build that raises is outside the " \
@@ -1507,7 +1452,7 @@ class TestMainRebuildKeepsTheOldTreeOnARaise < Minitest::Test
         assert_match(/Could not rebuild: raisy/, out)
 
         pkgmgr.refresh
-        after = pkg.find_install(pkg.default_ver)
+        after = bound(pkg).find_install(bound(pkg).default_ver)
         refute_nil after, "the old install is gone"
         assert_equal before.path, after.path
         refute (TC_STAGING / "replaced").exist?,
@@ -1701,13 +1646,13 @@ class TestMainRebuildPlansItsDependencies < Minitest::Test
         top.define_singleton_method(:dep_list) { [Dep("base", false)] }
         top.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
         pkgmgr.refresh
-        assert_nil base.find_install(base.default_ver)
+        assert_nil bound(base).find_install(bound(base).default_ver)
         FakePackage.clear_log!
 
         rc, out = run_cli("--rebuild")
         assert_equal 0, rc, out
         assert_equal ["base", "top"], FakePackage.install_log
-        refute_nil base.find_install(base.default_ver)
+        refute_nil bound(base).find_install(bound(base).default_ver)
       end
     end
   end

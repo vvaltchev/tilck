@@ -88,11 +88,11 @@ class TestInstallsAreBoardSpecific < Minitest::Test
       fake_install("qemu-virt")
 
       with_context(ARCH: RV, BOARD: "qemu-virt") do
-        assert pkg.installed?(VER), "the board it was built for"
+        assert bound(pkg).installed?(VER), "the board it was built for"
       end
 
       with_context(ARCH: RV, BOARD: "licheerv-nano") do
-        refute pkg.installed?(VER), "another board must not inherit it"
+        refute bound(pkg).installed?(VER), "another board must not inherit it"
       end
     end
   end
@@ -106,7 +106,7 @@ class TestInstallsAreBoardSpecific < Minitest::Test
 
       for board in RV.boards
         with_context(ARCH: RV, BOARD: board) do
-          path = pkg.install_prefix(VER)
+          path = bound(pkg).install_prefix(VER)
           assert_equal target_pkgs(RV, nil, board) / "boardpkg" / VER.to_s,
                        path, "install_prefix must stay on #{board}"
         end
@@ -121,7 +121,7 @@ class TestInstallsAreBoardSpecific < Minitest::Test
       fake_install(RV.default_board)
 
       with_context(ARCH: RV, BOARD: nil) do
-        assert pkg.installed?(VER)
+        assert bound(pkg).installed?(VER)
       end
     end
   end
@@ -151,29 +151,24 @@ class TestInstallsAreBoardSpecific < Minitest::Test
                         board_list: ["qemu-virt"])
 
     with_context(ARCH: ALL_ARCHS["i386"], BOARD: "pc") do
-      refute p.board_supported?,
+      refute bound(p).board_supported?,
              "an i386 shell does not build riscv64 boards by itself"
-
-      pkgmgr.with_target_arch(RV) do
-        assert p.board_supported?,
-               "-a riscv64 must ask about riscv64's board, not pc"
-      end
+      assert p.at(scope.with(arch: RV)).board_supported?,
+             "-a riscv64 must ask about riscv64's board, not pc"
     end
   end
 
-  # A scope opened for one installation names its board, and names it
-  # only for that install's arch: another arch inside the same scope
+  # A scope for one installation names its board, and names it only
+  # for that install's arch: another arch asked of the same scope
   # still gets its own default, or a board would appear in a path
-  # under an arch that has never heard of it.
+  # under an arch that has never heard of it. And a scope is a value:
+  # the environment's is what it was.
   def test_a_scoped_board_applies_only_to_its_own_arch
     with_context(ARCH: RV, BOARD: "qemu-virt") do
-      pkgmgr.with_target_coords(RV, "licheerv-nano") do
-        assert_equal "licheerv-nano", pkgmgr.board_for(RV)
-        assert_equal "pc", pkgmgr.board_for(ALL_ARCHS["i386"])
-      end
-
-      assert_equal "qemu-virt", pkgmgr.board_for(RV),
-                   "the scope has to close"
+      sc = scope.with(arch: RV, board: "licheerv-nano")
+      assert_equal "licheerv-nano", sc.board_of(RV)
+      assert_equal "pc", sc.board_of(ALL_ARCHS["i386"])
+      assert_equal "qemu-virt", scope.board_of(RV)
     end
   end
 

@@ -52,7 +52,9 @@ class TestExhaustive < Minitest::Test
   def test_the_tables_do_not_depend_on_the_stack_in_effect
     sizes = [Exhaustive::STACK_B, Ver("14.4.0")].map { |v|
       Exhaustive.forget_tables!
-      pkgmgr.with_host_stack(v) { Exhaustive.tables_for("stack").worlds.length }
+      Exhaustive.harness.with_host_stack(v) {
+        Exhaustive.tables_for("stack").worlds.length
+      }
     }
     Exhaustive.forget_tables!
     assert_equal sizes.uniq, [sizes.first]

@@ -181,10 +181,10 @@ class TestSurvivors < Minitest::Test
       stack = FakePackage.new("host_s", on_host: true, host_tier: :stack,
                               arch_list: ALL_HOST_ARCHS.values)
 
-      assert_equal FAKE_GCC_VER, base.bind(target).call
-      assert_equal "syscc", base.bind(distro).call
-      pkgmgr.with_host_stack(Ver("9.9.9")) {
-        assert_equal Ver("9.9.9"), base.bind(stack).call
+      assert_equal FAKE_GCC_VER, base.bind(bound(target)).call
+      assert_equal "syscc", base.bind(bound(distro)).call
+      with_host_stack(Ver("9.9.9")) {
+        assert_equal Ver("9.9.9"), base.bind(bound(stack)).call
       }
     end
   end
@@ -196,7 +196,7 @@ class TestSurvivors < Minitest::Test
       super("host_vs", on_host: true, host_tier: :stack,
             arch_list: ALL_HOST_ARCHS.values)
     end
-    def stack_gcc_ver(ver = nil) = ver || pkgmgr.current_host_stack
+    def stack_gcc_ver(ver = nil) = ver || scope.stack
   end
 
   # package.rb:423  `install_dir(ver) = pkg_dir_at(coords(ver))` -> coords()
@@ -225,12 +225,13 @@ class TestSurvivors < Minitest::Test
       pkgmgr.register(p)
 
       dir = fake_install(p, V1)
-      assert p.needs_upgrade?, "an old default install wants the new default"
+      assert bound(p).needs_upgrade?,
+             "an old default install wants the new default"
 
       FileUtils.rm_f(dir / "bin" / "thing")
       pkgmgr.installs_changed!
       pkgmgr.refresh
-      refute p.needs_upgrade?, "broken: nothing to upgrade from"
+      refute bound(p).needs_upgrade?, "broken: nothing to upgrade from"
     end
   end
 
@@ -240,7 +241,7 @@ class TestSurvivors < Minitest::Test
       super("host_rc", on_host: true, host_tier: :compiler,
             arch_list: ALL_HOST_ARCHS.values)
     end
-    def build_flags(ver = nil) = ["--stack=#{pkgmgr.current_host_stack}"]
+    def build_flags(ver = nil) = ["--stack=#{scope.stack}"]
   end
 
   # package.rb:737  `return block.call if host_tier != :stack` deleted
@@ -253,9 +254,9 @@ class TestSurvivors < Minitest::Test
       fake_install(p, V1)
       inst = p.find_install(V1)
 
-      assert_equal :ok, p.build_inputs_state_of(inst)
-      pkgmgr.with_host_stack(Ver("9.9.9")) {
-        assert_equal :changed, p.build_inputs_state_of(inst),
+      assert_equal :ok, bound(p).build_inputs_state_of(inst)
+      with_host_stack(Ver("9.9.9")) {
+        assert_equal :changed, bound(p).build_inputs_state_of(inst),
                      "the recipe reads the stack, and the stack moved"
       }
     end
@@ -270,10 +271,10 @@ class TestSurvivors < Minitest::Test
       p = StackReadingCompilerFake.new
       pkgmgr.register(p)
       fake_install(p, V1)
-      inst = p.find_install(V1)
+      inst = bound(p).find_install(V1)
 
       assert_nil p.stack_of_install(inst)
-      assert_equal pkgmgr.scope, p.scope_at(inst, pkgmgr.scope)
+      assert_equal scope, bound(p).scope_at(inst, scope)
     end
   end
 
@@ -306,15 +307,14 @@ class TestSurvivors < Minitest::Test
 
   # --- package_manager.rb ---------------------------------------------------
 
-  # package_manager.rb:103  `@target_board = prev` -> `= nil`
-  # A scope inside a scope restores the OUTER one, not nothing.
-  def test_a_nested_board_scope_restores_the_outer
-    pkgmgr.with_target_coords(RV, "licheerv-nano") {
-      pkgmgr.with_target_coords(RV, "qemu-virt") {
-        assert_equal "qemu-virt", pkgmgr.board_for(RV)
-      }
-      assert_equal "licheerv-nano", pkgmgr.board_for(RV)
-    }
+  # Once `@target_board = prev` -> `= nil`: a scope inside a scope had
+  # to restore the OUTER one. A scope is a value now; deriving one
+  # from another leaves the other as it was.
+  def test_a_derived_board_scope_leaves_the_outer_as_it_was
+    outer = scope.with(arch: RV, board: "licheerv-nano")
+    inner = outer.with(arch: RV, board: "qemu-virt")
+    assert_equal "qemu-virt", inner.board_of(RV)
+    assert_equal "licheerv-nano", outer.board_of(RV)
   end
 
   # package_manager.rb:215, 226  the support filters on upgradable and
@@ -333,8 +333,8 @@ class TestSurvivors < Minitest::Test
   # package.rb  supported?  -- each conjunct decides alone.
   def test_supported_needs_all_three
     with_fake_tc do
-      unsupported_trio.each { |p| refute p.supported?, p.name }
-      assert FakePackage.new("plain").supported?
+      unsupported_trio.each { |p| refute bound(p).supported?, p.name }
+      assert bound(FakePackage.new("plain")).supported?
     end
   end
 
@@ -358,7 +358,7 @@ class TestSurvivors < Minitest::Test
     with_fake_tc do
       for p in unsupported_trio do
         pkgmgr.register(p)
-        at = p.on_host ? p.coords : p.coords(V1)
+        at = p.on_host ? bound(p).coords : bound(p).coords(V1)
         at = Coords.new("tilck-riscv64", "qemu-virt", "gcc-#{FAKE_GCC_VER}") \
           if p.name == "rv_only"
         fake_install(p, V1, at: at, record: :changed)
@@ -505,7 +505,7 @@ class TestSurvivorsToo < Minitest::Test
       with_stubbed_externals do
         pkgmgr.register(LibFake.new("host_lib"))
         pkgmgr.register(distro_pkg("host_d"))
-        pkgmgr.with_host_stack(A) {
+        with_host_stack(A) {
           pkgmgr.install("host_d")
           refute pkgmgr.stack_sysroot(A).directory?, "nothing to compose"
 
@@ -522,7 +522,7 @@ class TestSurvivorsToo < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         pkgmgr.register(LibFake.new("host_lib"))
-        pkgmgr.with_host_stack(A) {
+        with_host_stack(A) {
           pkgmgr.install("host_lib")
           link = pkgmgr.stack_sysroot(A) / "usr" / "lib" / "libx.so"
           assert link.exist?
@@ -547,7 +547,7 @@ class TestSurvivorsToo < Minitest::Test
         begin
           pkgmgr.register(stack_pkg("host_s"))
           pkgmgr.register(distro_pkg("host_d"))
-          pkgmgr.with_host_stack(A) {
+          with_host_stack(A) {
             pkgmgr.install("host_s")
             pkgmgr.install("host_d")
           }
@@ -591,7 +591,8 @@ class TestSurvivorsToo < Minitest::Test
       fake_install(p, V1)
 
       pkgmgr.force_remove("multi", nil)
-      assert p.installed?(V1), "the other version was taken for the default"
+      assert bound(p).installed?(V1),
+             "the other version was taken for the default"
     end
   end
 
@@ -719,7 +720,7 @@ class TestSurvivorsToo < Minitest::Test
       super("host_gcc", on_host: true, host_tier: :distro,
             arch_list: ALL_HOST_ARCHS.values)
     end
-    def default_ver = pkgmgr.current_host_stack
+    def default_ver = scope.stack
     def installable_versions = [Ver("7.7.7"), Ver("8.8.8")]
   end
 
@@ -733,6 +734,19 @@ class TestSurvivorsToo < Minitest::Test
 
         rc, _ = run_cli("-H", "gcc-8.8.8", "-l", "-q")
         assert_equal 0, rc
+      end
+    end
+  end
+
+  # main.rb:1047  `return nil` made "ALL": with no compiler package
+  # registered, -H has nothing to name a stack with, and the run
+  # ends there rather than going on under a stack called "ALL".
+  def test_a_stack_cannot_be_named_without_a_compiler_package
+    with_fake_tc do
+      with_stubbed_externals do
+        rc, out = run_cli("-H", "gcc-8.8.8", "-l", "-q")
+        assert_equal 1, rc
+        assert_match(/no host compiler package is registered/, out)
       end
     end
   end
@@ -752,8 +766,9 @@ class TestLayoutNamesTheQemus < Minitest::Test
   # A QEMU on disk, complete or -- missing what expected_files names
   # -- broken.
   def put_qemu(q, ver, broken: false)
-    pkgmgr.with_host_stack(Ver("13.4.0")) do
-      bin = q.coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" / "bin"
+    with_host_stack(Ver("13.4.0")) do
+      bin = bound(q).coords(Ver(ver)).pkgs_dir / "qemu" / ver / "install" /
+            "bin"
       FileUtils.mkdir_p(bin)
       inst = bin.parent.parent
       q.expected_files.each { |f, _| FileUtils.touch(inst / f) } if !broken

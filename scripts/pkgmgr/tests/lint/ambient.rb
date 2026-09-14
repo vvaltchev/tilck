@@ -22,9 +22,10 @@
 #       object that IS the identity. An arch is two thirds of a
 #       coordinate; matching on it took both boards of riscv64.
 #
-#   R3  a write to the scope variable (@scope, and @stack for -H)
-#       outside the method that owns it, so a scope cannot be left
-#       open.
+#
+# There was a third rule, R3, on writes to the scope variables outside
+# the methods that opened and closed them. A scope is a value now
+# (scope.rb): nothing holds one, so nothing can leave one open.
 #
 # A parse tree, not regexes: a string "ARCH=x86" in a make invocation
 # is not a read, a comment is not a read, and a receiver is not a bare
@@ -50,13 +51,6 @@ module AmbientLint
   # install has and nothing else does, so selecting a compiler by it
   # is the right question rather than a partial one.
   PARTIAL_KEYS = %i[arch compiler].freeze
-
-  # The scope lives in PackageManager. Other classes have an ivar of
-  # the same name meaning something else -- a bound Package's @scope
-  # is a value it was handed, Coords' @stack a level of a path -- and
-  # those are not the invocation's scope.
-  SCOPE_IVARS  = %i[@scope @stack].freeze
-  SCOPE_FILE   = "package_manager.rb"
 
   # The node types a method call comes as, in Ripper's tree: with a
   # receiver (call, command_call), bare (vcall), with arguments and
@@ -147,14 +141,6 @@ module AmbientLint
         found.call(:R2)
       end
 
-    when :assign, :opassign
-      # `@x = v` and `@x ||= v` alike.
-      target = node.children[0]
-      ivar = target.type == :var_field ? target.children[0] : nil
-      if file == SCOPE_FILE && ivar && ivar.type == :@ivar &&
-         SCOPE_IVARS.include?(ivar.text.to_sym)
-        found.call(:R3)
-      end
     end
   end
 

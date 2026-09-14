@@ -111,7 +111,7 @@ class TestQemuStack < Minitest::Test
       [["host_qemu", Ver("7.2.0")]]
     )["host_gcc"]
 
-    coords = pkgmgr.with_host_stack(stack) { qemu.coords }
+    coords = with_host_stack(stack) { bound(qemu).coords }
     assert_equal "gcc-12.5.0", coords.stack
   end
 
@@ -223,7 +223,7 @@ class TestQemuStack < Minitest::Test
   # that declares host_python must still find the real interpreter.
   def test_the_shim_does_not_shadow_the_real_interpreter
     with_fake_python do
-      path = [pkgmgr.python_interpreter.dirname.to_s,
+      path = [bound(pkgmgr.python_pkg).python_interpreter.dirname.to_s,
               Package::SHIMS_DIR].join(":")
 
       first = path.split(":")

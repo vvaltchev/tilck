@@ -28,8 +28,8 @@ class TestPortableTier < Minitest::Test
     with_fake_tc do |tc|
       pkg = portable_pkg
 
-      for path in [pkg.stack_root, pkg.stack_sysroot,
-                   pkg.coords.pkgs_dir]
+      for path in [bound(pkg).stack_root, bound(pkg).stack_sysroot,
+                   bound(pkg).coords.pkgs_dir]
         assert path.to_s.start_with?(tc.to_s + "/"),
                "#{path} escapes the fake toolchain at #{tc}"
       end
@@ -43,7 +43,7 @@ class TestPortableTier < Minitest::Test
       pkg = portable_pkg
       gcc_ver = pkgmgr.get_config_ver("gcc", host: true).to_s
 
-      root = pkg.coords.pkgs_dir.to_s
+      root = bound(pkg).coords.pkgs_dir.to_s
       assert_match(%r{/any/gcc-#{Regexp.escape(gcc_ver)}/pkgs\z}, root)
 
       # Neither the distro nor the system compiler appears: neither
@@ -57,7 +57,7 @@ class TestPortableTier < Minitest::Test
   # promise that it runs on any host of this OS and architecture.
   def test_a_stack_package_needs_nothing_from_the_machine
     with_fake_tc do
-      c = portable_pkg.coords
+      c = bound(portable_pkg).coords
       assert_equal Coords::ANY, c.env
 
       # Neither the distro nor the host compiler is in the path:
@@ -78,10 +78,10 @@ class TestPortableTier < Minitest::Test
   def test_sysroot_sits_beside_the_packages_not_under_them
     with_fake_tc do
       pkg = portable_pkg
-      sysroot = pkg.stack_sysroot.to_s
+      sysroot = bound(pkg).stack_sysroot.to_s
 
-      refute sysroot.start_with?(pkg.coords.pkgs_dir.to_s + "/")
-      assert_equal (pkg.coords.root / "sysroot").to_s, sysroot
+      refute sysroot.start_with?(bound(pkg).coords.pkgs_dir.to_s + "/")
+      assert_equal (bound(pkg).coords.root / "sysroot").to_s, sysroot
     end
   end
 
@@ -96,7 +96,7 @@ class TestPortableTier < Minitest::Test
         pm.define_singleton_method(:get_config_ver) { |name, host:|
           name == "gcc" && host ? nil : orig.call(name, host: host)
         }
-        e = assert_raises(RuntimeError) { pkg.stack_root }
+        e = assert_raises(RuntimeError) { bound(pkg).stack_root }
         assert_match(/HOST_VER_GCC/, e.message)
       ensure
         pm.define_singleton_method(:get_config_ver, orig)
@@ -214,8 +214,8 @@ class TestPortableStackBinding < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
-      assert_equal pkgmgr.default_stack_cc_ver, pkg.stack_gcc_ver
-      assert_equal pkgmgr.stack_root.to_s, pkg.stack_root.to_s
+      assert_equal pkgmgr.default_stack_cc_ver, bound(pkg).stack_gcc_ver
+      assert_equal pkgmgr.stack_root.to_s, bound(pkg).stack_root.to_s
     end
   end
 
@@ -228,16 +228,16 @@ class TestPortableStackBinding < Minitest::Test
                             arch_list: ALL_HOST_ARCHS.values)
 
       default = pkgmgr.default_stack_cc_ver
-      assert_equal default, pkg.stack_gcc_ver
+      assert_equal default, bound(pkg).stack_gcc_ver
 
-      pkgmgr.with_host_stack(Ver("13.4.0")) do
-        assert_equal Ver("13.4.0"), pkg.stack_gcc_ver
-        assert pkg.stack_root.to_s.end_with?("/any/gcc-13.4.0")
-        assert pkg.coords.to_s.end_with?("/any/gcc-13.4.0")
+      with_host_stack(Ver("13.4.0")) do
+        assert_equal Ver("13.4.0"), bound(pkg).stack_gcc_ver
+        assert bound(pkg).stack_root.to_s.end_with?("/any/gcc-13.4.0")
+        assert bound(pkg).coords.to_s.end_with?("/any/gcc-13.4.0")
       end
 
       # ...and the scope is scoped.
-      assert_equal default, pkg.stack_gcc_ver
+      assert_equal default, bound(pkg).stack_gcc_ver
     end
   end
 
@@ -251,12 +251,12 @@ class TestPortableStackBinding < Minitest::Test
         pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                               arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
 
-        assert pkg.installed?(Ver("1.0.0"))
+        assert bound(pkg).installed?(Ver("1.0.0"))
 
-        pkgmgr.with_host_stack(Ver("13.4.0")) do
-          refute pkg.installed?(Ver("1.0.0"))
+        with_host_stack(Ver("13.4.0")) do
+          refute bound(pkg).installed?(Ver("1.0.0"))
         end
       end
     end
@@ -266,11 +266,11 @@ class TestPortableStackBinding < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
-      pkgmgr.with_host_stack(Ver("11.5.0")) do
-        pkgmgr.with_host_stack(Ver("16.2.0")) do
-          assert_equal Ver("16.2.0"), pkg.stack_gcc_ver
+      with_host_stack(Ver("11.5.0")) do
+        with_host_stack(Ver("16.2.0")) do
+          assert_equal Ver("16.2.0"), bound(pkg).stack_gcc_ver
         end
-        assert_equal Ver("11.5.0"), pkg.stack_gcc_ver
+        assert_equal Ver("11.5.0"), bound(pkg).stack_gcc_ver
       end
     end
   end
@@ -330,11 +330,11 @@ class TestPortableStackBinding < Minitest::Test
         pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                               arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
 
         own = pkgmgr.default_stack_cc_ver
-        refute_empty pkg.sysroot_fragments(own)
-        assert_empty pkg.sysroot_fragments(Ver("9.9.9"))
+        refute_empty bound(pkg).sysroot_fragments(own)
+        assert_empty bound(pkg).sysroot_fragments(Ver("9.9.9"))
       end
     end
   end
@@ -374,7 +374,7 @@ class TestPortableToolchainEnv < Minitest::Test
     with_fake_tc do
       pkg = FakePackage.new("host_h", on_host: true, host_tier: :stack,
                             arch_list: ALL_HOST_ARCHS.values)
-      sysroot = pkg.stack_sysroot.to_s
+      sysroot = bound(pkg).stack_sysroot.to_s
 
       # Read the value the same way the build does, without needing the
       # toolchain to be installed.
@@ -489,7 +489,7 @@ class TestStackCompilerNeverUpgrades < Minitest::Test
   include TestHelper
 
   class StackGcc < TestHelper::FakePackage
-    def default_ver = pkgmgr.current_host_stack
+    def default_ver = scope.stack
     def installable_versions = [Ver("12.5.0"), Ver("14.4.0")]
   end
 
@@ -505,14 +505,14 @@ class TestStackCompilerNeverUpgrades < Minitest::Test
         pkgmgr.register(gcc)
         # Installed as the default OF THE 12.5.0 STACK, as a plan for a
         # QEMU pinned to it does: no version named, inside that scope.
-        pkgmgr.with_host_stack(Ver("12.5.0")) { run_cli("-s", "host_gcc") }
+        with_host_stack(Ver("12.5.0")) { run_cli("-s", "host_gcc") }
         pkgmgr.refresh
 
         inst = gcc.find_install(Ver("12.5.0"))
         refute_nil inst
         assert inst.default_install, "the premise: recorded as a default"
 
-        pkgmgr.with_host_stack(Ver("14.4.0")) do
+        with_host_stack(Ver("14.4.0")) do
           refute gcc.needs_upgrade?, "a stack compiler read as upgradable"
           rc, out = run_cli("--check-for-updates")
           assert_equal 0, rc, out
@@ -543,7 +543,7 @@ class TestTheStackInEffectHoldsWithoutACompilerBound < Minitest::Test
           [Ver("7.7.7"), Ver("8.8.8")]
         }
         gcc.define_singleton_method(:stack_gcc_ver) { |v = nil|
-          v || pkgmgr.current_host_stack
+          v || scope.stack
         }
         pkgmgr.register(libc)
         pkgmgr.register(gcc)

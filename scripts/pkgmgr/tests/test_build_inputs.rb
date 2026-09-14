@@ -67,7 +67,7 @@ class TestBuildIdentity < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("foo")
 
-        inst = pkgmgr.get("foo").find_install(Ver("1.0.0"))
+        inst = bound(pkgmgr.get("foo")).find_install(Ver("1.0.0"))
         refute_nil inst
         assert File.file?(inst.path / BuildInputs::FILE)
       end
@@ -182,7 +182,8 @@ class TestBuildIdentity < Minitest::Test
         pkgmgr.install("foo")
         pkgmgr.refresh
 
-        refute pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
+        b = bound(pkg)
+        refute b.build_inputs_changed?(b.find_install(Ver("1.0.0")))
         assert_empty pkgmgr.get_stale_packages
       end
     end
@@ -204,7 +205,8 @@ class TestBuildIdentity < Minitest::Test
           [Pathname.new(__FILE__)]
         }
 
-        assert pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
+        b = bound(pkg)
+        assert b.build_inputs_changed?(b.find_install(Ver("1.0.0")))
         assert_includes pkgmgr.get_stale_packages.map(&:name), "foo"
       end
     end
@@ -222,7 +224,8 @@ class TestBuildIdentity < Minitest::Test
         pkg.define_singleton_method(:build_flags) { |ver = nil|
           ["--newly-added"]
         }
-        assert pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
+        b = bound(pkg)
+        assert b.build_inputs_changed?(b.find_install(Ver("1.0.0")))
       end
     end
   end
@@ -241,11 +244,13 @@ class TestBuildIdentity < Minitest::Test
         pkgmgr.install("foo")
         pkgmgr.refresh
 
-        FileUtils.rm_f(pkg.find_install(Ver("1.0.0")).path /
+        FileUtils.rm_f(bound(pkg).find_install(Ver("1.0.0")).path /
                        BuildInputs::FILE)
 
-        assert_equal :unknown, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
-        assert pkg.build_inputs_changed?(pkg.find_install(Ver("1.0.0")))
+        b = bound(pkg)
+        i = b.find_install(Ver("1.0.0"))
+        assert_equal :unknown, b.build_inputs_state_of(i)
+        assert b.build_inputs_changed?(i)
       end
     end
   end
@@ -257,14 +262,19 @@ class TestBuildIdentity < Minitest::Test
         pkg = FakePackage.new("foo")
         pkgmgr.register(pkg)
 
-        assert_equal :not_installed, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
+        b = bound(pkg)
+        assert_equal :not_installed,
+                     b.build_inputs_state_of(b.find_install(Ver("1.0.0")))
 
         pkgmgr.install("foo")
         pkgmgr.refresh
-        assert_equal :ok, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
+        b = bound(pkg)
+        assert_equal :ok, b.build_inputs_state_of(b.find_install(Ver("1.0.0")))
 
         pkg.define_singleton_method(:build_flags) { |v = nil| ["--x"] }
-        assert_equal :changed, pkg.build_inputs_state_of(pkg.find_install(Ver("1.0.0")))
+        b = bound(pkg)
+        assert_equal :changed,
+                     b.build_inputs_state_of(b.find_install(Ver("1.0.0")))
       end
     end
   end
@@ -500,7 +510,7 @@ class TestRecordFormat < Minitest::Test
     pkgmgr.register(pkg)
     pkgmgr.install("foo")
     pkgmgr.refresh
-    return [pkg, pkg.find_install(Ver("1.0.0"))]
+    return [pkg, bound(pkg).find_install(Ver("1.0.0"))]
   end
 
   def rewrite(inst, recipe: nil, drop_format: false)
@@ -548,7 +558,7 @@ class TestRecordFormat < Minitest::Test
       with_stubbed_externals do
         pkg, inst = installed_one
         rewrite(inst, drop_format: true)
-        assert_equal :ok, pkg.build_inputs_state_of(inst)
+        assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
       end
     end
   end
@@ -559,7 +569,7 @@ class TestRecordFormat < Minitest::Test
         pkg, inst = installed_one
         rewrite(inst, recipe: "sha256:00000000000000000000000000000000",
                 drop_format: true)
-        assert_equal :old_format, pkg.build_inputs_state_of(inst)
+        assert_equal :old_format, bound(pkg).build_inputs_state_of(inst)
       end
     end
   end
@@ -570,7 +580,7 @@ class TestRecordFormat < Minitest::Test
       with_stubbed_externals do
         pkg, inst = installed_one
         rewrite(inst, recipe: "sha256:00000000000000000000000000000000")
-        assert_equal :changed, pkg.build_inputs_state_of(inst)
+        assert_equal :changed, bound(pkg).build_inputs_state_of(inst)
       end
     end
   end
@@ -582,7 +592,7 @@ class TestRecordFormat < Minitest::Test
         pkg, inst = installed_one
         rewrite(inst, recipe: "sha256:00000000000000000000000000000000",
                 drop_format: true)
-        assert pkg.build_inputs_changed?(inst)
+        assert bound(pkg).build_inputs_changed?(inst)
       end
     end
   end

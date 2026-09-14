@@ -41,7 +41,7 @@ class TestBuiltAgainst < Minitest::Test
   # A package bound with a request's versions answers from them; the
   # registry package, serving no request, has none.
   def test_a_bound_package_reads_the_versions_it_was_bound_with
-    b = @user.at(pkgmgr.scope, versions: { "host_gmp" => v("1.0.0") })
+    b = @user.at(scope, versions: { "host_gmp" => v("1.0.0") })
     assert_equal v("1.0.0"), b.resolved_ver("host_gmp")
     assert_nil @user.resolved_ver("host_gmp")
   end
@@ -141,11 +141,11 @@ class TestReplaceWithNothingThere < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("fresh")
         pkgmgr.register(pkg)
-        assert_nil pkg.find_install(pkg.default_ver)
+        assert_nil bound(pkg).find_install(bound(pkg).default_ver)
 
         assert pkgmgr.replace(pkg, pkg.default_ver, default_install: true)
         assert_equal ["fresh"], FakePackage.install_log
-        refute_nil pkg.find_install(pkg.default_ver)
+        refute_nil bound(pkg).find_install(bound(pkg).default_ver)
       end
     end
   end

@@ -21,12 +21,14 @@
 #   O6  a fallback dropped                a || b -> a
 #   O7  "all" and "nothing" swapped       nil <-> "ALL", :all <-> nil
 #   O8  a filter inverted                 select/reject, any?/all?
-#   O9  a scope not opened                with_target_coords(a, b) ->
-#                                         with_target_arch(a); board_for(a)
-#                                         -> BOARD; target_arch -> ARCH;
-#                                         pkg_dirname -> name;
+#   O9  a scope not passed                pkg_dirname -> name;
 #                                         coords(v) -> coords()
-#   O10 a scope not restored              @x = prev -> @x = nil
+#
+# Two operators retired with the shapes they made: "a scope not
+# opened" (with_target_coords narrowed, board_for and target_arch
+# read as globals) and "a scope not restored" (@x = prev -> nil).
+# A scope is a value handed to whoever asks now (scope.rb); there is
+# no block to open and nothing to put back.
 #
 # Row 4 of the bug table (a recipe judged at the wrong stack) is O9;
 # row 2 (nil where "ALL" was meant) is O7; row 3 (an arch matched as
@@ -54,9 +56,8 @@ module Mutation
   FILTERS = { select: "reject", reject: "select", any?: "all?",
               all?: "any?", find: "reject" }.freeze
 
-  # Bare calls whose replacement reads the ambient state instead.
-  AMBIENT = { target_arch: "ARCH", board_for: "BOARD",
-              pkg_dirname: "name" }.freeze
+  # Bare calls whose replacement answers from the wrong thing.
+  AMBIENT = { pkg_dirname: "name" }.freeze
 
   module_function
 
@@ -201,23 +202,9 @@ module Mutation
         add(out, file, tree, name_leaf(node).range, "O8", FILTERS[name])
       end
 
-      # O9: bare reads of the scope, and the two scope openers.
+      # O9: a bare call answered from the wrong thing.
       if AMBIENT.key?(name) && recv.nil?
-        if name == :board_for || name == :target_arch
-          add(out, file, tree, unit.range, "O9", AMBIENT[name]) if !blocked
-        else
-          add(out, file, tree, unit.range, "O9", AMBIENT[name])
-        end
-      end
-
-      # The receiver, if any, goes with it: the mutant is the call
-      # rewritten to the narrower opener, whoever it was sent to.
-      if name == :with_target_coords && args.length == 2
-        first = tree.text(args[0])
-        blk = blocked ? " " + tree.text(unit.children[1]) : ""
-        blk = " &" + tree.text(block_arg_of(unit)) if block_arg_of(unit)
-        add(out, file, tree, unit.range, "O9",
-            "with_target_arch(#{first})#{blk}")
+        add(out, file, tree, unit.range, "O9", AMBIENT[name])
       end
 
       if name == :coords && recv.nil? && args.length == 1
@@ -261,14 +248,6 @@ module Mutation
         add(out, file, tree, node.range, "O7", "nil")
       end
 
-    when :assign
-      # O10: `@x = prev` restores a scope; nothing else does.
-      target, value = node.children
-      ivar = target.type == :var_field ? target.children[0] : nil
-      if ivar && ivar.type == :@ivar && value.type == :var_ref &&
-         value.children[0].type == :@ident && value.children[0].text == "prev"
-        add(out, file, tree, node.range, "O10", "#{ivar.text} = nil")
-      end
     end
   end
 

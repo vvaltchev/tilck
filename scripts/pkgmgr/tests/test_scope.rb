@@ -7,8 +7,7 @@
 # Scope, and the scope is either bound to the package by the caller
 # (Package#at) or, during the transition, the invocation's. These
 # pin the three rules of the value and the two properties of binding
-# that the conversion rests on, and hold the transition's count of
-# unbound reads to what the last step left.
+# that the conversion rests on.
 #
 
 require_relative 'test_helper'
@@ -19,35 +18,6 @@ class TestScope < Minitest::Test
 
   I386 = ALL_ARCHS["i386"]
   RV   = ALL_ARCHS["riscv64"]
-
-  # TRANSITION: the number of distinct sites in the CORE files that
-  # asked an unbound package a scoped question in the last full run.
-  # tests/run_all.rb fails a run that exceeds it. Each step of the
-  # conversion lowers it and records the new number in its commit
-  # message; step 5.6 sets it to zero and deletes the fallback.
-  #
-  # The core is what decides: the manager, the CLI, the base class
-  # and the three packages that carry logic of their own. Every
-  # other product file is a recipe, converted wholesale when the
-  # executor binds the package it builds; the harness files are
-  # converted with the tests.
-  UNBOUND_CEILING = 7
-
-  # The same, for a package asked what is installed with no World in
-  # hand (step 5.2): the manager's scan answers, and the site counts.
-  UNBOUND_WORLD_CEILING = 8
-
-  # The same, for a package asked which version a request bound with
-  # no Plan in hand (step 5.3): the rebuild's stash answers.
-  UNBOUND_VERSION_CEILING = 1
-  CORE = %w[package.rb package_manager.rb main.rb layout.rb recipe.rb
-            scope.rb coords.rb install_selector.rb dep_resolver.rb
-            version_solver.rb build_inputs.rb build_env.rb
-            system_deps.rb early_logic.rb gcc.rb host_gcc.rb
-            tilck_stack.rb world.rb plan.rb planner.rb
-            executor.rb].freeze
-  HARNESS = %w[test_helper.rb bridge.rb model.rb laws.rb runner.rb
-               domain.rb].freeze
 
   def env(stack: Ver("7.7.7")) = Scope.env(stack: stack)
 
@@ -104,33 +74,35 @@ class TestScope < Minitest::Test
     end
   end
 
-  # --- the manager's openers, now the same value -----------------------
+  # --- the environment's scope --------------------------------------------
 
-  def test_the_openers_move_one_field_each_and_put_it_back
+  # Deriving a scope from the environment's moves one field and leaves
+  # the environment's as it was: there is nothing to put back.
+  def test_a_derived_scope_leaves_the_environments_as_it_was
     with_context(ARCH: I386, BOARD: "pc") do
       reset_pkgmgr!
-      before = pkgmgr.scope
-      pkgmgr.with_target_coords(RV, "licheerv-nano") do
-        assert_equal RV, pkgmgr.target_arch
-        assert_equal "licheerv-nano", pkgmgr.board_for(RV)
-        pkgmgr.with_host_stack(Ver("8.8.8")) do
-          assert_equal Ver("8.8.8"), pkgmgr.current_host_stack
-          assert_equal RV, pkgmgr.target_arch
-        end
-        assert_equal before.stack, pkgmgr.current_host_stack
-      end
-      assert_equal before, pkgmgr.scope
+      before = scope
+      sc = scope.with(arch: RV, board: "licheerv-nano")
+      assert_equal RV, sc.arch
+      assert_equal "licheerv-nano", sc.board_of(RV)
+      sc2 = sc.with(stack: Ver("8.8.8"))
+      assert_equal Ver("8.8.8"), sc2.stack
+      assert_equal RV, sc2.arch
+      assert_equal before.stack, sc.stack
+      assert_equal before, scope
     end
   end
 
-  def test_minus_h_names_the_stack_for_the_whole_invocation
+  # What HOST_VER_GCC says is what the environment's scope names; a
+  # test may say otherwise, for a block or for good.
+  def test_the_configured_stack_names_the_environments
     reset_pkgmgr!
-    pkgmgr.host_stack = Ver("9.9.9")
-    assert_equal Ver("9.9.9"), pkgmgr.current_host_stack
-    pkgmgr.with_host_stack(Ver("8.8.8")) {
-      assert_equal Ver("8.8.8"), pkgmgr.current_host_stack
+    pkgmgr.default_stack = Ver("9.9.9")
+    assert_equal Ver("9.9.9"), scope.stack
+    with_host_stack(Ver("8.8.8")) {
+      assert_equal Ver("8.8.8"), scope.stack
     }
-    assert_equal Ver("9.9.9"), pkgmgr.current_host_stack
+    assert_equal Ver("9.9.9"), scope.stack
   ensure
     reset_pkgmgr!
   end
@@ -143,7 +115,7 @@ class TestScope < Minitest::Test
         reset_pkgmgr!
         pkg = FakePackage.new("t", arch_list: [I386, RV])
         pkgmgr.register(pkg)
-        s = pkgmgr.scope.with(arch: RV, board: "licheerv-nano")
+        s = scope.with(arch: RV, board: "licheerv-nano")
 
         b = pkg.at(s)
         assert b.bound?
@@ -153,8 +125,8 @@ class TestScope < Minitest::Test
         assert_equal "licheerv-nano", b.coords.env
 
         # The invocation's scope is untouched by a binding.
-        assert_equal I386, pkg.default_arch
-        assert_equal "pc", pkg.coords.env
+        assert_equal I386, bound(pkg).default_arch
+        assert_equal "pc", bound(pkg).coords.env
       end
     end
   end
@@ -163,7 +135,7 @@ class TestScope < Minitest::Test
     with_fake_tc do
       reset_pkgmgr!
       pkg = FakePackage.new("t")
-      s = pkgmgr.scope
+      s = scope
       assert_equal pkg.at(s).coords, pkg.at(s).coords
       assert_equal pkg.at(s).install_dir(pkg.default_ver),
                    pkg.at(s).install_dir(pkg.default_ver)
@@ -186,7 +158,7 @@ class TestScope < Minitest::Test
                                         default: true))
         stack = TilckStackPackage.new(RV, "qemu-virt")
         pkgmgr.register(stack)
-        assert_equal ["rv_only"], stack.dep_list.map(&:name)
+        assert_equal ["rv_only"], bound(stack).dep_list.map(&:name)
       end
     end
   end
