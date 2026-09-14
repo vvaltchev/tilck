@@ -155,11 +155,15 @@ case "${1:-}" in
                   ;;
             esac
          done
-         # The bootstrap Ruby's files are fetched by bash before any
-         # registry exists (scripts/bash_build_toolchain): their lines
-         # are kept as they are, from the release's own sha256.txt and
-         # ruby-lang.org's published sum.
-         [ -f "$PINS" ] && grep -E '^ruby-' "$PINS" || true
+         # Lines this host's registry does not produce are kept as they
+         # are: the bootstrap Ruby's, fetched by bash before any
+         # registry exists, and the other hosts' compilers and python,
+         # whose names carry the host. The lint judges an orphan.
+         if [ -f "$PINS" ]; then
+            registry | awk '{print $2}' | sort > "$OUT/here"
+            grep -v '^#' "$PINS" | sort |
+               join -t: -v1 - "$OUT/here" || true
+         fi
       } | sort > "$PINS.new"
       {
          echo "# What every file in the cache must be (docs/package_manager.md,"

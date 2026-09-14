@@ -17,7 +17,18 @@ class GccCompiler < Package
   # and it is part of the release tarball's name (see build_tarname).
   # libmusl reads the same entry, so the two cannot drift apart.
   VER_MUSL = pkgmgr.get_config_ver("musl", host: false)
-  ALL_VERSIONS = [Ver("12.4.0"), Ver("13.3.0")]
+
+  # The GCC versions the release page has a prebuilt compiler for,
+  # per host OS -- as build_tarname reads the host, by uname's word.
+  # Linux got both; FreeBSD and macOS only the newer, and a version
+  # offered here without a tarball to fetch is a download that fails
+  # after the lint said every source was pinned.
+  VERSIONS_BY_OS = {
+    "Linux"   => [Ver("12.4.0"), Ver("13.3.0")],
+    "FreeBSD" => [Ver("13.3.0")],
+    "Darwin"  => [Ver("13.3.0")],
+  }.freeze
+  ALL_VERSIONS = VERSIONS_BY_OS.fetch(OS, [Ver("13.3.0")])
 
   attr_reader :target_arch, :libc
 
@@ -91,6 +102,10 @@ class GccCompiler < Package
       coords: info.coords, record: info.record
     )
   end
+
+  # Every version this host can install: what the registry asks to
+  # know which files the cache may hold (PackageManager#known_versions).
+  def installable_versions = ALL_VERSIONS
 
   def get_installable_list
     ALL_VERSIONS.map { |ver|

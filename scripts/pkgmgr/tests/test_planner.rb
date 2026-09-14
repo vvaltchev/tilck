@@ -510,6 +510,48 @@ class TestPlanner < Minitest::Test
     end
   end
 
+  # A cross compiler offers more than one GCC and every one is in use
+  # at once: an install of the one that is not the default -- the
+  # default of a GCC_TC_VER=12.4.0 invocation, seen from a 13.3.0 one
+  # -- is not behind. One at a version no longer offered is.
+  def test_a_cross_compiler_at_an_offered_version_is_not_behind
+    with_fake_tc do
+      cc = FakePackage.new("gcc-i386-musl", on_host: true, is_compiler: true,
+                           host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values,
+                           target_arch: ALL_ARCHS["i386"],
+                           versions: ["1.0.0", "2.0.0"])
+      pkgmgr.register(cc)
+      fake_install(cc, Ver("1.0.0"))
+      fake_install(cc, Ver("2.0.0"))
+      assert_equal [0, []], Planner.check_updates(pkgmgr, judged, scope)
+      assert_empty Planner.upgradable(pkgmgr, judged, scope)
+
+      # One asked for by name at a version no longer offered is the
+      # user's, and left alone; the same version installed as a
+      # default is behind.
+      fake_install(cc, Ver("0.9.0"), origin: :pinned)
+      assert_equal [0, []], Planner.check_updates(pkgmgr, judged, scope)
+      fake_install(cc, Ver("0.8.0"))
+      assert_equal [2, ["NEEDS_UPGRADE gcc-i386-musl"]],
+                   Planner.check_updates(pkgmgr, judged, scope)
+    end
+  end
+
+  # A compiler that declares no choice offers any version: an install
+  # of it is never behind for being at one.
+  def test_a_compiler_declaring_no_versions_is_never_behind
+    with_fake_tc do
+      cc = FakePackage.new("gcc-i386-musl", on_host: true, is_compiler: true,
+                           host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values,
+                           target_arch: ALL_ARCHS["i386"])
+      pkgmgr.register(cc)
+      fake_install(cc, Ver("7.7.7"))
+      assert_equal [0, []], Planner.check_updates(pkgmgr, judged, scope)
+    end
+  end
+
   # ...for the installs supported where they are. An install is judged
   # at its own coordinates, so one for another arch still reports
   # what it misses; one at a board its package no longer builds for

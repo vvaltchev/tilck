@@ -120,6 +120,13 @@ module Exhaustive
                                     is_compiler: true, host_tier: :portable,
                                     arch_list: ALL_HOST_ARCHS.values,
                                     target_arch: I386)] },
+    # A cross compiler offering two GCCs, as the real ones do: an
+    # install of the one that is not the default is not behind.
+    "cross_cc_two" => -> { [Pkg.new("gcc-i386-musl", on_host: true,
+                                    is_compiler: true, host_tier: :portable,
+                                    arch_list: ALL_HOST_ARCHS.values,
+                                    target_arch: I386,
+                                    versions: ["1.0.0", "2.0.0"])] },
     "chain"        => -> { [Pkg.new("a", dep_list: [Dep("b", false)]),
                             Pkg.new("b", dep_list: [Dep("c", false)]),
                             Pkg.new("c")] },

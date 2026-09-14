@@ -2125,6 +2125,20 @@ class Package
 
     want = coords()
     list = get_install_list.select { |x| x.coords == want && !x.broken }
+
+    # Nor does a cross compiler at a version this host still offers.
+    # Its default is whichever GCC_TC_VER the call is scoped to, and
+    # every version it offers is in use at once -- the CI matrix builds
+    # with both -- so a 12.4.0 installed as the default of a 12.4.0
+    # invocation, seen from a 13.3.0 one, is not behind anything. One
+    # at a version no longer offered is: it cannot be installed again,
+    # and what it builds is not supported.
+    if is_compiler
+      offered = installable_versions
+      return false if offered.empty?
+      return list.any? { |x| x.default_install && !offered.include?(x.ver) }
+    end
+
     list.any? { |x| x.default_install && x.ver != default_ver }
   end
 

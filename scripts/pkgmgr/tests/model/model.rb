@@ -782,15 +782,23 @@ module Model
   # is no longer the default. A pinned install is left alone -- and so
   # is the stack compiler, every install of which is the stack it
   # names: a bumped HOST_VER_GCC is a new stack, not an old one moving.
+  # A stack compiler never: each install is the stack it names. A
+  # cross compiler at a version it still offers never: its default is
+  # the invocation's GCC_TC_VER, and every offered version is in use
+  # at once; one at a version it no longer offers is behind.
   def upgradable(registry, world, scope)
     return registry.shapes.select { |s|
       next false if !supported?(s, scope, registry)
       next false if s.kind == :stack_cc
       c = coords_of(s, scope)
-      world.any? { |k|
-        k.name == s.name && k.coords == c && k.origin == :default &&
-          k.ver != s.default_ver
+      mine = world.select { |k|
+        k.name == s.name && k.coords == c && k.origin == :default
       }
+      if s.kind == :cross_cc
+        next false if s.versions.empty?
+        next mine.any? { |k| !s.versions.include?(k.ver) }
+      end
+      mine.any? { |k| k.ver != s.default_ver }
     }.map(&:name)
   end
 

@@ -277,6 +277,29 @@ class TestModel < Minitest::Test
     assert_equal pinned, go(r, pinned, "--upgrade", inv).world
   end
 
+  # A cross compiler offers more than one GCC and every one is in use
+  # at once, so an install of the one that is not the default -- put
+  # there as the default of a GCC_TC_VER=12.4.0 invocation -- is not
+  # behind: neither --check-for-updates nor --upgrade touches it. One
+  # at a version no longer offered is behind, and is upgraded.
+  def test_a_cross_compiler_at_an_offered_version_is_not_behind
+    r = reg(Model::Shape.make("gcc-i386-musl", :cross_cc,
+                              target_arch: "i386",
+                              versions: %w[13.3.0 12.4.0]))
+    port = Coords.new(HOST_OS_ARCH, nil, nil)
+    both = Model.world(k("gcc-i386-musl", "13.3.0", port),
+                       k("gcc-i386-musl", "12.4.0", port))
+    assert_equal 0, go(r, both, "--check-for-updates", inv).rc
+    assert_equal both, go(r, both, "--upgrade", inv).world
+
+    old = Model.world(k("gcc-i386-musl", "11.0.0", port))
+    o = go(r, old, "--check-for-updates", inv)
+    assert_equal [2, "NEEDS_UPGRADE gcc-i386-musl"], [o.rc, o.out]
+    assert_equal Model.world(k("gcc-i386-musl", "11.0.0", port),
+                             k("gcc-i386-musl", "13.3.0", port)),
+                 go(r, old, "--upgrade", inv).world
+  end
+
   # --- marks: manual and auto -------------------------------------------
 
   # -s marks what it was asked for manual and what it brought in auto;
