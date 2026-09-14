@@ -29,7 +29,6 @@ class PackageManager
     @host_config_versions =
       read_config_versions("host_pkg_versions", "HOST_VER_")
     @world = nil          # what is installed, scanned once per change
-    @resolved_versions = nil
     @host_world = nil     # memoized host_world_names, per registry
     @scope = nil          # the scope a with_* block opened; nil = the
                           # environment's (see #scope)
@@ -194,9 +193,7 @@ class PackageManager
   # where it applies, and what the listing opens with.
   def tilck_stacks = @packages.values.select(&:metapackage?)
 
-  def get_upgradable_packages
-    @packages.values.select { |p| p.supported? && p.needs_upgrade? }
-  end
+  def get_upgradable_packages = Planner.upgradable(self, world, scope)
 
   # Installed, but not from the sources we have now: a patch was
   # added, a flag changed, or the code that drives the build did.
@@ -212,17 +209,7 @@ class PackageManager
   # dependencies first: a stale glibc is rebuilt before the gcc that
   # links it.
   def get_stale_installs
-
-    pairs = @packages.values.flat_map { |p|
-      next [] if !p.supported? || p.needs_upgrade?
-      p.get_install_list.select { |i|
-        !i.broken && p.build_inputs_changed?(i)
-      }.map { |i| [p, i] }
-    }
-
-    order = DepResolver.resolve(pairs.map { |p, _| p.name }.uniq,
-                                build_dep_graph)
-    return pairs.sort_by { |p, _| order.index(p.name) }
+    return Planner.stale_installs(self, world.judged(self, scope), scope)
   end
 
   def get_stale_packages = get_stale_installs.map(&:first).uniq
@@ -481,8 +468,9 @@ class PackageManager
     # stale column and the note below needs it for the count, and
     # reading every .build_inputs twice to answer the same question
     # is the kind of thing -l gets slow by.
+    judged = world.judged(self, scope)
     states = installs.to_h { |i|
-      [i, i.pkg ? i.pkg.build_inputs_state_of(i) : nil]
+      [i, i.pkg ? judged.installs.find { |j| j == i }&.record : nil]
     }
 
     dump = ->(sections) {
@@ -829,16 +817,16 @@ class PackageManager
     default_install = ver.nil? if default_install.nil?
     ver ||= pkg.default_ver()
 
-    # TRANSITION: one Build, executed. The -s and default paths plan
-    # whole requests (Planner) and run them (Executor); this is the
-    # entry the upgrade, rebuild and replace paths and the tests
-    # still use, and it reads the versions a rebuild put in effect.
-    bound = versions_in_effect
+    # TRANSITION: one Build, executed, bound to the versions this
+    # package resolves as the whole request. Every mode plans whole
+    # requests (Planner) and runs them (Executor); this is the entry
+    # the tests still use.
+    bound = Planner.bind(self, [[pkg.name, ver]], scope).first
     action = Build.new(
       name: pkg.name, ver: ver, scope: scope,
       origin: default_install ? :default : :pinned,
       mark: manual ? :manual : :auto, bound: bound,
-      against: Planner.against_of(self, pkg, ver, bound, scope)
+      against: Planner.against_of(pkg, ver, bound)
     )
     return Executor.build(self, action)
   end
@@ -1080,13 +1068,6 @@ class PackageManager
   # Transitive dependency closure of `name`, nearest dependency first.
   # Used by Package#deps_build_env to collect the build interfaces a
   # package's dependencies publish.
-  # TRANSITION: the versions a rebuild put in effect around its
-  # builds (with_resolved_versions), which a package not bound with
-  # a Plan's versions falls back to. A request planned through
-  # Planner carries its own, and the builds it runs read those.
-  def versions_in_effect = @resolved_versions || {}
-  def resolved_ver(name) = versions_in_effect[name]
-
   # Move installations between manual and auto, as apt-mark does.
   #
   # WHICH installations is -u's question, answered -u's way: the same
@@ -1111,12 +1092,9 @@ class PackageManager
     return plan.marks.length
   end
 
-  # The mark an upgrade inherits: manual if any default install of the
-  # package is the user's, since that is what the new version replaces.
+  # The mark an upgrade inherits (Planner.inherited_mark).
   def upgrade_inherits_manual?(pkg)
-    pkg.get_install_list.any? { |i|
-      i.default_install && !i.broken && i.manual
-    }
+    return Planner.inherited_mark(world, pkg.name) == :manual
   end
 
   # The installations one install needs (Planner.needs_of).
@@ -1198,76 +1176,30 @@ class PackageManager
     end
   end
 
-  # Replace an install with a fresh build of the same version.
-  #
-  # The old tree is set aside first -- under staging, where nothing
-  # looks for installs -- so that the build sees no install and the
-  # move finds no directory; then the new tree is built and moved in;
-  # and if the build does not finish, the old tree comes back. A
-  # rebuild that removed first and built second left holes exactly
-  # where the build failed: an isl with nothing to link, and a GCC
-  # that took thirty minutes to make and could not be put back.
+  # Replace an install with a fresh build of the same version
+  # (Executor.replace); an install that is not there is an install.
   def replace(pkg, ver, default_install:, manual: true)
 
-    inst = pkg.find_install(ver)
+    inst = pkg.at(scope, world: world).find_install(ver)
     if inst.nil?
       return install(pkg, ver, default_install: default_install,
                                manual: manual)
     end
 
-    aside = TC_STAGING / "replaced" / pkg.pkg_dirname / File.basename(inst.path)
-    FileUtils.rm_rf(aside)
-    FileUtils.mkdir_p(aside.dirname)
-    FileUtils.mv(inst.path, aside)
-    installs_changed!
-    refresh()
-
-    # Restored on any way out but success: a build that raises --
-    # install_prefix on a dependency that is not there -- is not a
-    # build that returned false, and the first rebuild that raised
-    # left the tree it had set aside under staging and a hole where
-    # QEMU 6.2.0 had been.
-    ok = false
-    begin
-      ok = install(pkg, ver, default_install: default_install,
-                             manual: manual)
-    ensure
-      if ok
-        FileUtils.rm_rf(aside)
-      else
-        FileUtils.mv(aside, inst.path)
-        installs_changed!
-        refresh()
-      end
-
-      # Nothing of this stays under staging: the package's directory,
-      # then replaced/ itself -- each once empty, because a tree
-      # stranded there by an interrupted run is not ours to take.
-      [aside.dirname, aside.dirname.dirname].each { |d|
-        FileUtils.rmdir(d) if Dir.empty?(d)
-      }
-    end
-
-    return ok
-  end
-
-  # Run `block` with the resolution a rebuild restores from an
-  # install's record, in place of the one a request would compute.
-  def with_resolved_versions(versions, &block)
-    prev = @resolved_versions
-    @resolved_versions = versions
-    begin
-      return block.call
-    ensure
-      @resolved_versions = prev
-    end
+    bound = Planner.bind(self, [[pkg.name, ver]], scope).first
+    build = Build.new(name: pkg.name, ver: ver, scope: scope,
+                      origin: default_install ? :default : :pinned,
+                      mark: manual ? :manual : :auto, bound: bound,
+                      against: Planner.against_of(pkg, ver, bound))
+    return Executor.replace(self, Replace.new(install: inst, build: build))
   end
 
   # The version of each dependency `pkg` at `ver` is built against:
   # the one the request resolved, else the dependency's own pin, else
   # its default. What InstallDeps records.
   def built_against(pkg, ver)
-    return Planner.against_of(self, pkg, ver, versions_in_effect, scope)
+    bound = Planner.bind(self, [[pkg.name, ver]], scope).first
+    return Planner.against_of(pkg, ver, bound)
   end
 
   # What an install was built against (Planner.deps_of_install):
@@ -1280,11 +1212,9 @@ class PackageManager
     return DepResolver.dep_closure(name, build_dep_graph)
   end
 
-  # TRANSITION: the install plan as the upgrade and rebuild paths and
-  # the tests still read it -- [name, ver] pairs in build order, the
-  # version nil where the default is meant -- computed by the Planner
-  # and with its bound versions put in effect for the builds that
-  # follow through install().
+  # TRANSITION: the install plan as the tests still read it -- [name,
+  # ver] pairs in build order, the version nil where the default is
+  # meant -- computed by the Planner.
   #
   # Raises the solver's errors, as it always did.
   def resolve_install_plan(requested_pairs)
@@ -1294,7 +1224,6 @@ class PackageManager
     raise plan.message if plan.is_a?(Refusal)
 
     plan.notes.each { |n| info n }
-    @resolved_versions = plan.bound
 
     # A version the user named binds as a pin, so it is :pinned and
     # comes back as itself; nothing else needs saying about it.

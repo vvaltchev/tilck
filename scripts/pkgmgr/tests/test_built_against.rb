@@ -36,24 +36,22 @@ class TestBuiltAgainst < Minitest::Test
 
   def v(s) = Ver(s)
 
-  # --- the resolution context ---------------------------------------------
+  # --- the resolution a build reads -----------------------------------------
 
-  def test_the_previous_resolution_comes_back_after_the_block
-    pkgmgr.with_resolved_versions({ "a" => v("1.0.0") }) do
-      pkgmgr.with_resolved_versions({ "a" => v("9.9.9") }) { }
-      assert_equal v("1.0.0"), pkgmgr.resolved_ver("a"),
-                   "the inner context replaced the outer with nothing"
-    end
-    assert_nil pkgmgr.resolved_ver("a")
+  # A package bound with a request's versions answers from them; the
+  # registry package, serving no request, has none.
+  def test_a_bound_package_reads_the_versions_it_was_bound_with
+    b = @user.at(pkgmgr.scope, versions: { "host_gmp" => v("1.0.0") })
+    assert_equal v("1.0.0"), b.resolved_ver("host_gmp")
+    assert_nil @user.resolved_ver("host_gmp")
   end
 
   # --- built_against: what gets recorded ----------------------------------
 
   def test_the_resolved_version_is_recorded_first
-    pkgmgr.with_resolved_versions({ "host_gmp" => v("1.0.0") }) do
-      assert_equal({ "host_gmp" => v("1.0.0") },
-                   pkgmgr.built_against(@user, @user.default_ver))
-    end
+    assert_equal({ "host_gmp" => v("1.0.0") },
+                 Planner.against_of(@user, @user.default_ver,
+                                    { "host_gmp" => v("1.0.0") }))
   end
 
   def test_without_a_resolution_the_dependencys_pin_is_recorded

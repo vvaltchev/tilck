@@ -115,7 +115,7 @@ class InstallInfo
 
   attr_reader :pkgname, :compiler, :on_host, :arch, :ver, :path
   attr_reader :pkg, :broken, :target_arch, :libc, :default_install
-  attr_reader :coords, :manual
+  attr_reader :coords, :manual, :record
 
   def initialize(
     pkgname,  # package name (string)
@@ -130,7 +130,9 @@ class InstallInfo
     libc        = nil, # libc (e.g. "musl") [only for compilers]
     default_install: false, # installed as the default version?
     coords: nil,            # Coords: where this installation lives
-    manual: true            # asked for by name, not pulled in as a dep?
+    manual: true,           # asked for by name, not pulled in as a dep?
+    record: nil             # what .build_inputs says (World#judged), or
+                            # nil when nobody has asked yet
   )
     @pkgname = pkgname         # package name
     @compiler = compiler       # "syscc" or compiler version or nil (= noarch)
@@ -144,6 +146,7 @@ class InstallInfo
     @libc = libc
     @default_install = default_install
     @manual = manual
+    @record = record
     @coords = coords           # the three coordinates of the install
     assert { arch.nil? or arch.is_a? Architecture }
 
@@ -158,9 +161,21 @@ class InstallInfo
 
   def compiler? = !@target_arch.nil?
 
+  # The same installation, with what its record says about it:
+  # :ok, :changed, :old_format or :unknown (Package#build_inputs_state_of).
+  def with_record(state)
+    return InstallInfo.new(@pkgname, @compiler, @on_host, @arch, @ver,
+                           @path, @pkg, @broken, @target_arch, @libc,
+                           default_install: @default_install,
+                           coords: @coords, manual: @manual,
+                           record: state)
+  end
+
   # Two readings of one installation are equal: what identifies it,
-  # and what the tree says about it. A World scanned twice is then
-  # equal to itself, which is the check that the scan can be trusted.
+  # and what the tree says about it -- not the judgement of its
+  # record, which is a question asked of it later. A World scanned
+  # twice is then equal to itself, which is the check that the scan
+  # can be trusted.
   def ==(other)
     return other.is_a?(InstallInfo) && identity == other.identity
   end
@@ -273,17 +288,18 @@ class Package
   end
 
   # The versions the request being served bound, name => Version:
-  # the map this package was bound with, else (TRANSITION, counted)
-  # the one the manager holds for a rebuild. The version of a
-  # dependency comes from here, NOT from this package's own dep
-  # list: mpfr names host_gmp without a version, so asking mpfr
-  # alone answers gmp's default, while the gcc that asked for all
-  # four pinned something else.
+  # the map this package was bound with (Plan#bound, through the
+  # executor). The version of a dependency comes from here, NOT from
+  # this package's own dep list: mpfr names host_gmp without a
+  # version, so asking mpfr alone answers gmp's default, while the
+  # gcc that asked for all four pinned something else. Unbound
+  # (TRANSITION, counted), there is no request being served and the
+  # map is empty; a reader that needs one falls to own_resolution.
   def versions
     return @versions if @versions
     Package.note_unbound_read(UNBOUND_VERSION_READS,
                               caller_locations(1, 12))
-    return pkgmgr.versions_in_effect
+    return {}
   end
 
   def resolved_ver(dep_name) = versions[dep_name]
@@ -1108,12 +1124,11 @@ class Package
 
   # Record what this install was built from, beside what was built.
   def write_build_inputs(inst, argv = nil)
-    with_install_context(inst) {
-      BuildInputs.write(inst.path,
-                        recipe: build_recipe_digest(inst.ver),
-                        files: build_files(inst.ver),
-                        argv: argv)
-    }
+    me = at(scope_at(inst))
+    BuildInputs.write(inst.path,
+                      recipe: me.build_recipe_digest(inst.ver),
+                      files: me.build_files(inst.ver),
+                      argv: argv)
   end
 
   #
@@ -1147,12 +1162,12 @@ class Package
     recorded = BuildInputs.comparable(inst.path)
     return :unknown if recorded.nil?
 
-    current = with_install_context(inst) {
-      BuildInputs.comparable_lines(
-        BuildInputs.render(recipe: build_recipe_digest(inst.ver),
-                           files: build_files(inst.ver))
-      )
-    }
+    # Judged as the recipe reads AT the install's own coordinates.
+    me = at(scope_at(inst))
+    current = BuildInputs.comparable_lines(
+      BuildInputs.render(recipe: me.build_recipe_digest(inst.ver),
+                         files: me.build_files(inst.ver))
+    )
 
     return :ok if recorded == current
 
@@ -1850,7 +1865,7 @@ class Package
     # default had moved on, and CMake refused to build until --upgrade
     # "fixed" it. HOST_VER_GCC moving means a new stack beside this
     # one, never this one moving.
-    return false if pkgmgr.stack_compiler.equal?(self)
+    return false if pkgmgr.stack_compiler&.name == name
 
     want = coords()
     list = get_install_list.select { |x| x.coords == want && !x.broken }

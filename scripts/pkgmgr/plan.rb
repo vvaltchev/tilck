@@ -32,6 +32,12 @@ Remove = Data.define(:install) do
   def to_s = "remove #{install.pkgname} #{install.ver} at #{install.coords}"
 end
 
+# One installation rebuilt where it is: set aside, built again by
+# `build`, and put back if the build does not finish.
+Replace = Data.define(:install, :build) do
+  def to_s = "replace #{install.pkgname} #{install.ver} at #{install.coords}"
+end
+
 # One installation re-marked manual or auto.
 Mark = Data.define(:install, :manual) do
   def to_s
@@ -44,7 +50,8 @@ end
 # the request bound, and what the planning had to say (a pin that
 # displaced a default, for instance).
 Plan = Data.define(:actions, :scope, :bound, :notes) do
-  def builds  = actions.grep(Build)
+  def builds  = actions.grep(Build) + actions.grep(Replace).map(&:build)
+  def replaces = actions.grep(Replace)
   def removes = actions.grep(Remove)
   def marks   = actions.grep(Mark)
   def empty?  = actions.empty?

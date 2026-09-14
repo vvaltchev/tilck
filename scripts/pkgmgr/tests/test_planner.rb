@@ -438,6 +438,202 @@ class TestPlanner < Minitest::Test
     end
   end
 
+  # --- upgrades, staleness, rebuilds: on values ------------------------------
+
+  def two_versions(name, **kw)
+    p = FakePackage.new(name, **kw)
+    p.define_singleton_method(:installable_versions) {
+      [Ver("1.0.0"), Ver("2.0.0")]
+    }
+    p.define_singleton_method(:default_ver) { Ver("2.0.0") }
+    pkgmgr.register(p)
+    return p
+  end
+
+  def judged = world_now.judged(pkgmgr, pkgmgr.scope)
+
+  # An install made as the default whose default moved wants the new
+  # one; a pinned install is left alone.
+  def test_upgradable_is_a_default_install_whose_default_moved
+    with_fake_tc do
+      t = two_versions("t")
+      fake_install(t, Ver("1.0.0"), origin: :default, mark: :manual)
+      assert_equal ["t"], Planner.upgradable(pkgmgr, world_now,
+                                             pkgmgr.scope).map(&:name)
+      p = Planner.plan_upgrade(pkgmgr, world_now, pkgmgr.scope)
+      assert_equal [["t", Ver("2.0.0"), :manual]],
+                   p.builds.map { |b| [b.name, b.ver, b.mark] },
+                   "the new version inherits the old one's mark"
+
+      FileUtils.rm_rf(t.install_dir(Ver("1.0.0")))
+      fake_install(t, Ver("1.0.0"), origin: :pinned)
+      assert_empty Planner.upgradable(pkgmgr, world_now, pkgmgr.scope)
+      p = Planner.plan_upgrade(pkgmgr, world_now, pkgmgr.scope)
+      assert_empty p.builds
+      assert_match(/up to date/, p.notes.join("\n"))
+    end
+  end
+
+  # A judged world carries each install's record; stale is what does
+  # not read :ok, dependencies first, and a bumped version is not stale.
+  def test_stale_installs_read_the_judged_world_dependencies_first
+    with_fake_tc do
+      a, b, c = chain
+      fake_install(c, record: :changed)
+      fake_install(b)
+      fake_install(a, record: :missing)
+      w = judged
+      assert_equal %i[changed ok unknown],
+                   %w[c b a].map { |n| w.of(n).first.record }
+      stale = Planner.stale_installs(pkgmgr, w, pkgmgr.scope)
+      assert_equal %w[c a], stale.map { |p, _| p.name }
+      rc, lines = Planner.check_updates(pkgmgr, w, pkgmgr.scope)
+      assert_equal 2, rc
+      assert_equal ["NEEDS_REBUILD a c"], lines
+    end
+  end
+
+  def test_an_unjudged_world_is_refused_not_misread
+    with_fake_tc do
+      _, _, c = chain
+      fake_install(c)
+      assert_raises(ArgumentError) {
+        Planner.stale_installs(pkgmgr, world_now, pkgmgr.scope)
+      }
+    end
+  end
+
+  # --rebuild replaces each stale install where it is, as it was asked
+  # for, after any dependency the recipe has grown since.
+  def test_rebuild_replaces_in_place_after_the_grown_dependency
+    with_fake_tc do
+      grown = FakePackage.new("grown")
+      t = FakePackage.new("t")
+      [grown, t].each { |p| pkgmgr.register(p) }
+      fake_install(t, record: :changed, origin: :pinned, mark: :auto)
+      t.define_singleton_method(:dep_list) { [Dep("grown", false)] }
+
+      p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      assert_equal %w[grown], p.actions.grep(Build).map(&:name)
+      r = p.replaces.first
+      assert_equal "t", r.install.pkgname
+      assert_equal [Ver("1.0.0"), :pinned, :auto],
+                   [r.build.ver, r.build.origin, r.build.mark]
+      assert_match(/Installs to rebuild/, p.notes.join("\n"))
+      assert_equal p.actions.last, r, "the replace comes after the grown dep"
+    end
+  end
+
+  def test_rebuild_refuses_an_install_whose_deps_cannot_be_known
+    with_fake_tc do
+      d = two_versions("host_d", **HOST)
+      u = FakePackage.new("host_u", **HOST, dep_list: [Dep("host_d", true)])
+      pkgmgr.register(u)
+      fake_install(d, Ver("1.0.0"))
+      fake_install(d, Ver("2.0.0"))
+      fake_install(u, record: :changed)      # a fake install has no record
+      r = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      assert_kind_of Refusal, r
+      assert_match(/host_u:1.0.0 has no record of which host_d/, r.message)
+    end
+  end
+
+  # ...at a board the package no longer builds for, while it still
+  # builds for the invocation's.
+  def test_rebuild_leaves_an_install_its_package_cannot_build_here
+    with_fake_tc do
+      with_context(ARCH: RV, BOARD: "qemu-virt") do   # inside: the fake
+        t = FakePackage.new("t", arch_list: [RV])     # tc sets ARCH too
+        pkgmgr.register(t)
+        nano = pkgmgr.scope.with(arch: RV, board: "licheerv-nano")
+        fake_install(t, at: t.at(nano).coords, record: :changed)
+        t.instance_variable_set(:@board_list, ["qemu-virt"])  # dropped
+        p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+        assert_empty p.actions
+        assert_match(/Left as it is: t:1.0.0 .*does not build for board/,
+                     p.notes.join("\n"))
+        refute_match(/Installs to rebuild/, p.notes.join("\n"),
+                     "nothing is rebuilt, and the plan does not say so")
+      end
+    end
+  end
+
+  # A grown dependency two stale installs share is built once.
+  def test_rebuild_builds_a_shared_grown_dependency_once
+    with_fake_tc do
+      grown = FakePackage.new("grown")
+      a = FakePackage.new("a")
+      b = FakePackage.new("b")
+      [grown, a, b].each { |p| pkgmgr.register(p) }
+      [a, b].each { |p| fake_install(p, record: :changed) }
+      [a, b].each { |p|
+        p.define_singleton_method(:dep_list) { [Dep("grown", false)] }
+      }
+      p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      assert_equal ["grown"], p.actions.grep(Build).map(&:name)
+      assert_equal %w[a b], p.replaces.map { |r| r.install.pkgname }.sort
+    end
+  end
+
+  # An install recorded against one version of a dependency that its
+  # recipe now pins to another cannot be planned: a conflict, refused.
+  def test_rebuild_refuses_a_record_that_conflicts_with_the_recipe
+    with_fake_tc do
+      d = two_versions("host_d", **HOST)
+      u = FakePackage.new("host_u", **HOST,
+                          dep_list: [Dep("host_d", true, ver: Ver("2.0.0"))])
+      pkgmgr.register(u)
+      fake_install(d, Ver("1.0.0"))
+      inst = fake_install(u, record: :changed)
+      InstallDeps.write(inst, { "host_d" => Ver("1.0.0") })
+      r = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      assert_kind_of Refusal, r
+      assert_match(/Version conflict/, r.message)
+    end
+  end
+
+  # A stale install is rebuilt WHERE IT IS -- at its own stack -- even
+  # when the compiler of that stack is gone and the request resolves
+  # to another one: the install was there before, and nothing already
+  # there moves. Found by the exhaustive lane (stack/124/2/51): the
+  # request's stack was taken for the install's, which built a second
+  # copy at the wrong stack, as pinned, and took the old one away.
+  def test_rebuild_keeps_an_install_at_its_own_stack
+    with_fake_tc do
+      gcc = FakePackage.new("host_gcc", **HOST)
+      gcc.define_singleton_method(:installable_versions) {
+        [Ver("7.7.7"), Ver("8.8.8")]
+      }
+      gcc.define_singleton_method(:default_ver) { scope.stack }
+      s = FakePackage.new("host_s", on_host: true, host_tier: :stack,
+                          arch_list: ALL_HOST_ARCHS.values,
+                          dep_list: [Dep("host_gcc", true)])
+      [gcc, s].each { |p| pkgmgr.register(p) }
+      pkgmgr.host_stack = Ver("7.7.7")
+      fake_install(gcc)
+      fake_install(s, at: pkgmgr.stack_coords(Ver("8.8.8")),
+                   record: :changed, mark: :auto)
+
+      p = Planner.plan_rebuild(pkgmgr, judged, pkgmgr.scope)
+      assert_equal [Replace], p.actions.map(&:class)
+      b = p.replaces.first.build
+      assert_equal Ver("8.8.8"), b.scope.stack
+      assert_equal [:default, :auto], [b.origin, b.mark]
+    end
+  end
+
+  def test_installable_tags_defaults_and_the_rest
+    with_fake_tc do
+      d = FakePackage.new("dflt", default: true, dep_list: [Dep("lib", false)])
+      lib = FakePackage.new("lib")
+      opt = FakePackage.new("opt")
+      [d, lib, opt].each { |p| pkgmgr.register(p) }
+      list = Planner.installable(pkgmgr, pkgmgr.scope)
+      assert_equal [["lib", "default"], ["dflt", "default"],
+                    ["opt", "optional"]], list
+    end
+  end
+
   # --- the plan is a value of its arguments ----------------------------------
 
   def test_the_same_arguments_give_the_same_plan

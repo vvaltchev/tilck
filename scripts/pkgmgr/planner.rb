@@ -87,13 +87,11 @@ module Planner
   end
 
   # The version of each direct dependency `pkg` at `ver` is built
-  # against: the bound one, else the dependency's own pin, else its
-  # default. What InstallDeps records.
-  def against_of(registry, pkg, ver, bound, scope)
-    return pkg.dep_list_for(ver).to_h { |d|
-      [d.name, bound[d.name] || d.ver || registry.get(d.name)&.at(scope)
-                                                            &.default_ver]
-    }.compact
+  # against: what the request bound it to. What InstallDeps records.
+  # Every caller binds the closure first (bind), and a direct
+  # dependency is in the closure, so there is no other rung.
+  def against_of(pkg, ver, bound)
+    return pkg.dep_list_for(ver).to_h { |d| [d.name, bound.fetch(d.name)] }
   end
 
   # --- what -f removes ------------------------------------------------------
@@ -199,7 +197,7 @@ module Planner
         name: name, ver: ver, scope: scope,
         origin: named.include?(name) || moved ? :pinned : :default,
         mark: mark, bound: bound,
-        against: against_of(registry, pkg, ver, bound, scope)
+        against: against_of(pkg, ver, bound)
       )
     end
 
@@ -214,6 +212,194 @@ module Planner
       i.default_install && !i.broken && i.manual
     }
     return manual ? :manual : :auto
+  end
+
+  # --- upgrades, staleness, rebuilds ---------------------------------------
+
+  # Packages with an install at the scope's coordinates that was made
+  # as the default version and whose default has since moved. The
+  # package says (needs_upgrade?): the stack compiler never does.
+  def upgradable(registry, world, scope)
+    return registry.all_packages.select { |p|
+      b = p.at(scope, world: world)
+      b.supported? && b.needs_upgrade?
+    }
+  end
+
+  # --upgrade: the upgradable packages at their new defaults, claimed
+  # by nobody -- the new version is the user's exactly as much as the
+  # old was, and inherits its mark.
+  def plan_upgrade(registry, world, scope)
+    roots = upgradable(registry, world, scope).map { |p| [p.name, nil] }
+    if roots.empty?
+      return Plan.new(actions: [], scope: scope, bound: {},
+                      notes: ["All installed packages are up to date"])
+    end
+    return plan_install(registry, world, roots, scope, claimed: [])
+  end
+
+  # Installed, but not from the sources we have now: a patch was
+  # added, a flag changed, or the recipe did. Read off a JUDGED world
+  # (World#judged): every install carries its record's verdict, made
+  # at ITS coordinates. [package, install] pairs, dependencies first:
+  # a stale glibc is rebuilt before the gcc that links it. A package
+  # whose version was bumped is --upgrade's and is left out.
+  def stale_installs(registry, world, scope)
+
+    pairs = registry.all_packages.flat_map { |p|
+      b = p.at(scope, world: world)
+      next [] if !b.supported? || b.needs_upgrade?
+      world.of(p.name).select { |i|
+        raise ArgumentError, "#{p.name}: an unjudged world" if i.record.nil?
+        !i.broken && i.record != :ok
+      }.map { |i| [p, i] }
+    }
+
+    order = DepResolver.resolve(pairs.map { |p, _| p.name }.uniq,
+                                graph(registry, scope))
+    return pairs.sort_by { |p, _| order.index(p.name) }
+  end
+
+  # Why `pkg` cannot be built at `scope`, or nil: the host it needs
+  # (its own, or the world it belongs to), else the arch, else the
+  # board -- questions only a target package can answer "no" to.
+  def unsupported_reason(registry, pkg, scope)
+
+    closure = DepResolver.dep_closure(pkg.name, graph(registry, scope))
+    for n in [pkg.name] + closure do
+      p = registry.get(n)
+      next if p.nil? || p.host_supported?
+      who = n == pkg.name ? "" : " (needs #{n}, which requires it)"
+      return "host: #{pkg.name} requires #{p.host_requirement}#{who}"
+    end
+
+    b = pkg.at(scope)
+    return "arch #{scope.arch.name}" if !b.arch_supported?
+    return "board #{scope.board_of(scope.arch)}" if !b.board_supported?
+    return nil
+  end
+
+  # --rebuild: every stale install rebuilt where it is, at its version,
+  # against what it was built against, as it was asked for. Planned
+  # as the install itself was, with what it was built against asked
+  # for by name, so that a dependency the recipe has grown since (QEMU
+  # learned libslirp) is put in first and nothing already there moves.
+  # An install at a board its package does not build for is left as
+  # it is, and said. An install whose dependencies cannot be known --
+  # no record, two present -- refuses the whole run before anything
+  # moves.
+  def plan_rebuild(registry, world, scope)
+
+    stale = stale_installs(registry, world, scope)
+    if stale.empty?
+      return Plan.new(actions: [], scope: scope, bound: {},
+                      notes: ["Every install was built from the sources " \
+                              "we have"])
+    end
+
+    notes = []
+    stale, elsewhere = stale.partition { |pkg, inst|
+      pkg.at(pkg.scope_at(inst, scope)).supported?
+    }
+    for pkg, inst in elsewhere do
+      where = unsupported_reason(registry, pkg, pkg.scope_at(inst, scope))
+      notes << "Left as it is: #{pkg.name}:#{inst.ver} at #{inst.coords} " \
+               "(#{pkg.name} does not build for #{where})"
+    end
+    return Plan.new(actions: [], scope: scope, bound: {}, notes: notes) \
+      if stale.empty?
+
+    notes << "Installs to rebuild, dependencies first:"
+    stale.each { |pkg, inst|
+      notes << "  #{pkg.name}:#{inst.ver} at #{inst.coords}"
+    }
+
+    # What each was built against, all of it settled before anything
+    # is planned around it.
+    against = stale.map { |pkg, inst|
+      sc = pkg.scope_at(inst, scope)
+      versions, ambiguous = deps_of_install(registry, world, pkg, inst, sc)
+      if !ambiguous.empty?
+        return Refusal.new(message:
+          "#{pkg.name}:#{inst.ver} has no record of which " \
+          "#{ambiguous.join(', ')} it was built against, and more than " \
+          "one is installed. Rebuild it through the package that pinned " \
+          "it: -s <that package>:<ver> -f")
+      end
+      versions
+    }
+
+    actions = []
+    seen = Set.new
+
+    stale.zip(against).each do |(pkg, inst), versions|
+      sc = pkg.scope_at(inst, scope)
+      sub = plan_install(registry, world, [[pkg.name, inst.ver],
+                                           *versions.to_a], sc, claimed: [])
+      return sub if sub.is_a?(Refusal)
+
+      # The dependencies grown since, once each across the plan. The
+      # install itself is not among them: it is rebuilt where it is,
+      # by the Replace -- at its own stack, whichever stack the request
+      # resolved to. An install of a :stack package whose compiler is
+      # gone resolves to the stack in effect, and a plan at that stack
+      # builds the package there: a second copy at the wrong stack,
+      # pinned, with the old one set aside and never put back.
+      for b in sub.builds do
+        next if b.name == pkg.name
+        actions << b if seen.add?([b.name, b.ver, b.scope])
+      end
+
+      actions << Replace.new(install: inst, build: Build.new(
+        name: pkg.name, ver: inst.ver, scope: sc,
+        origin: inst.default_install ? :default : :pinned,
+        mark: inst.manual ? :manual : :auto, bound: sub.bound,
+        against: against_of(pkg, inst.ver, sub.bound)
+      ))
+    end
+
+    return Plan.new(actions: actions, scope: scope, bound: {}, notes: notes)
+  end
+
+  # --- the observations -------------------------------------------------------
+
+  # --check-for-updates: [rc, lines]. Two different problems with two
+  # different remedies, reported separately: a bumped version needs
+  # --upgrade, a package built from sources that have since changed
+  # needs a rebuild. 0 when nothing is needed, 2 otherwise.
+  def check_updates(registry, world, scope)
+    upgrades = upgradable(registry, world, scope).map(&:name).sort
+    stale = stale_installs(registry, world, scope).map { |p, _| p.name }
+                                                  .uniq.sort - upgrades
+    return [0, []] if upgrades.empty? && stale.empty?
+    lines = []
+    lines << "NEEDS_UPGRADE #{upgrades.join(' ')}" if !upgrades.empty?
+    lines << "NEEDS_REBUILD #{stale.join(' ')}" if !stale.empty?
+    return [2, lines]
+  end
+
+  # --list-installable: [name, tag] in dependency order, the tag
+  # "host-world" for what only the host world's roots need, "default"
+  # for the default set and what it pulls in, "optional" otherwise.
+  # Compilers are included: `-s <full-name>` works on them too.
+  def installable(registry, scope)
+
+    installable = registry.all_packages.reject { |p|
+      p.at(scope).get_installable_list.empty?
+    }
+    g = graph(registry, scope)
+    empty = Set.new
+    defaults = registry.all_packages.select { |p| p.at(scope).default? }
+    default_set = DepResolver.resolve(defaults.map(&:name), g, empty).to_set
+    world = registry.host_world_names.to_set
+
+    return DepResolver.resolve(installable.map(&:name), g, empty).map { |n|
+      tag = if world.include?(n) then "host-world"
+            elsif default_set.include?(n) then "default"
+            else "optional"
+            end
+      [n, tag]
+    }
   end
 
   # --- which installations -u means -------------------------------------------

@@ -28,6 +28,16 @@ require_relative 'plan'
 
 module Executor
 
+  # A build that raised rather than returned false: what it said,
+  # and which package it was.
+  class Failed < StandardError
+    attr_reader :name
+    def initialize(name, message)
+      @name = name
+      super(message)
+    end
+  end
+
   module_function
 
   # Run every action. Returns nil when all went through, else the name
@@ -46,12 +56,19 @@ module Executor
           recompose_all
           removed = false
         end
-        ok = case a
-             when Build  then build(registry, a)
-             when Remove then removed = true; remove(a)
-             when Mark   then mark(a)
-             else raise "unknown action #{a.inspect}"
-             end
+        ok = begin
+          case a
+          when Build   then build(registry, a)
+          when Replace then replace(registry, a)
+          when Remove  then removed = true; remove(a)
+          when Mark    then mark(a)
+          else raise "unknown action #{a.inspect}"
+          end
+        rescue RuntimeError => e
+          name = a.is_a?(Build) ? a.name : a.install.pkgname
+          raise Failed.new("#{name}:#{a.respond_to?(:ver) ? a.ver :
+                                        a.install.ver}", e.message)
+        end
         if !ok
           failed = a.is_a?(Build) ? a.name : a.install.pkgname
           break
@@ -68,6 +85,45 @@ module Executor
   end
 
   # --- the actions ----------------------------------------------------------
+
+  # An install rebuilt where it is. The old tree is set aside first
+  # -- under staging, where nothing looks for installs -- so that the
+  # build sees no install and the move finds no directory; then the
+  # new tree is built and moved in; and if the build does not finish
+  # -- returns false OR raises, as a recipe does on a dependency it
+  # cannot find -- the old tree comes back. A rebuild that removed
+  # first and built second left holes exactly where the build failed.
+  def replace(registry, action)
+
+    inst = action.install
+    aside = TC_STAGING / "replaced" / inst.pkg.pkg_dirname /
+            File.basename(inst.path)
+    FileUtils.rm_rf(aside)
+    FileUtils.mkdir_p(aside.dirname)
+    FileUtils.mv(inst.path, aside)
+    pkgmgr.installs_changed!
+
+    ok = false
+    begin
+      ok = build(registry, action.build)
+    ensure
+      if ok
+        FileUtils.rm_rf(aside)
+      else
+        FileUtils.mv(aside, inst.path)
+        pkgmgr.installs_changed!
+      end
+
+      # Nothing of this stays under staging: the package's directory,
+      # then replaced/ itself -- each once empty, because a tree
+      # stranded there by an interrupted run is not ours to take.
+      [aside.dirname, aside.dirname.dirname].each { |d|
+        FileUtils.rmdir(d) if Dir.empty?(d)
+      }
+    end
+
+    return ok
+  end
 
   # One installation gone, and the empty parents it leaves (the
   # package's directory, the arch's) with it, so that stale empty

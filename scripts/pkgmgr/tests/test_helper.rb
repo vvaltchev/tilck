@@ -379,8 +379,11 @@ module TestHelper
       raise "fake_install: #{dir} is not seen by #{pkg.name}" if inst.nil?
       pkg.write_build_inputs(inst)
     when :changed
+      # A record of the CURRENT format naming other sources: changed,
+      # not merely from an older scheme.
       File.write(dir / BuildInputs::FILE,
-                 "recipe sha256:not-what-it-was-built-from\n")
+                 "recipe sha256:not-what-it-was-built-from\n" \
+                 "format #{BuildInputs::FORMAT}\n")
     when :missing
       nil
     else
