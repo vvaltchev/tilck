@@ -88,18 +88,21 @@ class TestQemuStack < Minitest::Test
 
   # The point of the pin: HOST_VER_GCC sets the default for packages
   # that do not care which compiler builds them. QEMU cares, so the
-  # default must not reach it -- with HOST_VER_GCC naming 14.4.0,
-  # asking for QEMU 7 still builds the gcc-12.5.0 world.
+  # default must not reach it -- whatever HOST_VER_GCC names, asking
+  # for a QEMU of another series builds that series' world.
   def test_the_pin_beats_the_default_stack
-    assert_equal Ver("14.4.0"), pkgmgr.default_stack_cc_ver,
-                 "this test assumes the tree's default is 14.4.0"
+    default = pkgmgr.default_stack_cc_ver
+    others = HostQemuPackage::SUPPORTED.reject { |v|
+      HostQemuPackage::GCC_FOR[v.series] == default
+    }
+    assert_operator others.length, :>=, 2, "the table pairs one GCC per QEMU"
 
-    for v, want in { "7.2.0" => "12.5.0", "11.1.0" => "16.2.0" } do
-      stack = pkgmgr.resolved_versions_for([["host_qemu", Ver(v)]])["host_gcc"]
+    for v in others do
+      want = HostQemuPackage::GCC_FOR[v.series]
+      stack = pkgmgr.resolved_versions_for([["host_qemu", v]])["host_gcc"]
 
-      assert_equal Ver(want), stack,
-                   "QEMU #{v} resolved to the wrong compiler"
-      refute_equal pkgmgr.default_stack_cc_ver, stack,
+      assert_equal want, stack, "QEMU #{v} resolved to the wrong compiler"
+      refute_equal default, stack,
                    "the default reached a package that pins its own"
     end
   end

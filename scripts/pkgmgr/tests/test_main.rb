@@ -215,6 +215,8 @@ class TestRequestOf < Minitest::Test
     assert_equal :default, request.mode
     assert request("--contrib").contrib
     refute request.contrib
+    assert request("-s", "ALL", "--with-host-packages").host_packages
+    refute request("-s", "ALL").host_packages
   end
 
   def quietly

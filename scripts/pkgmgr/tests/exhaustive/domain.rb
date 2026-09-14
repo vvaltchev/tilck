@@ -120,6 +120,14 @@ module Exhaustive
                                     is_compiler: true, host_tier: :portable,
                                     arch_list: ALL_HOST_ARCHS.values,
                                     target_arch: I386)] },
+    # The host world, in small: a root (host_q, as host_qemu is) and
+    # what only it needs (host_only); a target package beside them.
+    # ALL is the target and nothing of the world; with the flag, the
+    # root at its default and host_only through it.
+    "world"        => -> { [Pkg.new("t"),
+                            host("host_only", :portable),
+                            host("host_q", :portable, world_root: true,
+                                 dep_list: [Dep("host_only", true)])] },
     # A cross compiler offering two GCCs, as the real ones do: an
     # install of the one that is not the default is not behind.
     "cross_cc_two" => -> { [Pkg.new("gcc-i386-musl", on_host: true,
@@ -185,8 +193,8 @@ module Exhaustive
   # every package as well multiplies cases by twenty for questions the
   # single-package shapes already ask, and made one shape (diamond)
   # cost more than the other fourteen together.
-  NARROW = %w[stack_pin stack_cc_dep cross_cc chain diamond conflict
-              default meta].freeze
+  NARROW = %w[stack_pin stack_cc_dep cross_cc cross_cc_two chain diamond
+              conflict default meta world].freeze
 
   def candidates(pkgs, narrow: false)
     out = []
@@ -340,6 +348,10 @@ module Exhaustive
     end
 
     lines << "-s ALL" << "-u ALL" << "-u ALL -f" << "-u ALL -a ALL" \
+          << "-s ALL --with-host-packages" << "-u ALL --with-host-packages" \
+          << "-s ALL:ALL --with-host-packages" \
+          << "--mark-auto ALL --with-host-packages" \
+          << "-s t --with-host-packages" \
           << "-u ALL -c #{TestHelper::FAKE_GCC_VER}" << "--upgrade" \
           << "--rebuild" << "--autoremove" << "--mark-auto ALL" \
           << "--mark-manual ALL" << "--mark-auto ALL -f" << "--clean" \

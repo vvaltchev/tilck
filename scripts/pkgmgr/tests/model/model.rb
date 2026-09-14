@@ -403,20 +403,29 @@ module Model
   # --- transitions ----------------------------------------------------------
 
   # `-s ALL`: every package that can be installed HERE, less the cross
-  # compilers. Per scope, since what is installable depends on the
-  # arch and board. `-s X:ALL`: every version X declares, or its
-  # default when it declares none.
-  def expand_all(registry, targets, scope)
+  # compilers and less the host world (Registry#world_names). Per
+  # scope, since what is installable depends on the arch and board.
+  # With --with-host-packages, the world's ROOTS come too, at their
+  # default version -- no version of ALL for them -- and bring what
+  # they need. `-s X:ALL`: every version X declares, or its default
+  # when it declares none.
+  def expand_all(registry, targets, scope, host_packages: false)
+    world = registry.world_names
     return targets.flat_map { |name, ver|
-      names = if name != :all then [name]
-              else registry.shapes.reject(&:compiler?)
-                           .select { |s| supported?(s, scope, registry) }
-                           .map(&:name)
+      names = if name != :all then [[name, ver]]
+              else
+                own = registry.shapes.reject(&:compiler?)
+                              .reject { |s| world.include?(s.name) }
+                              .select { |s| supported?(s, scope, registry) }
+                              .map { |s| [s.name, ver] }
+                roots = host_packages ? registry.roots : []
+                roots = roots.select { |s| supported?(s, scope, registry) }
+                own + roots.map { |s| [s.name, nil] }
               end
-      names.flat_map { |n|
-        next [[n, ver]] if ver != :all
+      names.flat_map { |n, v|
+        next [[n, v]] if v != :all
         s = registry[n]
-        (s.nil? || s.versions.empty? ? [nil] : s.versions).map { |v| [n, v] }
+        (s.nil? || s.versions.empty? ? [nil] : s.versions).map { |x| [n, x] }
       }
     }
   end
@@ -439,7 +448,8 @@ module Model
   end
 
   def install_rounds(registry, world, req, scope)
-    rounds = rounds_of(expand_all(registry, req.targets, scope))
+    rounds = rounds_of(expand_all(registry, req.targets, scope,
+                                  host_packages: req.host_packages))
     last = nil
     for r in rounds do
       last = install(registry, world, req.with(targets: r), scope)
@@ -477,7 +487,8 @@ module Model
 
     roots, refused = resolve_versions(registry,
                                       expand_all(registry, req.targets,
-                                                 scope))
+                                                 scope, host_packages:
+                                                        req.host_packages))
     return Outcome.new(1, world, refused) if refused
     names = roots.map(&:first)
     claimed ||= names                  # ALL expanded: every one of them
@@ -678,11 +689,15 @@ module Model
   # noarch package -- less the cross compilers unless -f, and less
   # what a clean must never take. -a ALL widens to every arch and
   # board; -c narrows to what one compiler built.
+  # SPEC: -u ALL spares the cross compilers unless -f, and the host
+  # world unless --with-host-packages; --clean spares neither.
   def select_all(registry, world, req, scope)
+    world_names = registry.world_names
     return world.select { |k|
       s = registry[k.name]
       next false if NEVER_REMOVE.include?(k.name)
       next false if s&.compiler? && !req.force
+      next false if !req.host_packages && world_names.include?(k.name)
       if req.cc && req.cc != :all
         next false if k.coords.stack != "gcc-#{req.cc}"
       end
@@ -773,7 +788,8 @@ module Model
   def clean(registry, world, req, scope)
     all = Request.new(mode: :uninstall, targets: [[:all, :all]],
                       force: false, dry: req.dry, arch: :all, board: nil,
-                      cc: nil, stack: nil, contrib: false)
+                      cc: nil, stack: nil, contrib: false,
+                      host_packages: true)
     return uninstall(registry, world, all, scope)
   end
 
@@ -807,7 +823,7 @@ module Model
     return Outcome.new(0, world, "up to date") if roots.empty?
     plain = Request.new(mode: :install, targets: roots, force: false,
                         dry: req.dry, arch: nil, board: nil, cc: nil,
-                        stack: nil, contrib: false)
+                        stack: nil, contrib: false, host_packages: false)
     # An upgrade claims nothing: the new version is the user's exactly
     # as much as the old was.
     return install(registry, world, plain, scope, claimed: [])
@@ -914,7 +930,8 @@ module Model
     return Outcome.new(0, world, "nothing to do") if names.empty?
     plain = Request.new(mode: :install, targets: names.map { |n| [n, nil] },
                         force: false, dry: req.dry, arch: nil, board: nil,
-                        cc: nil, stack: nil, contrib: false)
+                        cc: nil, stack: nil, contrib: false,
+                        host_packages: false)
     return install(registry, world, plain, scope, claimed: claimed)
   end
 
@@ -1001,7 +1018,7 @@ module Model
   SCOPED_BY_ARCH = %i[install default installable].freeze
 
   def step(registry, world, req, inv)
-    if (why = board_refusal(req, inv))
+    if (why = board_refusal(req, inv) || host_packages_refusal(req))
       return Outcome.new(1, world, why)
     end
     sc = scope(inv, req, arch_is_scope: SCOPED_BY_ARCH.include?(req.mode))
@@ -1032,6 +1049,13 @@ module Model
   # SPEC: -b names one arch's board. With -a ALL it is refused, and
   # so is a board the arch in effect does not have -- for every mode,
   # at the door, before anything is read.
+  # SPEC: --with-host-packages widens ALL and nothing else.
+  def host_packages_refusal(req)
+    return nil if !req.host_packages
+    return nil if req.targets.any? { |n, _| n == :all }
+    return "--with-host-packages applies to ALL"
+  end
+
   def board_refusal(req, inv)
     return nil if !req.board.is_a?(String)
     return "one arch's board" if req.arch == :all
@@ -1052,7 +1076,8 @@ module Model
       for b in (req.board == :all ? a.all_boards : [nil]) do
 
         s2 = sc.with(arch: a, board: b)
-        here = expand_all(registry, req.targets, s2).select { |n, _|
+        here = expand_all(registry, req.targets, s2,
+                          host_packages: req.host_packages).select { |n, _|
           s = registry[n]
           s.nil? || supported?(s, s2, registry)
 
@@ -1080,7 +1105,7 @@ module Model
 
     mode = :default
     targets = []
-    force = dry = false
+    force = dry = host_packages = false
     arch = board = cc = stack = nil
     a = argv.dup
 
@@ -1127,6 +1152,7 @@ module Model
       when "--list-installable"  then mode = :installable
       when "--print-layout"      then mode = :layout
       when "-j"                  then mode = :context
+      when "--with-host-packages" then host_packages = true
       when "-q", "--ascii", "-n" then nil          # change nothing
       when "-g"                  then a.shift      # -l grouping
       else raise "model: unknown argv token #{t}"
@@ -1135,7 +1161,7 @@ module Model
 
     return Request.new(mode: mode, targets: targets, force: force, dry: dry,
                        arch: arch, board: board, cc: cc, stack: stack,
-                       contrib: false)
+                       contrib: false, host_packages: host_packages)
 
   end
 

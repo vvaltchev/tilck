@@ -376,6 +376,9 @@ only the bare minimum.
                                           # prebuilt cross-compilers, the
                                           # bootstrap Ruby and the cache
 ./scripts/build_toolchain -u ALL -f -a ALL -c ALL   # ...compilers too
+./scripts/build_toolchain -s ALL --with-host-packages  # + the host world:
+                                          # the default QEMU and the one
+                                          # stack it is built by
 ```
 
 **Build parallelism is bounded, not unlimited.** `-j` with no number

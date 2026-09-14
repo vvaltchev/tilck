@@ -325,6 +325,22 @@ On any other host they are not listed, `-s` refuses them at the door
 stacks. Other host arches join once every package of the world has
 been built and exercised there.
 
+#### `ALL` stops at the edge of the host world
+
+`-s ALL` is Tilck's packages and the host tools they need -- the cross
+compilers as dependencies, mtools, ncurses, gtest, lcov -- and nothing of
+the host world; `-u ALL` and `--mark-* ALL` select the same set. The
+world is reached by name (`-s host_qemu`, `-s host_qemu:ALL`) or by
+`--with-host-packages`, which lets `ALL` reach into it: `-s ALL
+--with-host-packages` adds the world's roots at their default versions,
+so resolution brings one QEMU, the one stack it is built by and one of
+everything underneath -- never every version of every stack; `-u ALL
+--with-host-packages` removes every install of the world as well.
+`--clean` spares nothing either way. The flag given with a name is
+refused: it widens `ALL` and means nothing else. The CI images are built
+with a plain `-s ALL`, which is why they carry the Tilck packages and not
+the stacks.
+
 ### Package lifecycle
 
 Each Ruby package is a class inheriting from `Package` (in `package.rb`). It
@@ -371,6 +387,15 @@ one namespace.
 
 At startup every registered package must resolve to a version in its file;
 a missing entry is reported by name, not left as a silent nil.
+
+**`HOST_VER_GCC` must be the compiler the default QEMU is built by.**
+Each QEMU series pins its GCC (`HostQemuPackage::GCC_FOR`), so
+`-s host_qemu` builds the right stack whatever the configuration says;
+but everything asked for on its own -- `-s host_gtk3`, `-H`'s default,
+the `CURRENT` of `-l` -- goes into the configured stack, and a
+configuration naming another would put a second stack beside QEMU's,
+hours of building for nothing. The package manager refuses to start
+when `HOST_VER_GCC` and `HOST_VER_QEMU` disagree, naming both.
 
 ### Build interfaces
 

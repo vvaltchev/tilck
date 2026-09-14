@@ -771,6 +771,102 @@ class TestPlanner < Minitest::Test
     end
   end
 
+  # --- ALL and the host world --------------------------------------------
+
+  # The host world, in small: a root (as host_qemu is) and what only it
+  # needs, beside a target package and a host tool the target needs.
+  def world_pkgs
+    t = FakePackage.new("t", dep_list: [Dep("host_tool", true)])
+    tool = FakePackage.new("host_tool", on_host: true, host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values)
+    only = FakePackage.new("host_only", on_host: true, host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values)
+    root = FakePackage.new("host_q", on_host: true, host_tier: :portable,
+                           arch_list: ALL_HOST_ARCHS.values,
+                           world_root: true,
+                           dep_list: [Dep("host_only", true)])
+    [t, tool, only, root].each { |p| pkgmgr.register(p) }
+    assert_equal %w[host_only host_q].to_set, pkgmgr.host_world_names.to_set
+  end
+
+  # -s ALL is Tilck's packages and the host tools they need, and none
+  # of the world; with --with-host-packages the world's root comes at
+  # its default and brings what it needs. The flag alone, with a name,
+  # is refused.
+  def test_all_stops_at_the_host_world_unless_asked
+    with_fake_tc do
+      world_pkgs
+      out = Planner.step(pkgmgr, world_now, req(:install, [[:all, nil]]),
+                         scope)
+      assert_equal 0, out.rc
+      assert_equal %w[host_tool t], out.world.installs.map(&:pkgname).sort
+
+      out = Planner.step(pkgmgr, world_now,
+                         req(:install, [[:all, nil]], host_packages: true),
+                         scope)
+      assert_equal 0, out.rc
+      assert_equal %w[host_only host_q host_tool t],
+                   out.world.installs.map(&:pkgname).sort
+
+      out = Planner.step(pkgmgr, world_now,
+                         req(:install, [["t", nil]], host_packages: true),
+                         scope)
+      assert_equal 1, out.rc
+      assert_match(/--with-host-packages applies to ALL/, out.message)
+
+      # ...but ALL among other names is ALL.
+      out = Planner.step(pkgmgr, world_now,
+                         req(:install, [["t", nil], [:all, nil]],
+                             host_packages: true), scope)
+      assert_equal 0, out.rc
+    end
+  end
+
+  # The world's roots come at their default version only: ALL:ALL
+  # asks every version of Tilck's packages, and still one QEMU.
+  def test_the_host_world_s_roots_come_at_their_default_only
+    with_fake_tc do
+      t = FakePackage.new("t", versions: ["1.0.0", "2.0.0"])
+      root = FakePackage.new("host_q", on_host: true, host_tier: :portable,
+                             arch_list: ALL_HOST_ARCHS.values,
+                             world_root: true, versions: ["1.0.0", "2.0.0"])
+      [t, root].each { |p| pkgmgr.register(p) }
+      out = Planner.step(pkgmgr, world_now,
+                         req(:install, [[:all, :all]], host_packages: true),
+                         scope)
+      assert_equal 0, out.rc
+      got = out.world.installs.map { |i| [i.pkgname, i.ver.to_s] }.sort
+      assert_equal [["host_q", "1.0.0"], ["t", "1.0.0"], ["t", "2.0.0"]], got
+    end
+  end
+
+  # -u ALL spares the world as -s ALL leaves it alone; with the flag
+  # it takes every install of it; --clean takes everything regardless.
+  def test_u_all_spares_the_host_world_unless_asked
+    with_fake_tc do
+      world_pkgs
+      full = Planner.step(pkgmgr, world_now,
+                          req(:install, [[:all, nil]], host_packages: true),
+                          scope).world
+      assert_equal 4, full.installs.length
+
+      out = Planner.step(pkgmgr, full, req(:uninstall, [[:all, nil]]), scope)
+      assert_equal %w[host_only host_q], out.world.installs.map(&:pkgname).sort
+
+      out = Planner.step(pkgmgr, full,
+                         req(:uninstall, [[:all, nil]], host_packages: true),
+                         scope)
+      assert_empty out.world.installs
+
+      out = Planner.step(pkgmgr, full, req(:mark_auto, [[:all, nil]]), scope)
+      marked = out.acts.flat_map { |a| a.plan.actions.map { |m| m.install.pkgname } }
+      assert_equal %w[host_tool t], marked.sort
+
+      out = Planner.step(pkgmgr, full, req(:clean), scope)
+      assert_empty out.world.installs
+    end
+  end
+
   # ...and an arch that cannot build a root is skipped and said, the
   # others still installed.
   def test_step_skips_an_arch_a_root_does_not_build_for

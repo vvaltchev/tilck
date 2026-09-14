@@ -862,6 +862,36 @@ class PackageManager
       raise MissingVersionError,
             "Packages with no version: #{missing.join(', ')}"
     end
+
+    validate_default_stack(scope)
+  end
+
+  # The configured stack (HOST_VER_GCC) must be the one the default
+  # QEMU is built by (HostQemuPackage::GCC_FOR). Each QEMU pins its
+  # compiler, so `-s host_qemu` builds the right stack whatever the
+  # configuration says -- but everything asked for on its own
+  # (`-s host_gtk3`, -H's default, the CURRENT of -l) goes into the
+  # configured one, and a configuration that names another puts a
+  # second stack beside QEMU's, hours of building for nothing. Two
+  # lines of one file that must agree, checked where the file is
+  # read. A registry without both packages (a test's) has nothing
+  # to check.
+  def validate_default_stack(scope = env_scope)
+    cc = stack_compiler
+    roots = host_world_roots.reject { |r| r.equal?(cc) }
+    return if cc.nil? || roots.empty?
+    for root in roots do
+      b = root.at(scope)
+      pin = b.dep_list_for(b.default_ver).find { |d| d.name == cc.name }&.ver
+      next if pin.nil?
+      have = cc.at(scope).default_ver
+      next if pin == have
+      raise MissingVersionError,
+            "HOST_VER_GCC=#{have} but #{root.name} #{b.default_ver} " \
+            "(HOST_VER_#{root.pkg_dirname.upcase}) is built by gcc " \
+            "#{pin}: the configured stack must be the default QEMU's, " \
+            "or a second stack is built beside it (other/host_pkg_versions)"
+    end
   end
 
   # Every version a package can be asked for, from the registry
@@ -1401,7 +1431,7 @@ class PackageManager
   # when it selected fifty is worse than one that says nothing at all.
   def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
                 arch = nil, board: nil, coords: nil, except: [],
-                scope: env_scope)
+                host_packages: false, scope: env_scope)
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
@@ -1411,7 +1441,8 @@ class PackageManager
     plan = Planner.plan_uninstall(self, world, name, scope, ver: ver,
                                   compiler: compiler, arch: arch,
                                   board: board, coords: coords,
-                                  force: force, except: except)
+                                  force: force, except: except,
+                                  host_packages: host_packages)
 
     plan.notes.each { |n| warning n }
     say_removals(plan, dry)

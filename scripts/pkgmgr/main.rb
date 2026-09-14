@@ -928,6 +928,16 @@ module Main
       'set before the plan is resolved. [FLAG]'
     ) { @opts[:contrib] = true }
 
+    p.on(
+      '--with-host-packages',
+      'Let ALL reach into the host world: the packages that exist',
+      'only to build our own compiler and the QEMU built with it.',
+      'Without it, -s ALL / -u ALL / --mark-* ALL mean Tilck\'s',
+      'packages and the host tools they need. With it, -s ALL adds',
+      'the default QEMU and, through it, the one stack it is built',
+      'by; -u ALL removes every host-world install as well. [FLAG]'
+    ) { @opts[:host_packages] = true }
+
     return p
   end
 
@@ -1031,7 +1041,8 @@ module Main
 
     return Request.make(mode, targets: targets, force: o[:force],
                         dry: o[:dry_run], arch: arch, board: board, cc: cc,
-                        stack: stack, contrib: !!o[:contrib])
+                        stack: stack, contrib: !!o[:contrib],
+                        host_packages: !!o[:host_packages])
   end
 
   # -H names a stack, either as it is spelled everywhere else --

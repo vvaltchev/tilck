@@ -589,9 +589,13 @@ module Planner
 
   # The installations `-u name ...` (or --mark) means, and what to say
   # about it: [installs, notes]. `except` names packages spared; ALL
-  # spares the cross compilers unless `force`.
+  # spares the cross compilers unless `force`, and the host world
+  # unless `host_packages` -- what -s ALL builds is what -u ALL
+  # removes, and the big host packages are asked for by name, or by
+  # the flag that names them all.
   def select(registry, world, name, scope, ver: nil, compiler: nil,
-             arch: nil, board: nil, coords: nil, force: false, except: [])
+             arch: nil, board: nil, coords: nil, force: false, except: [],
+             host_packages: false)
 
     raise ArgumentError, "Invalid package name: '#{name}'" if name.blank?
 
@@ -625,6 +629,11 @@ module Planner
       picked = picked.reject { |e| e.compiler? || e.pkg&.is_compiler }
     end
 
+    if all_pkgs && !host_packages
+      world_names = registry.host_world_names
+      picked = picked.reject { |e| world_names.include?(e.pkgname) }
+    end
+
     return [picked, notes]
   end
 
@@ -639,11 +648,12 @@ module Planner
 
   def plan_uninstall(registry, world, name, scope, ver: nil, compiler: nil,
                      arch: nil, board: nil, coords: nil, force: false,
-                     except: [])
+                     except: [], host_packages: false)
 
     picked, notes = select(registry, world, name, scope, ver: ver,
                            compiler: compiler, arch: arch, board: board,
-                           coords: coords, force: force, except: except)
+                           coords: coords, force: force, except: except,
+                           host_packages: host_packages)
 
     # Nothing matched, and the caller named something specific: say
     # so, and where it is. ALL is exempt -- `-u ALL` on a clean tree
@@ -660,11 +670,12 @@ module Planner
 
   # --mark-manual / --mark-auto: the same selection as -u, re-marked.
   def plan_mark(registry, world, name, manual, scope, ver: nil,
-                compiler: nil, arch: nil, board: nil, force: false)
+                compiler: nil, arch: nil, board: nil, force: false,
+                host_packages: false)
 
     picked, notes = select(registry, world, name, scope, ver: ver,
                            compiler: compiler, arch: arch, board: board,
-                           force: force)
+                           force: force, host_packages: host_packages)
     if picked.empty? && notes.none? { |n| n&.include?("not installed") }
       notes << "#{name}: nothing matched, so nothing was marked"
     end
@@ -674,12 +685,13 @@ module Planner
                     scope: scope, bound: {}, notes: notes.compact)
   end
 
-  # --clean: every package, every version, every compiler -- and
-  # every arch, which is the one that has to be said: without it,
-  # ALL means the scope's arch only.
+  # --clean: every package, every version, every compiler, the host
+  # world too -- and every arch, which is the one that has to be
+  # said: without it, ALL means the scope's arch only.
   def plan_clean(registry, world, scope, except: [], force: false)
     return plan_uninstall(registry, world, "ALL", scope, arch: "ALL",
-                          force: force, except: except)
+                          force: force, except: except,
+                          host_packages: true)
   end
 
   # --- what each installation needs ------------------------------------------
@@ -873,7 +885,7 @@ module Planner
   # its records already. The observations (-l and its kin) change
   # nothing and return the world as it was: what they print is main's.
   def step(registry, world, req, scope)
-    if (why = board_refusal(req, scope))
+    if (why = board_refusal(req, scope) || host_packages_refusal(req))
       return Outcome.refused(world, why)
     end
     case req.mode
@@ -949,17 +961,30 @@ module Planner
     return [full, v, note]
   end
 
-  # ALL, expanded under `scope`: every installable package that is not
-  # a cross compiler. Per scope, since what is installable depends on
-  # the arch and the board. Compilers are reached by -S, or as the
-  # dependencies they are.
-  def expand_all(registry, targets, scope)
+  # ALL, expanded under `scope`: every installable package that is
+  # not a cross compiler and not of the host world -- Tilck's packages
+  # and the host tools they need. Per scope, since what is installable
+  # depends on the arch and the board. Compilers are reached by -S, or
+  # as the dependencies they are. The host world -- our own compiler,
+  # the QEMU built with it, and everything only they need -- is
+  # reached by --with-host-packages, which adds the world's ROOTS at
+  # their default versions and lets resolution bring the rest: one
+  # QEMU, the one compiler it is built by (validate_versions holds the
+  # configured default to it), one of everything underneath. Never
+  # every version of every stack: that is hours of building for a
+  # question nobody asked, and `-s host_qemu:ALL` is there for whoever
+  # does ask.
+  def expand_all(registry, targets, scope, host_packages: false)
+    world = registry.host_world_names
     return targets.flat_map { |name, ver|
       next [[name, ver]] if name != :all
-      registry.all_packages
-              .reject(&:is_compiler)
-              .reject { |p| p.at(scope).get_installable_list.empty? }
-              .map { |p| [p.name, ver] }
+      own = registry.all_packages
+                    .reject(&:is_compiler)
+                    .reject { |p| world.include?(p.name) }
+                    .reject { |p| p.at(scope).get_installable_list.empty? }
+      roots = host_packages ? registry.host_world_roots : []
+      roots = roots.reject { |p| p.at(scope).get_installable_list.empty? }
+      own.map { |p| [p.name, ver] } + roots.map { |p| [p.name, nil] }
     }
   end
 
@@ -982,6 +1007,15 @@ module Planner
     return nil if a.all_boards.include?(req.board)
     return "Unknown board #{req.board} for #{a.name}"
   end
+  # --with-host-packages widens ALL and nothing else: given with a
+  # name, it would either be ignored or mean something unsaid.
+  def host_packages_refusal(req)
+    return nil if !req.host_packages
+    return nil if req.targets.any? { |n, _| n == :all }
+    return "--with-host-packages applies to ALL: -s ALL, -u ALL, " \
+           "--mark-manual ALL, --mark-auto ALL"
+  end
+
   def cc_word(req)
     return "ALL" if req.cc == :all
     return req.cc.is_a?(Version) ? req.cc.to_s : req.cc
@@ -1013,7 +1047,8 @@ module Planner
       # installable is read for the right arch; X:ALL to every
       # version X can install, or its default when it declares none.
       requested = []
-      for name, ver in expand_all(registry, req.targets, sc) do
+      for name, ver in expand_all(registry, req.targets, sc,
+                                  host_packages: req.host_packages) do
         t = resolve_target(registry, name, ver)
         return Outcome.refused(world, t.message, acts: acts) \
           if t.is_a?(Refusal)
@@ -1166,7 +1201,8 @@ module Planner
       plan = plan_uninstall(registry, world, n, scope,
                             ver: v == :all ? "ALL" : v,
                             compiler: cc_word(req), arch: arch_word(req),
-                            board: board_word(req), force: req.force)
+                            board: board_word(req), force: req.force,
+                            host_packages: req.host_packages)
       acts << Act.make(plan)
       world = plan.apply(registry, world) if !req.dry
     end
@@ -1189,7 +1225,8 @@ module Planner
       plan = plan_mark(registry, world, n, manual, scope,
                        ver: v == :all ? "ALL" : v,
                        compiler: cc_word(req), arch: arch_word(req),
-                       board: board_word(req), force: req.force)
+                       board: board_word(req), force: req.force,
+                       host_packages: req.host_packages)
       acts << Act.make(plan)
       world = plan.apply(registry, world) if !req.dry
     end

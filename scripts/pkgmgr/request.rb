@@ -25,16 +25,22 @@
 #   cc       Version | :all | nil (-c)
 #   stack    Version | nil (-H)
 #   contrib  --contrib: the extras appended to the default set
+#   host_packages  --with-host-packages: ALL reaches into the host
+#            world too -- the packages that exist only to build our
+#            own compiler and the QEMU built with it. Without it, ALL
+#            is Tilck's packages and the host tools they need.
 #
 
 require_relative 'version'
 
 Request = Data.define(:mode, :targets, :force, :dry, :arch, :board, :cc,
-                      :stack, :contrib) do
+                      :stack, :contrib, :host_packages) do
   def self.make(mode, targets: [], force: false, dry: false, arch: nil,
-                board: nil, cc: nil, stack: nil, contrib: false)
+                board: nil, cc: nil, stack: nil, contrib: false,
+                host_packages: false)
     new(mode: mode, targets: targets, force: force, dry: dry, arch: arch,
-        board: board, cc: cc, stack: stack, contrib: contrib)
+        board: board, cc: cc, stack: stack, contrib: contrib,
+        host_packages: host_packages)
   end
 
   # "name[:ver]" as typed, to a target: ALL on either side is :all,

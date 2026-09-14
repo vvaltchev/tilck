@@ -676,11 +676,15 @@ module TestHelper
                    default: false, board_list: nil,
                    host_os_list: nil, host_arch_list: nil,
                    host_tier: :compiler, source: :default,
-                   target_arch: nil, libc: nil, versions: nil)
+                   target_arch: nil, libc: nil, versions: nil,
+                   world_root: false)
       # versions: the choice the fake DECLARES (installable_versions),
       # for a fake that offers more than its default -- a cross
       # compiler with two GCCs.
       @fake_versions = (versions || []).map { |v| Ver(v.to_s) }
+      # world_root: a root of the host world, as host_qemu is: what
+      # only it needs is the world, and ALL stops at its edge.
+      @fake_world_root = world_root
       # target_arch: makes this fake a CROSS COMPILER, the way
       # GccPackage is one -- its installs carry the target metadata,
       # which is what the listing reads to tell a toolchain from an
@@ -714,6 +718,7 @@ module TestHelper
     def expected_files(ver = nil) = []
     def default_ver = Ver("1.0.0")
     def installable_versions = @fake_versions
+    def host_world_root? = @fake_world_root
 
     # The shape every real recipe has: the declared flags reach a
     # command. Only a step can move the digest, so a fixture that

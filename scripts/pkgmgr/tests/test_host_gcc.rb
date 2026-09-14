@@ -42,15 +42,18 @@ class TestHostGccVersionDecisions < Minitest::Test
     end
   end
 
-  # The regression itself: with the default at 14.4.0, asking about
-  # 11.5.0 must still answer about 11.5.0.
+  # The regression itself: whichever version the configuration makes
+  # the default, asking about the other must answer about the other
+  # -- 11.5.0 needs the flag and 16.2.0 must not get it, and one of
+  # the two is not the default.
   def test_the_answer_does_not_follow_the_default
-    assert_equal Ver("14.4.0"), bound(@pkg).default_ver,
-                 "this test assumes the default is 14.4.0"
+    default = bound(@pkg).default_ver
+    assert_includes [Ver("11.5.0"), Ver("16.2.0")], default,
+                    "this test assumes the default is one of the two"
 
-    refute_includes @pkg.version_conf_args(bound(@pkg).default_ver),
-                    "--disable-libsanitizer"
     assert_includes @pkg.version_conf_args(Ver("11.5.0")),
+                    "--disable-libsanitizer"
+    refute_includes @pkg.version_conf_args(Ver("16.2.0")),
                     "--disable-libsanitizer"
   end
 
@@ -106,10 +109,10 @@ class TestHostGccVersionDecisions < Minitest::Test
   # building, since install_impl_internal is handed only a directory.
   def test_the_installing_version_comes_from_the_staging_path
     with_fake_tc do
-      assert_equal Ver("11.5.0"),
-                   @pkg.installing_ver(@pkg.staging_dir(Ver("11.5.0")))
+      other = HostGccPackage::SUPPORTED.find { |v| v != bound(@pkg).default_ver }
+      assert_equal other, @pkg.installing_ver(@pkg.staging_dir(other))
       refute_equal bound(@pkg).default_ver,
-                   @pkg.installing_ver(@pkg.staging_dir(Ver("11.5.0")))
+                   @pkg.installing_ver(@pkg.staging_dir(other))
     end
   end
 

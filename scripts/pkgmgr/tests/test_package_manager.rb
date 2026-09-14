@@ -189,6 +189,36 @@ class TestPackageManagerDepGraph < Minitest::Test
     assert_match(%r{other/pkg_versions}, e.message)
   end
 
+  # The configured stack must be the one the default QEMU is built by:
+  # a root of the host world that pins the stack compiler to another
+  # version than the configured default is refused, one that pins it
+  # to the same passes, and a registry with no such root has nothing
+  # to check.
+  def test_the_configured_stack_must_be_the_default_qemu_s
+    cc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                         arch_list: ALL_HOST_ARCHS.values,
+                         versions: ["1.0.0", "2.0.0"])
+    cc.define_singleton_method(:default_ver) { pkgmgr.default_stack_cc_ver }
+    pkgmgr.register(cc)
+    pkgmgr.default_stack = Ver("2.0.0")
+    pkgmgr.validate_versions   # no root: nothing to hold the stack to
+
+    root = FakePackage.new("host_q", on_host: true, host_tier: :stack,
+                           arch_list: ALL_HOST_ARCHS.values,
+                           world_root: true,
+                           dep_list: [Dep("host_gcc", true, ver: Ver("1.0.0"))])
+    pkgmgr.register(root)
+    e = assert_raises(PackageManager::MissingVersionError) {
+      pkgmgr.validate_versions
+    }
+    assert_match(/HOST_VER_GCC=2.0.0 but host_q 1.0.0 \(HOST_VER_Q\) is built by gcc 1.0.0/,
+                 e.message)
+    assert_match(%r{other/host_pkg_versions}, e.message)
+
+    pkgmgr.default_stack = Ver("1.0.0")
+    pkgmgr.validate_versions
+  end
+
   # The message must point at the file the package is actually looked
   # up in: a host package missing from host_pkg_versions should not
   # send the reader to the target file.

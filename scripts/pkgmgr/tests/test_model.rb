@@ -300,6 +300,53 @@ class TestModel < Minitest::Test
                  go(r, old, "--upgrade", inv).world
   end
 
+  # --- ALL and the host world -------------------------------------------
+
+  # The host world in small: a root (as host_qemu is) and what only
+  # it needs, beside a target and a host tool the target needs. -s ALL
+  # is the target and its tool; with --with-host-packages the root
+  # comes at its default and brings what it needs; -u ALL spares the
+  # world unless asked, and --clean spares nothing. The flag with a
+  # name is refused.
+  def test_all_stops_at_the_host_world_unless_asked
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386],
+                              deps: [["host_tool", nil]]),
+            Model::Shape.make("host_tool", :portable),
+            Model::Shape.make("host_only", :portable),
+            Model::Shape.make("host_q", :portable, world_root: true,
+                              deps: [["host_only", nil]]))
+    assert_equal %w[host_only host_q].sort, r.world_names.sort
+
+    o = go(r, Model.world, "-s ALL", inv)
+    assert_equal %w[host_tool t], o.world.map(&:name).sort
+
+    o = go(r, Model.world, "-s ALL --with-host-packages", inv)
+    assert_equal %w[host_only host_q host_tool t], o.world.map(&:name).sort
+    full = o.world
+
+    o = go(r, Model.world, "-s t --with-host-packages", inv)
+    assert_equal 1, o.rc
+    assert_match(/applies to ALL/, o.out)
+
+    assert_equal %w[host_only host_q],
+                 go(r, full, "-u ALL", inv).world.map(&:name).sort
+    assert_empty go(r, full, "-u ALL --with-host-packages", inv).world
+    assert_empty go(r, full, "--clean", inv).world
+  end
+
+  # The world's roots come at their default version only, even under
+  # ALL:ALL, which asks every version of Tilck's packages.
+  def test_the_host_world_s_roots_come_at_their_default_only
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386],
+                              versions: %w[1.0.0 2.0.0]),
+            Model::Shape.make("host_q", :portable, world_root: true,
+                              versions: %w[1.0.0 2.0.0]))
+    o = go(r, Model.world, "-s ALL:ALL --with-host-packages", inv)
+    assert_equal 0, o.rc
+    assert_equal [["host_q", "1.0.0"], ["t", "1.0.0"], ["t", "2.0.0"]],
+                 o.world.map { |k| [k.name, k.ver.to_s] }.sort
+  end
+
   # --- marks: manual and auto -------------------------------------------
 
   # -s marks what it was asked for manual and what it brought in auto;

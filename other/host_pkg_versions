@@ -12,7 +12,12 @@
 # scope) without one silently overwriting the other.
 #
 HOST_VER_BINUTILS=2.43
-HOST_VER_GCC=14.4.0
+# The stack everything asked for on its own is built into, and the
+# compiler that builds it. It MUST be the compiler the default QEMU
+# (HOST_VER_QEMU below) is built by -- HostQemuPackage::GCC_FOR pairs each
+# QEMU series with its GCC -- or a second stack is built beside QEMU's.
+# The package manager refuses to start when the two disagree.
+HOST_VER_GCC=11.5.0
 HOST_VER_LINUX_HEADERS=6.12.107
 HOST_VER_GLIBC=2.41
 
