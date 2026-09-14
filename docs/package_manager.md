@@ -207,6 +207,14 @@ becomes a new *value* of one of the three — a new board, a new stack
 name — or, if it truly cannot, `<stack>` collapses to an opaque id with
 a manifest beside it.
 
+**One installation, one stack.** An artifact has one ABI, so it belongs
+to exactly one build environment: `Scope#stack` is a single value and a
+recipe sees a single `$STACK_SYSROOT`. A package that needs two stacks
+at once — a Canadian cross, whose *build* machine is neither where it
+runs nor what it produces code for — is not a reason for a second stack
+coordinate. Placement is by where the result runs and by what built it;
+the machine the build happened on is not a coordinate, and never was.
+
 ### Host tool tiers
 
 A host package's directory answers exactly one question: **where can this
