@@ -523,8 +523,12 @@ module Main
   def build_parser
 
     is_option = ->(line) { line.lstrip.start_with?("-") }
+    # Coloured when the stream WRITTEN is a terminal -- $stdout, which
+    # a test or a pipe replaces -- not when the process's own is:
+    # measured on a redirected $stdout, the escape codes counted as
+    # columns and the help was eleven wider than the terminal.
     highlight = ->(line) {
-      return line if not STDOUT.tty?
+      return line if not $stdout.tty?
       line.sub!("[MODE]", "[#{Term.makeGreen("MODE")}]")
       line.sub!("[FLAG]", "[#{Term.makeYellow("FLAG")}]")
       line.sub!("[OPTION]", "[#{Term.makeYellow("OPTION")}]")
