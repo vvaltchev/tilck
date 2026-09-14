@@ -355,11 +355,15 @@ module Main
     end
 
     # Where this arch's packages live: the pkgs/ directory of its
-    # stack. Kept on the Architecture because a few packages need a
-    # sibling package's install path (vim needs ncurses').
+    # stack at its default board. None for an arch with no board --
+    # aarch64, a cross compiler only so far: a board is the <env> of
+    # a target's coordinates, and an arch without one has no place
+    # for a package. Its directory used to be created as
+    # tilck-aarch64/any/gcc-13.3.0 on every run, giving `any` a
+    # second meaning beside "no environment requirement".
     for name, arch in ALL_ARCHS do
-      arch.target_dir = Coords.target(arch, arch.default_board,
-                                      arch.gcc_ver).pkgs_dir
+      arch.target_dir = arch.default_board.nil? ? nil :
+        Coords.target(arch, arch.default_board, arch.gcc_ver).pkgs_dir
     end
   end
 
@@ -445,7 +449,7 @@ module Main
 
   def create_toolchain_dirs
     for name, arch in ALL_ARCHS do
-      mkdir_p(arch.target_dir)
+      mkdir_p(arch.target_dir) if arch.target_dir
     end
   end
 

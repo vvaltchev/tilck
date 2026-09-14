@@ -631,6 +631,29 @@ class TestMainIntegration < Minitest::Test
     end
   end
 
+  # An arch with no board -- aarch64, a cross compiler only so far --
+  # gets no target directory: a board is the <env> of a target's
+  # coordinates, and `any` there would mean "no board yet" beside
+  # its one meaning for host and noarch packages. The directory used
+  # to be created on every run.
+  def test_an_arch_without_a_board_gets_no_target_directory
+    with_fake_tc do
+      with_stubbed_externals do
+        run_cli("-l", "-q")
+        boardless = ALL_ARCHS.values.select { |a| a.default_board.nil? }
+        refute_empty boardless, "the test needs a board-less arch"
+        for a in boardless do
+          refute (TC / Coords.target_machine(a)).exist?,
+                 "#{a.name}: a directory was created for an arch with no board"
+        end
+        assert_empty Dir.glob("#{TC}/tilck-*/any"), "an env of any on a target"
+        for a in ALL_ARCHS.values.reject { |x| x.default_board.nil? } do
+          assert (TC / Coords.target_machine(a) / a.default_board).directory?
+        end
+      end
+    end
+  end
+
   # A target without a Tilck stack gets nothing installed by default,
   # and is told so.
   def test_default_install_without_a_stack_installs_nothing
