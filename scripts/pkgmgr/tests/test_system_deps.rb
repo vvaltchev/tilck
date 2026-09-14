@@ -1059,3 +1059,27 @@ class TestCargoInstaller < Minitest::Test
     assert_equal [:rustc, :cargo, :cargo_c], keys
   end
 end
+
+# The host compiler's command is the binary it names, however the
+# environment spelled it: cmake hands its children CC=/usr/bin/gcc,
+# the shell CC=gcc, and the gtest recipe that names the compiler
+# must digest the same under both, or an install made under one is
+# stale under the other -- which is what -t --system-tests found.
+class TestCanonicalCommand < Minitest::Test
+
+  def test_every_spelling_of_one_compiler_is_one_command
+    gcc = InitOnly.canonical_cmd("gcc")
+    skip "no gcc on PATH" if gcc == "gcc"
+    assert gcc.start_with?("/"), "resolved through PATH: #{gcc}"
+    assert_equal gcc, InitOnly.canonical_cmd(gcc)
+    assert_equal gcc, InitOnly.canonical_cmd(File.join("/usr/bin", "gcc")) \
+      if File.exist?("/usr/bin/gcc") && File.realpath("/usr/bin/gcc") == gcc
+    assert_equal gcc, InitOnly.canonical_cmd("cc") \
+      if File.exist?("/usr/bin/cc") && File.realpath("/usr/bin/cc") == gcc
+  end
+
+  def test_a_command_that_is_not_there_is_returned_as_typed
+    assert_equal "no-such-compiler", InitOnly.canonical_cmd("no-such-compiler")
+    assert_equal "/no/such/dir/cc", InitOnly.canonical_cmd("/no/such/dir/cc")
+  end
+end

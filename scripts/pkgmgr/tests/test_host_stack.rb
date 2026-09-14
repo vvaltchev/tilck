@@ -450,7 +450,9 @@ class TestNoCompilerPackageAmbiguity < Minitest::Test
   end
 end
 
-# HOST_CC_CMD is the command behind HOST_CC: what $CC named, or gcc.
+# HOST_CC_CMD is the command behind HOST_CC: what $CC named, or gcc,
+# as the binary it resolves to (InitOnly.canonical_cmd), so that the
+# recipe naming it reads the same however the environment spelled it.
 # A recipe that must hand the compiler on (gcc_prereqs.rb passes it
 # with the C dialect its sources are written in) reads this rather
 # than guessing "cc" or "gcc" for itself. Computed at load from the
@@ -468,17 +470,30 @@ class TestHostCcCommand < Minitest::Test
     return out.split(" ")
   end
 
+  def canon(*cmds) = cmds.map { |c| InitOnly.canonical_cmd(c) }
+
   def test_defaults_to_gcc_and_g_plus_plus
-    assert_equal %w[gcc g++], host_cc_cmds_with({ "CC" => nil, "CXX" => nil })
+    assert_equal canon("gcc", "g++"),
+                 host_cc_cmds_with({ "CC" => nil, "CXX" => nil })
   end
 
   def test_is_what_cc_names_and_cxx_follows_the_family
-    assert_equal %w[cc g++], host_cc_cmds_with({ "CC" => "cc", "CXX" => nil })
+    assert_equal canon("cc", "g++"),
+                 host_cc_cmds_with({ "CC" => "cc", "CXX" => nil })
   end
 
   def test_a_named_cxx_is_kept
-    assert_equal %w[cc c++],
+    assert_equal canon("cc", "c++"),
                  host_cc_cmds_with({ "CC" => "cc", "CXX" => "c++" })
+  end
+
+  # ...and the spelling does not reach the recipe: /usr/bin/gcc, as
+  # cmake hands it on, is the same command as gcc.
+  def test_the_spelling_of_the_command_does_not_reach_the_recipe
+    skip "no /usr/bin/gcc" if !File.exist?("/usr/bin/gcc")
+    plain = host_cc_cmds_with({ "CC" => "gcc", "CXX" => nil })
+    full = host_cc_cmds_with({ "CC" => "/usr/bin/gcc", "CXX" => nil })
+    assert_equal plain, full
   end
 end
 
