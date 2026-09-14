@@ -162,27 +162,32 @@ module Executor
     return false if ok == false
     return true if ok.nil?          # already installed: nothing to record
 
-    # Read the world again: this build changed it.
+    # The tree changed, whoever wrote it: the base install_impl says
+    # so after its atomic move, but a package that installs itself
+    # whole (freedoom, gnuefi) does not, and read through the world
+    # as it was, the install it just made was not there -- and got no
+    # origin, no dependencies and no record. Said here, once, for
+    # every kind of install.
+    pkgmgr.installs_changed!
+
+    # Read the world again: this build changed it. Every install of
+    # this version, not just the first: gnuefi builds for i386, x86_64
+    # AND noarch from one call, and recording only what find_install
+    # happened to return left two thirds of it unverifiable -- and
+    # an install with no origin reads as the default, manual, which
+    # is right only by chance.
     pkg = pkg.at(action.scope, world: pkgmgr.world, versions: action.bound)
-    inst = pkg.find_install(ver)
-
-    if inst
-      InstallOrigin.write(inst.path, action.origin == :default,
-                          action.mark == :manual)
-      InstallDeps.write(inst.path, action.against)
-      pkgmgr.installs_changed!
-    end
-
-    # Every install of this version, not just the first: gnuefi
-    # builds for i386, x86_64 AND noarch from one call, and recording
-    # only what find_install happened to return left two thirds of it
-    # unverifiable.
     for a in pkg.install_archs(ver)
       sc = a ? action.scope.with(arch: a) : action.scope
       i = pkg.at(sc, world: pkgmgr.world, versions: action.bound)
              .find_install(ver)
-      pkg.at(sc, versions: action.bound).write_build_inputs(i) if i
+      next if i.nil?
+      InstallOrigin.write(i.path, action.origin == :default,
+                          action.mark == :manual)
+      InstallDeps.write(i.path, action.against)
+      pkg.at(sc, versions: action.bound).write_build_inputs(i)
     end
+    pkgmgr.installs_changed!
 
     # The sysroot is a view over what is installed, so it is stale the
     # moment that changes. Recomposed whenever the package contributes
