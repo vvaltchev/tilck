@@ -26,11 +26,7 @@ class PackageManager
     @config_versions = read_config_versions("pkg_versions", "VER_")
     @host_config_versions =
       read_config_versions("host_pkg_versions", "HOST_VER_")
-    @known_pkgs_paths = nil
-    @known_installed = nil
-    @found_installed = nil
-    @installable = nil
-    @tree_generation = 0
+    @world = nil          # what is installed, scanned once per change
     @resolved_versions = nil
     @host_world = nil     # memoized host_world_names, per registry
     @scope = nil          # the scope a with_* block opened; nil = the
@@ -160,36 +156,30 @@ class PackageManager
     return inst.path / "bin" / "python3"
   end
 
-  # The tree's generation. Whatever moves, removes or rewrites an
-  # installation bumps it, and every package's install list re-walks
-  # its directories only when the generation has moved since it last
-  # did: no change, same generation, no re-read; a change, one re-read
-  # by each package asked, however often it is asked. What changes the
-  # tree from outside this process is not this tool's to notice.
+  # WHAT IS INSTALLED (world.rb): the tree, scanned once and held
+  # until a writer says it changed. Whatever moves, removes or
+  # rewrites an installation calls installs_changed!, and the next
+  # question scans again -- once, however often it is asked. What
+  # changes the tree from outside this process is not this tool's to
+  # notice.
   #
-  # refresh does NOT bump it: refresh rebuilds what the manager holds
-  # across packages from the packages' lists, which is cheap when
-  # nothing changed and is what every defensive refresh used to pay a
-  # full walk for. The writers announce; refresh follows.
-  attr_reader :tree_generation
-
-  def installs_changed!
-    @tree_generation += 1
+  # TRANSITION (docs/plans/pkgmgr-functional-core.md, step 5.2): a
+  # package not bound to a world (Package#at) reads this one, and
+  # notes the site. The planner will take a World as an argument.
+  def world
+    @world = nil if @world && !@world.tc.equal?(TC)   # the tests swap TC
+    return @world ||= World.scan(@packages.values)
   end
 
+  def installs_changed!
+    @world = nil
+  end
+
+  # Scan now rather than at the next question. The callers that
+  # announced a change have no need of it; the ones at the top of a
+  # mode pay the walk up front, where it was always paid.
   def refresh
-    @known_pkgs_paths = Set.new()
-    @known_installed = []
-    @installable = []
-
-    for pkg in @packages.values do
-      sublist = pkg.get_install_list()
-      @known_pkgs_paths += sublist.map { |x| x.path }
-      @known_installed += sublist
-      @installable += pkg.get_installable_list()
-    end
-
-    @found_installed = scan_toolchain()
+    @world = World.scan(@packages.values)
   end
 
   # Declared default and supported here: the members of this target's
@@ -289,7 +279,7 @@ class PackageManager
   # An install list never holds a candidate (those have no path), so
   # only the package and the version are asked.
   def get_installed_compilers
-    @known_installed.select { |x|
+    world.claimed.select { |x|
       x.pkg&.is_compiler && x.ver == x.target_arch.gcc_ver
     }
   end
@@ -306,6 +296,7 @@ class PackageManager
 
     @packages[package.id] = package
     @host_world = nil
+    installs_changed!      # the world claims what the registry knows
   end
 
   def get(name)
@@ -396,7 +387,7 @@ class PackageManager
     curr_cc = target_arch.gcc_ver
     curr_host_cc = current_host_stack
 
-    list_with_paths = @known_installed + @found_installed
+    list_with_paths = world.installs
     by_path = {}
 
     for info in list_with_paths
@@ -408,7 +399,8 @@ class PackageManager
 
     # The stacks' meta-packages have a table of their own at the top
     # and would be a line saying nothing in a section.
-    list = (by_path.values() + @installable).reject { |x|
+    installable = @packages.values.flat_map(&:get_installable_list)
+    list = (by_path.values() + installable).reject { |x|
       x.pkg&.metapackage?
     }
 
@@ -968,9 +960,7 @@ class PackageManager
   end
 
   # What the scan found that no package claims: on disk, unowned.
-  def orphan_installs
-    return @found_installed || []
-  end
+  def orphan_installs = world.orphans
 
   # The version each package in `name`'s closure resolves to, with
   # `ver` as the version of `name` itself (nil = its default).
@@ -1178,8 +1168,7 @@ class PackageManager
 
     all_pkgs = name.eql?("ALL")
     pkg = all_pkgs ? nil : get_smart(name)
-    install_list = pkg ? pkg.get_install_list
-                       : @known_installed + @found_installed
+    install_list = pkg ? pkg.get_install_list : world.installs
 
     sel = uninstall_selector(pkg, name, install_list, ver: ver,
                              compiler: compiler, arch: arch)
@@ -1802,8 +1791,7 @@ class PackageManager
       install_list = pkg.get_install_list
     else
       # An orphan (on disk, no package) or ALL: the scan is what knows.
-      install_list = all_pkgs ? @known_installed + @found_installed
-                              : @found_installed
+      install_list = all_pkgs ? world.installs : world.orphans
       warning "Not recognized package name: #{name}" unless all_pkgs
     end
 
@@ -1902,114 +1890,6 @@ class PackageManager
   end
 
   private
-
-  # Walk <root>/<pkg>/<ver>/ and emit an InstallInfo per (pkg, ver) whose
-  # path is NOT already claimed by a registered package. Used by
-  # scan_toolchain() to discover orphan installations.
-  # A directory level naming a compiler rather than a package.
-  #
-  # The prefix alone is NOT enough, and portable/ is where that bites:
-  # the musl cross-compilers are packages called gcc-i386-musl,
-  # gcc-x86_64-musl and gcc-riscv64-musl. Reading those as compiler
-  # slots descends one level too far and takes their bin/, share/ and
-  # include/ directories for version numbers.
-  #
-  # A slot is the prefix followed by a VERSION -- gcc-14.4.0,
-  # clang-14.0.0 -- which no package name is, since a package's
-  # version lives in the directory below it rather than in its name.
-  # Scan one <pkg>/ directory, whose children are version directories.
-  def scan_one_pkg_dir(pkg_path, pkg_name, arch_obj, on_host, coords, list)
-
-    return if !pkg_path.directory?
-
-    for ver_str in Dir.children(pkg_path)
-      full_path = pkg_path / ver_str
-      next if @known_pkgs_paths&.include?(full_path)
-      ver = SafeVer(ver_str)
-
-      if ver.nil?
-        warning "Invalid package version: #{full_path}"
-        next
-      end
-
-      list << InstallInfo.new(
-        pkg_name, "syscc", on_host, arch_obj, ver, full_path,
-        coords: coords
-      )
-    end
-  end
-
-  #
-  # Walk the whole toolchain: <machine>/<env>/<stack>/pkgs/<pkg>/<ver>/
-  #
-  # One loop for everything, because every install is at the same
-  # depth with the same meaning per level. toolchain4 needed four
-  # different walks and a predicate to tell a compiler directory from
-  # a package with a similar name; there is nothing left to
-  # disambiguate, since a package can only appear under pkgs/.
-  #
-  def scan_toolchain
-
-    list = []
-    return list if !TC.directory?
-
-    for machine in Dir.children(TC).sort
-      next if NON_INSTALL_DIRS.include?(machine)
-
-      m_dir = TC / machine
-      next if !m_dir.directory?
-
-      arch_obj, on_host, known = machine_to_arch(machine)
-      next if !known
-
-      for env in Dir.children(m_dir).sort
-        e_dir = m_dir / env
-        next if !e_dir.directory?
-
-        for stack in Dir.children(e_dir).sort
-          pkgs = e_dir / stack / "pkgs"
-          next if !pkgs.directory?
-
-          c = Coords.new(machine, env, stack)
-
-          for pkg_name in Dir.children(pkgs).sort
-            scan_one_pkg_dir(
-              pkgs / pkg_name, pkg_name, arch_obj, on_host, c, list
-            )
-          end
-        end
-      end
-    end
-
-    return list
-  end
-
-  # Top-level directories that are not machines.
-  NON_INSTALL_DIRS = ["cache", "staging"].freeze
-
-  # Turn a <machine> coordinate back into [Architecture, on_host].
-  #
-  # "noarch" has neither; a Tilck target names its arch directly; and
-  # anything else is a build machine, whose packages run on the host.
-  # Returns [Architecture, on_host, known?]. A machine we cannot
-  # identify is skipped rather than scanned: reading its packages
-  # would attribute them to a nil architecture and let them show up
-  # in listings for a target that does not exist.
-  def machine_to_arch(machine)
-
-    return [nil, false, true] if machine == "noarch"
-
-    if machine.start_with?("tilck-")
-      name = machine.delete_prefix("tilck-")
-      arch = ALL_ARCHS[name]
-      warning "Unknown architecture '#{name}' in #{TC / machine}" if !arch
-      return [arch, false, !arch.nil?]
-    end
-
-    # Any other machine is a build host. Only this one's packages can
-    # run here, so anything else is another machine's business.
-    return [HOST_ARCH, true, machine == HOST_OS_ARCH]
-  end
 
   # Read one of the two version files into { "BUSYBOX" => Version }.
   # `prefix` is the key prefix that file uses (VER_ or HOST_VER_); it is

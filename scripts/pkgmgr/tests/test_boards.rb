@@ -72,7 +72,16 @@ class TestInstallsAreBoardSpecific < Minitest::Test
     FileUtils.mkdir_p(target_pkgs(RV, nil, board) / "boardpkg" / VER.to_s)
   end
 
-  def pkg = FakePackage.new("boardpkg", arch_list: [RV])
+  # Registered, because what is installed is what the registry's
+  # world says: a package outside it has no installs.
+  def pkg
+    return @pkg ||= begin
+      reset_pkgmgr!
+      p = FakePackage.new("boardpkg", arch_list: [RV])
+      pkgmgr.register(p)
+      p
+    end
+  end
 
   def test_an_install_for_one_board_is_not_installed_for_the_other
     with_fake_tc do

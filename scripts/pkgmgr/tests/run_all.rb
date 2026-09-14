@@ -389,7 +389,11 @@ Minitest.after_run {
   # arc exists to make unwritable.
   # UNBOUND_SITES=1 lists the lines, for the step that converts them.
   if defined?(Package::UNBOUND_READS) && defined?(TestScope)
-    groups = Package::UNBOUND_READS.group_by { |f, _|
+   for kind, table, ceiling in [
+     [:scope, Package::UNBOUND_READS, TestScope::UNBOUND_CEILING],
+     [:world, Package::UNBOUND_WORLD_READS,
+      TestScope::UNBOUND_WORLD_CEILING]] do
+    groups = table.group_by { |f, _|
       if f.start_with?("test_") || TestScope::HARNESS.include?(f)
         :tests
       elsif TestScope::CORE.include?(f)
@@ -404,27 +408,27 @@ Minitest.after_run {
       [per.sum { |_, n| n }, per.map { |f, n| "#{f} #{n}" }.join(", ")]
     }
     core, core_s = line.call(:core)
-    ceiling = TestScope::UNBOUND_CEILING
     over = core > ceiling
     color = over ? Term::RED256 : Term::DIM
-    puts "  #{color}unbound scoped reads, core: #{core} sites " \
+    puts "  #{color}unbound #{kind} reads, core: #{core} sites " \
          "(ceiling #{ceiling}) -- #{core_s}#{Term::RESET}"
     for g in %i[recipes tests] do
       n, s = line.call(g)
-      puts "  #{Term::DIM}unbound scoped reads, #{g}: #{n} sites -- " \
+      puts "  #{Term::DIM}unbound #{kind} reads, #{g}: #{n} sites -- " \
            "#{s}#{Term::RESET}"
     end
     if ENV["UNBOUND_SITES"] == "1"
-      Package::UNBOUND_READS.sort.each { |f, lines|
+      table.sort.each { |f, lines|
         puts "    #{f}: #{lines.sort.join(' ')}"
       }
     end
     if over
-      puts "  #{Term::RED256}#{Term::BOLD}UNBOUND READS OVER THE " \
-           "CEILING: a scoped question is asked of a registry package " \
-           "at a new site; bind it with Package#at#{Term::RESET}"
+      puts "  #{Term::RED256}#{Term::BOLD}UNBOUND #{kind.upcase} READS " \
+           "OVER THE CEILING: a question is asked of a registry " \
+           "package at a new site; bind it with Package#at#{Term::RESET}"
       $unit_tests_passed = false
     end
+   end
   end
   puts
 

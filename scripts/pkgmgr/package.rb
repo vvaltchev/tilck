@@ -9,6 +9,7 @@ require_relative 'package_manager'
 require_relative 'build_env'
 require_relative 'coords'
 require_relative 'scope'
+require_relative 'world'
 require_relative 'build_inputs'
 require_relative 'recipe'
 require_relative 'postcondition'
@@ -156,6 +157,25 @@ class InstallInfo
 
   def compiler? = !@target_arch.nil?
 
+  # Two readings of one installation are equal: what identifies it,
+  # and what the tree says about it. A World scanned twice is then
+  # equal to itself, which is the check that the scan can be trusted.
+  def ==(other)
+    return other.is_a?(InstallInfo) && identity == other.identity
+  end
+
+  def eql?(other) = self == other
+  def hash = identity.hash
+
+  protected
+
+  def identity
+    return [@pkgname, @ver, @coords, @path, @broken, @default_install,
+            @manual, @on_host, @arch, @compiler, @target_arch, @libc]
+  end
+
+  public
+
   def to_s = ("I{ " +
       "pkg: #{@pkgname.ljust(20)}, comp: #{@compiler.to_s.ljust(6)}, " +
       "arch: #{((@on_host?'host_':'')+@arch.to_s).ljust(11)}, " +
@@ -197,15 +217,23 @@ class Package
   class Unbound < StandardError; end
 
   # file basename => Set of line numbers that asked an unbound
-  # package a scoped question. Read by tests/run_all.rb's summary
-  # and by test_scope.rb's ceiling.
+  # package a scoped question, and the same for one asked what is
+  # installed without a World in hand (step 5.2). Read by
+  # tests/run_all.rb's summary and by test_scope.rb's ceilings.
   UNBOUND_READS = Hash.new { |h, k| h[k] = Set.new }
+  UNBOUND_WORLD_READS = Hash.new { |h, k| h[k] = Set.new }
 
-  def at(s)
+  # A copy bound to `s`, and to `world` when the caller holds one:
+  # what is installed is then this value, not the tree as the manager
+  # last read it.
+  def at(s, world: nil)
     raise ArgumentError, "#{name}: not a Scope: #{s.inspect}" \
       if !s.is_a?(Scope)
+    raise ArgumentError, "#{name}: not a World: #{world.inspect}" \
+      if !world.nil? && !world.is_a?(World)
     b = dup
     b.instance_variable_set(:@scope, s)
+    b.instance_variable_set(:@world, world) if world
     return b
   end
 
@@ -213,18 +241,26 @@ class Package
 
   def scope
     return @scope if @scope
-    Package.note_unbound_read(caller_locations(1, 12))
+    Package.note_unbound_read(UNBOUND_READS, caller_locations(1, 12))
     return pkgmgr.scope
+  end
+
+  # What is installed, as this package sees it: the World it was
+  # bound with, else (TRANSITION, counted) the manager's.
+  def world
+    return @world if @world
+    Package.note_unbound_read(UNBOUND_WORLD_READS, caller_locations(1, 12))
+    return pkgmgr.world
   end
 
   # The first frame of ours outside this file is the site to convert:
   # the caller that held no scope, or the recipe that read one. A
   # frame in the standard library (a FileUtils.cd block) is not a site.
-  def self.note_unbound_read(frames)
+  def self.note_unbound_read(table, frames)
     ours = frames.select { |x| x.path.include?("/pkgmgr/") }
     f = ours.find { |x| File.basename(x.path) != "package.rb" }
     f ||= ours.first || frames.first
-    UNBOUND_READS[File.basename(f.path)] << f.lineno
+    table[File.basename(f.path)] << f.lineno
   end
 
   # Where this package may run: OS names and host arch names, nil for
@@ -1402,23 +1438,14 @@ class Package
     return list
   end
 
-  # Every installation of this package on disk, remembered per tree
-  # generation (PackageManager#tree_generation): the directories are
-  # walked again only after something moved, removed or rewrote an
-  # installation, and then once, however many times the list is
-  # asked. A different TC is a different tree -- the tests swap it --
-  # and empties the memo as a change would.
-  def get_install_list
-    gen = pkgmgr.tree_generation
-    if @installs.nil? || @installs_gen != gen || !@installs_tc.equal?(TC)
-      @installs = read_install_list.freeze
-      @installs_gen = gen
-      @installs_tc = TC
-    end
-    return @installs
-  end
+  # Every installation of this package, as the World says: broken
+  # ones included, so that a failed earlier install can be reported
+  # and removed.
+  def get_install_list = world.of(name)
 
-  # Default implementations
+  # The reading of the tree a World is built from: this package's
+  # directories, at every coordinates it could have been installed
+  # under. Called by World.scan and by nothing else.
   def read_install_list
     if on_host
       return syscc_package_get_install_list()
@@ -1767,12 +1794,7 @@ class Package
   # board with no zlib at all. Anything that identifies an installation
   # by re-deriving part of its path will rot the same way the next time
   # a coordinate is added, so ask Coords, which owns that knowledge.
-  def find_install(ver)
-    want = coords(ver)
-    return get_install_list().find { |x|
-      x.ver == ver and x.coords == want and !x.broken
-    }
-  end
+  def find_install(ver) = world.find(name, ver, coords(ver))
 
   # A package is only "installed" if the install tree is complete (not
   # broken). Otherwise a failed earlier install (e.g. a crash after the

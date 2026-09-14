@@ -58,10 +58,10 @@ class GccCompiler < Package
     "bin/#{target_arch.gcc_tc}-linux-strip",
   ]
 
-  # Wrap the base class install list with target_arch/libc metadata, so
-  # PackageManager#get_installed_compilers can select installed cross-
-  # compilers for a specific target architecture.
-  def get_install_list
+  # Wrap the base class reading of the tree with target_arch/libc
+  # metadata, so PackageManager#get_installed_compilers can select
+  # installed cross-compilers for a specific target architecture.
+  def read_install_list
     super.map { |info|
       InstallInfo.new(
         info.pkgname, info.compiler, info.on_host, info.arch,

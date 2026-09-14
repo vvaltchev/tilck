@@ -50,7 +50,7 @@ class TestGetInstalledCompilers < Minitest::Test
         # get_install_list includes target_arch/libc.
         cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
         target = ARCH
-        cc.define_singleton_method(:get_install_list) {
+        cc.define_singleton_method(:read_install_list) {
           super().map { |info|
             InstallInfo.new(
               info.pkgname, info.compiler, info.on_host, info.arch,
@@ -158,8 +158,8 @@ class TestScanToolchain < Minitest::Test
 
         pkgmgr.refresh()
 
-        # The orphan should show up in found_installed
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        # The orphan should show up among the world's orphans
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "orphan_pkg" }
         assert_equal 1, orphans.length
         assert_equal Ver("1.0.0"), orphans.first.ver
@@ -173,7 +173,7 @@ class TestScanToolchain < Minitest::Test
         FileUtils.mkdir_p(noarch_pkgs / "some_src" / "2.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "some_src" }
         assert_equal 1, orphans.length
       end
@@ -186,7 +186,7 @@ class TestScanToolchain < Minitest::Test
         FileUtils.mkdir_p(portable_pkgs / "some_tool" / "3.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "some_tool" }
         assert_equal 1, orphans.length
         assert_equal "syscc", orphans.first.compiler
@@ -200,7 +200,7 @@ class TestScanToolchain < Minitest::Test
         FileUtils.mkdir_p(hostcc_pkgs / "host_thing" / "1.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "host_thing" }
         assert_equal 1, orphans.length
       end
@@ -217,7 +217,7 @@ class TestScanToolchain < Minitest::Test
         )
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         bad = found.select { |x| x.pkgname == "pkg" }
         assert_empty bad  # should be skipped, not crash
       end
@@ -241,7 +241,7 @@ class TestScanToolchain < Minitest::Test
         FileUtils.mkdir_p(tc / "tilck-mips" / "any" / "gcc-#{gcc}" / "pkgs" / "foo" / "1.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         mips = found.select { |x| x.pkgname == "foo" }
         assert_empty mips  # mips is not in ALL_ARCHS
       end
@@ -266,7 +266,7 @@ class TestWithCc < Minitest::Test
                            host_tier: :portable, arch_list: ALL_HOST_ARCHS.values)
       cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
       target = ARCH
-      cc.define_singleton_method(:get_install_list) {
+      cc.define_singleton_method(:read_install_list) {
         super().map { |info|
           InstallInfo.new(
             info.pkgname, info.compiler, info.on_host, info.arch,

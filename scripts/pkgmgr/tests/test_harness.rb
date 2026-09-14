@@ -91,10 +91,10 @@ class TestNoRealInstallers < Minitest::Test
   end
 end
 
-# A package's install list is read from the tree once per change to
-# it: no change, the same list; a change announced with
-# installs_changed!, a new one; and a change nobody announced is what
-# the fifth law is for.
+# The world is read from the tree once per change to it: no change,
+# the same world; a change announced with installs_changed!, a new
+# one; another tree, a new one; and a change nobody announced is
+# what the fifth law is for.
 class TestInstallListsFollowTheTree < Minitest::Test
 
   include TestHelper
@@ -107,12 +107,13 @@ class TestInstallListsFollowTheTree < Minitest::Test
         foo = FakePackage.new("foo")
         pkgmgr.register(foo)
         pkgmgr.install("foo")
-        once = foo.get_install_list
-        assert_same once, foo.get_install_list, "walked the tree again"
-        assert once.frozen?
+        once = pkgmgr.world
+        assert_same once, pkgmgr.world, "walked the tree again"
+        assert once.installs.frozen?
+        assert_equal 1, foo.get_install_list.length
 
         pkgmgr.installs_changed!
-        refute_same once, foo.get_install_list, "the change went unread"
+        refute_same once, pkgmgr.world, "the change went unread"
       end
     end
   end
