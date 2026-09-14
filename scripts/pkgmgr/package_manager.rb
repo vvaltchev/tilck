@@ -9,6 +9,8 @@ require_relative 'dep_resolver'
 require_relative 'version_solver'
 require_relative 'sysroot'
 require_relative 'install_selector'
+require_relative 'planner'
+require_relative 'executor'
 require_relative 'portability'
 
 require 'singleton'
@@ -827,70 +829,20 @@ class PackageManager
     # better: it names the version, because the install has one, and
     # says how that install was asked for, because the record does.
     default_install = ver.nil? if default_install.nil?
-
     ver ||= pkg.default_ver()
-    ok = pkg.install_impl(ver)
-    if ok
-      # Record how this version was chosen, so --upgrade can leave
-      # pinned versions alone. Written after the install rather than
-      # inside it, so all three install_impl overrides get it for free.
-      inst = pkg.find_install(ver)
 
-      if inst
-        InstallOrigin.write(inst.path, default_install, manual)
-        InstallDeps.write(inst.path, built_against(pkg, ver))
-        installs_changed!
-      end
-
-      # ...and what it was built FROM, in the same place and for the
-      # same reason: nothing else on disk can answer it, and without
-      # it "installed" means only that a directory exists.
-      #
-      # Every install of this version, not just the first: gnuefi
-      # builds for i386, x86_64 AND noarch from one call, and
-      # recording only what find_install happened to return left two
-      # thirds of it unverifiable.
-      for a in pkg.install_archs(ver)
-        i = a ? with_target_arch(a) { pkg.find_install(ver) }
-              : pkg.find_install(ver)
-        pkg.write_build_inputs(i) if i
-      end
-
-      # The sysroot is a view over what is installed, so it is stale
-      # the moment that changes.
-      # Recompose whenever the package contributes to the sysroot, which
-      # is not the same as being a stack package: host_gcc is
-      # :distro and still contributes its target runtime, while a
-      # portable APPLICATION contributes nothing at all because nothing
-      # is built against it.
-      # The stack this install belongs to, which for host_gcc is its
-      # OWN version rather than the current default.
-      stack = pkg.stack_gcc_ver(ver)
-
-      if !pkg.sysroot_fragments(stack).empty?
-        compose_stack_sysroot(stack)
-
-        # Now that the sysroot includes this package, let it check
-        # whatever it could not check before.
-        ok = false if !pkg.post_sysroot_check(stack)
-      end
-
-      # Audited on being portable, not on contributing to the sysroot:
-      # an application is exactly the thing whose linkage matters most,
-      # and it contributes nothing. Runs after any composition, since a
-      # package whose paths name the sysroot cannot be inspected until
-      # the sysroot is real. binutils and gcc are :distro and link the
-      # system libc by design, so they are not audited.
-      if pkg.host_tier == :stack
-        ok = false if !audit_portability(pkg, ver)
-      end
-
-      info "Installed package #{pkg.name} at version #{ver}"
-      # Refresh cached install lists so with_cc() can find a
-      # just-installed compiler when subsequent packages need it.
-      refresh() if pkg.is_compiler
-    end
-    return ok.nil?? true : ok
+    # TRANSITION: one Build, executed. The -s and default paths plan
+    # whole requests (Planner) and run them (Executor); this is the
+    # entry the upgrade, rebuild and replace paths and the tests
+    # still use, and it reads the versions a rebuild put in effect.
+    bound = versions_in_effect
+    action = Build.new(
+      name: pkg.name, ver: ver, scope: scope,
+      origin: default_install ? :default : :pinned,
+      mark: manual ? :manual : :auto, bound: bound,
+      against: Planner.against_of(self, pkg, ver, bound, scope)
+    )
+    return Executor.build(self, action)
   end
 
   # Build the dependency graph from all registered packages.
@@ -905,17 +857,7 @@ class PackageManager
   # stacks: false leaves the Tilck stacks' meta-packages with no
   # dependencies, for the one derivation that must not ask them.
   def build_dep_graph(stacks: true)
-    cc_name = "gcc-#{target_arch.name}-musl"
-    has_cc = @packages.key?(cc_name)
-
-    @packages.transform_values { |pkg|
-      next [] if !stacks && pkg.metapackage?
-      deps = pkg.dep_list.map { |d| d.name }
-      if has_cc && pkg.target?
-        deps << cc_name if !deps.include?(cc_name)
-      end
-      deps
-    }
+    return Planner.graph(self, scope, stacks: stacks)
   end
 
   # Validate the full dependency graph: missing deps + cycle detection.
@@ -977,19 +919,9 @@ class PackageManager
   # same dependency to different versions is a conflict, and merging
   # per-root results would silently let the last one win.
   def resolved_versions_for(pairs)
-
-    return VersionSolver.resolve(
-      pairs,
-      deps_of: ->(n, v) {
-        pkg = get(n)
-        pkg ? pkg.check_dep_pins(pkg.dep_list_for(v)) : []
-      },
-      default_of: ->(n) { get(n)&.default_ver },
-      on_override: ->(n, default_ver, pinned, path) {
-        info "#{n}: using #{pinned}, not the default #{default_ver} " \
-             "(pinned via #{path.join(' -> ')})"
-      },
-    )
+    bound, notes = Planner.bind(self, pairs, scope)
+    notes.each { |n| info n }
+    return bound
   end
 
   # The host stack's root, and the sysroot inside it. Defined here
@@ -1150,12 +1082,12 @@ class PackageManager
   # Transitive dependency closure of `name`, nearest dependency first.
   # Used by Package#deps_build_env to collect the build interfaces a
   # package's dependencies publish.
-  # The version a package was resolved to for the request being
-  # installed right now, or nil outside an install.
-  #
-  # Set by resolve_install_plan, which is the only place that knows
-  # the whole closure and therefore the only place that can answer.
-  def resolved_ver(name) = @resolved_versions&.[](name)
+  # TRANSITION: the versions a rebuild put in effect around its
+  # builds (with_resolved_versions), which a package not bound with
+  # a Plan's versions falls back to. A request planned through
+  # Planner carries its own, and the builds it runs read those.
+  def versions_in_effect = @resolved_versions || {}
+  def resolved_ver(name) = versions_in_effect[name]
 
   # Move installations between manual and auto, as apt-mark does.
   #
@@ -1210,30 +1142,6 @@ class PackageManager
     pkg.get_install_list.any? { |i|
       i.default_install && !i.broken && i.manual
     }
-  end
-
-  # A package asked for by name is the user's from now on, even when
-  # it was already here as somebody's dependency: `-s host_glib2`
-  # after `-s host_qemu` must leave glib2 standing when qemu goes. At
-  # the version the plan bound it to -- what was asked for, or what a
-  # pin beside it decided -- so only after resolve_install_plan.
-  def mark_requested_manual(names, dry)
-
-    for name in names do
-      pkg = get(name)
-      inst = pkg.find_install(resolved_ver(name))
-      next if inst.nil? || inst.manual
-
-      info "#{dry ? 'Would set' : 'Set'} #{name}:#{inst.ver} to " \
-           "manually installed"
-      InstallOrigin.write(inst.path, inst.default_install, true) if !dry
-    end
-
-    # mutation: equivalent -- rereading what a dry run did not write
-    if !dry
-      installs_changed!
-      refresh()
-    end
   end
 
   # The installations one install needs: its dependencies at the
@@ -1494,9 +1402,7 @@ class PackageManager
   # the one the request resolved, else the dependency's own pin, else
   # its default. What InstallDeps records.
   def built_against(pkg, ver)
-    pkg.dep_list_for(ver).to_h { |d|
-      [d.name, resolved_ver(d.name) || d.ver || get(d.name)&.default_ver]
-    }.compact
+    return Planner.against_of(self, pkg, ver, versions_in_effect, scope)
   end
 
   # What an install was built against, for a rebuild to build against
@@ -1526,49 +1432,26 @@ class PackageManager
     return DepResolver.dep_closure(name, build_dep_graph)
   end
 
-  # Given an array of [name, ver] pairs requested by the user, compute
-  # the full install plan: transitive deps resolved, already-installed
-  # packages filtered out, topological order (deps first).
+  # TRANSITION: the install plan as the upgrade and rebuild paths and
+  # the tests still read it -- [name, ver] pairs in build order, the
+  # version nil where the default is meant -- computed by the Planner
+  # and with its bound versions put in effect for the builds that
+  # follow through install().
   #
-  # Returns: Array of [name, ver] pairs in install order. The `ver`
-  # for auto-resolved deps is nil (meaning default_ver during install).
+  # Raises the solver's errors, as it always did.
   def resolve_install_plan(requested_pairs)
-    graph = build_dep_graph
-    user_vers = requested_pairs.to_h
 
-    # Resolve every version in the closure first: a dependency pinned
-    # by one of the requested packages must count as installed (or not)
-    # at the version it is pinned to, not at its default. All the
-    # requested packages go in together, so pins that disagree across
-    # them are caught instead of quietly resolved by merge order.
-    versions = resolved_versions_for(requested_pairs)
+    Planner.bind(self, requested_pairs, scope)   # raises on a conflict
+    plan = Planner.plan_install(self, world, requested_pairs, scope)
+    raise plan.message if plan.is_a?(Refusal)
 
-    # Remember them for the builds that follow. A package being built
-    # needs to know which version of a DEPENDENCY it is being built
-    # against, and cannot work it out for itself: mpfr's own dep list
-    # names host_gmp with no version, so resolving from mpfr alone
-    # yields gmp's default -- while the gcc that asked for all of this
-    # pinned 6.3.0. Resolving from mpfr gave 6.2.1 and the build
-    # stopped on a gmp that was never installed.
-    @resolved_versions = versions
+    plan.notes.each { |n| info n }
+    @resolved_versions = plan.bound
 
-    # What is already installed, at the version bound for it. Only the
-    # closure is asked: `versions` covers exactly the packages the
-    # request can reach, and a package outside it cannot be in the
-    # plan whether it is installed or not.
-    installed = versions.select { |n, v| get(n)&.installed?(v) }.keys.to_set
-
-    requested_names = requested_pairs.map(&:first)
-    ordered_names = DepResolver.resolve(requested_names, graph, installed)
-
-    # Map back to [name, ver] pairs. A version the user asked for is
-    # passed through as-is. Otherwise a version is passed only when a
-    # pin moved it off the default — leaving it nil is what tells
-    # install() this is a default install rather than a pinned one.
-    ordered_names.map { |name|
-      next [name, user_vers[name]] if user_vers[name]
-      v = versions[name]
-      [name, v != get(name).default_ver ? v : nil]
+    # A version the user named binds as a pin, so it is :pinned and
+    # comes back as itself; nothing else needs saying about it.
+    return plan.builds.map { |b|
+      [b.name, b.origin == :pinned ? b.ver : nil]
     }
   end
 
