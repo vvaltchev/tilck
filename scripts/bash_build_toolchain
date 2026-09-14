@@ -332,7 +332,19 @@ function detect_host_env {
             | tr -d '"')
          local distro_ver=$(grep -E '^VERSION_ID=' /etc/os-release \
             | cut -d= -f2 | tr -d '"')
-         HOST_DISTRO="${distro_id}-${distro_ver}"
+         local build_id=$(grep -E '^BUILD_ID=' /etc/os-release \
+            | cut -d= -f2 | tr -d '"')
+         local id_like=$(grep -E '^ID_LIKE=' /etc/os-release \
+            | cut -d= -f2 | tr -d '"')
+         # A rolling distro's env is its ID alone: see
+         # InitOnly.rolling_distro? in scripts/pkgmgr/early_logic.rb.
+         if [ "$build_id" = "rolling" ] || [ "$distro_id" = "arch" ] \
+               || [[ " $id_like " == *" arch "* ]] || [ -z "$distro_ver" ]
+         then
+            HOST_DISTRO="$distro_id"
+         else
+            HOST_DISTRO="${distro_id}-${distro_ver}"
+         fi
          ;;
       macos)
          # Use only major.minor (e.g. "26.4") so a minor-patch bump like

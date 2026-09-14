@@ -112,22 +112,40 @@ if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
       message(FATAL_ERROR "/etc/os-release not found: cannot detect distro")
    endif()
 
-   file(STRINGS "/etc/os-release" _id_line  REGEX "^ID=")
-   file(STRINGS "/etc/os-release" _ver_line REGEX "^VERSION_ID=")
-   string(REPLACE "ID="         "" _id  "${_id_line}")
-   string(REPLACE "VERSION_ID=" "" _ver "${_ver_line}")
-   string(REPLACE "\""          "" _id  "${_id}")
-   string(REPLACE "\""          "" _ver "${_ver}")
+   file(STRINGS "/etc/os-release" _id_line    REGEX "^ID=")
+   file(STRINGS "/etc/os-release" _ver_line   REGEX "^VERSION_ID=")
+   file(STRINGS "/etc/os-release" _build_line REGEX "^BUILD_ID=")
+   file(STRINGS "/etc/os-release" _like_line  REGEX "^ID_LIKE=")
+   string(REPLACE "ID="         "" _id    "${_id_line}")
+   string(REPLACE "VERSION_ID=" "" _ver   "${_ver_line}")
+   string(REPLACE "BUILD_ID="   "" _build "${_build_line}")
+   string(REPLACE "ID_LIKE="    "" _like  "${_like_line}")
+   string(REPLACE "\""          "" _id    "${_id}")
+   string(REPLACE "\""          "" _ver   "${_ver}")
+   string(REPLACE "\""          "" _build "${_build}")
+   string(REPLACE "\""          "" _like  "${_like}")
 
-   if ("${_id}" STREQUAL "" OR "${_ver}" STREQUAL "")
-      message(FATAL_ERROR "/etc/os-release is missing ID or VERSION_ID")
+   if ("${_id}" STREQUAL "")
+      message(FATAL_ERROR "/etc/os-release is missing ID")
    endif()
 
-   set(HOST_DISTRO "${_id}-${_ver}")
+   # A rolling distro's env is its ID alone: the same rule as
+   # InitOnly.rolling_distro? in scripts/pkgmgr/early_logic.rb, which
+   # is the owner; this is the reading CMake checks that answer against.
+   if ("${_build}" STREQUAL "rolling" OR "${_id}" STREQUAL "arch"
+       OR " ${_like} " MATCHES " arch " OR "${_ver}" STREQUAL "")
+      set(HOST_DISTRO "${_id}")
+   else()
+      set(HOST_DISTRO "${_id}-${_ver}")
+   endif()
    unset(_id_line)
    unset(_ver_line)
+   unset(_build_line)
+   unset(_like_line)
    unset(_id)
    unset(_ver)
+   unset(_build)
+   unset(_like)
 
 elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
 
@@ -427,14 +445,19 @@ endif()
 
 if (_upgrade_rc EQUAL 2)
    # NEEDS_UPGRADE: a version was bumped     -> --upgrade
-   # NEEDS_REBUILD: sources changed under an installed package,
-   #                so what is installed no longer matches them
+   # NEEDS_REBUILD: sources changed under an installed package, or
+   #                the host's libraries it links did (a rolling
+   #                distro moved them), so what is installed no
+   #                longer matches what it was built from
    #                -> --rebuild
+   # NEEDS_INSTALL: a package an installed one was built against is
+   #                gone -> -s <pkg>, or the plain default install
    message(FATAL_ERROR
       "\nSome installed toolchain packages are out of date:\n"
       "   ${_upgrade_out}\n\n"
       "For NEEDS_UPGRADE run: ${BTC_SCRIPT_REL} --upgrade\n"
-      "For NEEDS_REBUILD run: ${BTC_SCRIPT_REL} --rebuild\n")
+      "For NEEDS_REBUILD run: ${BTC_SCRIPT_REL} --rebuild\n"
+      "For NEEDS_INSTALL run: ${BTC_SCRIPT_REL} -s <pkg>\n")
 endif()
 unset(_upgrade_rc)
 unset(_upgrade_out)

@@ -494,6 +494,46 @@ class TestPlanner < Minitest::Test
     end
   end
 
+  # A package an installed one was built against and that is gone --
+  # a stack's compiler removed with its distro env -- is reported as
+  # NEEDS_INSTALL: a tree with an install nothing can build with is
+  # not up to date, though every record in it reads :ok.
+  def test_a_missing_dependency_is_reported_as_needing_install
+    with_fake_tc do
+      a, b, _ = chain
+      fake_install(a)
+      fake_install(b)
+      rc, lines = Planner.check_updates(pkgmgr, judged, scope)
+      assert_equal 2, rc
+      assert_equal ["NEEDS_INSTALL c"], lines
+      assert_equal ["c"], Planner.missing_dependencies(pkgmgr, judged, scope)
+    end
+  end
+
+  # ...for the installs supported where they are. An install is judged
+  # at its own coordinates, so one for another arch still reports
+  # what it misses; one at a board its package no longer builds for
+  # (the board was dropped from board_list) is nobody's to complete,
+  # and is left out.
+  def test_a_missing_dependency_is_judged_at_the_installs_own_place
+    with_fake_tc do
+      rv = ALL_ARCHS["riscv64"]
+      d = FakePackage.new("d", arch_list: [rv])
+      u = FakePackage.new("u", arch_list: [rv], dep_list: [Dep("d", false)])
+      [d, u].each { |p| pkgmgr.register(p) }
+      fake_install(u, at: u.at(scope.with(arch: rv)).coords)
+
+      # From an i386 invocation: the riscv64 install still misses d.
+      assert_equal ["d"], Planner.missing_dependencies(pkgmgr, judged, scope)
+
+      # The package stops building for that board: its install there
+      # is not this tree's to complete.
+      u.instance_variable_set(:@board_list, ["licheerv-nano"])
+      assert_equal [], Planner.missing_dependencies(pkgmgr, judged, scope)
+      assert_equal [0, []], Planner.check_updates(pkgmgr, judged, scope)
+    end
+  end
+
   def test_an_unjudged_world_is_refused_not_misread
     with_fake_tc do
       _, _, c = chain

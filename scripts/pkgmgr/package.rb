@@ -10,6 +10,7 @@ require_relative 'build_env'
 require_relative 'coords'
 require_relative 'stack_manifest'
 require_relative 'record'
+require_relative 'system_libs'
 require_relative 'scope'
 require_relative 'world'
 require_relative 'planner'
@@ -1206,8 +1207,16 @@ class Package
     BuildInputs.write(inst.path,
                       recipe: me.build_recipe_digest(inst.ver),
                       files: me.build_files(inst.ver),
-                      argv: argv)
+                      argv: argv,
+                      syslibs: links_the_host? ?
+                                 SystemLibs.of_install(inst.path) : {})
   end
+
+  # Does an install of this package link the host's libraries? The
+  # :distro and :compiler tiers do by design; the others (a :stack
+  # package against our sysroot, a :portable one static, a target
+  # package against musl) do not, and the audit holds them to it.
+  def links_the_host? = on_host && [:distro, :compiler].include?(host_tier)
 
   #
   # What an installed version's record says about it.
@@ -1247,7 +1256,14 @@ class Package
                          files: me.build_files(inst.ver))
     )
 
-    return :ok if recorded == current
+    if recorded == current
+      # The sources agree; do the host's libraries the install links
+      # still? A rolling distro moves them under an install, and an
+      # install built against other files is built from other
+      # sources, whatever the recipe says.
+      return :ok if BuildInputs.syslibs_changed(inst.path).empty?
+      return :changed
+    end
 
     # It disagrees -- but a record written by an older scheme holds a
     # number this one cannot produce, so the disagreement says

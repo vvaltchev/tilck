@@ -235,6 +235,31 @@ host compiler — a GCC bump can change the C++ ABI, so the whole set is
 rebuilt beside the old one rather than in place, and several stacks
 coexist as siblings without a new level.
 
+`<distro>` is `ID-VERSION_ID` from `/etc/os-release` on a fixed-release
+distro (`ubuntu-22.04`, `fedora-41`), where the release names a library set
+its maintainers tested together. On a rolling distro it is the `ID` alone
+(`arch`, `omarchy`): Arch says `BUILD_ID=rolling` and carries no
+`VERSION_ID` (its container image puts the image's build date there), and
+a derivative's `VERSION_ID` versions its desktop layer while glibc moves on
+Arch's schedule — a slug that moved on every point release stranded every
+distro-tier install for nothing. The rule is `InitOnly.rolling_distro?`
+(`BUILD_ID=rolling`, `ID=arch`, `ID_LIKE` naming arch, or no `VERSION_ID`),
+spelled the same way in the bash bootstrap and in CMake, which read the
+file before Ruby is available and after it.
+
+What a `:distro` or `:compiler` install was built against is then recorded
+per install, not per release: `.build_inputs` carries one `syslib:` line
+per host library its binaries resolve to (`SystemLibs.of_install`, asked of
+`ldd`, symlinks followed, ~36 files for the whole tier), each with the
+file's digest at build time. An install whose recorded libraries have moved
+or vanished reads as `changed`, exactly as one whose patches changed:
+`--check-for-updates` lists it under `NEEDS_REBUILD`, `-l` names the
+libraries under "Changed under them", and `--rebuild` builds it again
+against what is there now. The digests are exact — a compatible update
+rebuilds too — which is the honest reading of a distro that ships no
+tested set; the research behind the choice is in
+`docs/plans/library-abi-stability-report.md`.
+
 A stack says what it is made of in a manifest at its own root,
 `<machine>/<env>/<stack>/stack.conf` (`scripts/pkgmgr/stack_manifest.rb`),
 one format for host stacks and Tilck stacks alike:

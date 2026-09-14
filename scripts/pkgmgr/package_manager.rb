@@ -458,6 +458,7 @@ class PackageManager
     dump.call(back)
 
     show_unusable(unusable)
+    show_host_libs_changed(states)
     show_old_format(states)
 
     puts
@@ -1104,6 +1105,33 @@ class PackageManager
     puts "digests cannot be compared. They read stale for that reason, " \
          "not because"
     puts "their sources changed."
+  end
+
+  # An install that reads changed because the host's libraries moved
+  # under it, with the libraries named: the status cell says
+  # "changed" for a recipe change too, and the remedy is the same
+  # (--rebuild), but the reader should know it was the distro that
+  # moved, not the sources.
+  def show_host_libs_changed(states)
+
+    moved = states.filter_map { |i, s|
+      next nil if s != :changed
+      libs = BuildInputs.syslibs_changed(i.path)
+      next nil if libs.empty?
+      [i, libs]
+    }
+    return if moved.empty?
+
+    puts
+    puts "Changed under them: the host's libraries these were built " \
+         "against have"
+    puts "moved (--rebuild builds them against what is there now):"
+
+    moved.sort_by { |i, _| [i.pkgname, i.ver.to_s] }.each { |i, libs|
+      name = "#{i.pkgname} #{i.ver}"
+      words = libs.map { |p, how| "#{File.basename(p)} (#{how})" }
+      puts "    #{name.ljust(34)}#{words.join(", ")}"
+    }
   end
 
   # The list under the table: the status cell has room for the word

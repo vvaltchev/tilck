@@ -934,12 +934,39 @@ module Model
       supported?(s, scope, registry) &&
         keys_of(world, s.name).any? { |k| state_of(k) != :ok }
     }.map(&:name).sort - upgrades
+    gone = missing_dependencies(registry, world, scope).sort - upgrades - stale
 
-    rc = (upgrades.empty? && stale.empty?) ? 0 : 2
+    rc = (upgrades.empty? && stale.empty? && gone.empty?) ? 0 : 2
     out = []
     out << "NEEDS_UPGRADE #{upgrades.join(' ')}" if !upgrades.empty?
     out << "NEEDS_REBUILD #{stale.join(' ')}" if !stale.empty?
+    out << "NEEDS_INSTALL #{gone.join(' ')}" if !gone.empty?
     return Outcome.new(rc, world, out.join("\n"))
+  end
+
+  # SPEC: a dependency an installed package was built against that has
+  # no install at the version and coordinates it would be found at is
+  # missing, and --check-for-updates says so: an installed package
+  # nothing can build with is not a tree that is up to date. Judged
+  # for the installs supported here, as the rest of the report is.
+  def missing_dependencies(registry, world, scope)
+    return world.flat_map { |k|
+      s = registry[k.name]
+      sc = scope_at(registry, k, scope)
+      next [] if s.nil? || !supported?(s, sc, registry)
+      registry.deps_of(k.name, sc).filter_map { |d, pin|
+        next nil if registry[d].nil?
+        present = keys_of(world, d).map(&:ver).uniq
+        vers = if pin then [pin]
+               elsif present.length > 1 then present
+               else [present.first || default_of(registry, d, sc)]
+               end
+        at = install_coords(registry[d], sc)
+        found = world.any? { |x| x.name == d && vers.include?(x.ver) &&
+                                 at.include?(x.coords) }
+        found ? nil : d
+      }
+    }.uniq
   end
 
   def observe_installable(registry, world, scope)

@@ -372,19 +372,39 @@ module Planner
 
   # --- the observations -------------------------------------------------------
 
-  # --check-for-updates: [rc, lines]. Two different problems with two
-  # different remedies, reported separately: a bumped version needs
-  # --upgrade, a package built from sources that have since changed
-  # needs a rebuild. 0 when nothing is needed, 2 otherwise.
+  # --check-for-updates: [rc, lines]. Three different problems with
+  # three different remedies, reported separately: a bumped version
+  # needs --upgrade; a package built from sources that have since
+  # changed needs --rebuild; a package that an installed package was
+  # built against and that is gone -- a stack's compiler removed with
+  # its distro env, the case a tree that reads "not installed" for a
+  # missing package could never say -- needs installing again (-s).
+  # 0 when nothing is needed, 2 otherwise.
   def check_updates(registry, world, scope)
     upgrades = upgradable(registry, world, scope).map(&:name).sort
     stale = stale_installs(registry, world, scope).map { |p, _| p.name }
                                                   .uniq.sort - upgrades
-    return [0, []] if upgrades.empty? && stale.empty?
+    gone = missing_dependencies(registry, world, scope).sort - upgrades - stale
+    return [0, []] if upgrades.empty? && stale.empty? && gone.empty?
     lines = []
     lines << "NEEDS_UPGRADE #{upgrades.join(' ')}" if !upgrades.empty?
     lines << "NEEDS_REBUILD #{stale.join(' ')}" if !stale.empty?
+    lines << "NEEDS_INSTALL #{gone.join(' ')}" if !gone.empty?
     return [2, lines]
+  end
+
+  # The packages some installed package was built against and that
+  # are not there: the names install_graph finds missing, for the
+  # installs supported here. An install for another target is not
+  # this invocation's to complete.
+  def missing_dependencies(registry, world, scope)
+    _, _, missing = install_graph(registry, world, scope)
+    return missing.flat_map { |i, gone|
+      # mutation: equivalent -- an empty list maps to an empty list
+      next [] if gone.empty?
+      next [] if !i.pkg.at(i.pkg.scope_at(i, scope)).supported?
+      gone.map(&:first)
+    }.uniq
   end
 
   # --list-installable: [name, tag] in dependency order, the tag

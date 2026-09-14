@@ -75,17 +75,47 @@ module BuildInputs
   # The comparable part: everything knowable WITHOUT running a build.
   # argv is recorded too, but only for a human reading the file -- it
   # cannot be compared, because it is not known until the build runs.
-  def pairs(recipe:, files:, argv: nil)
+  # `syslibs` are the host's shared libraries the install's binaries
+  # resolve to (SystemLibs.of_install), each with its digest as it was
+  # when the install was built: on a rolling distro they are the only
+  # statement of what the install was built against, and an install
+  # is stale when one of them has changed under it. Absolute paths on
+  # purpose, since they name the host's files, not the tree's.
+  def pairs(recipe:, files:, argv: nil, syslibs: {})
     out = [["format", FORMAT], ["recipe", recipe]]
     for path in files.sort_by(&:to_s) do
       out << ["file", "#{normalize(path.to_s)} #{digest_file(path)}"]
+    end
+    for path, digest in syslibs.sort_by { |p, _| p.to_s } do
+      out << ["syslib", "#{path} #{digest}"]
     end
     out << ["argv", normalize(argv)] if argv
     return out
   end
 
-  def render(recipe:, files:, argv: nil)
-    return Record.render(pairs(recipe: recipe, files: files, argv: argv))
+  def render(recipe:, files:, argv: nil, syslibs: {})
+    return Record.render(pairs(recipe: recipe, files: files, argv: argv,
+                               syslibs: syslibs))
+  end
+
+  # The system libraries a record names, as {path => digest then}.
+  def syslibs_of(dir)
+    path = dir / FILE
+    return {} if !path.file?
+    return read_any(File.read(path))["syslib"].to_h { |v|
+      p, d = v.split(" ", 2)
+      [p, d.to_s]
+    }
+  end
+
+  # Which of a record's system libraries have changed under it: gone,
+  # or with another digest now. {path => "missing" | "changed"}.
+  def syslibs_changed(dir)
+    return syslibs_of(dir).filter_map { |p, then_digest|
+      now = File.file?(p) ? digest_file(p) : "missing"
+      next nil if now == then_digest
+      [p, now == "missing" ? "missing" : "changed"]
+    }.to_h
   end
 
   # The record as {key => [values]}, whichever spelling wrote it: the
@@ -134,8 +164,9 @@ module BuildInputs
     return comparable_lines(File.read(path))
   end
 
-  def write(dir, recipe:, files:, argv: nil)
-    Record.write(dir / FILE, pairs(recipe: recipe, files: files, argv: argv))
+  def write(dir, recipe:, files:, argv: nil, syslibs: {})
+    Record.write(dir / FILE, pairs(recipe: recipe, files: files, argv: argv,
+                                   syslibs: syslibs))
   end
 
   # A record of an older spelling rewritten in this one, its digests
@@ -151,6 +182,7 @@ module BuildInputs
     out = [["format", FORMAT]]
     out << ["recipe", kv["recipe"].first] if kv["recipe"].first
     kv["file"].each { |v| out << ["file", v] }
+    kv["syslib"].each { |v| out << ["syslib", v] }
     kv["argv"].each { |v| out << ["argv", v] }
     Record.write(path, out)
     return true

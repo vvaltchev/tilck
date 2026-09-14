@@ -215,6 +215,17 @@ module InitOnly
   end
 
   # Parse /etc/os-release into a { KEY => value } hash, stripping quotes.
+  # A rolling distro says so (BUILD_ID=rolling: Arch, Manjaro, openSUSE
+  # Tumbleweed spells it too), or is a derivative of one (ID_LIKE=arch:
+  # Omarchy, EndeavourOS, ...), or has no VERSION_ID to offer.
+  def rolling_distro?(data)
+    return true if data["BUILD_ID"] == "rolling"
+    return true if data["ID_LIKE"].to_s.split.include?("arch")
+    return true if data["ID"] == "arch"
+    return true if data["VERSION_ID"].nil?
+    return false
+  end
+
   def parse_os_release
     path = "/etc/os-release"
     if !File.file?(path)
@@ -233,17 +244,41 @@ module InitOnly
     return data
   end
 
-  # Return a distro slug like "ubuntu-22.04", "macos-14.3", "freebsd-14.0".
-  # Different OS releases are considered incompatible: we do NOT try to share
-  # dynamically-linked host packages across them.
+  # Return a distro slug like "ubuntu-22.04", "macos-14.3", "freebsd-14.0"
+  # -- or "arch", "omarchy": the ID alone, for a rolling distro.
+  #
+  # The slug is the <env> of every host package that links the distro's
+  # libraries. On a fixed-release distro the release IS a library set
+  # its maintainers tested together, so "ubuntu-22.04" says what such a
+  # package needs. A rolling distro has no such set: Arch's os-release
+  # says BUILD_ID=rolling and carries no VERSION_ID at all (its
+  # container image puts the image's build date there), and a
+  # derivative's VERSION_ID (Omarchy 4.0.4) versions the desktop layer
+  # and moves every week while the libraries move on Arch's schedule.
+  # A slug that changed on every point release stranded every
+  # distro-tier install for nothing, and one that required VERSION_ID
+  # refused to run on Arch itself. What a rolling distro's package
+  # needs is the exact libraries it was built against, which
+  # .build_inputs records per install (BuildInputs, syslib lines) and
+  # --check-for-updates compares.
+  #
+  # Kept in sync with detect_host_env in scripts/bash_build_toolchain
+  # and with the HOST_DISTRO block of CMakeLists.txt, which read the
+  # same file before Ruby is available and after it, respectively.
   def get_host_distro(host_os)
     case host_os
       when "linux"
         data = parse_os_release()
         id = data["ID"]
+        if id.nil?
+          error "/etc/os-release is missing ID"
+          exit 1
+        end
+        return id if rolling_distro?(data)
         ver = data["VERSION_ID"]
-        if id.nil? || ver.nil?
-          error "/etc/os-release is missing ID or VERSION_ID"
+        if ver.nil?
+          error "/etc/os-release is missing VERSION_ID (and does not " \
+                "say BUILD_ID=rolling)"
           exit 1
         end
         return "#{id}-#{ver}"
