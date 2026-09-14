@@ -52,10 +52,17 @@ module Planner
   # { "name" => ["dep", ...] } for every registered package. stacks:
   # false leaves the Tilck stacks' meta-packages with no dependencies,
   # for the one derivation that must not ask them (the host world).
+  #
+  # Remembered by the registry per (scope, stacks): the graph is the
+  # declared structure -- dep_list_for(nil), the same whatever is
+  # installed -- so it changes only when the registry does, and one
+  # listing asks for it from ten places.
   def graph(registry, scope, stacks: true)
-    return registry.all_packages.to_h { |pkg|
-      next [pkg.name, []] if !stacks && pkg.metapackage?
-      [pkg.name, deps_of(registry, pkg, nil, scope).map(&:name)]
+    return registry.remembered_graph(scope, stacks) {
+      registry.all_packages.to_h { |pkg|
+        next [pkg.name, []] if !stacks && pkg.metapackage?
+        [pkg.name, deps_of(registry, pkg, nil, scope).map(&:name)]
+      }.freeze
     }
   end
 

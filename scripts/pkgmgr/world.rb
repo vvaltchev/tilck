@@ -55,7 +55,27 @@ World = Data.define(:installs, :tc) do
   def orphans = installs.select { |i| i.pkg.nil? }
 
   # Every install of the package called `name`, broken ones included.
-  def of(name) = installs.select { |i| i.pkgname == name && !i.pkg.nil? }
+  #
+  # Through an index built with the value: a world is frozen, so the
+  # index can never go stale, and it is not a field -- the value's
+  # identity and equality are its installs, and the lane compares
+  # worlds. Asked per dependency of every install when the install
+  # graph is built, so a linear scan here made that graph quadratic
+  # in the tree.
+  def initialize(installs:, tc:)
+    index = Hash.new { |h, k| h[k] = [] }
+    for i in installs do
+      index[i.pkgname] << i if !i.pkg.nil?
+    end
+    index.each_value(&:freeze)
+    index.default = nil
+    @by_name = index.freeze
+    super
+  end
+
+  EMPTY = [].freeze
+
+  def of(name) = @by_name.fetch(name, EMPTY)
 
   # The same world, every install carrying what its record says
   # (InstallInfo#record), each judged as its package's recipe reads

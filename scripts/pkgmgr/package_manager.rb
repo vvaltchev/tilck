@@ -48,7 +48,10 @@ class PackageManager
   # What HOST_VER_GCC says, unless a test says otherwise: the stack the
   # environment's scope names. Configuration, not scope -- a test that
   # sets it is a test whose version table reads differently.
-  attr_writer :default_stack
+  def default_stack=(v)
+    @default_stack = v
+    @graphs = nil          # a package's default version may follow it
+  end
 
   # The package that provides a stack's compiler.
   #
@@ -230,7 +233,17 @@ class PackageManager
 
     @packages[package.id] = package
     @host_world = nil
+    @graphs = nil          # the declared structure grew
     installs_changed!      # the world claims what the registry knows
+  end
+
+  # The dependency graph at `scope` (Planner.graph), built once per
+  # (scope, stacks) for the life of this registry: forgotten when a
+  # package is registered, since the graph is the declared structure
+  # and nothing else moves it. A Scope is a value, so it is the key.
+  def remembered_graph(scope, stacks)
+    @graphs ||= {}
+    return @graphs[[scope, stacks]] ||= yield
   end
 
   def get(name)

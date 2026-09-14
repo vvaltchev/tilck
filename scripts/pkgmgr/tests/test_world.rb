@@ -141,4 +141,61 @@ class TestWorld < Minitest::Test
       assert_raises(ArgumentError) { pkg.at(scope, world: []) }
     end
   end
+
+  # The index behind World#of is not part of the value: two worlds of
+  # the same installs are equal, and a world built from another's
+  # installs answers the same.
+  def test_the_index_is_not_a_field
+    with_fake_tc do
+      two_installs
+      a = World.scan(pkgmgr.all_packages)
+      b = World.of(a.installs)
+      assert_equal a.installs, b.installs
+      assert_equal a.of("t"), b.of("t")
+      assert_equal 2, a.of("t").length
+      assert_equal [], a.of("nobody")
+      assert a.of("nobody").frozen?
+      refute_includes a.of("t").map(&:pkg), nil, "orphans are not claimed"
+    end
+  end
+end
+
+# The dependency graph is remembered per scope for the life of the
+# registry, and forgotten when the registry changes.
+class TestGraphMemo < Minitest::Test
+  include TestHelper
+
+  def setup = reset_pkgmgr!
+
+  def test_the_graph_is_built_once_per_scope
+    pkgmgr.register(FakePackage.new("a", dep_list: [Dep("b", false)]))
+    pkgmgr.register(FakePackage.new("b"))
+    g1 = Planner.graph(pkgmgr, scope)
+    g2 = Planner.graph(pkgmgr, scope)
+    assert_same g1, g2, "rebuilt for the same scope"
+    assert g1.frozen?
+    rv = ALL_ARCHS["riscv64"]
+    refute_same g1, Planner.graph(pkgmgr, scope.with(arch: rv))
+    refute_same g1, Planner.graph(pkgmgr, scope, stacks: false)
+  end
+
+  def test_registering_a_package_forgets_the_graph
+    pkgmgr.register(FakePackage.new("a"))
+    g1 = Planner.graph(pkgmgr, scope)
+    assert_equal({ "a" => [] }, g1.slice("a"))
+    pkgmgr.register(FakePackage.new("c", dep_list: [Dep("a", false)]))
+    g2 = Planner.graph(pkgmgr, scope)
+    refute_same g1, g2
+    assert_equal ["a"], g2["c"]
+  end
+
+  # A package's default version can follow the stack in effect
+  # (host_gcc's does), and its dependencies follow its version.
+  def test_moving_the_default_stack_forgets_the_graph
+    pkgmgr.register(FakePackage.new("a"))
+    g1 = Planner.graph(pkgmgr, scope)
+    with_host_stack(Ver("9.9.9")) {
+      refute_same g1, Planner.graph(pkgmgr, scope)
+    }
+  end
 end
