@@ -4,6 +4,7 @@ require_relative 'early_logic'
 require_relative 'progress'
 require_relative 'source_pins'
 require_relative 'cache_hashes'
+require_relative 'lock'
 
 require 'fileutils'
 require 'tmpdir'
@@ -370,6 +371,53 @@ module Cache
   # should be, for a person to look at; fetched again in its place.
   REJECTED = "rejected"
 
+  # Where the locks live (Lock): under the cache, which --clean keeps.
+  def locks_dir = TC_CACHE / Lock::DIR
+
+  # A cache file is one process's while it is fetched, checked or set
+  # aside, and every reader's while it is read: the lock named for
+  # it, exclusive or shared.
+  def holding(name, shared: false, what:, &blk)
+    return Lock.held(locks_dir, "file-#{name}", shared: shared, what: what,
+                     &blk)
+  end
+
+  #
+  # THE TEMPORARY DIRECTORY OF THIS PROCESS under the cache, where a
+  # clone is packed and an archive unpacked: one per process, named
+  # by its pid, so that two package managers do not empty each
+  # other's. One left by a process that is gone -- killed mid-way --
+  # is swept by the next to look; one whose process lives is
+  # another's, and kept. The old shared `tmp` is from before, and
+  # nothing running writes it: swept as stale.
+  #
+  def tmp_dir
+    sweep_stale_tmp
+    return TC_CACHE / "tmp.#{Process.pid}"
+  end
+
+  def sweep_stale_tmp
+    for d in Dir.glob("#{TC_CACHE}/tmp*") do
+      pid = File.basename(d)[/\Atmp\.(\d+)\z/, 1]&.to_i
+      next if pid == Process.pid || (pid && process_alive?(pid))
+      warning "removing the temporary directory of a package manager " \
+              "that is gone: #{d}"
+      rm_rf(d)
+    end
+  end
+
+  # Whether a process is running: a signal 0 is delivered to no one
+  # and answers for any process on every host we build on. One we may
+  # not signal is another user's, and alive.
+  def process_alive?(pid)
+    Process.kill(0, pid)
+    return true
+  rescue Errno::ESRCH
+    return false
+  rescue Errno::EPERM
+    return true
+  end
+
   #
   # WHERE A CACHED FILE STANDS against `pin`, what other/pkg_hashes
   # names for it (Hashes.judge): its bytes now, what the cache
@@ -472,6 +520,13 @@ module Cache
       return false
     end
 
+    holding(local_file, what: "the download of #{local_file}") do
+      return fetch_file(url, remote_file, local_file, local_path, pin)
+    end
+  end
+
+  def fetch_file(url, remote_file, local_file, local_path, pin)
+
     if file? local_path
       l = vouch(local_file, pin, kind: :sha256)
       if l.state == :ok || l.state == :unpinned
@@ -521,20 +576,21 @@ module Cache
     filepath = (TC_CACHE / tarfile).to_s()
     assert { exist? filepath }
 
-    kind = pin&.kind == :git ? :git : :sha256
-    return false if !verified?(tarfile, pin, kind: kind)
-
     opt = extToOpt[extname(tarfile)]
     assert { !opt.nil? }
-    tmp = TC_CACHE / "tmp"
 
-    if exist? tmp
-      warning "cache tmp directory exists: #{tmp}"
-      warning "deleting directory #{tmp}"
-      puts
-      rm_rf(tmp)
+    # Read under a shared lock: a writer setting the file aside waits
+    # for every reader, and readers do not wait on each other.
+    holding(tarfile, shared: true, what: "the reading of #{tarfile}") do
+      kind = pin&.kind == :git ? :git : :sha256
+      return false if !verified?(tarfile, pin, kind: kind)
+      return extract_verified(filepath, tarfile, opt, newDirName)
     end
+  end
 
+  def extract_verified(filepath, tarfile, opt, newDirName)
+    tmp = tmp_dir
+    rm_rf(tmp) if exist?(tmp)
     mkdir(tmp)
     current_dir = mkpathname(getwd()).realpath()
     info "extract #{tarfile} in #{current_dir}/"
@@ -594,7 +650,7 @@ module Cache
 
   ensure
     rm_rf(tmp) if tmp
-  end # extract_file()
+  end # extract_verified()
 
   # A cloned source, packed: the clone is what `pin` names or it is
   # not packed at all; the pack says its commit in REF at the top of
@@ -609,8 +665,6 @@ module Cache
     pin:                 # what other/pkg_hashes names, or nil
   )
 
-    filepath_in_cache = TC_CACHE / tarname
-    tmp = TC_CACHE / "tmp"
     dir_name ||= tag
 
     # The dir name cannot contain a path separator char.
@@ -622,6 +676,16 @@ module Cache
       return false
     end
 
+    holding(tarname, what: "the clone of #{url}") do
+      return clone_and_pack(url, tarname, tag, dir_name, pin)
+    end
+  end
+
+  def clone_and_pack(url, tarname, tag, dir_name, pin)
+
+    filepath_in_cache = TC_CACHE / tarname
+    tmp = nil
+
     if filepath_in_cache.file?
       l = vouch(tarname, pin, kind: :git)
       if l.state == :ok || l.state == :unpinned
@@ -632,13 +696,8 @@ module Cache
       set_aside(tarname, l, pin)
     end
 
-    if exist? tmp
-      warning "cache tmp directory exists: #{tmp}"
-      warning "deleting directory #{tmp}"
-      puts
-      rm_rf(tmp)
-    end
-
+    tmp = tmp_dir
+    rm_rf(tmp) if exist?(tmp)
     mkdir(tmp)
     chdir(tmp) do
 
@@ -684,10 +743,10 @@ module Cache
     error e
     return false
   ensure
-    # `tmp` is assigned after the assertions above, so it is still nil
-    # when one of them fires — and rm_rf(nil) then raises a TypeError
-    # that REPLACES the assertion, hiding what actually went wrong.
+    # `tmp` is assigned once there is something to clone, so it is
+    # still nil when a check above fires -- and rm_rf(nil) then raises
+    # a TypeError that REPLACES the check, hiding what went wrong.
     rm_rf(tmp) if tmp
-  end # download_git_repo()
+  end # clone_and_pack()
 
 end # module Cache

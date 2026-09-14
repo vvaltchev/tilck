@@ -67,20 +67,29 @@ class FreedoomPackage < Package
       return nil
     end
 
+    return holding_the_build(ver) { install_held(ver) }
+  end
+
+  # The same flow as the base class's, held the same way, for a zip.
+  def install_held(ver)
+
     zip = @source.tarname(ver)
     return false if !@source.download(ver)
 
     # Set up staging and extract the zip into it -- the zip checked
     # against its pin first, as every archive is right before it is
-    # read (Cache.extract_file does the same for a tarball).
+    # read, and read under the file's shared lock, as Cache.extract_file
+    # reads a tarball.
     staging = staging_dir(ver)
     FileUtils.rm_rf(staging)
     FileUtils.mkdir_p(staging)
 
     cached_zip = (TC_CACHE / zip).to_s
     FileUtils.chdir(staging) do
-      return false if !Cache.verified?(zip, @source.pin(zip), kind: :sha256)
-      ok = system("unzip", "-q", cached_zip)
+      ok = Cache.holding(zip, shared: true, what: "the reading of #{zip}") {
+        Cache.verified?(zip, @source.pin(zip), kind: :sha256) &&
+          system("unzip", "-q", cached_zip)
+      }
       return false if !ok
 
       # The zip's top-level dir is `freedoom-<ver>/`; flatten into

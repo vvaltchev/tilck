@@ -1858,6 +1858,37 @@ class Package
             "#{name}: no source declared and no custom install_impl"
     end
 
+    return holding_the_build(ver) { install_held(ver) }
+  end
+
+  #
+  # THE BUILD OF ONE VERSION IS ONE PROCESS'S AT A TIME: its staging
+  # directory, from the fetch through the extraction, the build and
+  # the move into place, is held for the whole of it (Lock), and a
+  # second package manager asked for the same build waits. What it
+  # finds once it holds the lock is what the first one left: the
+  # install in place, and nothing to do -- nil, as for a package that
+  # was installed all along, since to this process it was. Named by
+  # the staging directory, which two packages may share (ncurses and
+  # host_ncurses build the same sources), so the lock is theirs
+  # together, as the directory is.
+  #
+  def holding_the_build(ver)
+    lock = "build-#{pkg_dirname}-#{ver_dirname(ver)}"
+    Lock.held(Cache.locks_dir, lock,
+              what: "the build of #{name}:#{ver}") do |waited|
+      final = final_install_root / pkg_dirname / ver_dirname(ver)
+      if waited && final.exist? && check_install_dir(final, ver)
+        info "Installed by another package manager while waiting: skip"
+        pkgmgr.installs_changed!
+        return nil
+      end
+      return yield
+    end
+  end
+
+  def install_held(ver)
+
     # --- Download (into cache/) ---
 
     if @source

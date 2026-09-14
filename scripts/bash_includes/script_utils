@@ -280,6 +280,44 @@ function check_cachefile {
    fi
 }
 
+# One bootstrap at a time per cache file: mkdir is atomic on every
+# host we build on, where flock(1) is Linux's alone. The lock is a
+# directory under cache/.locks holding its owner's pid; one whose
+# owner is gone is taken over. The package manager holds its own
+# locks (scripts/pkgmgr/lock.rb) on files it fetches; the bootstrap
+# fetches only Ruby's, which the package manager never touches.
+function lock_cachefile {
+
+   local name="$1"
+   local dir="$TC/cache/.locks/bash-$name.d"
+   local waited=0
+
+   mkdir -p "$TC/cache/.locks"
+
+   while ! mkdir "$dir" 2> /dev/null; do
+
+      local owner=$(cat "$dir/pid" 2> /dev/null)
+
+      if [[ -n "$owner" ]] && ! kill -0 "$owner" 2> /dev/null; then
+         rm -rf "$dir"
+         continue
+      fi
+
+      if [[ $waited == 0 ]]; then
+         echo "INFO: Waiting for another package manager: $name"
+      fi
+
+      sleep 1
+      waited=$((waited + 1))
+   done
+
+   echo $$ > "$dir/pid"
+}
+
+function unlock_cachefile {
+   rm -rf "$TC/cache/.locks/bash-$1.d"
+}
+
 function download_file_in_cache {
 
    local url="$1"
@@ -289,6 +327,8 @@ function download_file_in_cache {
    if [[ "$local_file" == "" ]]; then
       local_file="$remote_file"
    fi
+
+   lock_cachefile "$local_file"
 
    if ! [ -f $TC/cache/$local_file ]; then
 
@@ -320,6 +360,7 @@ function download_file_in_cache {
    fi
 
    check_cachefile "$local_file"
+   unlock_cachefile "$local_file"
 }
 
 function extract_cachefile_tar_generic {
@@ -343,11 +384,13 @@ function extract_cachefile_tar_generic {
    fi
 
    # Checked right before it is read, as the package manager checks
-   # every archive it extracts.
+   # every archive it extracts, and read under the file's lock.
+   lock_cachefile "$tarfile"
    check_cachefile "$tarfile"
 
    echo "Extracting $tarfile..."
    tar $tarOpt $TC/cache/$tarfile
+   unlock_cachefile "$tarfile"
 
    if ! [ "$internalDirName" = "--" ]; then
       if ! [ "$internalDirName" = "$newDirName" ]; then

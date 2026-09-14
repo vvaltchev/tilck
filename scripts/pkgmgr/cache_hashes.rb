@@ -18,6 +18,7 @@
 #
 require_relative 'early_logic'
 require_relative 'table'
+require_relative 'lock'
 
 module Cache
   module Hashes
@@ -47,11 +48,15 @@ module Cache
       update { |t| t.delete(name) }
     end
 
+    # Read, changed, written back, as one process's step: two
+    # recording at once would otherwise keep only one's entry.
     def update
-      t = read
-      yield t
-      t.delete_if { |name, _| !(TC_CACHE / name).file? }
-      Table.write(path, t)
+      Lock.held(Cache.locks_dir, "hashes", what: "the cache's record") do
+        t = read
+        yield t
+        t.delete_if { |name, _| !(TC_CACHE / name).file? }
+        Table.write(path, t)
+      end
     end
 
     # Where a cached file stands, from what is known of it:

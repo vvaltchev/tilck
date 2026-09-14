@@ -18,6 +18,7 @@
   * [How the build system finds the toolchain](#how-the-build-system-finds-the-toolchain)
   * [Atomic installs and signal safety](#atomic-installs-and-signal-safety)
   * [Pinned sources](#pinned-sources)
+  * [One package manager at a time](#one-package-manager-at-a-time)
   * [Resumable downloads](#resumable-downloads)
   * [Retried clones](#retried-clones)
   * [Package reconfiguration](#package-reconfiguration)
@@ -887,6 +888,45 @@ discovery stopped at the toolchain root, so an upstream that asks
 A new package, or a new version of one, fails the lint until its line is
 added. The line comes from the upstream's published sum where there is
 one, or from the tool: the first fetch prints it.
+
+## One package manager at a time
+
+Two package managers on one tree -- two shells, a tree shared over
+`TCROOT_PARENT`, two CI jobs -- used to corrupt each other in every
+place they both wrote. Each of those places is one thing, and one thing
+is held by one process at a time (`scripts/pkgmgr/lock.rb`): an advisory
+`flock` on a small file named for it under `cache/.locks/`, taken for the
+duration, released with the process whatever happens to it. The same
+call on Linux, FreeBSD and macOS, and on NFS v4.
+
+- **A cache file** is one process's while it is fetched, checked, recorded
+  or set aside, and every reader's while it is read: the lock is exclusive
+  for a download or a clone, shared for an extraction, so readers do not
+  wait on each other and a writer waits for all of them. The download's
+  partial file lives under the same lock.
+- **The cache's record** (`cache/.hashes`) is read, changed and written
+  back under its own lock, so two processes recording at once keep both
+  entries.
+- **A build** holds its staging directory from the fetch through the
+  extraction, the build and the move into place. A second package manager
+  asked for the same build waits, prints who it is waiting for, and then
+  finds the install in place and nothing to do. Two packages that build
+  the same sources (ncurses and host_ncurses) share the directory and
+  therefore the lock.
+- **The temporary directory** under the cache is one per process,
+  `cache/tmp.<pid>`; one left by a process that died is swept by the next
+  to look, one whose owner runs is kept.
+
+Nothing is ever deleted from the lock directory: a lock file is a name,
+and removing one under a holder would let a second holder in through a
+new inode. The lock directory is under the cache, which `--clean` keeps.
+The bash bootstrap, which fetches Ruby before there is a package manager,
+uses a `mkdir` lock for the same files, `flock(1)` being Linux's alone.
+
+`tests/test_parallel.rb` runs several package managers as real processes
+against a throwaway tree, half of them building one package and half
+their own, with real tarballs served by the test, and checks the tree they
+leave. It is written to run on FreeBSD and macOS as well.
 
 ## Resumable downloads
 
