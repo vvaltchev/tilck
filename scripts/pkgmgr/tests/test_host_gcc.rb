@@ -74,8 +74,8 @@ class TestHostGccVersionDecisions < Minitest::Test
   # which aborted five unrelated builds.
   def test_the_loader_belongs_to_the_stack_it_is_asked_about
     with_fake_tc do
-      a = @pkg.stack_loader(Ver("11.5.0"))
-      b = @pkg.stack_loader(Ver("14.4.0"))
+      a = bound(@pkg).stack_loader(Ver("11.5.0"))
+      b = bound(@pkg).stack_loader(Ver("14.4.0"))
 
       refute_equal a, b
       assert a.include?("/any/gcc-11.5.0/sysroot/")
@@ -87,7 +87,7 @@ class TestHostGccVersionDecisions < Minitest::Test
   def test_the_loader_does_not_follow_the_default_either
     with_fake_tc do
       with_host_stack(Ver("16.2.0")) do
-        assert @pkg.stack_loader(Ver("11.5.0"))
+        assert bound(@pkg).stack_loader(Ver("11.5.0"))
                    .include?("gcc-11.5.0"),
                "stack_loader must answer about its argument"
       end
@@ -119,7 +119,7 @@ class TestHostGccVersionDecisions < Minitest::Test
     with_fake_tc do
       for v in HostGccPackage::SUPPORTED
         assert_equal v, @pkg.stack_gcc_ver(v)
-        assert @pkg.stack_loader(v).include?("gcc-#{v}")
+        assert bound(@pkg).stack_loader(v).include?("gcc-#{v}")
         assert @pkg.supported_version?(v)
         assert_equal (v < Ver("14.0.0")),
                      @pkg.version_conf_args(v).include?("--disable-libsanitizer")
@@ -146,7 +146,7 @@ class TestHostGccRecipe < Minitest::Test
   end
 
   def configure_argv(ver)
-    Recipe.walk(@pkg.build_steps(ver)) { |s|
+    Recipe.walk(bound(@pkg).build_steps(ver)) { |s|
       return s.argv if s.is_a?(Recipe::Run) && s.log == "configure.log"
     }
   end
@@ -210,7 +210,7 @@ class TestHostGccRecipe < Minitest::Test
 
   def rewrite_steps
     all = []
-    Recipe.walk(@pkg.build_steps(Ver("14.4.0"))) { |s| all << s }
+    Recipe.walk(bound(@pkg).build_steps(Ver("14.4.0"))) { |s| all << s }
     return all.select { |s|
       (s.is_a?(Recipe::Extract) && s.bind == "link_line") ||
       (s.is_a?(Recipe::Transform) && s.bind == "specs")

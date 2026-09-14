@@ -81,9 +81,14 @@ class HostGlibcPackage < Package
   # See Package#portability_hostile_check?
   def portability_hostile_check? = false
 
+  # The loader is where this host's ABI puts it (host_abi.rb). Read
+  # from the process's host and not the scope: expected_files is a
+  # claim about the package that the tree scan checks UNBOUND, for
+  # every install it finds -- and a glibc is only ever installed on
+  # the host it was built on.
   def expected_files(ver = nil) = [
     ["install/usr/lib/libc.so.6", false],
-    ["install/usr/lib/ld-linux-x86-64.so.2", false],
+    ["install/#{Host.env.abi.loader}", false],
     ["install/usr/lib/libc.a", false],
     ["install/usr/include/stdio.h", false],
   ]

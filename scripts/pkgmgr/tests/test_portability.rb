@@ -6,6 +6,9 @@
 
 require_relative 'test_helper'
 require_relative '../portability'
+require_relative '../host_abi'
+
+ABI = HostABI.for("linux-x86_64")
 
 class TestPortabilityJudgement < Minitest::Test
 
@@ -109,7 +112,7 @@ class TestPortabilityElfDetection < Minitest::Test
       hdr = "\x7fELF".b + [2, 1, 1].pack("C3") + ("\0" * 9) +
             [2].pack("v") + [62].pack("v") + ("\0" * 44)
       File.binwrite(f, hdr)
-      assert Portability.elf?(f)
+      assert Portability.elf?(f, abi: ABI)
     end
   end
 
@@ -117,7 +120,7 @@ class TestPortabilityElfDetection < Minitest::Test
     Dir.mktmpdir do |dir|
       f = File.join(dir, "stub")
       File.binwrite(f, "\x7fELF\x02\x01\x01\x00")
-      refute Portability.elf?(f)
+      refute Portability.elf?(f, abi: ABI)
     end
   end
 
@@ -125,19 +128,19 @@ class TestPortabilityElfDetection < Minitest::Test
     Dir.mktmpdir do |dir|
       f = File.join(dir, "script")
       File.write(f, "#!/bin/sh\necho hi\n")
-      refute Portability.elf?(f)
+      refute Portability.elf?(f, abi: ABI)
     end
   end
 
   def test_a_directory_is_not_elf
-    Dir.mktmpdir { |dir| refute Portability.elf?(dir) }
+    Dir.mktmpdir { |dir| refute Portability.elf?(dir, abi: ABI) }
   end
 
   def test_an_empty_file_is_not_elf
     Dir.mktmpdir do |dir|
       f = File.join(dir, "empty")
       File.write(f, "")
-      refute Portability.elf?(f)
+      refute Portability.elf?(f, abi: ABI)
     end
   end
 
@@ -149,7 +152,7 @@ class TestPortabilityElfDetection < Minitest::Test
       File.binwrite(real, "\x7fELF\x02\x01\x01\x00")
       link = File.join(dir, "link")
       File.symlink(real, link)
-      refute Portability.elf?(link)
+      refute Portability.elf?(link, abi: ABI)
     end
   end
 end
@@ -167,7 +170,7 @@ class TestPortabilityLoaderOutput < Minitest::Test
     File.write(fake, "#!/bin/sh\ncat <<'EOT'\n#{text}\nEOT\n")
     File.chmod(0755, fake)
     begin
-      return Portability.resolve_libs("/tc/bin/x", loader: fake)
+      return Portability.resolve_libs("/tc/bin/x", loader: fake, abi: ABI)
     ensure
       File.unlink(fake)
     end
@@ -230,8 +233,8 @@ end
 class TestPortabilityHostileCheck < Minitest::Test
 
   def test_system_libdirs_are_declared
-    refute_empty Portability::SYSTEM_LIBDIRS
-    assert_includes Portability::SYSTEM_LIBDIRS, "/usr/lib"
+    refute_empty ABI.libdirs
+    assert_includes ABI.libdirs, "/usr/lib"
   end
 
   # What the audit missed before: a binary with no RPATH that resolves
@@ -277,27 +280,29 @@ class TestPortabilityForeignElf < Minitest::Test
 
   def test_native_x86_64_is_audited
     Dir.mktmpdir do |d|
-      assert Portability.elf?(write(d, "native", elf_header(62)))
+      assert Portability.elf?(write(d, "native", elf_header(62)), abi: ABI)
     end
   end
 
   def test_s390x_firmware_is_skipped
     Dir.mktmpdir do |d|
       # EM_S390 is 22 — the machine of the .img files QEMU installs.
-      refute Portability.elf?(write(d, "s390-ccw.img", elf_header(22)))
+      refute Portability.elf?(write(d, "s390-ccw.img", elf_header(22)),
+                              abi: ABI)
     end
   end
 
   def test_aarch64_and_riscv_are_skipped_too
     Dir.mktmpdir do |d|
-      refute Portability.elf?(write(d, "arm64", elf_header(183)))
-      refute Portability.elf?(write(d, "riscv", elf_header(243)))
+      refute Portability.elf?(write(d, "arm64", elf_header(183)), abi: ABI)
+      refute Portability.elf?(write(d, "riscv", elf_header(243)), abi: ABI)
     end
   end
 
   def test_a_truncated_file_is_not_elf
     Dir.mktmpdir do |d|
-      refute Portability.elf?(write(d, "short", "\x7fELF".b + "\0\0\0"))
+      refute Portability.elf?(write(d, "short", "\x7fELF".b + "\0\0\0"),
+                              abi: ABI)
     end
   end
 
@@ -305,7 +310,7 @@ class TestPortabilityForeignElf < Minitest::Test
     Dir.mktmpdir do |d|
       h = elf_header(62).dup
       h[5] = "\x02"    # EI_DATA: MSB
-      refute Portability.elf?(write(d, "be", h))
+      refute Portability.elf?(write(d, "be", h), abi: ABI)
     end
   end
 end

@@ -198,9 +198,9 @@ class HostGccPackage < Package
     dir = stack_compiler_dir(gcc_ver)
     return [] if dir.nil?
 
-    lib64 = dir / "install" / "lib64"
+    runtime = dir / "install" / scope.host.abi.gcc_libdir
     frags = [[dir / "install" / "bin", "usr/bin"]]
-    frags << [lib64, "usr/lib"] if lib64.directory?
+    frags << [runtime, "usr/lib"] if runtime.directory?
     return frags
   end
 
@@ -237,7 +237,8 @@ class HostGccPackage < Package
       loader = stack_loader(gcc_ver)
       readelf = dep_install_dir("host_binutils") / "install/bin/readelf"
       refs = Portability.read_refs(bin, readelf: readelf.to_s)
-      resolved = Portability.resolve_libs(bin, loader: loader)
+      resolved = Portability.resolve_libs(bin, loader: loader,
+                                          abi: scope.host.abi)
 
       violations = Portability.check_refs(
         bin, interp: refs[:interp], rpaths: refs[:rpaths],
@@ -280,12 +281,13 @@ class HostGccPackage < Package
   # in post_sysroot_check referred to `sysroot`, a local of
   # install_impl_internal, and raised NameError instead of returning
   # false — aborting five unrelated builds.
-  # Where a stack's glibc puts it, relative to the sysroot. The recipe
-  # names it as $STACK_SYSROOT/LOADER; the audit asks stack_loader.
-  LOADER = "usr/lib/ld-linux-x86-64.so.2"
+  # Where a stack's glibc puts the loader, relative to the sysroot:
+  # the host's word (HostABI#loader). The recipe names it as
+  # $STACK_SYSROOT/<that>; the audit asks stack_loader.
+  def loader = scope.host.abi.loader
 
   def stack_loader(gcc_ver)
-    return "#{pkgmgr.stack_sysroot(gcc_ver)}/#{LOADER}"
+    return "#{pkgmgr.stack_sysroot(gcc_ver)}/#{loader}"
   end
 
   # Configure flags that depend on which version is being built.
@@ -420,7 +422,7 @@ class HostGccPackage < Package
       ["*link:\n$link_line",
        "*link:\n$link_line %{!static:-rpath $STACK_SYSROOT/usr/lib " \
        "--disable-new-dtags}"],
-      [SYSTEM_LOADER, "$STACK_SYSROOT/#{LOADER}"],
+      [scope.host.abi.system_loader, "$STACK_SYSROOT/#{loader}"],
     ]),
     Mkdir(path: "$specs_dir"),
     Write(path: "$specs_dir/specs", text: "$specs"),
@@ -438,9 +440,6 @@ class HostGccPackage < Package
   def postconditions(ver = default_ver) = [PortableBinaries.new]
 
   private
-
-  # The system loader GCC hardcodes into its link spec on this host.
-  SYSTEM_LOADER = "/lib64/ld-linux-x86-64.so.2"
 
   #
   # The installed gcc produces portable binaries: compile a trivial
@@ -471,7 +470,8 @@ class HostGccPackage < Package
         readelf = pkg.dep_install_dir("host_binutils") /
                   "install" / "bin" / "readelf"
         refs = Portability.read_refs(bin, readelf: readelf.to_s)
-        resolved = Portability.resolve_libs(bin, loader: loader)
+        resolved = Portability.resolve_libs(bin, loader: loader,
+                                            abi: pkg.scope.host.abi)
 
         violations = Portability.check_refs(
           bin, interp: refs[:interp], rpaths: refs[:rpaths],

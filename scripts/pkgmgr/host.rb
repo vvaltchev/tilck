@@ -17,6 +17,7 @@
 #
 require_relative 'early_logic'
 require_relative 'arch'
+require_relative 'host_abi'
 
 Host = Data.define(:os, :arch, :distro, :cc) do
 
@@ -26,6 +27,10 @@ Host = Data.define(:os, :arch, :distro, :cc) do
 
   # The <machine> coordinate of what runs here.
   def machine = "#{os}-#{arch.name}"
+
+  # The facts of this machine's binaries (host_abi.rb), or nil where
+  # the table has no row for it.
+  def abi = HostABI.for(machine)
 
   def to_s = "#{machine} #{distro} #{cc}"
 end

@@ -940,8 +940,8 @@ class PackageManager
     readelf = bu_inst ? bu_inst.path / "install/bin/readelf" : "readelf"
 
     # The loader of the stack being audited, not of whichever stack
-    # happens to be the default.
-    loader = stack_sysroot(gcc_ver) / "usr/lib/ld-linux-x86-64.so.2"
+    # happens to be the default; where this host's glibc puts it.
+    loader = stack_sysroot(gcc_ver) / env_scope.host.abi.loader
     loader = nil if !File.exist?(loader)
 
     return [readelf, loader]
@@ -971,8 +971,8 @@ class PackageManager
     end
 
     violations = Portability.audit(
-      inst.path, allowed: [TC], readelf: readelf, loader: loader,
-      hostile: hostile
+      inst.path, allowed: [TC], abi: env_scope.host.abi, readelf: readelf,
+      loader: loader, hostile: hostile
     )
 
     return true if violations.empty?

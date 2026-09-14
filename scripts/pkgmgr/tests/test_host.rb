@@ -15,6 +15,7 @@
 require_relative 'test_helper'
 require_relative '../host'
 require_relative '../world'
+require_relative '../portability'
 
 class TestHostValue < Minitest::Test
 
@@ -102,6 +103,59 @@ class TestHostValue < Minitest::Test
       away = World.scan(pkgmgr.all_packages, host: ELSEWHERE)
       assert_equal [there], away.of("host_thing").map(&:coords)
       assert_equal [ALL_ARCHS["aarch64"]], away.of("host_thing").map(&:arch)
+    end
+  end
+end
+
+# The facts of a host's binaries, one table keyed by machine. Five
+# x86_64-glibc constants lived in four files; the stack cannot be
+# brought up elsewhere without finding them all, and now they are one
+# row.
+class TestHostABI < Minitest::Test
+
+  include TestHelper
+
+  def test_this_host_has_a_row_and_the_scope_reads_it
+    abi = Host.env.abi
+    refute_nil abi, "no ABI row for #{Host.env.machine}"
+    assert_equal Host.env.machine, abi.machine
+    assert_same abi, scope.host.abi
+  end
+
+  def test_the_x86_64_row_is_what_the_constants_said
+    abi = HostABI.for("linux-x86_64")
+    assert_equal 62, abi.elf_machine
+    assert_equal "usr/lib/ld-linux-x86-64.so.2", abi.loader
+    assert_equal "/lib64/ld-linux-x86-64.so.2", abi.system_loader
+    assert_equal "lib64", abi.gcc_libdir
+    assert_includes abi.libdirs, "/usr/lib/x86_64-linux-gnu"
+    assert_includes abi.libdirs, "/lib64"
+  end
+
+  def test_a_host_the_table_does_not_know_has_no_abi
+    away = Host.new(os: "linux", arch: ALL_ARCHS["aarch64"],
+                    distro: "debian-12", cc: "gcc-12.2.0")
+    assert_nil away.abi
+    assert_nil HostABI.for("darwin-aarch64")
+  end
+
+  # The ELF filter is the row's, not a constant: a row with another
+  # machine accepts that machine's binaries and rejects this one's.
+  def test_the_elf_filter_follows_the_row
+    arm = HostABI.new(machine: "linux-aarch64", elf_machine: 183,
+                      loader: "usr/lib/ld-linux-aarch64.so.1",
+                      system_loader: "/lib/ld-linux-aarch64.so.1",
+                      libdirs: ["/usr/lib/aarch64-linux-gnu", "/usr/lib"],
+                      gcc_libdir: "lib")
+    Dir.mktmpdir do |d|
+      hdr = ->(em) { "\x7fELF".b + [2, 1, 1].pack("C3") + ("\0" * 9) +
+                     [2].pack("v") + [em].pack("v") + ("\0" * 44) }
+      x86 = File.join(d, "x86"); File.binwrite(x86, hdr.call(62))
+      a64 = File.join(d, "a64"); File.binwrite(a64, hdr.call(183))
+      assert Portability.elf?(x86, abi: HostABI.for("linux-x86_64"))
+      refute Portability.elf?(a64, abi: HostABI.for("linux-x86_64"))
+      assert Portability.elf?(a64, abi: arm)
+      refute Portability.elf?(x86, abi: arm)
     end
   end
 end

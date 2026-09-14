@@ -102,25 +102,21 @@ module Portability
     return out
   end
 
-  # e_machine for x86-64. The audit asks whether a file would load
-  # system libraries ON THIS HOST, which is a question only about
-  # binaries this host can execute.
+  # Is this an ELF file a host of `abi` could execute?
   #
-  # QEMU makes that concrete: it ships guest firmware — s390-ccw.img,
-  # s390-netboot.img — as ELF binaries for other architectures, whose
-  # interpreters name paths that will never exist here (/lib/ld64.so.1)
-  # and never be resolved by anything. Auditing them reports
-  # violations that no amount of correctness on our part could fix.
-  #
-  # When a second host architecture is supported this has to become a
-  # property of the host rather than a constant.
-  EM_X86_64 = 62
-
-  # Is this an ELF file this host could execute?
+  # The audit asks whether a file would load system libraries ON THIS
+  # HOST, which is a question only about binaries this host can
+  # execute. QEMU makes that concrete: it ships guest firmware --
+  # s390-ccw.img, s390-netboot.img -- as ELF binaries for other
+  # architectures, whose interpreters name paths that will never
+  # exist here (/lib/ld64.so.1) and never be resolved by anything.
+  # Auditing them reports violations that no amount of correctness on
+  # our part could fix. Which machine is "this host's" is the ABI's
+  # to say (HostABI#elf_machine).
   #
   # The magic is read rather than shelling out, so a tree of thousands
   # of files costs one open() each.
-  def elf?(path)
+  def elf?(path, abi:)
 
     return false if !File.file?(path) || File.symlink?(path)
 
@@ -128,11 +124,11 @@ module Portability
     return false if hdr.nil? || hdr.length < 20
     return false if hdr[0, 4] != "\x7fELF".b
 
-    # Little-endian 64-bit only, which is what EM_X86_64 implies
-    # anyway; a big-endian header would need the other byte order.
+    # Little-endian only: every machine in the table is, and a
+    # big-endian header would need the other byte order for e_machine.
     return false if hdr[5].ord != 1
 
-    return hdr[18, 2].unpack1("v") == EM_X86_64
+    return hdr[18, 2].unpack1("v") == abi.elf_machine
 
   rescue SystemCallError
     false
@@ -163,14 +159,6 @@ module Portability
     return { interp: interp, rpaths: rpaths }
   end
 
-  # Library directories a hostile environment would point at. Used to
-  # make the resolution check independent of the environment: see
-  # resolve_libs.
-  SYSTEM_LIBDIRS = [
-    "/usr/lib/x86_64-linux-gnu", "/lib/x86_64-linux-gnu",
-    "/usr/lib64", "/lib64", "/usr/lib", "/lib",
-  ].freeze
-
   # Where each shared library actually resolves, asked of the loader
   # itself rather than reimplemented. This is the ground truth: RPATH
   # and interpreter can both look right while a library still comes
@@ -188,11 +176,13 @@ module Portability
   #
   # Returns nil when the file cannot be inspected this way (a static
   # binary, or a loader that refuses it), which the caller treats as
-  # "nothing to check" rather than as a pass.
-  def resolve_libs(path, loader:, hostile: true)
+  # "nothing to check" rather than as a pass. The hostile directories
+  # are the host's (HostABI#libdirs).
+  def resolve_libs(path, loader:, abi:, hostile: true)
 
-    env = hostile ? "LD_LIBRARY_PATH=#{SYSTEM_LIBDIRS.join(":")} " : ""
-    out = `#{env}#{loader.to_s.shellescape} --list #{path.to_s.shellescape} 2>/dev/null`
+    env = hostile ? "LD_LIBRARY_PATH=#{abi.libdirs.join(":")} " : ""
+    cmd = "#{env}#{loader.to_s.shellescape} --list #{path.to_s.shellescape}"
+    out = `#{cmd} 2>/dev/null`
     return nil if out.strip.empty?
 
     resolved = {}
@@ -214,20 +204,20 @@ module Portability
     return resolved
   end
 
-  # Audit every ELF file under `root`. Returns a list of Violations,
-  # empty when the tree is clean.
-  def audit(root, allowed:, readelf: "readelf", loader: nil,
+  # Audit every ELF file under `root` that a host of `abi` executes.
+  # Returns a list of Violations, empty when the tree is clean.
+  def audit(root, allowed:, abi:, readelf: "readelf", loader: nil,
             hostile: true)
 
     out = []
 
     Dir.glob("**/*", base: root.to_s).each do |rel|
       path = File.join(root.to_s, rel)
-      next if !elf?(path)
+      next if !elf?(path, abi: abi)
 
       refs = read_refs(path, readelf: readelf)
       resolved = loader ?
-        resolve_libs(path, loader: loader, hostile: hostile) : nil
+        resolve_libs(path, loader: loader, abi: abi, hostile: hostile) : nil
 
       out.concat(
         check_refs(path,
