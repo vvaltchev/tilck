@@ -52,7 +52,8 @@ class TestSourceRefOverrides < Minitest::Test
   end
 
   def test_git_tag_override_constant
-    # e.g. treecmd always checks out the "tilck" branch regardless of ver.
+    # A ref that does not follow the version: a source pinned to one
+    # commit, as treecmd and fbdoom are, answers the same for any.
     src = SourceRef.new(
       name: 'treecmd',
       url:  'https://github.com/x/y',
