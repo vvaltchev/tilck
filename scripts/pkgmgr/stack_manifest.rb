@@ -4,13 +4,13 @@
 #
 #   <machine>/<env>/<stack>/stack.conf
 #
-#   format      1
-#   kind        host | target
-#   compiler    <package> <version>
-#   compiler_at <machine>/<env>/<stack>     host stacks: where THIS
+#   format: 2
+#   kind: host | target
+#   compiler: <package> <version>
+#   compiler_at: <machine>/<env>/<stack>    host stacks: where THIS
 #                                           host's install of it is
-#   libc        <package> <version>
-#   host        <machine> <distro> <cc>     host stacks: who built it
+#   libc: <package> <version>
+#   host: <machine> <distro> <cc>           host stacks: who built it
 #
 # A stack's compiler does not live in the stack it defines: host_gcc
 # is a :distro package under the distro's env, a cross compiler is a
@@ -32,58 +32,54 @@
 # Written by the executor when a compiler is installed
 # (Package#stacks_defined) and for stacks from before the record
 # (Executor.write_missing_manifests); read by the listing and the
-# sysroot composition. Unknown keys are ignored, so a later format
-# may add fields without breaking a reader of this one.
+# sysroot composition. One record shape for every file the package
+# manager writes (record.rb): unknown keys are ignored, so a later
+# format may add fields without breaking a reader of this one.
+#
+# Format 1 separated key from value with a space, and a value could
+# hold spaces too; it was rewritten before any tree but one had it.
 #
 require_relative 'coords'
 require_relative 'version'
+require_relative 'record'
 
 StackManifest = Data.define(:kind, :compiler_name, :compiler_ver,
                             :compiler_at, :libc, :libc_ver, :host)
 
 class StackManifest
   FILE = "stack.conf"
-  FORMAT = 1
+  FORMAT = 2
 
   # The manifest at `coords`, or nil where there is none, or one of a
   # format this reader does not know.
   def self.read(coords)
-    path = coords.root / FILE
-    return nil if !path.file?
+    kv = Record.read(coords.root / FILE)
+    return nil if Record.format_of(kv) != FORMAT
 
-    # Every line is a key and a value; a blank line or a comment is a
-    # key nothing asks for, which is all the skipping it needs.
-    kv = {}
-    for line in path.read.lines do
-      k, v = line.strip.split(" ", 2)
-      kv[k] = v.to_s.strip
-    end
-    return nil if kv["format"].to_i != FORMAT
-
-    comp = kv["compiler"].to_s.split
-    libc = kv["libc"].to_s.split
-    return new(kind: kv["kind"].to_s.to_sym,
+    comp = Record.one(kv, "compiler").to_s.split
+    libc = Record.one(kv, "libc").to_s.split
+    return new(kind: Record.one(kv, "kind").to_s.to_sym,
                compiler_name: comp[0],
                compiler_ver: SafeVer(comp[1].to_s),
-               compiler_at: kv["compiler_at"],
+               compiler_at: Record.one(kv, "compiler_at"),
                libc: libc[0], libc_ver: SafeVer(libc[1].to_s),
-               host: kv["host"])
+               host: Record.one(kv, "host"))
   end
 
   def self.write(coords, manifest)
-    root = coords.root
-    FileUtils.mkdir_p(root)
-    File.write(root / FILE, manifest.render)
+    Record.write(coords.root / FILE, manifest.pairs)
   end
 
-  def render
-    lines = ["format #{FORMAT}", "kind #{kind}",
-             "compiler #{compiler_name} #{compiler_ver}"]
-    lines << "compiler_at #{compiler_at}" if compiler_at
-    lines << "libc #{libc} #{libc_ver}" if libc && libc_ver
-    lines << "host #{host}" if host
-    return lines.join("\n") + "\n"
+  def pairs
+    out = [["format", FORMAT], ["kind", kind],
+           ["compiler", "#{compiler_name} #{compiler_ver}"]]
+    out << ["compiler_at", compiler_at] if compiler_at
+    out << ["libc", "#{libc} #{libc_ver}"] if libc && libc_ver
+    out << ["host", host] if host
+    return out
   end
+
+  def render = Record.render(pairs)
 
   # The coordinates of this host's install of the compiler, when the
   # manifest says where it is.

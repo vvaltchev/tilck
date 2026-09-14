@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 require 'digest'
+require_relative 'record'
 
 #
 # What a package was built FROM, recorded beside what was built.
@@ -45,7 +46,10 @@ module BuildInputs
   # because your sources changed" is the wrong thing to say about
   # that.
   #
-  FORMAT = 3
+  FORMAT = 4
+
+  # The last format whose digests this one cannot compare with.
+  LAST_INCOMPARABLE = 2
 
   # Absolute paths are rewritten to tokens before being recorded, so
   # that the file is stable across machines and still diffable by eye.
@@ -71,34 +75,46 @@ module BuildInputs
   # The comparable part: everything knowable WITHOUT running a build.
   # argv is recorded too, but only for a human reading the file -- it
   # cannot be compared, because it is not known until the build runs.
-  def render(recipe:, files:, argv: nil)
-
-    lines = ["recipe #{recipe}"]
-
+  def pairs(recipe:, files:, argv: nil)
+    out = [["format", FORMAT], ["recipe", recipe]]
     for path in files.sort_by(&:to_s) do
-      lines << "file   #{normalize(path.to_s)} #{digest_file(path)}"
+      out << ["file", "#{normalize(path.to_s)} #{digest_file(path)}"]
     end
+    out << ["argv", normalize(argv)] if argv
+    return out
+  end
 
-    lines << "format #{FORMAT}"
-    lines << "argv   #{normalize(argv)}" if argv
-    return lines.join("\n") + "\n"
+  def render(recipe:, files:, argv: nil)
+    return Record.render(pairs(recipe: recipe, files: files, argv: argv))
+  end
+
+  # The record as {key => [values]}, whichever spelling wrote it: the
+  # `key value` of formats 1..3 (a `file` line padded to a column),
+  # or the `key: value` of 4.
+  def read_any(text)
+    return Record.parse(text) if text.lines.first.to_s.start_with?("format: ")
+    kv = Hash.new { |h, k| h[k] = [] }
+    for line in text.lines do
+      k, v = line.chomp.split(" ", 2)
+      kv[k] << v.to_s.strip if k
+    end
+    return kv
   end
 
   # Which scheme wrote this record. A record from before the line
   # existed is a 1, which is what it was; no record is no scheme,
   # and nil says so rather than a number.
   def format_of(dir)
-
     path = dir / FILE
     return nil if !path.file?
-
-    line = path.read.lines.find { |l| l.start_with?("format ") }
-    return line ? line.split[1].to_i : 1
+    f = read_any(File.read(path))["format"].first
+    return f ? f.to_i : 1
   end
 
-  # The lines that decide whether an install matches its sources.
-  # Everything else in the file is for a human to read.
-  COMPARABLE = ["recipe ", "file   "].freeze
+  # The lines that decide whether an install matches its sources,
+  # spelled one way whichever format wrote them. Everything else in
+  # the file is for a human to read.
+  COMPARABLE = ["recipe", "file"].freeze
 
   # BOTH sides of the comparison go through this, which is what makes
   # the promise true: adding an informational field cannot make every
@@ -106,23 +122,37 @@ module BuildInputs
   # `format` line -- the first informational line that is always
   # written -- promptly made eight healthy installs read changed.
   def comparable_lines(text)
-
-    return text.lines
-               .map(&:chomp)
-               .select { |l| l.start_with?(*COMPARABLE) }
-               .join("\n")
+    kv = read_any(text)
+    return COMPARABLE.flat_map { |k| kv[k].map { |v| "#{k}: #{v}" } }
+                     .join("\n")
   end
 
   # Read back the comparable lines only.
   def comparable(dir)
-
     path = dir / FILE
     return nil if !File.file?(path)
-
     return comparable_lines(File.read(path))
   end
 
   def write(dir, recipe:, files:, argv: nil)
-    File.write(dir / FILE, render(recipe: recipe, files: files, argv: argv))
+    Record.write(dir / FILE, pairs(recipe: recipe, files: files, argv: argv))
+  end
+
+  # A record of an older spelling rewritten in this one, its digests
+  # kept as they are: not a new judgement, the same one in the shape
+  # every record has now. Nothing for a record already in it.
+  def rewrite_in_place(dir)
+    path = dir / FILE
+    return false if !path.file?
+    text = File.read(path)
+    return false if text.start_with?("format: ")
+    kv = read_any(text)
+    return false if kv["format"].first.to_i <= LAST_INCOMPARABLE
+    out = [["format", FORMAT]]
+    out << ["recipe", kv["recipe"].first] if kv["recipe"].first
+    kv["file"].each { |v| out << ["file", v] }
+    kv["argv"].each { |v| out << ["argv", v] }
+    Record.write(path, out)
+    return true
   end
 end

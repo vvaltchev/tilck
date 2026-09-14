@@ -355,7 +355,7 @@ module TestHelper
   #            default: where the package puts `ver` in this scope
   #   record:  :ok (a record matching the recipe), :changed (one that
   #            does not), :missing (none)
-  #   origin:  :default or :pinned, what .install_origin says
+  #   origin:  :default or :pinned, what .install says under origin
   #
   def fake_install(pkg, ver = nil, at: nil, record: :ok, origin: :default,
                    mark: :manual)
@@ -377,7 +377,11 @@ module TestHelper
       end
     end
 
-    InstallOrigin.write(dir, origin == :default, mark == :manual)
+    InstallRecord.write(dir, name: pkg.name, ver: ver,
+                        coords: at || b.coords(ver),
+                        default_install: origin == :default,
+                        manual: mark == :manual, host: Host.env, stack: nil,
+                        against: {})
     pkgmgr.installs_changed!
     pkgmgr.refresh
 
@@ -389,9 +393,9 @@ module TestHelper
     when :changed
       # A record of the CURRENT format naming other sources: changed,
       # not merely from an older scheme.
-      File.write(dir / BuildInputs::FILE,
-                 "recipe sha256:not-what-it-was-built-from\n" \
-                 "format #{BuildInputs::FORMAT}\n")
+      Record.write(dir / BuildInputs::FILE,
+                   [["format", BuildInputs::FORMAT],
+                    ["recipe", "sha256:not-what-it-was-built-from"]])
     when :missing
       nil
     else

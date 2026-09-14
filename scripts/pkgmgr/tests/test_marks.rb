@@ -494,7 +494,9 @@ class TestMarks < Minitest::Test
         pkgmgr.register(a)
         pkgmgr.install("a")
         inst = a.get_install_list.find { |i| !i.path.nil? }
-        File.write(inst.path / InstallOrigin::FILE, "pinned\n")
+        # A tree from before the marks: the legacy file, one word.
+        FileUtils.rm_f(inst.path / InstallRecord::FILE)
+        File.write(inst.path / InstallRecord::LEGACY_ORIGIN, "pinned\n")
 
         pkgmgr.installs_changed!
         pkgmgr.refresh

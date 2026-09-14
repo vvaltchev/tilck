@@ -153,7 +153,9 @@ class TestShowStatus < Minitest::Test
           i.arch == ALL_ARCHS["x86_64"]
         }
         refute_nil other, "no x86_64 install to spoil"
-        File.write(other.path / BuildInputs::FILE, "recipe sha256:spoiled\n")
+        Record.write(other.path / BuildInputs::FILE,
+                     [["format", BuildInputs::FORMAT],
+                      ["recipe", "sha256:spoiled"]])
 
         output = capture_stdout {
           pkgmgr.show_status("foo", nil, pkg.get_install_list)

@@ -87,7 +87,8 @@ module Planner
   end
 
   # The version of each direct dependency `pkg` at `ver` is built
-  # against: what the request bound it to. What InstallDeps records.
+  # against: what the request bound it to. What .install records as
+  # `against`.
   # Every caller binds the closure first (bind), and a direct
   # dependency is in the closure, so there is no other rung. `pkg`
   # is bound: a stack's dependencies are asked at a scope.
@@ -670,7 +671,7 @@ module Planner
   # the dependencies with two installs and no record.
   def deps_of_install(registry, world, pkg, inst, scope)
 
-    recorded = InstallDeps.read(inst.path)
+    recorded = InstallRecord.against(inst.path)
     ambiguous = []
     sc = pkg.scope_at(inst, scope)
 

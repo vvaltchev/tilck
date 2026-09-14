@@ -71,7 +71,7 @@ class TestTilckStack < Minitest::Test
         refute_nil inst
         refute inst.broken
         assert inst.manual
-        assert_equal %w[.build_inputs .built_against .install_origin],
+        assert_equal %w[.build_inputs .install],
                      inst.path.children.map { |c| c.basename.to_s }.sort
         assert_equal :auto,
                      pkgmgr.get("dflt").get_install_list.first.manual ? :manual

@@ -393,7 +393,7 @@ package on both sides — ncurses — has an entry in each and they may
 differ freely; `get_config_ver(name, host:)` takes the side
 explicitly. Bump a version + `--upgrade` installs alongside the old
 one, but only for installs that used the default version: one asked
-for by name (`-s pkg:ver`, recorded in `.install_origin`) is left
+for by name (`-s pkg:ver`, recorded as `origin:` in `.install`) is left
 alone. CMake detects stale at configure (both files are
 `CMAKE_CONFIGURE_DEPENDS`).
 

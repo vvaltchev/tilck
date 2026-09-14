@@ -130,7 +130,7 @@ class TestOrchestration < Minitest::Test
         assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
         assert inst.default_install
         assert inst.manual
-        assert_equal({}, InstallDeps.read(inst.path))
+        assert_equal({}, InstallRecord.against(inst.path))
         assert_equal [0, []],
                      Planner.check_updates(pkgmgr, pkgmgr.world.judged(pkgmgr,
                                                                       scope),

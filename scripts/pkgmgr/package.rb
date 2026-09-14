@@ -9,6 +9,7 @@ require_relative 'package_manager'
 require_relative 'build_env'
 require_relative 'coords'
 require_relative 'stack_manifest'
+require_relative 'record'
 require_relative 'scope'
 require_relative 'world'
 require_relative 'planner'
@@ -55,60 +56,137 @@ end
 # install whose reason nobody wrote down is nobody's to remove.
 # One-word files from before the second fact read the same way.
 #
-module InstallOrigin
+# WHAT AN INSTALLATION IS, beside it: .install
+#
+#   format: 1
+#   name: host_qemu
+#   version: 9.2.0
+#   coords: linux-x86_64/any/gcc-14.4.0
+#   origin: pinned | default        how the VERSION was chosen
+#   mark: manual | auto             WHY it is here
+#   host: linux-x86_64 omarchy-4.0.4 gcc-16.2.1
+#   stack: gcc-14.4.0               the stack it belongs to, if one
+#   against: host_gcc 14.4.0        one per dependency built against
+#
+# Identity as written -- name, version, coordinates, the host that
+# wrote it -- so that a reader can hold the path to the record and a
+# move of the schema can re-judge an install from the record rather
+# than from a path read with yesterday's rule. Then the two facts the
+# path cannot say: how the version was chosen (a default install and
+# one the user named are both <pkg>/<ver>/, and --upgrade must not
+# replace a pinned one behind their back) and why the install is here
+# (asked for by name, or pulled in as a dependency: -u removes what
+# it is told, --autoremove takes the auto ones nothing kept needs,
+# --mark-* moves one between the two). And which version of each
+# dependency it was built against, which nothing can work out later:
+# mpfr's own list names gmp with no version, and the gcc that pulled
+# both in pinned 6.1.0 only while that request was being installed.
+#
+# Kept apart from .build_inputs on purpose: that file is compared to
+# decide whether an install is stale, and none of this is a change to
+# what it was built from. One record shape for both (record.rb).
+#
+# Installations from before this file carried .install_origin (two
+# words, or one) and .built_against (name-version lines) and are
+# read through them until the executor rewrites them, which it does
+# for every install the first time anything is written to the tree.
+#
+module InstallRecord
 
-  FILE    = ".install_origin"
-  DEFAULT = "default"
-  PINNED  = "pinned"
-  MANUAL  = "manual"
-  AUTO    = "auto"
+  FILE = ".install"
+  FORMAT = 1
+
+  # The two the record replaces, read where it is absent.
+  LEGACY_ORIGIN = ".install_origin"
+  LEGACY_DEPS = ".built_against"
 
   module_function
 
-  def write(dir, default_install, manual)
-    File.write(dir / FILE, "#{default_install ? DEFAULT : PINNED} " \
-                           "#{manual ? MANUAL : AUTO}\n")
+  def pairs(name:, ver:, coords:, default_install:, manual:, host:,
+            stack:, against:)
+    out = [["format", FORMAT], ["name", name], ["version", ver.to_s],
+           ["coords", coords.to_s],
+           ["origin", default_install ? "default" : "pinned"],
+           ["mark", manual ? "manual" : "auto"]]
+    out << ["host", host.to_s] if host
+    out << ["stack", stack.to_s] if stack
+    against.sort_by { |n, _| n }.each { |n, v| out << ["against", "#{n} #{v}"] }
+    return out
   end
 
-  def words(dir)
-    path = dir / FILE
-    return [] if !path.file?
-    return path.read.split
+  def write(dir, **fields)
+    Record.write(dir / FILE, pairs(**fields))
+    FileUtils.rm_f(dir / LEGACY_ORIGIN)
+    FileUtils.rm_f(dir / LEGACY_DEPS)
   end
 
-  def default_install?(dir) = words(dir).first != PINNED
-  def manual?(dir) = words(dir)[1] != AUTO
-end
-
-#
-# Which version of each dependency an installation was built against,
-# recorded in a hidden file beside it.
-#
-# A package cannot work this out for itself later: mpfr's own dep list
-# names host_gmp with no version, and asked alone it answers gmp's
-# default -- while the gcc that pulled all of this in pinned 6.1.0.
-# That resolution exists only while that request is being installed.
-# A rebuild of the install, months on and on its own, has to build
-# against the same gmp, and this is the only place that still knows
-# which one that was. Kept apart from .build_inputs on purpose: that
-# file is compared to decide whether an install is stale, and what it
-# was built against is not a change to what it was built from.
-#
-module InstallDeps
-
-  FILE = ".built_against"
-
-  module_function
-
-  def write(dir, versions)
-    File.write(dir / FILE, versions.map { |n, v| "#{n} #{v}\n" }.join)
+  # The record as {key => [values]}: the file, or the legacy pair read
+  # into the same keys, or nil where there is neither.
+  def read(dir)
+    kv = Record.read(dir / FILE)
+    return kv if kv && Record.format_of(kv) == FORMAT
+    return legacy(dir)
   end
+
+  def legacy(dir)
+    o = dir / LEGACY_ORIGIN
+    d = dir / LEGACY_DEPS
+    return nil if !o.file? && !d.file?
+    kv = Hash.new { |h, k| h[k] = [] }
+    words = o.file? ? o.read.split : []
+    kv["origin"] << (words.first == "pinned" ? "pinned" : "default")
+    kv["mark"] << (words[1] == "auto" ? "auto" : "manual")
+    if d.file?
+      d.read.lines.each { |l| kv["against"] << l.strip if !l.strip.empty? }
+    end
+    return kv
+  end
+
+  # An install from before any record reads as a manual default
+  # install: nothing pinned can predate the file, and an install
+  # whose reason nobody wrote down is nobody's to remove.
+  def default_install?(dir) = Record.one(read(dir), "origin") != "pinned"
+  def manual?(dir) = Record.one(read(dir), "mark") != "auto"
 
   # {name => Version}; empty for an install from before the record.
-  def read(dir)
-    path = dir / FILE
-    return {} if !path.file?
-    return path.read.lines.to_h { |l| n, v = l.split; [n, Ver(v)] }
+  def against(dir)
+    kv = read(dir)
+    return {} if kv.nil?
+    return kv["against"].to_h { |l| n, v = l.split; [n, Ver(v)] }
+  end
+
+  # Only the fields that are marks: what a Mark action changes.
+  def remark(dir, default_install, manual)
+    kv = read(dir) || {}
+    Record.write(dir / FILE, pairs(
+      name: Record.one(kv, "name"), ver: Record.one(kv, "version"),
+      coords: Record.one(kv, "coords"), default_install: default_install,
+      manual: manual, host: Record.one(kv, "host"),
+      stack: Record.one(kv, "stack"),
+      against: (kv["against"] || []).map { |l| l.split(" ", 2) }
+    ))
+    FileUtils.rm_f(dir / LEGACY_ORIGIN)
+    FileUtils.rm_f(dir / LEGACY_DEPS)
+  end
+
+  # Only the dependencies: what a test that plants a record needs.
+  def remark_against(dir, against)
+    kv = read(dir) || {}
+    Record.write(dir / FILE, pairs(
+      name: Record.one(kv, "name"), ver: Record.one(kv, "version"),
+      coords: Record.one(kv, "coords"),
+      default_install: Record.one(kv, "origin") != "pinned",
+      manual: Record.one(kv, "mark") != "auto", host: Record.one(kv, "host"),
+      stack: Record.one(kv, "stack"), against: against
+    ))
+    FileUtils.rm_f(dir / LEGACY_ORIGIN)
+    FileUtils.rm_f(dir / LEGACY_DEPS)
+  end
+
+  # Is this install's record the current one, or a legacy pair?
+  def current?(dir)
+    kv = Record.read(dir / FILE)
+    return !kv.nil? && Record.format_of(kv) == FORMAT
   end
 end
 
@@ -1176,7 +1254,7 @@ class Package
     # nothing about the sources.
     # The record is there: comparable was not nil. So format_of has a
     # number to give.
-    if BuildInputs.format_of(inst.path) < BuildInputs::FORMAT
+    if BuildInputs.format_of(inst.path) <= BuildInputs::LAST_INCOMPARABLE
       return :old_format
     end
 
@@ -1937,7 +2015,7 @@ class Package
   #
   # A version the user asked for by name is deliberate and is left
   # alone, however old it is — which is why the two cases have to be
-  # distinguishable on disk at all (see InstallOrigin).
+  # distinguishable on disk at all (see InstallRecord).
   def needs_upgrade?
 
     # The stack compiler never does. Each of its installs IS the stack
@@ -2121,8 +2199,8 @@ class Package
           dir / d,                          # install path
           self,                             # package object
           !check_install_dir(dir / d, ver), # broken?
-          default_install: InstallOrigin.default_install?(dir / d),
-          manual: InstallOrigin.manual?(dir / d),
+          default_install: InstallRecord.default_install?(dir / d),
+          manual: InstallRecord.manual?(dir / d),
           coords: c                         # which stack it lives in
         )
       end
@@ -2175,8 +2253,8 @@ class Package
               dir / d,                          # install path
               self,                             # package object
               !check_install_dir(dir / d, ver), # broken?
-              default_install: InstallOrigin.default_install?(dir / d),
-              manual: InstallOrigin.manual?(dir / d),
+              default_install: InstallRecord.default_install?(dir / d),
+              manual: InstallRecord.manual?(dir / d),
               coords: coords                    # this arch+board+stack
             )
           end # for ver_dir
@@ -2203,8 +2281,8 @@ class Package
           dir / d,                          # install path
           self,                             # package object
           !check_install_dir(dir / d, ver), # broken?
-          default_install: InstallOrigin.default_install?(dir / d),
-          manual: InstallOrigin.manual?(dir / d),
+          default_install: InstallRecord.default_install?(dir / d),
+          manual: InstallRecord.manual?(dir / d),
           coords: coords                    # noarch/any/any
         )
       end

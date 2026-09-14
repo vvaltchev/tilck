@@ -94,7 +94,7 @@ class TestHostValue < Minitest::Test
       there = Coords.new("linux-aarch64", "debian-12", nil)
       dir = bound(pkg).pkg_dir_at(there) / "1.0.0"
       FileUtils.mkdir_p(dir)
-      InstallOrigin.write(dir, true, true)
+      InstallRecord.remark(dir, true, true)
 
       here = World.scan(pkgmgr.all_packages, host: Host.env)
       assert_empty here.of("host_thing"), "another host's install read here"

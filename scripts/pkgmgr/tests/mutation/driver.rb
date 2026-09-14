@@ -36,6 +36,7 @@ module Mutation
 
   # Whole files in scope.
   FILES = %w[coords.rb stack_id.rb host.rb host_abi.rb stack_manifest.rb
+             record.rb
              install_selector.rb dep_resolver.rb
              version_solver.rb build_inputs.rb layout.rb
              tilck_stack.rb planner.rb plan.rb request.rb].freeze

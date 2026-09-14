@@ -28,8 +28,9 @@ class TestBuildInputsRecord < Minitest::Test
       f = Pathname.new(File.join(d, "a.diff"))
       File.write(f, "hello")
       out = BuildInputs.render(recipe: "sha256:abc", files: [f])
-      assert_match(/^recipe sha256:abc$/, out)
-      assert_match(/^file   .*a\.diff sha256:[0-9a-f]{32}$/, out)
+      assert_match(/\Aformat: #{BuildInputs::FORMAT}$/, out)
+      assert_match(/^recipe: sha256:abc$/, out)
+      assert_match(/^file: .*a\.diff sha256:[0-9a-f]{32}$/, out)
     end
   end
 
@@ -513,18 +514,22 @@ class TestRecordFormat < Minitest::Test
     return [pkg, bound(pkg).find_install(Ver("1.0.0"))]
   end
 
-  def rewrite(inst, recipe: nil, drop_format: false)
+  # The record rewritten in the OLD spelling (formats 1..3: `key
+  # value`, no separator), with the recipe replaced and the format
+  # line dropped or kept: what a tree from before looks like.
+  def rewrite(inst, recipe: nil, drop_format: false, format: nil)
     f = inst.path / BuildInputs::FILE
-    lines = File.read(f).lines
-    lines = lines.reject { |l| l.start_with?("format ") } if drop_format
-    lines = lines.map { |l|
-      l.start_with?("recipe ") && recipe ? "recipe #{recipe}\n" : l
-    }
+    kv = BuildInputs.read_any(File.read(f))
+    lines = []
+    lines << "recipe #{recipe || kv["recipe"].first}\n"
+    kv["file"].each { |v| lines << "file   #{v}\n" }
+    lines << "format #{format || kv["format"].first}\n" if !drop_format
     File.write(f, lines.join)
   end
 
-  # The reader on its own: the line when there is one, 1 when the
-  # record predates the line, and nothing when there is no record.
+  # The reader on its own: the line when there is one, in either
+  # spelling; 1 when the record predates the line; nothing when there
+  # is no record.
   def test_format_of_reads_the_line_and_says_nothing_of_no_record
     Dir.mktmpdir do |d|
       dir = Pathname(d)
@@ -533,6 +538,56 @@ class TestRecordFormat < Minitest::Test
       assert_equal 1, BuildInputs.format_of(dir)
       File.write(dir / BuildInputs::FILE, "recipe sha256:0\nformat 7\n")
       assert_equal 7, BuildInputs.format_of(dir)
+      File.write(dir / BuildInputs::FILE, "format: 8\nrecipe: sha256:0\n")
+      assert_equal 8, BuildInputs.format_of(dir)
+    end
+  end
+
+  # A format-3 record is the same digests in the older spelling: it
+  # compares equal to a format-4 one and is :ok, not :old_format.
+  # Formats 1 and 2 used other digest schemes and cannot be compared.
+  def test_the_older_spelling_of_the_same_digests_is_current
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = installed_one
+        rewrite(inst, format: 3)
+        assert_match(/\Arecipe sha256:/,
+                     File.read(inst.path / BuildInputs::FILE))
+        assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+
+        # A 3 that DISAGREES is :changed -- same scheme, other sources;
+        # a 2 that disagrees is :old_format -- another scheme, nothing
+        # to say about the sources.
+        rewrite(inst, recipe: "sha256:00000000000000000000000000000000",
+                format: 3)
+        assert_equal :changed, bound(pkg).build_inputs_state_of(inst)
+        rewrite(inst, recipe: "sha256:00000000000000000000000000000000",
+                format: 2)
+        assert_equal :old_format, bound(pkg).build_inputs_state_of(inst)
+      end
+    end
+  end
+
+  # ...and is rewritten in the current spelling on request, its
+  # digests as they are; a record already current, or one whose
+  # digests cannot be compared, is left alone.
+  def test_an_older_spelling_is_rewritten_in_place
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = installed_one
+        current = File.read(inst.path / BuildInputs::FILE)
+        refute BuildInputs.rewrite_in_place(inst.path), "already current"
+
+        rewrite(inst, format: 3)
+        assert BuildInputs.rewrite_in_place(inst.path)
+        assert_equal current, File.read(inst.path / BuildInputs::FILE)
+        assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+
+        rewrite(inst, format: 2)
+        refute BuildInputs.rewrite_in_place(inst.path), "incomparable: kept"
+        assert_match(/\Arecipe sha256:/,
+                     File.read(inst.path / BuildInputs::FILE))
+      end
     end
   end
 
@@ -540,7 +595,7 @@ class TestRecordFormat < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         _, inst = installed_one
-        assert_match(/^format #{BuildInputs::FORMAT}$/,
+        assert_match(/\Aformat: #{BuildInputs::FORMAT}$/,
                      File.read(inst.path / BuildInputs::FILE))
       end
     end

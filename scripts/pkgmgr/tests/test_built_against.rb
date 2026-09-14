@@ -74,7 +74,7 @@ class TestBuiltAgainst < Minitest::Test
   def test_the_record_wins_over_what_is_installed
     with_fake_tc do
       inst = install_of(@user)
-      InstallDeps.write(inst.path, { "host_gmp" => v("1.0.0") })
+      InstallRecord.remark_against(inst.path, { "host_gmp" => v("1.0.0") })
       fake_install(@gmp, v("2.0.0"))   # the only gmp present is not it
 
       versions, ambiguous = pkgmgr.deps_of_install(@user, inst)

@@ -331,8 +331,9 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkgmgr.install("foo")               # no version named
 
         inst = bound(pkg).find_install(Ver("1.0.0"))
-        assert_equal "default manual",
-                     (inst.path / InstallOrigin::FILE).read.strip
+        text = (inst.path / InstallRecord::FILE).read
+        assert_match(/^origin: default$/, text)
+        assert_match(/^mark: manual$/, text)
         assert inst.default_install
       end
     end
@@ -346,8 +347,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
         pkgmgr.install("foo", Ver("1.0.0"))  # version named explicitly
 
         inst = bound(pkg).find_install(Ver("1.0.0"))
-        assert_equal "pinned manual",
-                     (inst.path / InstallOrigin::FILE).read.strip
+        assert_match(/^origin: pinned$/, (inst.path / InstallRecord::FILE).read)
         refute inst.default_install
       end
     end
@@ -361,7 +361,7 @@ class TestPackageNeedsUpgrade < Minitest::Test
       gcc_ver = ARCH.gcc_ver.to_s
       old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
-      InstallOrigin.write(old_dir, false, true)
+      InstallRecord.remark(old_dir, false, true)
 
       pkg = FakePackage.new("foo")
       pkgmgr.register(pkg)
@@ -376,7 +376,8 @@ class TestPackageNeedsUpgrade < Minitest::Test
       gcc_ver = ARCH.gcc_ver.to_s
       old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
       FileUtils.mkdir_p(old_dir)
-      refute (old_dir / InstallOrigin::FILE).exist?
+      refute (old_dir / InstallRecord::FILE).exist?
+      refute (old_dir / InstallRecord::LEGACY_ORIGIN).exist?
 
       pkg = FakePackage.new("foo")
       pkgmgr.register(pkg)

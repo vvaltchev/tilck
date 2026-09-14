@@ -20,8 +20,8 @@
 
 require_relative 'plan'
 require_relative 'stack_manifest'
-# InstallOrigin and InstallDeps are package.rb's, loaded by the time
-# anything here runs.
+# InstallRecord is package.rb's, loaded by the time anything here
+# runs.
 
 module Executor
 
@@ -42,6 +42,12 @@ module Executor
   def run(registry, plan)
     failed = nil
     removed = false
+
+    # A tree from before the records catches up BEFORE the actions: a
+    # re-mark rewrites an install's record from what it holds, and a
+    # legacy pair holds no name to keep.
+    write_missing_records(registry)
+
     for a in plan.actions do
       # The sysroot is a view over what is installed, so a removal
       # invalidates it exactly as an install does -- every stack,
@@ -75,6 +81,84 @@ module Executor
     return failed
   end
 
+  # What an install is, beside it (InstallRecord): identity as
+  # written, the marks, the host that wrote it, the stack it belongs
+  # to, and what it was built against.
+  def write_install_record(pkg, inst, default_install:, manual:, against:)
+    stack = pkg.stack_of_install(inst) ||
+            (pkg.target? ? inst.coords&.stack_id&.ver : nil)
+    InstallRecord.write(inst.path, name: pkg.name, ver: inst.ver,
+                        coords: inst.coords, default_install: default_install,
+                        manual: manual, host: pkgmgr.env_scope.host,
+                        stack: stack && Coords.stack_name(stack),
+                        against: against)
+  end
+
+  # An install from before .install gets one, from what its legacy
+  # pair says and what the scan derived from its path -- the host
+  # left unsaid, since nobody wrote it down -- and a .build_inputs of
+  # an older spelling is rewritten in the current one, its digests as
+  # they are. Once per run, before the actions, so that a tree from
+  # before the records catches up the first time anything is written
+  # to it and never needs telling.
+  def write_missing_records(registry)
+    for pkg in registry.all_packages do
+      for inst in pkgmgr.world.of(pkg.name) do
+        next if inst.path.nil? || inst.broken
+        if !InstallRecord.current?(inst.path)
+          stack = pkg.stack_of_install(inst) ||
+                  (pkg.target? ? inst.coords&.stack_id&.ver : nil)
+          InstallRecord.write(inst.path, name: pkg.name, ver: inst.ver,
+                              coords: inst.coords,
+                              default_install: inst.default_install,
+                              manual: inst.manual, host: nil,
+                              stack: stack && Coords.stack_name(stack),
+                              against: InstallRecord.against(inst.path))
+        end
+        BuildInputs.rewrite_in_place(inst.path)
+      end
+    end
+
+    # ...and the installs the world does not claim: another env of
+    # this host, where a distro move stranded them (exactly the ones
+    # a record is FOR), or a package this registry no longer has.
+    # What the record says of them is what the path and the legacy
+    # pair say; the package's name is the directory's, which for a
+    # host package is the name less its host_ prefix -- the one fact
+    # a path cannot give back, so it is written as the directory says
+    # and the registry's word is preferred when it has one.
+    machines = Dir.children(TC).select { |m|
+      !NON_INSTALL_DIRS.include?(m) && (TC / m).directory?
+    }
+    by_dir = registry.all_packages.to_h { |p| [p.pkg_dirname, p] }
+    for m in machines do
+      Dir.glob("#{TC / m}/*/*/pkgs/*/*/").each { |d|
+        dir = Pathname(d)
+        next if InstallRecord.current?(dir)
+        next if !(dir / InstallRecord::LEGACY_ORIGIN).file? &&
+                !(dir / InstallRecord::LEGACY_DEPS).file?
+        coords = Coords.new(*dir.relative_path_from(TC).to_s.split("/")[0, 3])
+        ver = SafeVer(dir.basename.to_s)
+        next if ver.nil?
+        pkg = by_dir[dir.parent.basename.to_s]
+        # The stack is the coordinate's third level where that names
+        # one of OURS: a :stack package's, or a target's. A :compiler
+        # tier install carries the host's compiler there, which is no
+        # stack of ours, and a package the registry does not know is
+        # not guessed about.
+        ours = pkg && (pkg.target? || pkg.host_tier == :stack)
+        name = pkg ? pkg.name : dir.parent.basename.to_s
+        InstallRecord.write(dir, name: name, ver: ver, coords: coords,
+                            default_install:
+                              InstallRecord.default_install?(dir),
+                            manual: InstallRecord.manual?(dir), host: nil,
+                            stack: ours && coords.stack_id ? coords.stack : nil,
+                            against: InstallRecord.against(dir))
+        BuildInputs.rewrite_in_place(dir)
+      }
+    end
+  end
+
   # A stack from before manifests gets one, derived the way the code
   # used to guess: from the compiler install whose version it names,
   # wherever that install is now. Once per run, after the actions,
@@ -86,7 +170,8 @@ module Executor
       for inst in pkgmgr.world.of(pkg.name) do
         next if inst.broken
         bound = pkg.at(scope, world: pkgmgr.world)
-        pairs = bound.stacks_defined(inst.ver, InstallDeps.read(inst.path),
+        pairs = bound.stacks_defined(inst.ver,
+                                     InstallRecord.against(inst.path),
                                      compiler_at: inst.coords)
         for c, m in pairs do
           next if !c.root.directory? || StackManifest.read(c)
@@ -109,7 +194,7 @@ module Executor
       at = compiler_anywhere(bound, id.ver, scope.host)
       next if at.nil?
       dir = bound.pkg_dir_at(at) / bound.ver_dirname(id.ver)
-      for c, m in bound.stacks_defined(id.ver, InstallDeps.read(dir),
+      for c, m in bound.stacks_defined(id.ver, InstallRecord.against(dir),
                                        compiler_at: at) do
         StackManifest.write(c, m) if !StackManifest.read(c)
       end
@@ -197,7 +282,7 @@ module Executor
   # --mark), and it says it.
   def mark(action)
     i = action.install
-    InstallOrigin.write(i.path, i.default_install, action.manual)
+    InstallRecord.remark(i.path, i.default_install, action.manual)
     pkgmgr.installs_changed!
     return true
   end
@@ -238,9 +323,9 @@ module Executor
       i = pkg.at(sc, world: pkgmgr.world, versions: action.bound)
              .find_install(ver)
       next if i.nil?
-      InstallOrigin.write(i.path, action.origin == :default,
-                          action.mark == :manual)
-      InstallDeps.write(i.path, action.against)
+      write_install_record(pkg, i, default_install: action.origin == :default,
+                           manual: action.mark == :manual,
+                           against: action.against)
       pkg.at(sc, versions: action.bound).write_build_inputs(i)
     end
     pkgmgr.installs_changed!

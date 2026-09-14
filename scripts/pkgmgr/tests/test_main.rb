@@ -1607,8 +1607,11 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
     return [gmp, user, root]
   end
 
-  def record_of(pkg)
-    return bound(pkg).find_install(pkg.default_ver).path / InstallDeps::FILE
+  # The install with its `against` lines removed: what an install
+  # from before the record looks like to a rebuild.
+  def forget_against(pkg)
+    InstallRecord.remark_against(bound(pkg).find_install(pkg.default_ver).path,
+                                 {})
   end
 
   def make_stale(pkg)
@@ -1623,7 +1626,7 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
         assert_equal 0, run_cli("-s", "host_root").first
         inst = bound(user).find_install(user.default_ver)
         assert_equal({ "host_gmp" => Ver("1.0.0") },
-                     InstallDeps.read(inst.path))
+                     InstallRecord.against(inst.path))
         assert_equal [Ver("1.0.0")], user.saw
       end
     end
@@ -1651,7 +1654,7 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
       with_stubbed_externals do
         gmp, user, = world
         run_cli("-s", "host_root")
-        File.delete(record_of(user))
+        forget_against(user)
         make_stale(user)
 
         rc, out = run_cli("--rebuild")
@@ -1667,15 +1670,15 @@ class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
         gmp, user, = world
         run_cli("-s", "host_root")
         run_cli("-s", "host_gmp:2.0.0")
-        File.delete(record_of(user))
+        forget_against(user)
         make_stale(user)
         FakePackage.clear_log!
 
         # The refusal reads a per-install record the model does not
         # carry; the model would rebuild, and rightly says so.
         rc, out = run_cli("--rebuild", laws: false,
-                          because: "the .built_against record is not " \
-                                   "part of the model's world")
+                          because: "what an install was built against " \
+                                   "is not part of the model's world")
         assert_equal 1, rc
         assert_match(/no record of which host_gmp it was built against/, out)
         assert_empty FakePackage.install_log

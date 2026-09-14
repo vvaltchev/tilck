@@ -604,9 +604,10 @@ installs the new version alongside the old one. The old version is NOT deleted.
 Only installs that used the *default* version are upgraded. A version someone
 asked for by name is deliberate and is left alone however old it is. The two
 are indistinguishable from the directory tree alone — both are just
-`<pkg>/<ver>/` — so each install records which it was in a hidden
-`.install_origin` file. Installs predating that file read as default, which is
-what they were: naming a version at install time is newer than they are.
+`<pkg>/<ver>/` — so each install records which it was as `origin:` in its
+`.install` record (below). Installs predating the record read as default,
+which is what they were: naming a version at install time is newer than they
+are.
 
 ## Manual and automatic installs
 
@@ -621,8 +622,9 @@ was until there was a way to say otherwise.
 
 `--autoremove` removes every auto install that nothing kept needs — kept
 being the manual installs and, transitively, what they need, each
-dependency at the version it was built against (`.built_against`, else the
-one version present, else the default; every version present when there are
+dependency at the version it was built against (the `against:` lines of
+`.install`, else the one version present, else the default; every version
+present when there are
 two and no record says which). Dependents go before their dependencies, and
 `-d` lists without removing. So `-u host_qemu:8.2.0` followed by
 `--autoremove` takes the QEMU and then whatever only that QEMU needed,
@@ -653,11 +655,42 @@ is hashed is exactly what runs -- plus a digest of every patch file
 that applies to it. The Ruby around a recipe may change freely; only
 a step it emits can move the digest.
 
-Beside it, `.built_against` records which version of each dependency the
-install was built with. That is knowable only while the request that pulled
-it in is being resolved — mpfr asked alone answers gmp's default, while the
-GCC that asked for it pinned another — and a rebuild of the install on its
-own, later, builds against the same one.
+Beside it, `.install` says what the install *is*:
+
+```
+format: 1
+name: host_qemu
+version: 9.2.0
+coords: linux-x86_64/any/gcc-14.4.0
+origin: pinned
+mark: manual
+host: linux-x86_64 omarchy-4.0.4 gcc-16.2.1
+stack: gcc-14.4.0
+against: host_gcc 14.4.0
+against: host_glib2 2.88.3
+```
+
+The identity as written — name, version, coordinates, the host that wrote it
+— so that a reader can hold the path to the record, and a move of the schema
+can re-judge an install from the record rather than from a path read with
+yesterday's rule. Then the two facts a path cannot say (`origin:` and
+`mark:`, above), the stack the install belongs to, and which version of each
+dependency it was built against. That last is knowable only while the
+request that pulled it in is being resolved — mpfr asked alone answers gmp's
+default, while the GCC that asked for it pinned another — and a rebuild of
+the install on its own, later, builds against the same one.
+
+The two files are kept apart on purpose: `.build_inputs` is compared to decide
+whether an install is stale, and nothing in `.install` is a change to what
+the install was built from. Every record the package manager writes —
+these two and each stack's `stack.conf` — is one shape
+(`scripts/pkgmgr/record.rb`): `key: value` lines, `format:` first, a key
+repeated once per value, a key the reader does not ask for ignored, a line
+with no separator a broken file. A tree from before the records is brought
+forward the first time anything is written to it: `.install` is derived
+from the path and the older pair it replaces (the host left unsaid, since
+nobody wrote it down), and a `.build_inputs` of the older spelling is
+rewritten with its digests as they are.
 
 `--check-for-updates` compares each record against the sources present
 now, and reports three distinguishable states:

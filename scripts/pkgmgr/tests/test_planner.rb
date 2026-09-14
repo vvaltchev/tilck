@@ -431,7 +431,7 @@ class TestPlanner < Minitest::Test
       assert_equal %w[a b c], p.removes.map { |r| r.install.pkgname }
 
       ba = bound(a)
-      InstallOrigin.write(ba.install_dir(ba.default_ver), true, true)
+      InstallRecord.remark(ba.install_dir(ba.default_ver), true, true)
       pkgmgr.installs_changed!
       p2 = Planner.plan_autoremove(pkgmgr, world_now, scope)
       assert_empty p2.removes, "a manual root holds its closure"
@@ -586,7 +586,7 @@ class TestPlanner < Minitest::Test
       pkgmgr.register(u)
       fake_install(d, Ver("1.0.0"))
       inst = fake_install(u, record: :changed)
-      InstallDeps.write(inst, { "host_d" => Ver("1.0.0") })
+      InstallRecord.remark_against(inst, { "host_d" => Ver("1.0.0") })
       r = Planner.plan_rebuild(pkgmgr, judged, scope)
       assert_kind_of Refusal, r
       assert_match(/Version conflict/, r.message)

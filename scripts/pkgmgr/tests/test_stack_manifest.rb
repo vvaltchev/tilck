@@ -53,7 +53,7 @@ class TestStackManifestValue < Minitest::Test
                             libc: "musl", libc_ver: Ver("1.2.5"), host: nil)
       StackManifest.write(c, m)
       text = (c.root / StackManifest::FILE).read
-      refute_match(/compiler_at|host /, text)
+      refute_match(/compiler_at|^host:/, text)
       assert_equal m, StackManifest.read(c)
       assert_nil StackManifest.read(c).compiler_coords
     end
@@ -66,11 +66,16 @@ class TestStackManifestValue < Minitest::Test
       c = Coords.new("linux-x86_64", nil, "gcc-14.4.0")
       FileUtils.mkdir_p(c.root)
       File.write(c.root / StackManifest::FILE,
-                 host_manifest.render + "# a note\nflags -flto\n")
+                 host_manifest.render + "flags: -flto\n")
       assert_equal host_manifest, StackManifest.read(c)
 
       File.write(c.root / StackManifest::FILE,
-                 host_manifest.render.sub("format 1", "format 2"))
+                 host_manifest.render.sub("format: 2", "format: 9"))
+      assert_nil StackManifest.read(c)
+
+      # A line with no separator is a broken file, not an unknown key.
+      File.write(c.root / StackManifest::FILE,
+                 host_manifest.render + "flags -flto\n")
       assert_nil StackManifest.read(c)
     end
   end
@@ -212,7 +217,7 @@ class TestStackManifestOnDisk < Minitest::Test
         old = Coords.new(HOST_OS_ARCH, "olddistro-1.0", nil)
         dir = bound(gcc).pkg_dir_at(old) / v.to_s
         FileUtils.mkdir_p(dir)
-        InstallOrigin.write(dir, true, true)
+        InstallRecord.remark(dir, true, true)
         FileUtils.mkdir_p(pkgmgr.stack_coords(v).pkgs_dir)
         assert_empty pkgmgr.world.of("host_gcc"), "the world sees it?"
 
@@ -241,7 +246,7 @@ class TestStackManifestOnDisk < Minitest::Test
         old = Coords.new(HOST_OS_ARCH, "olddistro-1.0", nil)
         dir = bound(gcc).pkg_dir_at(old) / v.to_s
         FileUtils.mkdir_p(dir)
-        InstallOrigin.write(dir, true, true)
+        InstallRecord.remark(dir, true, true)
         FileUtils.mkdir_p(pkgmgr.stack_coords(v).pkgs_dir)
 
         out = plain(capture_io { pkgmgr.show_stacks }.join)

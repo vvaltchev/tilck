@@ -1139,7 +1139,7 @@ class PackageManager
 
   # The version of each dependency `pkg` at `ver` is built against:
   # the one the request resolved, else the dependency's own pin, else
-  # its default. What InstallDeps records.
+  # its default. What InstallRecord records as `against`.
   def built_against(pkg, ver, scope: env_scope)
     bound = Planner.bind(self, [[pkg.name, ver]], scope).first
     return Planner.against_of(pkg.at(scope), ver, bound)
