@@ -93,6 +93,31 @@ class TestExecutor < Minitest::Test
     end
   end
 
+  # A removal never reaches outside the toolchain. The climb that
+  # takes an install's empty parents with it would, outside the tree,
+  # climb to / and take every empty directory on the way; an install
+  # whose path is elsewhere is refused before anything is touched.
+  def test_a_removal_outside_the_toolchain_is_refused_untouched
+    with_fake_tc do
+      Dir.mktmpdir do |d|
+        outside = Pathname(d) / "pkgs" / "t" / "1.0.0"
+        FileUtils.mkdir_p(outside)
+        File.write(outside / "keep", "")
+        t = FakePackage.new("t")
+        pkgmgr.register(t)
+        stray = InstallInfo.new("t", nil, false, ARCH, Ver("1.0.0"), outside,
+                                t, false, coords: bound(t).coords)
+
+        e = assert_raises(RuntimeError) {
+          Executor.remove(Remove.new(install: stray))
+        }
+        assert_match(/INTERNAL ERROR.*not under the toolchain/, e.message)
+        assert (outside / "keep").file?, "the stray install was touched"
+        assert (Pathname(d) / "pkgs").directory?, "a parent was taken"
+      end
+    end
+  end
+
   def test_a_mark_leaves_what_the_plan_says
     with_fake_tc do
       t = FakePackage.new("t")

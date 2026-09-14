@@ -263,8 +263,21 @@ module Executor
   # One installation gone, and the empty parents it leaves (the
   # package's directory, the arch's) with it, so that stale empty
   # trees do not confuse the listing.
+  #
+  # Nothing is removed that is not under the toolchain. The climb
+  # below is the one loop in the package manager whose end is set by
+  # the filesystem rather than by a value: outside the tree it would
+  # stop at / -- and take every empty directory on the way. An
+  # install whose path is elsewhere is a bug of ours (a Coords built
+  # wrong, a test's tree), and refused before anything is touched.
   def remove(action)
     path = action.install.path
+
+    if !path.to_s.start_with?(TC.to_s + "/")
+      raise "INTERNAL ERROR (a bug in the package manager): refusing to " \
+            "remove #{path}, which is not under the toolchain #{TC}"
+    end
+
     FileUtils.rm_rf(path)
 
     parent = path.parent
