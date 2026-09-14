@@ -174,8 +174,10 @@ class TestGraphMemo < Minitest::Test
     g2 = Planner.graph(pkgmgr, scope)
     assert_same g1, g2, "rebuilt for the same scope"
     assert g1.frozen?
-    rv = ALL_ARCHS["riscv64"]
-    refute_same g1, Planner.graph(pkgmgr, scope.with(arch: rv))
+    # Another arch than the scope's, whichever the scope's is: on a
+    # riscv64 runner, riscv64 IS the scope.
+    other = ALL_ARCHS.values.find { |a| a != scope.arch }
+    refute_same g1, Planner.graph(pkgmgr, scope.with(arch: other))
     refute_same g1, Planner.graph(pkgmgr, scope, stacks: false)
   end
 
