@@ -130,6 +130,16 @@ class PrettyReporter < Minitest::AbstractReporter
     @abort = false
   end
 
+  # The column the verdict sits in: the longest test name loaded, and
+  # a margin, so that every [ OK ] lines up whatever the names grow to.
+  def self.name_width
+    @name_width ||= Minitest::Runnable.runnables.flat_map { |k|
+      k.instance_methods(false).grep(/\Atest_/).map(&:length)
+    }.max.to_i + 6
+  end
+
+  def name_width = self.class.name_width
+
   def start
     @wall_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     puts HLINE
@@ -158,12 +168,12 @@ class PrettyReporter < Minitest::AbstractReporter
     if result.passed?
       @passes += 1
       ms = "%.0f" % (result.time * 1000)
-      print "    #{result.name.ljust(55)} "
+      print "    #{result.name.ljust(name_width)} "
       puts "#{GREEN256}[ OK ]#{RESET}  #{DIM}#{ms}ms#{RESET}"
       show_captured(result) if $verbose_tests
     elsif result.skipped?
       @skips << result
-      print "    #{result.name.ljust(55)} "
+      print "    #{result.name.ljust(name_width)} "
       print "#{YELLOW256}[ SKIP ]#{RESET}"
       why = skip_reason(result)
       print "  #{DIM}#{why}#{RESET}" if why
@@ -171,11 +181,11 @@ class PrettyReporter < Minitest::AbstractReporter
     else
       if result.failure.is_a?(Minitest::UnexpectedError)
         @errors << result
-        print "    #{result.name.ljust(55)} "
+        print "    #{result.name.ljust(name_width)} "
         puts "#{RED256}[ ERROR ]#{RESET}"
       else
         @fails << result
-        print "    #{result.name.ljust(55)} "
+        print "    #{result.name.ljust(name_width)} "
         puts "#{RED256}[ FAIL ]#{RESET}"
       end
       show_captured(result)
@@ -347,7 +357,7 @@ if $dry_run
     next if methods.empty?
     puts "  #{Term::DIM}#{klass.name}#{Term::RESET}"
     methods.each { |m|
-      print "    #{m.to_s.ljust(55)} "
+      print "    #{m.to_s.ljust(PrettyReporter.name_width)} "
       puts DRY_TAG
       count += 1
     }
