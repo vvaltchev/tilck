@@ -31,11 +31,11 @@ class TestScope < Minitest::Test
   # other product file is a recipe, converted wholesale when the
   # executor binds the package it builds; the harness files are
   # converted with the tests.
-  UNBOUND_CEILING = 19
+  UNBOUND_CEILING = 15
 
   # The same, for a package asked what is installed with no World in
   # hand (step 5.2): the manager's scan answers, and the site counts.
-  UNBOUND_WORLD_CEILING = 18
+  UNBOUND_WORLD_CEILING = 14
 
   # The same, for a package asked which version a request bound with
   # no Plan in hand (step 5.3): the rebuild's stash answers.
@@ -44,7 +44,8 @@ class TestScope < Minitest::Test
             scope.rb coords.rb install_selector.rb dep_resolver.rb
             version_solver.rb build_inputs.rb build_env.rb
             system_deps.rb early_logic.rb gcc.rb host_gcc.rb
-            tilck_stack.rb].freeze
+            tilck_stack.rb world.rb plan.rb planner.rb
+            executor.rb].freeze
   HARNESS = %w[test_helper.rb bridge.rb model.rb laws.rb runner.rb
                domain.rb].freeze
 

@@ -1086,11 +1086,10 @@ module Main
     end
   end
 
-  # The executor says "Set ..." as it marks; a dry run says what it would.
   def show_marks(plan, dry)
-    return if !dry
     for m in plan.marks do
-      info "Would set #{m.install.pkgname}:#{m.install.ver} to " \
+      info "#{dry ? 'Would set' : 'Set'} #{m.install.pkgname}:" \
+           "#{m.install.ver} to " \
            "#{m.manual ? 'manually' : 'automatically'} installed"
     end
   end
