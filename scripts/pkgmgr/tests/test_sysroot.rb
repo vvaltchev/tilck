@@ -28,8 +28,33 @@ class TestSysrootCompose < Minitest::Test
 
       link = File.join(target, "usr/lib/libfoo.so")
       assert File.symlink?(link)
-      assert_equal File.join(a, "usr/lib/libfoo.so"), File.readlink(link)
+      assert_equal File.join(a, "usr/lib/libfoo.so"),
+                   File.realpath(link), "resolves to the fragment's file"
+      refute File.readlink(link).start_with?("/"),
+             "an absolute link ties the farm to one path"
       assert_equal "x", File.read(link)
+    end
+  end
+
+  # The whole point of a relative link: the farm survives the tree
+  # being moved, and a link resolves through the moved tree rather
+  # than back to where it was composed.
+  def test_the_farm_survives_a_move_of_the_tree
+    Dir.mktmpdir do |dir|
+      tree = File.join(dir, "tree")
+      a = frag(tree, "pkgs/foo/1.0/install",
+               { "usr/lib/libfoo.so" => "x", "usr/bin/foo" => "y" })
+      target = File.join(tree, "sysroot")
+      Sysroot.compose(target, [a])
+
+      moved = File.join(dir, "elsewhere")
+      FileUtils.mv(tree, moved)
+      for rel, content in { "usr/lib/libfoo.so" => "x", "usr/bin/foo" => "y" }
+        link = File.join(moved, "sysroot", rel)
+        assert File.symlink?(link)
+        assert_equal content, File.read(link), "#{rel} dangles after a move"
+        assert File.realpath(link).start_with?(moved)
+      end
     end
   end
 

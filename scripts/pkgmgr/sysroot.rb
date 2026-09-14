@@ -141,7 +141,12 @@ module Sysroot
 
       owner[key] = frag
       FileUtils.mkdir_p(dst.dirname.to_s)
-      FileUtils.ln_s(src.to_s, dst.to_s)
+      # Relative to the link's own directory, so that the farm holds
+      # together when the tree is moved, copied or mounted at another
+      # path. The farm and what it links to live under one stack, so
+      # every link is a ../ walk to pkgs/; a fragment from elsewhere
+      # would simply get a longer walk.
+      FileUtils.ln_s(src.relative_path_from(dst.dirname).to_s, dst.to_s)
       links += 1
     end
 

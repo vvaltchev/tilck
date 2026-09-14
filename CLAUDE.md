@@ -1043,6 +1043,70 @@ class alive. The model states the class, the lane finds every
 instance the domain can express, and the mutant proves the tests
 would notice a recurrence.
 
+## The toolchain tree lives at one absolute path
+
+`toolchain5/` cannot be moved, copied or mounted at another path and
+keep working, and this is a known, deliberate state -- not a bug to
+fix in passing. What is relative and what is not:
+
+- **Sysroot farms are relative** (`Sysroot.compose`, `sysroot.rb`):
+  every link under `<stack>/sysroot/` is a `../` walk to
+  `<stack>/pkgs/`, so the farms survive a move. A tree composed
+  before this is brought forward by any recomposition (every
+  uninstall recomposes all stacks).
+- **Every host-stack binary bakes two absolute paths.** GCC's specs
+  (`host_gcc.rb`, the `*link:` rewrite) put `DT_RPATH
+  <stack>/sysroot/usr/lib` and `PT_INTERP <stack>/sysroot/usr/lib/
+  ld-linux-x86-64.so.2` into everything built in a stack, and our
+  `ld.so` itself carries the sysroot as its compiled-in default
+  search path (glibc's `--prefix`). `RPATH` rather than `RUNPATH`
+  on purpose: it is searched before `LD_LIBRARY_PATH`, which is
+  what the portability audit relies on.
+- **Target packages (`tilck-*/`), `noarch/` and `cache/` bake
+  nothing** and can be copied freely.
+
+Sharing a tree between checkouts is the supported case:
+`TCROOT_PARENT` (`early_logic.rb`) points a checkout at a tree
+elsewhere; the tree does not move, the checkouts do.
+
+### Why not the system's `ld.so`, and why not `$ORIGIN` today
+
+Verified on this machine (system glibc 2.44, stacks glibc 2.41):
+`ld.so` and `libc.so.6` are two halves of one program bound by the
+versionless `GLIBC_PRIVATE` ABI -- our `libc.so.6` imports 325 such
+symbols from the loader, `_rtld_global` among them, a struct whose
+layout changes between releases. Every mismatched pairing failed:
+system loader + our libc segfaults (or exits silently, as QEMU
+did); our loader + system libc dies on
+`__pointer_chk_guard@GLIBC_PRIVATE`. The loader is the LEAST
+stable piece, not the most; it must be exactly its own libc's, and
+the stack exists precisely to not depend on the system's libc. So
+`PT_INTERP` must name our loader, and the ELF interpreter field
+has no `$ORIGIN`: the kernel resolves it before any userland runs.
+
+`$ORIGIN` RPATH for the libraries is possible but not from one
+spec line: `$ORIGIN` is relative to the *binary*, and stack
+binaries sit at five different depths inside their install
+(`bin/`, `usr/bin/`, `usr/lib/gconv/`, `usr/lib/gtk-3.0/3.0.0/
+immodules/`, ...), so one link-time RPATH cannot be right for all
+of them. Distros that ship relocatable trees rewrite per binary at
+install time.
+
+### The plan for a relocatable tree, when it is needed
+
+The tool that fixes the interpreter is the tool that makes
+`$ORIGIN` unnecessary: `patchelf` as a `:portable` host package,
+and a `--relocate` mode that walks `linux-*/` and sets, per ELF
+file, `PT_INTERP` and `DT_RPATH` to the new absolute path, then
+recomposes and re-runs the portability audit (which already
+accepts `$ORIGIN` refs, `portability.rb` `allowed_ref?`). A
+post-install `patchelf` pass writing `$ORIGIN/<depth>/../sysroot/
+usr/lib` per binary is the alternative hygiene step; it costs a
+rebuild of every host stack and should be batched with the next
+reason to rebuild them (the distro-env rule, item B of
+`docs/plans/pkgmgr-schema-longevity-review.md`). Neither is
+urgent; a moved tree is not a need today.
+
 ## No changes without testing
 
 Never commit changes affecting build logic, package installs, or
