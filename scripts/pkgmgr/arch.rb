@@ -39,6 +39,14 @@ Architecture = Struct.new(
   # board either.
   def all_boards = boards || []
 
+  # The package that cross compiles for this arch: gcc.rb registers
+  # one per arch under this name, and everything that needs "the
+  # compiler of an arch" -- the implicit dependency of every target
+  # package, -S and -U, the toolchain lookup -- asks here rather than
+  # spelling the name. A second libc or family for an arch changes
+  # this answer, not five call sites.
+  def cross_cc_pkg = "gcc-#{name}-musl"
+
 
   # Comparison operator
   def ==(other)

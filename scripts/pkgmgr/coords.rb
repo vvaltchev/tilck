@@ -32,6 +32,7 @@
 #
 require_relative 'version'
 require_relative 'stack_id'
+require_relative 'arch'
 
 class Coords
 
@@ -99,6 +100,30 @@ class Coords
   # The compiler version inside the stack, whatever its family and
   # variant; nil where there is no stack.
   def stack_ver = stack_id&.ver
+
+  # The <machine> of a Tilck target, and the arch a machine names --
+  # the one place the product's spelling of its targets lives. Eight
+  # sites used to spell "tilck-#{...}" for themselves, and one parsed
+  # it back; a product with another kernel changes this pair.
+  TARGET_PREFIX = "tilck-"
+
+  def self.target_machine(arch) = "#{TARGET_PREFIX}#{arch.name}"
+
+  # The Architecture a machine coordinate names, nil when it names
+  # none -- a host, noarch, or a target arch this tree has never
+  # heard of. `target?` says whether it is a target's at all.
+  def self.target_machine?(machine) = machine.start_with?(TARGET_PREFIX)
+
+  def self.target_arch_of(machine)
+    return nil if !target_machine?(machine)
+    return ALL_ARCHS[machine.delete_prefix(TARGET_PREFIX)]
+  end
+
+  # The coordinates of a Tilck target: its arch at a board, in the
+  # stack of a cross compiler version.
+  def self.target(arch, board, gcc_ver)
+    return new(target_machine(arch), board, stack_name(gcc_ver))
+  end
 
   # The three coordinates as a path fragment, for messages.
   def to_s = @key

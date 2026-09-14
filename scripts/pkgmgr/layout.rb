@@ -54,8 +54,7 @@ module Layout
   # CMake's view of the tree and the package manager's could disagree.
   def target_pkgs(arch, scope)
     return nil if arch.gcc_ver.nil?
-    return Coords.new("tilck-#{arch.name}", scope.board_of(arch),
-                      Coords.stack_name(arch.gcc_ver)).pkgs_dir
+    return Coords.target(arch, scope.board_of(arch), arch.gcc_ver).pkgs_dir
   end
 
   def vars(scope = pkgmgr.env_scope)

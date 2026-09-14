@@ -27,13 +27,18 @@ class GccCompiler < Package
     # Each (target_arch, libc) pair has its own pre-built tarball on
     # the musl-cross-make release page; the compiler binaries inside
     # differ by target arch, so no SourceRef sharing is possible.
+    # The name is the arch's word for its compiler (Architecture#
+    # cross_cc_pkg), asserted rather than derived from libc: the
+    # arch says which libc its compiler is built with.
+    pkg_name = target_arch.cross_cc_pkg
+    assert { pkg_name == "gcc-#{target_arch.name}-#{libc}" }
     src = SourceRef.new(
-      name: "gcc-#{target_arch.name}-#{libc}",
+      name: pkg_name,
       url:  make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG),
       tarname: ->(ver) { self.class.build_tarname(target_arch, libc, ver) },
     )
     super(
-      name: "gcc-#{target_arch.name}-#{libc}",
+      name: pkg_name,
       source: src,
       on_host: true,
       is_compiler: true,
@@ -53,7 +58,7 @@ class GccCompiler < Package
                           compiler_ver: ver, compiler_at: nil, libc: libc,
                           libc_ver: VER_MUSL, host: nil)
     return target_arch.all_boards.map { |b|
-      [Coords.new("tilck-#{target_arch.name}", b, Coords.stack_name(ver)), m]
+      [Coords.target(target_arch, b, ver), m]
     }
   end
 

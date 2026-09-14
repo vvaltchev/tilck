@@ -42,7 +42,7 @@ module Planner
   def deps_of(registry, pkg, ver, scope)
     at = pkg.at(scope)
     deps = at.check_dep_pins(at.dep_list_for(ver))
-    cc = "gcc-#{scope.arch.name}-musl"
+    cc = scope.arch.cross_cc_pkg
     if pkg.target? && registry.get(cc) && deps.none? { |d| d.name == cc }
       deps += [Dep(cc, true)]
     end
@@ -434,7 +434,7 @@ module Planner
     }
 
     target_at = ->(a, board, default_stack) {
-      CoordsFilter.new(machine: "tilck-#{a.name}", env: board,
+      CoordsFilter.new(machine: Coords.target_machine(a), env: board,
                        stack: stack_of.call(default_stack))
     }
 
@@ -463,7 +463,7 @@ module Planner
       return [CoordsFilter.new(machine: :any, env: env, stack: st)] \
         if arch.nil? || arch.eql?("ALL")
       a = arch_of.call(arch)
-      return [CoordsFilter.new(machine: "tilck-#{a.name}", env: env,
+      return [CoordsFilter.new(machine: Coords.target_machine(a), env: env,
                                stack: st)]
     end
 
@@ -712,7 +712,7 @@ module Planner
       vers.map { |dv| [n, dv, coords_of_install_for(dep, dv, sc)] }
     }
 
-    if pkg.target? && (cc = registry.get("gcc-#{sc.arch.name}-musl"))
+    if pkg.target? && (cc = registry.get(sc.arch.cross_cc_pkg))
       v = cc.at(sc).default_ver
       wanted << [cc.name, v, coords_of_install_for(cc, v, sc)]
     end

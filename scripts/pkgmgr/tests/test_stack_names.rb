@@ -78,3 +78,40 @@ class TestStackNames < Minitest::Test
     assert_nil Coords.new("noarch", nil, nil).stack_id
   end
 end
+
+# The product's spelling of its targets and their compilers, owned
+# once each. Eight sites spelled "tilck-#{arch}" for themselves and
+# one parsed it back; five spelled "gcc-#{arch}-musl". A product with
+# another kernel, or an arch with a second compiler, changes the
+# owner and nothing else.
+class TestTargetSpelling < Minitest::Test
+
+  include TestHelper
+
+  RV = ALL_ARCHS["riscv64"]
+
+  def test_the_target_machine_round_trips
+    assert_equal "tilck-riscv64", Coords.target_machine(RV)
+    assert Coords.target_machine?("tilck-riscv64")
+    assert_equal RV, Coords.target_arch_of("tilck-riscv64")
+  end
+
+  def test_what_is_not_a_target_machine_names_no_arch
+    for m in %w[linux-x86_64 noarch tilck-mips tilck- riscv64] do
+      assert_nil Coords.target_arch_of(m), m
+    end
+    refute Coords.target_machine?("linux-x86_64")
+    assert Coords.target_machine?("tilck-mips"), "a target, if unknown"
+  end
+
+  def test_target_coordinates_are_the_arch_the_board_and_the_stack
+    c = Coords.target(RV, "licheerv-nano", Ver("13.3.0"))
+    assert_equal "tilck-riscv64/licheerv-nano/gcc-13.3.0", c.to_s
+    assert_equal RV, Coords.target_arch_of(c.machine)
+  end
+
+  def test_an_arch_names_its_cross_compiler_package
+    assert_equal "gcc-riscv64-musl", RV.cross_cc_pkg
+    assert_equal "gcc-i386-musl", ALL_ARCHS["i386"].cross_cc_pkg
+  end
+end

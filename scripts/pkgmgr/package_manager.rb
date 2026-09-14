@@ -245,7 +245,7 @@ class PackageManager
   end
 
   def get_tc(arch)
-    return get("gcc-#{arch}-musl")
+    return get(ALL_ARCHS.fetch(arch.to_s).cross_cc_pkg)
   end
 
   # The default version of a package, from one of the two version
@@ -294,8 +294,7 @@ class PackageManager
   def with_cc(arch_name, &block)
     arch = ALL_ARCHS.fetch(arch_name)
     arch_gcc = arch.gcc_tc
-    arch_dir = Coords.new("tilck-#{arch.name}", arch.default_board,
-                          "gcc-#{arch.gcc_ver}").pkgs_dir
+    arch_dir = Coords.target(arch, arch.default_board, arch.gcc_ver).pkgs_dir
     assert { !arch_gcc.blank? }
 
     compilers = get_installed_compilers.select { |x| x.target_arch == arch }

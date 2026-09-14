@@ -358,9 +358,8 @@ module Main
     # stack. Kept on the Architecture because a few packages need a
     # sibling package's install path (vim needs ncurses').
     for name, arch in ALL_ARCHS do
-      arch.target_dir = Coords.new(
-        "tilck-#{name}", arch.default_board, "gcc-#{arch.gcc_ver}"
-      ).pkgs_dir
+      arch.target_dir = Coords.target(arch, arch.default_board,
+                                      arch.gcc_ver).pkgs_dir
     end
   end
 
@@ -956,15 +955,13 @@ module Main
         arch, ver = x.split(":")
         # ALL: every registered cross-compiler.
         if arch == "ALL"
-          next ALL_ARCHS.values.map { |a|
-            "gcc-#{a.name}-musl:#{ver}"
-          }
+          next ALL_ARCHS.values.map { |a| "#{a.cross_cc_pkg}:#{ver}" }
         end
         arch_obj = ALL_ARCHS[arch]
         if !arch_obj
           raise OptionParser::InvalidArgument, "Unknown architecture: #{arch}"
         end
-        ["gcc-#{arch_obj.name}-musl:#{ver}"]
+        ["#{arch_obj.cross_cc_pkg}:#{ver}"]
       }
     end
 

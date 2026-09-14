@@ -604,8 +604,7 @@ class Package
               "string \"gcc-\" and every arch would share one directory"
       end
 
-      Coords.new("tilck-#{a.name}", target_board(a),
-                 Coords.stack_name(a.gcc_ver))
+      Coords.target(a, target_board(a), a.gcc_ver)
     end
   end
 
@@ -2156,10 +2155,11 @@ class Package
     # one package may exist for several arches, boards and compilers
     # at once.
     for arch_obj in arch_list
+      machine = Coords.target_machine(arch_obj)
       for board in (arch_obj.boards || [nil])
-        for cc_dir in stack_dirs_of("tilck-#{arch_obj.name}", board)
+        for cc_dir in stack_dirs_of(machine, board)
 
-          coords = Coords.new("tilck-#{arch_obj.name}", board, cc_dir)
+          coords = Coords.new(machine, board, cc_dir)
           cc_ver = coords.stack_ver           # the stack's, lto or not
           dir = pkg_dir_at(coords)
           next if !dir.directory?

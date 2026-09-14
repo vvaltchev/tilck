@@ -162,10 +162,9 @@ World = Data.define(:installs, :tc) do
 
     return [nil, false, true] if machine == "noarch"
 
-    if machine.start_with?("tilck-")
-      name = machine.delete_prefix("tilck-")
-      arch = ALL_ARCHS[name]
-      warning "Unknown architecture '#{name}' in #{TC / machine}" if !arch
+    if Coords.target_machine?(machine)
+      arch = Coords.target_arch_of(machine)
+      warning "Unknown architecture in #{TC / machine}" if !arch
       return [arch, false, !arch.nil?]
     end
 
