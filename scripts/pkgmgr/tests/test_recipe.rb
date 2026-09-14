@@ -222,6 +222,7 @@ class TestRecipeIdentity < Minitest::Test
              when "transform" then k.new(bind: "b", from: "$x",
                                          subs: [["a", "b"]])
              when "substitute" then k.new(path: "a", subs: [["a", "b"]])
+             when "normalize" then k.new(path: "a", form: "kconfig")
              when "within"    then k.new(steps: [])
              when "prune"     then k.new
              end
@@ -287,9 +288,9 @@ class TestRecipeEvolution < Minitest::Test
   # recorded under, so renaming one rebuilds everything: this list
   # makes that an edit to a test rather than an accident.
   #
-  TAGS = %w[capture chmod copy extract foreach mkdir move prune read
-            readlink remove run set substitute symlink transform within
-            write].freeze
+  TAGS = %w[capture chmod copy extract foreach mkdir move normalize
+            prune read readlink remove run set substitute symlink
+            transform within write].freeze
 
   def test_the_shipped_tags_are_these
     assert_equal TAGS, Recipe::KINDS.map(&:tag).sort
@@ -454,6 +455,33 @@ class TestRecipeExecution < Minitest::Test
       assert_equal 0640, File.stat("#{root}/a/three.txt").mode & 0777
       assert_equal "three.txt", File.readlink("#{root}/a/link")
     end
+  end
+
+  # A kconfig .config as make leaves it, in its normal form: the
+  # header and the blank lines gone, the symbols in one order --
+  # and the source's copy is already in that form, so a built
+  # .config compares equal to it.
+  def test_normalize_puts_a_kconfig_into_its_normal_form
+    in_tree do |root, c|
+      run_steps([
+        Write(path: ".config", text: "#\n# Automatically generated\n" \
+                                     "# Busybox version: 1.36.1\n" \
+                                     "# Mon Sep 14 09:11:03 2026\n" \
+                                     "CONFIG_HAVE_DOT_CONFIG=y\n\n" \
+                                     "#\n# Settings\n#\n" \
+                                     "# CONFIG_DESKTOP is not set\n" \
+                                     "CONFIG_ZZZ=y   \n"),
+        Normalize(path: ".config", form: "kconfig"),
+      ], c)
+      assert_equal "CONFIG_ZZZ=y\nCONFIG_HAVE_DOT_CONFIG=y\n" \
+                   "# CONFIG_DESKTOP is not set\n",
+                   File.read("#{root}/.config")
+    end
+
+    src = File.read(MAIN_DIR / "other" / "busybox.config")
+    assert_equal src, Recipe.kconfig_normal_form(src),
+                 "other/busybox.config is not in its own normal form"
+    assert_raises(Recipe::Error) { Normalize(path: "x", form: "nope") }
   end
 
   def test_remove_is_idempotent_and_globs

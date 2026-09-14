@@ -36,14 +36,16 @@ class BusyBoxPackage < Package
     ["busybox", false],
   ]
 
-  # The build used to end by normalising .config and copying it to
-  # .last_build_config. Nothing in the tree reads that file -- the
-  # riscv64 bootloader script keeps one of its own -- so the build no
-  # longer writes it. Normalising stays in config_impl, where -C
-  # compares and saves a config somebody edited by hand.
+  # The build ends by putting .config back in the normal form the
+  # source's copy is kept in: make rewrites it with a dated header
+  # and every symbol in Kconfig order, and userapps/CMakeLists.txt
+  # compares the two files byte for byte to know the build is the
+  # source's. (.last_build_config, which the build also used to
+  # write, is read by nothing and is not written.)
   def build_steps(ver = default_ver) = [
     Copy(from: src_path(CONFIG_FILE), to: ".config"),
     Run(log: "build.log", argv: ["make", "V=1", "-j$PAR"]),
+    Normalize(path: ".config", form: "kconfig"),
   ]
 
   def configurable? = true

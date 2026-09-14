@@ -476,6 +476,39 @@ module Recipe
   # --- files as values -------------------------------------------------------
 
   #
+  # A file rewritten as a named normal form of itself. busybox's make
+  # leaves .config with a dated header, blank lines and the symbols in
+  # Kconfig order; other/busybox.config is kept in the normal form,
+  # and the build's .config is put in it too, so that the two compare
+  # equal (userapps/CMakeLists.txt asks) and -C's copy of one over the
+  # other is a copy of equals. The form is NAMED, never given as code:
+  # a step is a value, digested by its fields.
+  #
+  class Normalize < Step
+    def self.tag = "normalize"
+
+    field :path
+    field :form
+
+    FORMS = {
+      "kconfig" => ->(text) { Recipe.kconfig_normal_form(text) },
+    }.freeze
+
+    def check
+      raise Error, "normalize: unknown form #{form.inspect}; one of " \
+                   "#{FORMS.keys.join(', ')}" if !FORMS.key?(form)
+    end
+
+    def run(ctx)
+      f = ctx.path_of(path)
+      raise Error, "normalize: no such file #{path}" if !File.file?(f)
+      File.write(f, FORMS.fetch(form).call(File.read(f)))
+    end
+
+    def describe = "normalize #{path} (#{form})"
+  end
+
+  #
   # A file rewritten in place, across every file the path matches. A
   # substitution that matches in NO file fails -- in some but not all
   # is normal, and passes.
@@ -652,8 +685,8 @@ module Recipe
   end
 
   KINDS = [Run, Capture, Mkdir, Copy, Move, Remove, Symlink, Chmod, Write,
-           Read, Readlink, Set, Extract, Transform, Substitute, Within,
-           ForEach, Prune].freeze
+           Read, Readlink, Set, Extract, Transform, Normalize, Substitute,
+           Within, ForEach, Prune].freeze
 
   # The constructors a recipe is written with, generated from KINDS so
   # that a new kind is usable the moment it is defined and the two can
@@ -852,6 +885,18 @@ module Recipe
       raise Error, "canon: cannot hash a #{x.class}: #{x.inspect}. Use a " \
                    "token for a path, or a String for anything else."
     end
+  end
+
+  # A kconfig .config in its normal form: the generated header and
+  # every other line that names no symbol gone, blank lines gone,
+  # trailing space gone, the symbol lines in one fixed order. A normal
+  # form is its own normal form: the file other/busybox.config is kept
+  # in it, and a built .config is put in it (Normalize).
+  def kconfig_normal_form(text)
+    lines = text.lines.select { |x| x.include?("CONFIG_") }
+    lines = lines.map(&:rstrip)
+    lines = stable_sort(lines) { |x, y| -(x.b <=> y.b) }
+    return lines.join("\n") + "\n"
   end
 
   # The recipe's identity. FORMAT is NOT mixed in: it is recorded
