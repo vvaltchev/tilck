@@ -1022,34 +1022,6 @@ class PackageManager
     return n
   end
 
-  # Transitive dependency closure of `name`, nearest dependency first.
-  # Used by Package#deps_build_env to collect the build interfaces a
-  # package's dependencies publish.
-  # Move installations between manual and auto, as apt-mark does.
-  #
-  # WHICH installations is -u's question, answered -u's way: the same
-  # selector, the same -a / -c / version modifiers, so that whatever
-  # `-u X:V -a A` would remove, `--mark-auto X:V -a A` marks. Returns
-  # how many were marked; says so when nothing matched, for the same
-  # reason uninstall does.
-  def mark(name, manual, dry, force, ver = nil, compiler = nil, arch = nil,
-           scope: env_scope)
-
-    plan = Planner.plan_mark(self, world, name, manual, scope, ver: ver,
-                             compiler: compiler, arch: arch, force: force)
-    plan.notes.each { |n| warning n }
-
-    p = "[DRY RUN] " if dry
-    how = manual ? "manually installed" : "automatically installed"
-    for m in plan.marks do
-      i = m.install
-      puts "#{p}Mark #{i.pkgname}:#{i.ver} at #{i.coords} as #{how}"
-    end
-
-    Executor.run(self, plan) if !dry
-    return plan.marks.length
-  end
-
   # The mark an upgrade inherits (Planner.inherited_mark).
   def upgrade_inherits_manual?(pkg)
     return Planner.inherited_mark(world, pkg.name) == :manual
@@ -1116,17 +1088,6 @@ class PackageManager
 
   # What `roots` hold: everything they need, transitively.
   def held_by(roots, needs) = Planner.held_by(roots, needs)
-
-  # Remove every automatically installed installation that nothing
-  # kept still needs -- apt's autoremove (Planner.plan_autoremove).
-  # -d lists without removing.
-  def autoremove(dry, scope: env_scope)
-    plan = Planner.plan_autoremove(self, world, scope)
-    plan.notes.each { |n| info n }
-    say_removals(plan, dry)
-    Executor.run(self, plan) if !dry
-    return plan.removes.length
-  end
 
   def say_removals(plan, dry)
     p = "[DRY RUN] " if dry

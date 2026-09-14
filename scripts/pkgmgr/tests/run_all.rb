@@ -379,9 +379,9 @@ Minitest.after_run {
 
   puts
 
-  # The full enumeration: every shape, every world of at most two
+  # The full enumeration: every shape, every world of at most three
   # installations, every context, every command line -- one process
-  # per shape. Minutes, not seconds, which is why it is a flag.
+  # per shape. A couple of minutes, which is why it is a flag.
   if $unit_tests_passed && $exhaustive
     require_relative 'exhaustive/runner'
     puts Term::HLINE

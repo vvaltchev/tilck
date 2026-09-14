@@ -39,6 +39,7 @@ require_relative '../../arch'
 require_relative '../../version'
 require_relative '../../coords'
 require_relative '../../scope'
+require_relative '../../request'
 
 module Model
 
@@ -177,9 +178,12 @@ module Model
   # decides nothing but the board rule, which is stated there.
   Scope = ::Scope
 
-  # A parsed command line. targets: [[name, Ver | :all | nil]].
-  # arch: Architecture | :all | nil.  cc: Ver | nil.
-  Request = Data.define(:mode, :targets, :force, :dry, :arch, :cc, :stack)
+  # A parsed command line: the product's own value (request.rb),
+  # reused the way Scope is, so that the planner and this answer the
+  # same question. targets: [[name, Ver | :all | nil]]. arch:
+  # Architecture | :all | nil. cc: Ver | :all | nil. contrib is
+  # main.rb's business and means nothing here.
+  Request = ::Request
 
   Outcome = Data.define(:rc, :world, :out)
 
@@ -660,7 +664,7 @@ module Model
     return Outcome.new(1, world, refused) if refused
     req = Request.new(mode: req.mode, targets: targets, force: req.force,
                       dry: req.dry, arch: req.arch, cc: req.cc,
-                      stack: req.stack)
+                      stack: req.stack, contrib: false)
     gone = select(registry, world, req, scope)
     return Outcome.new(0, world, "dry run") if req.dry
     return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
@@ -677,7 +681,7 @@ module Model
     return Outcome.new(1, world, refused) if refused
     req = Request.new(mode: req.mode, targets: targets, force: req.force,
                       dry: req.dry, arch: req.arch, cc: req.cc,
-                      stack: req.stack)
+                      stack: req.stack, contrib: false)
     picked = select(registry, world, req, scope)
     return Outcome.new(0, world, "dry run") if req.dry
     return Outcome.new(0, remarked(world, picked, mark), "marked")
@@ -722,10 +726,13 @@ module Model
     return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
   end
 
+  # --clean keeps the cross compilers whatever -f says -- `-u ALL -f
+  # -a ALL -c ALL` is the line that takes them -- and the bootstrap
+  # Ruby, which NEVER_REMOVE keeps from everything.
   def clean(registry, world, req, scope)
     all = Request.new(mode: :uninstall, targets: [[:all, :all]],
-                      force: req.force, dry: req.dry, arch: :all, cc: nil,
-                      stack: nil)
+                      force: false, dry: req.dry, arch: :all, cc: nil,
+                      stack: nil, contrib: false)
     return uninstall(registry, world, all, scope)
   end
 
@@ -750,7 +757,8 @@ module Model
     roots = upgradable(registry, world, scope).map { |n| [n, nil] }
     return Outcome.new(0, world, "up to date") if roots.empty?
     plain = Request.new(mode: :install, targets: roots, force: false,
-                        dry: req.dry, arch: nil, cc: nil, stack: nil)
+                        dry: req.dry, arch: nil, cc: nil, stack: nil,
+                        contrib: false)
     # An upgrade claims nothing: the new version is the user's exactly
     # as much as the old was.
     return install(registry, world, plain, scope, claimed: [])
@@ -857,7 +865,7 @@ module Model
     return Outcome.new(0, world, "nothing to do") if names.empty?
     plain = Request.new(mode: :install, targets: names.map { |n| [n, nil] },
                         force: false, dry: req.dry, arch: nil, cc: nil,
-                        stack: nil)
+                        stack: nil, contrib: false)
     return install(registry, world, plain, scope, claimed: claimed)
   end
 
@@ -1027,7 +1035,7 @@ module Model
     end
 
     return Request.new(mode: mode, targets: targets, force: force, dry: dry,
-                       arch: arch, cc: cc, stack: stack)
+                       arch: arch, cc: cc, stack: stack, contrib: false)
   end
 
   # --- worlds ---------------------------------------------------------------

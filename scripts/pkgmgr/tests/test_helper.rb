@@ -679,19 +679,18 @@ module TestHelper
       return [Run(log: "build.log", argv: ["fake-build", *build_flags(ver)])]
     end
 
-    # The same wrap GccPackage applies, for the same reason: an
+    # The same annotation GccPackage applies, for the same reason: an
     # install of a cross compiler has to say what it targets.
-    def read_install_list
-      return super if @fake_target_arch.nil?
+    def read_install_list = super.map { |i| annotate_install(i) }
 
-      super.map { |i|
-        InstallInfo.new(
-          i.pkgname, i.compiler, i.on_host, i.arch, i.ver, i.path,
-          i.pkg, i.broken, @fake_target_arch, @fake_libc,
-          default_install: i.default_install, manual: i.manual,
-          coords: i.coords
-        )
-      }
+    def annotate_install(i)
+      return i if @fake_target_arch.nil?
+      return InstallInfo.new(
+        i.pkgname, i.compiler, i.on_host, i.arch, i.ver, i.path,
+        i.pkg, i.broken, @fake_target_arch, @fake_libc,
+        default_install: i.default_install, manual: i.manual,
+        coords: i.coords, record: i.record
+      )
     end
 
     # Match the pattern of real packages: noarch → nil, target → the

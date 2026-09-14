@@ -61,16 +61,17 @@ class GccCompiler < Package
   # Wrap the base class reading of the tree with target_arch/libc
   # metadata, so PackageManager#get_installed_compilers can select
   # installed cross-compilers for a specific target architecture.
-  def read_install_list
-    super.map { |info|
-      InstallInfo.new(
-        info.pkgname, info.compiler, info.on_host, info.arch,
-        info.ver, info.path, info.pkg, info.broken,
-        @target_arch, @libc,
-        default_install: info.default_install, manual: info.manual,
-        coords: info.coords
-      )
-    }
+  def read_install_list = super.map { |info| annotate_install(info) }
+
+  # An install of a cross compiler says what it targets.
+  def annotate_install(info)
+    return InstallInfo.new(
+      info.pkgname, info.compiler, info.on_host, info.arch,
+      info.ver, info.path, info.pkg, info.broken,
+      @target_arch, @libc,
+      default_install: info.default_install, manual: info.manual,
+      coords: info.coords, record: info.record
+    )
   end
 
   def get_installable_list

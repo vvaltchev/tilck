@@ -163,11 +163,90 @@ class TestParseOptionsInstall < Minitest::Test
   end
 end
 
+# The command line as a value: what main hands the planner.
+class TestRequestOf < Minitest::Test
+  include TestHelper
+
+  def request(*argv) = Main.request_of(Main.parse_options(argv))
+
+  def test_a_target_is_the_name_and_the_version_as_typed
+    assert_equal ["foo", nil], Request.target("foo")
+    assert_equal ["foo", Ver("1.2.0")], Request.target("foo:1.2.0")
+    assert_equal ["foo", :all], Request.target("foo:ALL")
+    assert_equal [:all, nil], Request.target("ALL")
+    assert_equal ["gcc-i386-musl", nil], Request.target("gcc-i386-musl:")
+  end
+
+  def test_the_modes_and_the_modifiers
+    r = request("-s", "foo", "bar:2.0.0", "-f", "-d", "-a", "riscv64")
+    assert_equal :install, r.mode
+    assert_equal [["foo", nil], ["bar", Ver("2.0.0")]], r.targets
+    assert r.force
+    assert r.dry
+    assert_equal ALL_ARCHS["riscv64"], r.arch
+    refute r.every_arch?
+
+    r = request("-u", "foo:ALL", "-a", "ALL", "-c", "ALL")
+    assert_equal :uninstall, r.mode
+    assert_equal [["foo", :all]], r.targets
+    assert r.every_arch?
+    assert_equal :all, r.cc
+
+    r = request("--mark-auto", "foo", "-c", "7.7.7", "-H", "gcc-8.8.8")
+    assert_equal :mark_auto, r.mode
+    assert_equal Ver("7.7.7"), r.cc
+    assert_equal Ver("8.8.8"), r.stack
+
+    assert_equal :mark_manual, request("--mark-manual", "foo").mode
+    assert_equal :configure, request("-C", "foo").mode
+    assert_equal :upgrade, request("--upgrade").mode
+    assert_equal :rebuild, request("--rebuild").mode
+    assert_equal :autoremove, request("--autoremove").mode
+    assert_equal :clean, request("--clean").mode
+    assert_equal :list, request("-l").mode
+    assert_equal :check_updates, request("--check-for-updates").mode
+    assert_equal :installable, request("--list-installable").mode
+    assert_equal :layout, request("--print-layout").mode
+    assert_equal :context, request("-j").mode
+    assert_equal :other, request("--deps", "foo").mode
+    assert_equal :other, request("-L").mode
+    assert_equal :other, request("-t").mode
+    quietly { assert_equal :other, request("-h").mode }
+    assert_equal :default, request.mode
+    assert request("--contrib").contrib
+    refute request.contrib
+  end
+
+  def quietly
+    old = $stdout
+    $stdout = StringIO.new
+    yield
+  ensure
+    $stdout = old
+  end
+
+  # What a request reads as, for a message.
+  def test_a_request_reads_as_its_mode_and_targets
+    assert_equal "install foo:1.0.0 ALL bar:ALL",
+                 request("-s", "foo:1.0.0", "ALL", "bar:ALL").to_s
+    assert_equal "upgrade", request("--upgrade").to_s
+  end
+
+  # -S is -s of the compiler package, and the version is the default.
+  def test_a_compiler_request_names_the_compiler_package
+    r = request("-S", "riscv64")
+    assert_equal :install, r.mode
+    assert_equal [["gcc-riscv64-musl", nil]], r.targets
+    assert_equal [["gcc-i386-musl", nil]], request("-U", "i386").targets
+  end
+end
+
 class TestExpandInstallAll < Minitest::Test
   include TestHelper
 
-  # expand_install_all runs inside a with_target_arch scope in main().
-  # Tests set up their own fake registry and call the helper directly.
+  # ALL is expanded by the planner (Planner.expand_all), under the
+  # scope of the arch being installed for. Tests set up their own
+  # fake registry and call it directly.
 
   def setup
     reset_pkgmgr!
@@ -187,8 +266,8 @@ class TestExpandInstallAll < Minitest::Test
         FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
       )
 
-      result = Main.expand_install_all(["ALL"], scope)
-      names = result.map { |s| s.split(":").first }.sort
+      result = Planner.expand_all(pkgmgr, [[:all, nil]], scope)
+      names = result.map(&:first).sort
       assert_equal ["bar", "foo"], names
     end
   end
@@ -199,8 +278,8 @@ class TestExpandInstallAll < Minitest::Test
       pkgmgr.register(FakePackage.new("universal"))
       pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
 
-      result = Main.expand_install_all(["ALL"], scope)
-      names = result.map { |s| s.split(":").first }
+      result = Planner.expand_all(pkgmgr, [[:all, nil]], scope)
+      names = result.map(&:first)
       assert_includes names, "universal"
       refute_includes names, "other_only"
     end
@@ -211,8 +290,9 @@ class TestExpandInstallAll < Minitest::Test
       pkgmgr.register(FakePackage.new("foo"))
       pkgmgr.register(FakePackage.new("bar"))
 
-      result = Main.expand_install_all(["custom", "ALL"], scope)
-      names = result.map { |s| s.split(":").first }
+      result = Planner.expand_all(pkgmgr, [["custom", nil], [:all, nil]],
+                                  scope)
+      names = result.map(&:first)
       assert_includes names, "custom"
       assert_includes names, "foo"
       assert_includes names, "bar"
@@ -229,8 +309,8 @@ class TestExpandInstallAll < Minitest::Test
       pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
       pkgmgr.register(FakePackage.new("universal"))
 
-      result = Main.expand_install_all(["ALL"], scope.with(arch: rv))
-      names = result.map { |s| s.split(":").first }
+      result = Planner.expand_all(pkgmgr, [[:all, nil]], scope.with(arch: rv))
+      names = result.map(&:first)
       assert_includes names, "rv_pkg"
       assert_includes names, "universal"
       refute_includes names, "i3_pkg"
@@ -1653,6 +1733,117 @@ class TestMainRebuildPlansItsDependencies < Minitest::Test
         assert_equal 0, rc, out
         assert_equal ["base", "top"], FakePackage.install_log
         refute_nil bound(base).find_install(bound(base).default_ver)
+      end
+    end
+  end
+end
+
+# What each mode prints around its plan, and only when it applies.
+class TestRunActSays < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def two(name)
+    p = FakePackage.new(name)
+    p.define_singleton_method(:installable_versions) {
+      [Ver("1.0.0"), Ver("2.0.0")]
+    }
+    p.define_singleton_method(:default_ver) { Ver("2.0.0") }
+    pkgmgr.register(p)
+    return p
+  end
+
+  # A short name resolves on the way out too, and the match is said
+  # before the removal. The model reads names as typed, so the laws
+  # sit this one out.
+  def test_uninstall_and_mark_resolve_a_short_name
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("longname"))
+        fake_install(pkgmgr.get("longname"), mark: :manual)
+        why = "the model reads a name as typed; a short one is the CLI's"
+        rc, out = run_cli("--mark-auto", "long", "-q", laws: false,
+                          because: why)
+        assert_equal 0, rc
+        assert_match(/Matched 'long' -> 'longname'.*Mark longname/m, out)
+        refute bound(pkgmgr.get("longname")).find_install(Ver("1.0.0")).manual
+        rc, out = run_cli("-u", "long", "-q", laws: false, because: why)
+        assert_equal 0, rc
+        assert_nil bound(pkgmgr.get("longname")).find_install(Ver("1.0.0"))
+        assert_match(/Matched 'long' -> 'longname'.*Remove pkg 'longname'/m,
+                     out)
+        refute_match(/Removed:/, out, "the count is --clean's")
+      end
+    end
+  end
+
+  def test_nothing_to_upgrade_or_rebuild_says_only_that
+    with_fake_tc do
+      with_stubbed_externals do
+        t = two("t")
+        fake_install(t, Ver("2.0.0"))
+        rc, out = run_cli("--upgrade", "-d", "-q")
+        assert_equal 0, rc
+        assert_match(/up to date/, out)
+        refute_match(/Packages to upgrade|Dry run/, out)
+        rc, out = run_cli("--rebuild", "-d", "-q")
+        assert_equal 0, rc
+        assert_match(/built from the sources we have/, out)
+        refute_match(/Dry run/, out)
+        rc, out = run_cli("--autoremove", "-q")
+        assert_equal 0, rc
+        refute_match(/Removed:/, out)
+      end
+    end
+  end
+
+  # The default install says which of its builds are upgrades, and
+  # says nothing about upgrades when there are none; a dry default
+  # install re-marks nothing.
+  def test_the_default_install_says_its_upgrades_only_when_it_has_them
+    with_fake_tc do
+      with_stubbed_externals do
+        stack = register_tilck_stack!
+        d = FakePackage.new("dflt", default: true)
+        pkgmgr.register(d)
+        rc, out = run_cli("-q", "-d")
+        assert_equal 0, rc
+        refute_match(/Packages to upgrade/, out)
+        fake_install(d)
+        fake_install(stack, mark: :auto)
+        rc, out = run_cli("-q", "-d")
+        assert_equal 0, rc
+        assert_match(/Would set #{stack.name}:.* to manually/, out)
+        i = bound(stack).find_install(bound(stack).default_ver)
+        assert_equal false, i.manual, "a dry run re-marked nothing"
+      end
+    end
+  end
+
+  # "Building into" is said only when the stack moved.
+  def test_the_stack_is_said_only_when_it_moved
+    with_fake_tc do
+      with_stubbed_externals do
+        gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        gcc.define_singleton_method(:installable_versions) {
+          [Ver("7.7.7"), Ver("8.8.8")]
+        }
+        gcc.define_singleton_method(:default_ver) { scope.stack }
+        s = FakePackage.new("host_s", on_host: true, host_tier: :stack,
+                            arch_list: ALL_HOST_ARCHS.values,
+                            dep_list: [Dep("host_gcc", true)])
+        [gcc, s].each { |p| pkgmgr.register(p) }
+        pkgmgr.default_stack = Ver("7.7.7")
+        rc, out = run_cli("-s", "host_s", "-d", "-q")
+        assert_equal 0, rc
+        refute_match(/Building into/, out)
+        rc, out = run_cli("-s", "host_gcc:8.8.8", "-d", "-q")
+        assert_equal 0, rc
+        assert_match(/Building into the gcc-8.8.8 stack/, out)
       end
     end
   end

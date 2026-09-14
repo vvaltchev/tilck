@@ -663,6 +663,346 @@ class TestPlanner < Minitest::Test
     end
   end
 
+  # --- one request, and the world it leaves ----------------------------------
+
+  def req(mode, targets = [], **kw)
+    return Request.make(mode, targets: targets, **kw)
+  end
+
+  # `-a ALL` plans each arch from the world the arch before it leaves:
+  # a noarch dependency is built under the first arch and found there
+  # by the second.
+  def test_step_threads_the_world_through_every_arch
+    with_fake_tc do
+      n = FakePackage.new("n", arch_list: nil)
+      t = FakePackage.new("t", dep_list: [Dep("n", false)])
+      [n, t].each { |p| pkgmgr.register(p) }
+
+      out = Planner.step(pkgmgr, world_now, req(:install, [["t", nil]],
+                                                arch: :all), scope)
+      assert_equal 0, out.rc
+      assert_equal ALL_ARCHS.values, out.acts.map(&:arch)
+      builds = out.acts.map { |a| a.plan.builds.map(&:name) }
+      assert_equal %w[n t], builds.first
+      assert_equal %w[t], builds.last, "n was built under the first arch"
+      assert_equal ALL_ARCHS.length + 1, out.world.installs.length
+    end
+  end
+
+  # ...and an arch that cannot build a root is skipped and said, the
+  # others still installed.
+  def test_step_skips_an_arch_a_root_does_not_build_for
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("rv", arch_list: [RV]))
+      out = Planner.step(pkgmgr, world_now, req(:install, [["rv", nil]],
+                                                arch: :all), scope)
+      assert_equal 0, out.rc
+      skipped = out.acts.select { |a| a.plan.nil? }
+      assert_equal ALL_ARCHS.length - 1, skipped.length
+      assert_match(/Skipping rv: not supported on arch i386/,
+                   skipped.first.notes.join)
+      assert_equal 1, out.world.installs.length
+    end
+  end
+
+  # A dry run plans and leaves the world as it was.
+  def test_a_dry_step_leaves_the_world_as_it_was
+    with_fake_tc do
+      t = FakePackage.new("t")
+      pkgmgr.register(t)
+      before = world_now
+      out = Planner.step(pkgmgr, before, req(:install, [["t", nil]],
+                                             dry: true), scope)
+      assert_equal 0, out.rc
+      assert_equal %w[t], out.plans.first.builds.map(&:name)
+      assert_equal before, out.world
+    end
+  end
+
+  # What is refused, and how: an unknown name, a version the package
+  # does not offer, a package the arch does not build, a short name
+  # that is ambiguous. Nothing is planned.
+  def test_step_refuses_at_the_door
+    with_fake_tc do
+      two_versions("t")
+      pkgmgr.register(FakePackage.new("rv", arch_list: [RV]))
+      pkgmgr.register(FakePackage.new("aa"))
+      pkgmgr.register(FakePackage.new("ab"))
+
+      out = Planner.step(pkgmgr, world_now, req(:install, [["nope", nil]]),
+                         scope)
+      assert_equal [1, "Package not found: nope"], [out.rc, out.message]
+      assert_empty out.acts
+
+      out = Planner.step(pkgmgr, world_now,
+                         req(:install, [["t", Ver("9.9.9")]]), scope)
+      assert_equal 1, out.rc
+      assert_match(/t:9.9.9 is not a version t can install\nAvailable: /,
+                   out.message)
+
+      out = Planner.step(pkgmgr, world_now, req(:install, [["rv", nil]]),
+                         scope)
+      assert_equal [1, "Package rv is not supported for arch i386"],
+                   [out.rc, out.message]
+
+      out = Planner.step(pkgmgr, world_now, req(:uninstall, [["a", nil]]),
+                         scope)
+      assert_equal 1, out.rc
+      assert_match(/Ambiguous package name 'a' matches: aa, ab/, out.message)
+    end
+  end
+
+  # A short name resolves, and the resolution is said.
+  def test_step_says_the_name_it_matched
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("longname"))
+      out = Planner.step(pkgmgr, world_now, req(:install, [["long", nil]]),
+                         scope)
+      assert_equal 0, out.rc
+      assert_equal ["Matched 'long' -> 'longname'"], out.acts.first.notes
+      assert_equal %w[longname], out.plans.first.builds.map(&:name)
+    end
+  end
+
+  # -u takes its targets one at a time, each from the world the one
+  # before leaves, and an orphan by its name.
+  def test_step_uninstalls_each_target_in_turn
+    with_fake_tc do
+      a = FakePackage.new("a")
+      b = FakePackage.new("b")
+      [a, b].each { |p| pkgmgr.register(p) }
+      fake_install(a)
+      fake_install(b)
+      orphan = FakePackage.new("gone")
+      pkgmgr.register(orphan)
+      fake_install(orphan)
+      pkgmgr.instance_variable_get(:@packages).delete("gone")
+      pkgmgr.installs_changed!
+
+      out = Planner.step(pkgmgr, world_now,
+                         req(:uninstall, [["a", nil], ["gone", nil]]), scope)
+      assert_equal 0, out.rc
+      assert_equal 2, out.plans.length
+      assert_equal %w[b], out.world.installs.map(&:pkgname)
+    end
+  end
+
+  # The default install claims the stack's members and carries the
+  # upgrades beside them; --contrib appends the extras when they are
+  # registered.
+  def test_step_default_installs_the_stack_and_the_upgrades
+    with_fake_tc do
+      register_tilck_stack!
+      d = FakePackage.new("dflt", default: true)
+      u = two_versions("u")
+      pkgmgr.register(d)
+      fake_install(u, Ver("1.0.0"))
+      out = Planner.step(pkgmgr, world_now, req(:default), scope)
+      assert_equal 0, out.rc
+      act = out.acts.first
+      assert_equal %w[u], act.upgrades
+      marks = act.plan.builds.to_h { |b| [b.name, b.mark] }
+      assert_equal :auto, marks.fetch("dflt"), "a member is a dependency"
+      assert_equal :manual, marks.fetch(pkgmgr.tilck_stacks.first.name),
+                   "the stack itself is claimed"
+      assert_equal :manual, marks.fetch("u"),
+                   "an upgrade inherits the mark of what it replaces"
+    end
+  end
+
+  # -C plans nothing: it refuses what is not configurable, and a dry
+  # run says what it would do.
+  def test_step_configure_refuses_and_says
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("t"))
+      out = Planner.step(pkgmgr, world_now, req(:configure, [["t", nil]]),
+                         scope)
+      assert_equal [1, "Package t does not support reconfiguration"],
+                   [out.rc, out.message]
+      out = Planner.step(pkgmgr, world_now, req(:configure, [["x", nil]]),
+                         scope)
+      assert_equal "Package not found: x", out.message
+    end
+  end
+
+  # The observations change nothing; --check-for-updates answers its
+  # exit code and its lines.
+  def test_step_observations_leave_the_world_and_check_updates_reports
+    with_fake_tc do
+      t = two_versions("t")
+      fake_install(t, Ver("1.0.0"))
+      before = judged
+      for mode in %i[list installable layout context other] do
+        out = Planner.step(pkgmgr, before, req(mode), scope)
+        assert_equal [0, before, []], [out.rc, out.world, out.acts]
+      end
+      out = Planner.step(pkgmgr, before, req(:check_updates), scope)
+      assert_equal [2, ["NEEDS_UPGRADE t"]], [out.rc, out.notes]
+      assert_equal before, out.world
+      assert_nil out.message
+    end
+  end
+
+  # Plan#apply: a build's install is what the scan reads, a removal
+  # takes exactly one, a mark keeps the rest of the install as it is.
+  def test_apply_makes_the_installs_the_plan_describes
+    with_fake_tc do
+      t = FakePackage.new("t", arch_list: [I386, RV])
+      pkgmgr.register(t)
+      i = fake_install(t, at: t.at(scope.with(arch: I386)).coords, mark: :auto)
+      before = world_now
+      inst = before.installs.first
+      assert_equal i, inst.path
+
+      built = Planner.plan_install(pkgmgr, before, [["t", nil]],
+                                   scope.with(arch: RV)).apply(pkgmgr, before)
+      assert_equal 2, built.installs.length
+      made = built.installs.find { |x| x.arch == RV }
+      assert_equal [t.at(scope.with(arch: RV)).install_dir(Ver("1.0.0")),
+                    true, true, :ok, Ver("13.3.0")],
+                   [made.path, made.default_install, made.manual, made.record,
+                    made.compiler]
+
+      marked = Plan.new(actions: [Mark.new(install: inst, manual: true)],
+                        scope: scope, bound: {}, notes: [])
+                   .apply(pkgmgr, before)
+      assert_equal [true, inst.path], [marked.installs.first.manual,
+                                       marked.installs.first.path]
+
+      gone = Plan.new(actions: [Remove.new(install: inst)], scope: scope,
+                      bound: {}, notes: []).apply(pkgmgr, built)
+      assert_equal [RV], gone.installs.map(&:arch)
+    end
+  end
+
+  # A name as typed: exact wins without a word; a short name is
+  # matched and said; three candidates are listed whole, four with an
+  # ellipsis.
+  def test_resolve_name_says_only_what_it_changed
+    with_fake_tc do
+      %w[t tx ty tz].each { |n| pkgmgr.register(FakePackage.new(n)) }
+      assert_equal ["t", nil], Planner.resolve_name(pkgmgr, "t")
+      assert_equal ["tx", "Matched 'x' -> 'tx'"],
+                   Planner.resolve_name(pkgmgr, "x")
+      r = Planner.resolve_name(pkgmgr, "z")
+      assert_equal ["tz", "Matched 'z' -> 'tz'"], r
+      pkgmgr.register(FakePackage.new("ta"))
+      pkgmgr.register(FakePackage.new("tb"))
+      %w[tc].each { |n| pkgmgr.register(FakePackage.new(n)) }
+      r = Planner.resolve_name(pkgmgr, "t")
+      assert_equal ["t", nil], r, "exact wins over every substring"
+      pkgmgr.instance_variable_get(:@packages).delete("t")
+      r = Planner.resolve_name(pkgmgr, "t")
+      assert_kind_of Refusal, r
+      assert_match(/matches: tx, ty, tz, \.\.\.\z/, r.message)
+      %w[tx ty tz].each { |n|
+        pkgmgr.instance_variable_get(:@packages).delete(n)
+      }
+      r = Planner.resolve_name(pkgmgr, "t")
+      assert_match(/matches: ta, tb, tc\z/, r.message)
+    end
+  end
+
+  # The words the selector is handed for -a and -c.
+  def test_the_selector_is_handed_words
+    r = Request.make(:uninstall, cc: :all, arch: :all)
+    assert_equal ["ALL", "ALL"], [Planner.cc_word(r), Planner.arch_word(r)]
+    r = Request.make(:uninstall, cc: Ver("7.7.7"), arch: RV)
+    assert_equal ["7.7.7", "riscv64"],
+                 [Planner.cc_word(r), Planner.arch_word(r)]
+    r = Request.make(:uninstall, cc: "syscc")
+    assert_equal ["syscc", nil], [Planner.cc_word(r), Planner.arch_word(r)]
+    assert_nil Planner.cc_word(Request.make(:uninstall))
+  end
+
+  # --contrib appends the extras that are registered, once.
+  def test_step_default_appends_the_contrib_extras_once
+    with_fake_tc do
+      register_tilck_stack!
+      names = ->(contrib) {
+        out = Planner.step(pkgmgr, world_now, req(:default, contrib: contrib),
+                           scope)
+        assert_equal 0, out.rc
+        out.acts.first.roots
+      }
+      refute_includes names.call(true), "host_mconf", "not registered: skipped"
+      m = two_versions("host_mconf", **HOST)
+      refute_includes names.call(false), "host_mconf"
+      assert_equal 1, names.call(true).count("host_mconf")
+      fake_install(m, Ver("1.0.0"))
+      assert_equal 1, names.call(true).count("host_mconf"),
+                   "an upgrade already in the set is not appended again"
+    end
+  end
+
+  # A default install or an upgrade whose plan is refused says so and
+  # plans nothing.
+  def test_step_default_and_upgrade_pass_a_refusal_on
+    with_fake_tc do
+      register_tilck_stack!
+      x = two_versions("host_x", **HOST)
+      a = two_versions("a", default: true,
+                       dep_list: [Dep("host_x", true, ver: Ver("1.0.0"))])
+      b = two_versions("b", default: true,
+                       dep_list: [Dep("host_x", true, ver: Ver("2.0.0"))])
+      out = Planner.step(pkgmgr, world_now, req(:default), scope)
+      assert_equal 1, out.rc
+      assert_match(/Version conflict/, out.message)
+      assert_empty out.acts
+
+      fake_install(a, Ver("1.0.0"))
+      fake_install(b, Ver("1.0.0"))
+      out = Planner.step(pkgmgr, world_now, req(:upgrade), scope)
+      assert_equal 1, out.rc
+      assert_match(/Version conflict/, out.message)
+      assert_empty out.acts
+      assert_nil x.instance_variable_get(:@nothing)
+    end
+  end
+
+  # A mark of what is not a package is refused like an uninstall.
+  def test_step_mark_refuses_an_unknown_name
+    with_fake_tc do
+      out = Planner.step(pkgmgr, world_now, req(:mark_auto, [["nope", nil]]),
+                         scope)
+      assert_equal [1, "Package not found: nope", []],
+                   [out.rc, out.message, out.acts]
+    end
+  end
+
+  # A dry -C names the version it would reconfigure: the one asked
+  # for, else the default.
+  def test_step_configure_dry_names_the_version
+    with_fake_tc do
+      t = two_versions("t")
+      t.define_singleton_method(:configurable?) { true }
+      out = Planner.step(pkgmgr, world_now, req(:configure, [["t", nil]],
+                                                dry: true), scope)
+      assert_equal 0, out.rc
+      assert_nil out.acts.first.plan
+      assert_equal ["t", nil], out.acts.first.roots
+      assert_match(/would reconfigure t 2.0.0,/, out.notes.join)
+      out = Planner.step(pkgmgr, world_now,
+                         req(:configure, [["t", Ver("1.0.0")]], dry: true),
+                         scope)
+      assert_match(/would reconfigure t 1.0.0,/, out.notes.join)
+      assert_equal ["t", Ver("1.0.0")], out.acts.first.roots
+      out = Planner.step(pkgmgr, world_now, req(:configure, [["t", nil]]),
+                         scope)
+      assert_equal [0, []], [out.rc, out.notes]
+    end
+  end
+
+  # An outcome that went through has no message.
+  def test_an_outcome_that_went_through_has_no_message
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("t"))
+      out = Planner.step(pkgmgr, world_now, req(:install, [["t", nil]]), scope)
+      assert_nil out.message
+      assert_nil Outcome.ok(world_now).message
+    end
+  end
+
   # --- the plan is a value of its arguments ----------------------------------
 
   def test_the_same_arguments_give_the_same_plan

@@ -811,4 +811,315 @@ module Planner
     return Plan.new(actions: ordered.map { |i| Remove.new(install: i) },
                     scope: scope, bound: {}, notes: [])
   end
+
+  # --- one request ----------------------------------------------------------
+
+  # What `req` comes to, from `world` under `scope`: the plans, in the
+  # order they run, and the world they leave. This is main.rb's
+  # dispatch made a function: main parses the command line, hands the
+  # Request here, prints what comes back and runs the plans; the
+  # exhaustive lane hands it a world built in memory and compares the
+  # world it returns with the model's. `world` is judged (World#judged)
+  # for --rebuild and --check-for-updates, whose answers read the
+  # records; the caller judges, since a world built in memory carries
+  # its records already. The observations (-l and its kin) change
+  # nothing and return the world as it was: what they print is main's.
+  def step(registry, world, req, scope)
+    case req.mode
+    when :install       then step_install(registry, world, req, scope)
+    when :default       then step_default(registry, world, req, scope)
+    when :upgrade       then step_upgrade(registry, world, req, scope)
+    when :rebuild       then step_rebuild(registry, world, req, scope)
+    when :uninstall     then step_uninstall(registry, world, req, scope)
+    when :mark_manual   then step_mark(registry, world, req, scope, true)
+    when :mark_auto     then step_mark(registry, world, req, scope, false)
+    when :autoremove    then step_autoremove(registry, world, req, scope)
+    when :clean         then step_clean(registry, world, req, scope)
+    when :configure     then step_configure(registry, world, req, scope)
+    when :check_updates
+      rc, lines = check_updates(registry, world, scope)
+      Outcome.new(rc: rc, world: world, acts: [], notes: lines, message: nil)
+    when :list, :installable, :layout, :context, :other
+      Outcome.ok(world)
+    else
+      raise ArgumentError, "unknown mode #{req.mode.inspect}"
+    end
+  end
+
+  # The contributor-only extras --contrib appends to the default set.
+  # Skipped silently when not registered: the list is ours.
+  CONTRIB_EXTRAS = %w[host_mconf].freeze
+
+  # A name as typed to the registered one: exact, else the one package
+  # whose name contains it. [name, note-or-nil], or a Refusal.
+  def resolve_name(registry, input)
+    full, matches = registry.resolve_name(input)
+    return [full, nil] if full == input
+    return [full, "Matched '#{input}' -> '#{full}'"] if full
+    if matches.empty?
+      return Refusal.new(message: "Package not found: #{input}")
+    end
+    shown = matches.first(3).join(", ")
+    suffix = matches.length > 3 ? ", ..." : ""
+    return Refusal.new(message: "Ambiguous package name '#{input}' " \
+                                "matches: #{shown}#{suffix}")
+  end
+
+  # A requested version, against what the package can install. Most
+  # packages install one version, their default, and a request for
+  # another is taken as written: nothing here knows the answer before
+  # the download does. The few that offer a choice declare it in
+  # installable_versions, and there a request has to name one of them
+  # -- exactly, or by a series that picks one: `host_qemu:6` is
+  # 6.2.0. Anything else is refused here, at the door: `host_qemu:6`
+  # used to pass as the version "6", build the right compiler out of
+  # its series and the whole GTK stack beneath it, and then ask for
+  # qemu-6.tar.xz. The version, nil for the default, or a Refusal.
+  def resolve_version(registry, name, ver)
+    return nil if ver.nil?
+    choices = registry.get(name).installable_versions
+    return ver if choices.empty? || choices.include?(ver)
+    hits = choices.select { |v| v.to_s.start_with?("#{ver}.") }
+    return hits.first if hits.length == 1
+    return Refusal.new(message: "#{name}:#{ver} is not a version #{name} " \
+                                "can install\nAvailable: " \
+                                "#{choices.join(', ')}")
+  end
+
+  # [name, ver] as typed to [registered name, version], with the note
+  # a short name earns; or a Refusal.
+  def resolve_target(registry, name, ver)
+    full = resolve_name(registry, name)
+    return full if full.is_a?(Refusal)
+    full, note = full
+    v = ver == :all ? :all : resolve_version(registry, full, ver)
+    return v if v.is_a?(Refusal)
+    return [full, v, note]
+  end
+
+  # ALL, expanded under `scope`: every installable package that is not
+  # a cross compiler. Per scope, since what is installable depends on
+  # the arch and the board. Compilers are reached by -S, or as the
+  # dependencies they are.
+  def expand_all(registry, targets, scope)
+    return targets.flat_map { |name, ver|
+      next [[name, ver]] if name != :all
+      registry.all_packages
+              .reject(&:is_compiler)
+              .reject { |p| p.at(scope).get_installable_list.empty? }
+              .map { |p| [p.name, ver] }
+    }
+  end
+
+  # -a is a SCOPE for the modes that build, a FILTER for -u and the
+  # marks: what the selector is handed for the latter, as words. The
+  # arch by name: an Architecture answers `== "ALL"` with true, which
+  # made every -a <arch> read as -a ALL.
+  def arch_word(req) = req.every_arch? ? "ALL" : req.arch&.name
+  def cc_word(req)
+    return "ALL" if req.cc == :all
+    return req.cc.is_a?(Version) ? req.cc.to_s : req.cc
+  end
+
+  # `-s`: once per arch (-a ALL threads the world through, an arch that
+  # cannot build a root is skipped and said), each arch planned from
+  # the world the one before it leaves.
+  def step_install(registry, world, req, scope)
+
+    every = req.every_arch?
+    archs = every ? ALL_ARCHS.values : [req.arch || scope.arch]
+    acts = []
+
+    for target in archs do
+      sc = scope.with(arch: target)
+      notes = []
+      label = every ? target : nil
+
+      # ALL expanded inside the arch's scope, so that what is
+      # installable is read for the right arch.
+      requested = []
+      for name, ver in expand_all(registry, req.targets, sc) do
+        t = resolve_target(registry, name, ver)
+        return Outcome.refused(world, t.message, acts: acts) \
+          if t.is_a?(Refusal)
+        full, v, note = t
+        notes << note if note
+        requested << [full, v]
+      end
+
+      # Arch AND board support for each requested package, here,
+      # before -f has removed anything: the board used to be checked
+      # inside the install, after the forced removal, and `-s ub -f`
+      # on the wrong board deleted the install and then refused to
+      # rebuild it.
+      skipped = false
+      for name, _ in requested do
+        where = unsupported_reason(registry, registry.get(name), sc)
+        next if where.nil?
+        if every
+          notes << "Skipping #{name}: not supported on #{where}"
+          skipped = true
+          break
+        end
+        return Outcome.refused(world, "Package #{name} is not supported " \
+                                      "for #{where}", acts: acts)
+      end
+
+      if skipped
+        acts << Act.make(nil, arch: label, notes: notes)
+        next
+      end
+
+      plan = plan_install(registry, world, requested, sc, force: req.force)
+      return Outcome.refused(world, plan.message, acts: acts) \
+        if plan.is_a?(Refusal)
+
+      acts << Act.make(plan, roots: requested.map(&:first), arch: label,
+                       notes: notes)
+      world = plan.apply(registry, world) if !req.dry
+    end
+
+    return Outcome.ok(world, acts: acts)
+  end
+
+  # No mode at all: the Tilck stack of this target -- the meta-package
+  # whose dependencies are the default set -- and every installed
+  # package whose version was bumped. The default set (and what
+  # --contrib adds to it) is claimed -- being a default is being
+  # wanted -- so one of them already here as a dependency becomes the
+  # user's; the upgrades beside it are upgrades, and inherit the mark
+  # of what they replace.
+  def step_default(registry, world, req, scope)
+
+    defaults = registry.tilck_stacks.select { |m| m.at(scope).supported? }
+    upgrades = upgradable(registry, world, scope)
+    notes = []
+    if defaults.empty?
+      notes << "No Tilck stack is defined for #{scope.arch.name}/" \
+               "#{scope.board_of(scope.arch)}: nothing to install " \
+               "by default"
+    end
+
+    all = (defaults + upgrades).uniq(&:name)
+    if req.contrib
+      for name in CONTRIB_EXTRAS do
+        pkg = registry.get(name)
+        all << pkg if pkg && all.none? { |p| p.name == name }
+      end
+    end
+
+    claimed = all.map(&:name) - (upgrades.map(&:name) - defaults.map(&:name))
+    plan = plan_install(registry, world, all.map { |p| [p.name, nil] },
+                        scope, claimed: claimed)
+    return Outcome.refused(world, plan.message, notes: notes) \
+      if plan.is_a?(Refusal)
+
+    act = Act.make(plan, roots: all.map(&:name), upgrades: upgrades.map(&:name))
+    world = plan.apply(registry, world) if !req.dry
+    return Outcome.ok(world, acts: [act], notes: notes)
+  end
+
+  def step_upgrade(registry, world, req, scope)
+    plan = plan_upgrade(registry, world, scope)
+    return Outcome.refused(world, plan.message) if plan.is_a?(Refusal)
+    act = Act.make(plan, roots: plan.builds.map(&:name),
+                   upgrades: plan.builds.map(&:name))
+    world = plan.apply(registry, world) if !req.dry
+    return Outcome.ok(world, acts: [act])
+  end
+
+  def step_rebuild(registry, world, req, scope)
+    plan = plan_rebuild(registry, world, scope)
+    return Outcome.refused(world, plan.message) if plan.is_a?(Refusal)
+    world = plan.apply(registry, world) if !req.dry
+    return Outcome.ok(world, acts: [Act.make(plan)])
+  end
+
+  # `-u`, one target at a time, each from the world the one before
+  # leaves. ALL is a keyword; a name no package has but the scan found
+  # -- left behind by a rename -- is removable by that name, as -l
+  # lists it; anything else resolves.
+  def step_uninstall(registry, world, req, scope)
+    acts = []
+    for name, ver in req.targets do
+      if name == :all
+        n, v = "ALL", ver
+      elsif world.orphans.any? { |o| o.pkgname == name }
+        n, v = name, ver
+      else
+        t = resolve_target(registry, name, ver)
+        return Outcome.refused(world, t.message, acts: acts) \
+          if t.is_a?(Refusal)
+        n, v, note = t
+        acts << Act.make(nil, notes: [note]) if note
+      end
+      plan = plan_uninstall(registry, world, n, scope,
+                            ver: v == :all ? "ALL" : v,
+                            compiler: cc_word(req), arch: arch_word(req),
+                            force: req.force)
+      acts << Act.make(plan)
+      world = plan.apply(registry, world) if !req.dry
+    end
+    return Outcome.ok(world, acts: acts)
+  end
+
+  # --mark-manual / --mark-auto: the same selection as -u, re-marked.
+  def step_mark(registry, world, req, scope, manual)
+    acts = []
+    for name, ver in req.targets do
+      if name == :all
+        n, v = "ALL", ver
+      else
+        t = resolve_target(registry, name, ver)
+        return Outcome.refused(world, t.message, acts: acts) \
+          if t.is_a?(Refusal)
+        n, v, note = t
+        acts << Act.make(nil, notes: [note]) if note
+      end
+      plan = plan_mark(registry, world, n, manual, scope,
+                       ver: v == :all ? "ALL" : v,
+                       compiler: cc_word(req), arch: arch_word(req),
+                       force: req.force)
+      acts << Act.make(plan)
+      world = plan.apply(registry, world) if !req.dry
+    end
+    return Outcome.ok(world, acts: acts)
+  end
+
+  def step_autoremove(registry, world, req, scope)
+    plan = plan_autoremove(registry, world, scope)
+    world = plan.apply(registry, world) if !req.dry
+    return Outcome.ok(world, acts: [Act.make(plan)])
+  end
+
+  # --clean keeps the cross compilers whatever -f says: `-u ALL -f
+  # -a ALL -c ALL` is the line that takes them.
+  def step_clean(registry, world, req, scope)
+    plan = plan_clean(registry, world, scope)
+    world = plan.apply(registry, world) if !req.dry
+    return Outcome.ok(world, acts: [Act.make(plan)])
+  end
+
+  # -C: nothing to plan -- the package's own configuration tool runs,
+  # and main runs it -- but the same refusals at the door as
+  # everywhere else, and a dry run that says what it would do.
+  def step_configure(registry, world, req, scope)
+    name, ver = req.targets.first
+    t = resolve_target(registry, name, ver)
+    return Outcome.refused(world, t.message) if t.is_a?(Refusal)
+    full, v, note = t
+    pkg = registry.get(full)
+    if !pkg.configurable?
+      return Outcome.refused(world, "Package #{pkg.name} does not support " \
+                                    "reconfiguration", notes: [note].compact)
+    end
+    notes = [note].compact
+    if req.dry
+      notes << "Dry run (-d): would reconfigure #{pkg.name} " \
+               "#{v || pkg.at(scope).default_ver}, rewriting its build " \
+               "configuration"
+    end
+    return Outcome.ok(world, acts: [Act.make(nil, roots: [full, v])],
+                      notes: notes)
+  end
 end
