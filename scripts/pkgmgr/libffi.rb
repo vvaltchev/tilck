@@ -6,6 +6,7 @@ require_relative 'version'
 require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
+require_relative 'system_deps'
 
 LIBFFI_SOURCE = SourceRef.new(
   name: 'libffi',
@@ -55,10 +56,18 @@ class HostLibffiPackage < Package
       "--disable-static",       # the sysroot ships shared libraries
       "--libdir=$SYSROOT/usr/lib",
       "--disable-multi-os-directory",  # keeps it out of lib64
+      # The git tree carries no prebuilt info page, so make would run
+      # makeinfo for one: not worth texinfo on the host for a page
+      # nobody reads here.
+      "--disable-docs",
   ]
 
   # autogen runs OUTSIDE the stack's toolchain, as it did: it builds a
-  # configure script with the host's autotools.
+  # configure script with the host's autotools, which are its to name.
+  def system_deps(ver = nil)
+    return [SystemDeps::AUTOCONF, SystemDeps::AUTOMAKE, SystemDeps::LIBTOOL]
+  end
+
   def build_steps(ver = default_ver) = [
     # The git tarball has no configure script; autogen builds one.
     Run(log: "autogen.log", argv: ["./autogen.sh"]),

@@ -1058,6 +1058,23 @@ class TestCargoInstaller < Minitest::Test
     keys = HostLibrsvgPackage.new.system_deps.map(&:key)
     assert_equal [:rustc, :cargo, :cargo_c], keys
   end
+
+  # libffi builds its configure script with the host's autotools.
+  def test_libffi_declares_the_autotools
+    keys = HostLibffiPackage.new.system_deps.map(&:key)
+    assert_equal [:autoconf, :automake, :libtool], keys
+    assert_nil SystemDeps::LIBTOOL.command, "checked as a package"
+    assert_equal "libtool", SystemDeps::LIBTOOL.pkgs[:brew]
+  end
+
+  # headers_install copies with rsync, which a fresh Ubuntu image
+  # does not have: named, so that the check says so before the make.
+  def test_the_kernel_headers_declare_rsync
+    keys = HostLinuxHeadersPackage.new.system_deps.map(&:key)
+    assert_equal [:rsync], keys
+    assert_equal "rsync", SystemDeps::RSYNC.pkgs[:apt]
+    assert_equal "rsync", SystemDeps::RSYNC.pkgs[:pkg]
+  end
 end
 
 # The host compiler's command is the binary it names, however the

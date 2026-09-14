@@ -6,6 +6,7 @@ require_relative 'version'
 require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
+require_relative 'system_deps'
 
 LINUX_HEADERS_SOURCE = SourceRef.new(
   name: 'linux_headers',
@@ -57,6 +58,8 @@ class HostLinuxHeadersPackage < Package
     ["install/usr/include/asm/unistd.h", false],
     ["install/usr/include/asm-generic/errno.h", false],
   ]
+
+  def system_deps(ver = nil) = [SystemDeps::RSYNC]
 
   def build_steps(ver = default_ver) = [
 

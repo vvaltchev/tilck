@@ -352,6 +352,28 @@ module SystemDeps
                        command: "cargo-cbuild",
                        installer: CARGO_C_INSTALLER)
 
+  # Linux's `make headers_install` copies the sanitised headers with
+  # rsync, since 5.3, and fails with 127 without it -- as the Ubuntu
+  # image did, where nothing else had brought it in. Named the same
+  # by every package manager we drive.
+  RSYNC = SysDep.new(key: :rsync, what: "rsync, which headers_install " \
+                                        "copies the kernel headers with",
+                     command: "rsync", pkgs: "rsync")
+
+  # A source that ships no configure script builds one with the
+  # host's autotools (libffi's autogen.sh runs autoreconf). autoconf
+  # the bootstrap installs everywhere; automake and libtool it did
+  # not, and the Ubuntu image found out. libtool is checked as a
+  # package, not a command: Homebrew installs its tools prefixed
+  # (glibtoolize), which autoreconf finds on its own.
+  AUTOCONF = SysDep.new(key: :autoconf, what: "autoconf",
+                        command: "autoconf", pkgs: "autoconf")
+  AUTOMAKE = SysDep.new(key: :automake, what: "automake",
+                        command: "automake", pkgs: "automake")
+  LIBTOOL = SysDep.new(key: :libtool, what: "libtool (LT_INIT for " \
+                                            "autoreconf)",
+                       pkgs: "libtool")
+
   # u-boot's host tools (mkimage) link OpenSSL. The bootstrap installs
   # the -dev package on every distro it knows, and pacman and FreeBSD
   # ship it in the base system, so on those it is on the default path

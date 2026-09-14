@@ -86,7 +86,11 @@ class HostBinutilsPackage < Package
 
       # MAKEINFO=true: the docs need texinfo, which is not worth
       # requiring on the host for a tool nobody reads the info pages
-      # of.
+      # of. Said to configure AND to each make: the value given to
+      # configure does not reach bfd's own sub-Makefile, whose doc
+      # rule then runs texinfo's `missing` stub and fails with 127 on
+      # a host without makeinfo -- the Ubuntu image, where the first
+      # container build found it.
       Run(log: "configure.log", argv: [
         "../configure",
         "--prefix=$PREFIX",
@@ -114,7 +118,7 @@ class HostBinutilsPackage < Package
         "MAKEINFO=true",
       ]),
 
-      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+      Run(log: "build.log", argv: ["make", "-j$PAR", "MAKEINFO=true"]),
 
       # ...and stage it through DESTDIR, so the tree we hand to the
       # atomic move is complete while the paths inside it describe
