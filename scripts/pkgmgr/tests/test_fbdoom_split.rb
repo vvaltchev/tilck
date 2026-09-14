@@ -104,12 +104,12 @@ class TestFbDoomPackage < Minitest::Test
     assert src.fetch_via_git?
   end
 
-  def test_fbdoom_source_pins_no_tag
-    # Upstream maximevince/fbDOOM has no releases — the install
-    # always clones HEAD. git_tag(ver) must return nil to tell the
-    # cache/git layer to shallow-clone HEAD.
+  def test_fbdoom_source_names_a_commit_not_a_branch
+    # Upstream maximevince/fbDOOM has no releases, and HEAD of its
+    # master is not a source: the clone names the commit, in full, so
+    # that the same tree comes back after master moves.
     src = pkgmgr.get("fbdoom").source
-    assert_nil src.git_tag(Ver("0.12.1"))
+    assert_match(/\A[0-9a-f]{40}\z/, src.git_tag(Ver("0.12.1")))
   end
 
   def test_freedoom_cache_filename_is_zip

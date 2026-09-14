@@ -9,7 +9,8 @@ require_relative 'package_manager'
 
 #
 # fbDOOM — framebuffer port of DOOM. Upstream has no release tags — the
-# ver string is used only as a cache key / staging dir name. Runtime
+# clone names a commit, and the ver string is used only as a cache key
+# / staging dir name. Runtime
 # data (the freedoom WAD) comes from the `freedoom` package, declared
 # here as a dep so the install plan pulls both.
 #
@@ -27,8 +28,13 @@ FBDOOM_URL = GITHUB + '/maximevince/fbDOOM'
 FBDOOM_SOURCE = SourceRef.new(
   name: 'fbdoom',
   url:  FBDOOM_URL,
-  # Upstream has no release tags; always clone HEAD.
-  git_tag: ->(_ver) { nil },
+  # Upstream has no release tags, so the commit is named here: HEAD
+  # of a branch someone else moves is not a source, and a clone of it
+  # after a move could only fail its pin (other/pkg_hashes) with no
+  # way back to what the tree was built from. This is master as it
+  # stood when the package was added; moving it is editing this line
+  # and the pin together.
+  git_tag: ->(_ver) { "17280163bc95e5d954d2efaa0633489b763b4cd1" },
 )
 
 class FbDoomPackage < Package

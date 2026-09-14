@@ -195,6 +195,17 @@ require 'stringio'
 
 module TestHelper
 
+  # The pin that names `body`, as other/pkg_hashes would spell it.
+  def pin_of(body)
+    SourcePins.parse_pin("sha256:" + Digest::SHA256.hexdigest(body))
+  end
+
+  # What the block printed to stdout, where every message goes.
+  def capture_output
+    out, = capture_io { yield }
+    return out
+  end
+
   # Run one command line through Main.main and return [rc, stdout].
   #
   # A command line can exit rather than return, and a test process
@@ -251,6 +262,18 @@ module TestHelper
     ensure
       NoRealToolchainReads.allow!(prev)
     end
+  end
+
+  # The real package set registered for the block, and whatever was
+  # there before put back after it.
+  def with_real_registry
+    held = pkgmgr.instance_variable_get(:@packages)
+    reset_pkgmgr!
+    REAL_PACKAGES.each { |p| pkgmgr.register(p) }
+    yield
+  ensure
+    pkgmgr.instance_variable_set(:@packages, held)
+    pkgmgr.installs_changed!
   end
 
   # For the lane whose subject is the installed tree from end to end.
@@ -498,18 +521,20 @@ module TestHelper
       extract_file: Cache.method(:extract_file),
     }
 
-    Cache.define_singleton_method(:download_file) { |url, remote, local = nil|
+    Cache.define_singleton_method(:download_file) {
+      |url, remote, local = nil, pin: nil|
       FileUtils.touch(TC_CACHE / (local || remote))
       true
     }
 
     Cache.define_singleton_method(:download_git_repo) {
-      |url, tarname, tag = nil, dir_name = nil|
+      |url, tarname, tag = nil, dir_name = nil, pin: nil|
       FileUtils.touch(TC_CACHE / tarname)
       true
     }
 
-    Cache.define_singleton_method(:extract_file) { |tarfile, newDirName = nil|
+    Cache.define_singleton_method(:extract_file) {
+      |tarfile, newDirName = nil, pin: nil|
       FileUtils.mkdir_p(newDirName || "extracted")
       true
     }
@@ -544,7 +569,8 @@ module TestHelper
     originals[:run_command] = method(:run_command)
 
     # Stub Cache::download_file — pretend the file exists in cache
-    Cache.define_singleton_method(:download_file) { |url, remote, local = nil|
+    Cache.define_singleton_method(:download_file) {
+      |url, remote, local = nil, pin: nil|
       local ||= remote
       FileUtils.touch(TC_CACHE / local)
       true
@@ -552,13 +578,14 @@ module TestHelper
 
     # Stub Cache::download_git_repo — same
     Cache.define_singleton_method(:download_git_repo) {
-      |url, tarname, tag = nil, dir_name = nil|
+      |url, tarname, tag = nil, dir_name = nil, pin: nil|
       FileUtils.touch(TC_CACHE / tarname)
       true
     }
 
     # Stub Cache::extract_file — create the version directory
-    Cache.define_singleton_method(:extract_file) { |tarfile, newDirName = nil|
+    Cache.define_singleton_method(:extract_file) {
+      |tarfile, newDirName = nil, pin: nil|
       newDirName ||= "extracted"
       FileUtils.mkdir_p(newDirName)
       true

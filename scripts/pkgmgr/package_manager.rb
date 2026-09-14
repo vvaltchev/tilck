@@ -9,6 +9,7 @@ require_relative 'dep_resolver'
 require_relative 'version_solver'
 require_relative 'sysroot'
 require_relative 'install_selector'
+require_relative 'source_pins'
 require_relative 'planner'
 require_relative 'executor'
 require_relative 'portability'
@@ -19,15 +20,22 @@ require 'set'
 class PackageManager
 
   class MissingVersionError < StandardError; end
+  class SourceNameError < StandardError; end
 
   include Singleton
   attr_reader :packages
+
+  # What other/pkg_hashes names for each cache file (SourcePins):
+  # {name => Pin}, read once with the version tables. A test that
+  # pins fake sources swaps the whole table (pins=).
+  attr_accessor :pins
 
   def initialize
     @packages = {}
     @config_versions = read_config_versions("pkg_versions", "VER_")
     @host_config_versions =
       read_config_versions("host_pkg_versions", "HOST_VER_")
+    @pins = SourcePins.load  # what every cache file must be
     @world = nil          # what is installed, scanned once per change
     @host_world = nil     # memoized host_world_names, per registry
     @default_stack = nil  # what HOST_VER_GCC would say, when a test
@@ -854,6 +862,80 @@ class PackageManager
       raise MissingVersionError,
             "Packages with no version: #{missing.join(', ')}"
     end
+  end
+
+  # Every version a package can be asked for, from the registry
+  # alone: its default, the ones it offers (installable_versions),
+  # and the ones another package pins it at for any of that
+  # package's own versions. What the tree can build without being
+  # told a version it has never heard of.
+  def known_versions(pkg, scope: env_scope)
+    vers = [pkg.at(scope).default_ver] + pkg.installable_versions
+    for other in @packages.values do
+      bound = other.at(scope)
+      for v in [nil] + other.installable_versions do
+        for d in bound.dep_list_for(v) do
+          vers << d.ver if d.name == pkg.name && d.ver
+        end
+      end
+    end
+    return vers.compact.uniq
+  end
+
+  # Every file the registry can put in the cache on this host, by
+  # name, and who puts it there -- [package, version, source], the
+  # source at that version: the tarball and the extra files of every
+  # source a package reads (Package#sources_at, its own and its
+  # subsources), at every known version. The names are the keys of
+  # other/pkg_hashes, and this is the one place they are listed. A
+  # package the host cannot build is not asked: a file whose name
+  # carries the host (the prebuilt compilers, python) has no name on
+  # a host it does not exist for.
+  def source_files(scope: env_scope)
+    files = Hash.new { |h, k| h[k] = [] }
+    for pkg in @packages.values do
+      next if pkg.source.nil? || !pkg.at(scope).host_supported?
+      for v in known_versions(pkg, scope: scope) do
+        for src, sv in pkg.at(scope).sources_at(v) do
+          for f in src.cache_files(sv) do
+            files[f] << [pkg.name, sv, src]
+          end
+        end
+      end
+    end
+    return files
+  end
+
+  # Every cache name is one file: two sources that spell the same
+  # name -- or two names a case-insensitive filesystem would call
+  # one -- would share a slot in the cache and a line in
+  # other/pkg_hashes, and the second would silently be the first.
+  # Checked once after all packages are registered, like the
+  # versions and the dependency graph. A name must also be one a
+  # table can hold (Table::NAME): nothing parses it, but it stands
+  # on one line beside its pin.
+  def validate_sources
+    bad = []
+    by_fold = Hash.new { |h, k| h[k] = [] }
+    for name, users in source_files do
+      bad << "#{name} (#{users.first.first}): not a cache name" if
+        name !~ Table::NAME
+      by_fold[name.downcase] << [name, users]
+    end
+    for _, names in by_fold do
+      # One name from one source, used by two packages, is sharing;
+      # one name from two sources, or two spellings of one name, is
+      # a collision.
+      sources = names.flat_map { |_, users| users.map(&:last) }.uniq
+      next if names.length == 1 && sources.length == 1
+      owners = names.flat_map { |n, users|
+        users.map { |pkg, v, _| "#{n} from #{pkg}:#{v}" }
+      }
+      bad << "one cache slot: " + owners.join(", ")
+    end
+    return if bad.empty?
+    raise SourceNameError, "Sources with clashing cache names:\n  " +
+                           bad.join("\n  ")
   end
 
   # Names of installations found on disk that no registered package

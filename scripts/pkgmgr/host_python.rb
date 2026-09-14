@@ -36,6 +36,8 @@ def python_asset(ver)
   build = PYTHON_BUILDS[Ver(ver.to_s)]
   raise "no python-build-standalone release known for CPython " \
         "#{ver}: add it to PYTHON_BUILDS" if build.nil?
+  raise "no python-build-standalone asset for #{OS} #{HOST_ARCH.name}: " \
+        "add its triple to PYTHON_TRIPLES" if python_triple.nil?
   return "cpython-#{ver}+#{build}-#{python_triple}-install_only.tar.gz"
 end
 

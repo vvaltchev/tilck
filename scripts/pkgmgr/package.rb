@@ -1035,14 +1035,15 @@ class Package
 
   # The short git ref the source was fetched at.
   #
-  # Written by the cache beside the extracted tree when it clones a
-  # git repository (.ref_name, .ref_short and .ref), so that the exact
-  # commit survives independently of the .git directory. A package
+  # Written by the cache at the top of the packed tree when it clones
+  # a git repository (Cache::REF_SHORT, beside the full commit in
+  # Cache::REF), so that the exact commit survives without the .git
+  # directory, which the pack does not carry. A package
   # that asks for it and has no git source is asking for something
   # that does not exist, and is told so rather than handed "".
   def source_ref_short(install_dir)
 
-    f = Pathname.new(install_dir.to_s) / ".ref_short"
+    f = Pathname.new(install_dir.to_s) / Cache::REF_SHORT
 
     if !f.file?
       raise "#{name}: $SRC_REF needs .ref_short, which only a source " \
@@ -1208,9 +1209,43 @@ class Package
                       recipe: me.build_recipe_digest(inst.ver),
                       files: me.build_files(inst.ver),
                       argv: argv,
+                      sources: build_sources(inst.ver),
                       syslibs: links_the_host? ?
                                  SystemLibs.of_install(inst.path) : {})
   end
+
+  # The cache files a build of `ver` reads, each with what
+  # other/pkg_hashes pins it to: {name => pin}. A file the table does
+  # not pin is not named -- the registry cannot say what it is, so
+  # the record does not either.
+  def build_sources(ver)
+    return {} if source.nil?
+    return sources_at(ver).flat_map { |src, v|
+      src.cache_files(v).map { |n| [n, src.pin(n)] }
+    }.to_h.compact
+  end
+
+  # Every source a build of `ver` reads, with the version each is
+  # read at: the package's own, then its subsources.
+  def sources_at(ver)
+    return [] if source.nil?
+    return [[source, ver]] + subsources(ver).map { |s| [s.source, s.ver] }
+  end
+
+  #
+  # THE OTHER SOURCES A BUILD READS, placed inside the extracted tree
+  # before the recipe runs: what an upstream keeps as git submodules
+  # and its build would fetch over the network -- micropython's
+  # `make submodules` -- from a .git the pack does not carry. Each
+  # names a SourceRef, the version to fetch it at (the commit the
+  # parent's tree pins, spelled through the parent's version) and
+  # where in the tree it goes. Declared, so that the record names
+  # them, the cache pins them, and nothing reaches a build from the
+  # network. A package with none has none.
+  #
+  Subsource = Data.define(:source, :ver, :into)
+
+  def subsources(ver = default_ver) = []
 
   # Does an install of this package link the host's libraries? The
   # :distro and :compiler tiers do by design; the others (a :stack
@@ -1249,11 +1284,15 @@ class Package
     recorded = BuildInputs.comparable(inst.path)
     return :unknown if recorded.nil?
 
-    # Judged as the recipe reads AT the install's own coordinates.
+    # Judged as the recipe reads AT the install's own coordinates, on
+    # the keys the record has: a record from before sources were
+    # written is judged without them.
     me = at(scope_at(inst))
     current = BuildInputs.comparable_lines(
       BuildInputs.render(recipe: me.build_recipe_digest(inst.ver),
-                         files: me.build_files(inst.ver))
+                         files: me.build_files(inst.ver),
+                         sources: me.build_sources(inst.ver)),
+      keys: BuildInputs.judged_keys(File.read(inst.path / BuildInputs::FILE))
     )
 
     if recorded == current
@@ -1824,6 +1863,9 @@ class Package
     if @source
       ok = @source.download(ver)
       return false if !ok
+      for sub in subsources(ver) do
+        return false if !sub.source.download(sub.ver)
+      end
     end
 
     # --- Ensure extracted source in staging ---
@@ -1843,9 +1885,16 @@ class Package
 
     if !staging.directory?
       if @source
-        # Fresh extraction into staging
+        # Fresh extraction into staging, the subsources into their
+        # places in the tree.
         chdir_package_base_dir(TC_STAGING) do
           ok = @source.extract(ver, ver_dirname(ver))
+          return false if !ok
+        end
+        for sub in subsources(ver) do
+          ok = FileUtils.chdir(staging) {
+            sub.source.extract(sub.ver, sub.into)
+          }
           return false if !ok
         end
       else

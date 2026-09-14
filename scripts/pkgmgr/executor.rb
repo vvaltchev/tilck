@@ -98,10 +98,13 @@ module Executor
   # pair says and what the scan derived from its path -- the host
   # left unsaid, since nobody wrote it down -- and a .build_inputs of
   # an older spelling is rewritten in the current one, its digests as
-  # they are. Once per run, before the actions, so that a tree from
-  # before the records catches up the first time anything is written
-  # to it and never needs telling.
+  # they are, and given the sources it was built from where the cache
+  # can still say (sources_now). Once per run, before the actions, so
+  # that a tree from before the records catches up the first time
+  # anything is written to it and never needs telling.
   def write_missing_records(registry)
+    seen = {}
+    sourced = 0
     for pkg in registry.all_packages do
       for inst in pkgmgr.world.of(pkg.name) do
         next if inst.path.nil? || inst.broken
@@ -116,6 +119,8 @@ module Executor
                               against: InstallRecord.against(inst.path))
         end
         BuildInputs.rewrite_in_place(inst.path)
+        sourced += 1 if
+          BuildInputs.add_sources(inst.path, sources_now(pkg, inst.ver, seen))
       end
     end
 
@@ -155,8 +160,32 @@ module Executor
                             stack: ours && coords.stack_id ? coords.stack : nil,
                             against: InstallRecord.against(dir))
         BuildInputs.rewrite_in_place(dir)
+        sourced += 1 if
+          pkg && BuildInputs.add_sources(dir, sources_now(pkg, ver, seen))
       }
     end
+    info "Recorded the sources of #{sourced} installation(s)" if sourced > 0
+  end
+
+  # The sources of an install from before they were recorded, as the
+  # cache holds them now: a file that is what its pin names is taken
+  # to be the one the install was built from -- the only file this
+  # cache has ever kept under that name, which is what the cache
+  # assumes of every file in it -- and is recorded in the cache's own
+  # table on the way (Cache.vouch). A file that is missing, unpinned
+  # or not what the pin names is left unsaid, and the record is
+  # judged without it. `seen` remembers each file's verdict across
+  # installs: a hundred installs share a few dozen files.
+  def sources_now(pkg, ver, seen)
+    return {} if pkg.source.nil?
+    return pkg.source.cache_files(ver).to_h { |n|
+      pin = pkg.source.pin(n)
+      next [n, nil] if pin.nil? || !(TC_CACHE / n).file?
+      ok = seen.fetch(n) {
+        seen[n] = Cache.vouch(n, pin, kind: pin.kind).state == :ok
+      }
+      [n, ok ? pin : nil]
+    }.compact
   end
 
   # A stack from before manifests gets one, derived the way the code

@@ -449,9 +449,14 @@ class TestBuildSteps < Minitest::Test
     assert_includes mpy.unset, "CC"
     assert_includes mpy.unset, "CROSS_COMPILE"
 
+    # The port itself; what upstream would fetch as submodules is a
+    # subsource, placed before any step runs, and no step fetches.
     unix = steps.select { |s| s.dir == "ports/unix" }
-    assert_equal 2, unix.length, "submodules, then the port itself"
+    assert_equal 1, unix.length
     assert_equal "-static", unix.last.env["LDFLAGS_EXTRA"]
+    refute Recipe.all_argv(steps).any? { |a| a.to_s.include?("submodules") }
+    assert_equal ["lib/micropython-lib", "lib/mbedtls"],
+                 MicropythonPackage.new.subsources(Ver("v1.26.0")).map(&:into)
   end
 end
 
@@ -665,6 +670,231 @@ class TestRecordFormat < Minitest::Test
 
         assert_match(/older recipe format/, out)
         assert_match(/not because\ntheir sources changed/, out)
+      end
+    end
+  end
+end
+
+
+#
+# The sources an install was built from: recorded by name with their
+# pins, judged only once recorded, and backfilled from the cache
+# for an install from before.
+#
+class TestRecordedSources < Minitest::Test
+
+  include TestHelper
+
+  PIN = SourcePins::Pin.new(kind: :git, value: "c" * 40)
+  WHL = SourcePins::Pin.new(kind: :sha256, value: "d" * 64)
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+    @held = pkgmgr.pins
+  end
+
+  def teardown
+    pkgmgr.pins = @held
+  end
+
+  def with_pins(pins)
+    pkgmgr.pins = pins
+    yield
+  end
+
+  def installed_one
+    pkg = FakePackage.new("foo")
+    pkgmgr.register(pkg)
+    pkgmgr.install("foo")
+    pkgmgr.refresh
+    return [pkg, bound(pkg).find_install(Ver("1.0.0"))]
+  end
+
+  def record(inst) = File.read(inst.path / BuildInputs::FILE)
+
+  def test_render_names_the_sources_between_the_files_and_the_libraries
+    out = BuildInputs.render(recipe: "sha256:abc", files: [],
+                             sources: { "z-1.tgz" => PIN, "a-1.whl" => WHL },
+                             syslibs: { "/usr/lib/libc.so.6" => "sha256:e" })
+    assert_equal ["format: #{BuildInputs::FORMAT}", "recipe: sha256:abc",
+                  "source: a-1.whl #{WHL}", "source: z-1.tgz #{PIN}",
+                  "syslib: /usr/lib/libc.so.6 sha256:e"], out.lines.map(&:chomp)
+  end
+
+  def test_a_build_records_the_pinned_sources_and_leaves_an_unpinned_one_unsaid
+    with_fake_tc do
+      with_stubbed_externals do
+        with_pins({ "foo-1.0.0.tgz" => PIN }) do
+          _, inst = installed_one
+          assert_includes record(inst), "source: foo-1.0.0.tgz #{PIN}\n"
+          assert_equal({ "foo-1.0.0.tgz" => PIN.to_s },
+                       BuildInputs.sources_of(inst.path))
+        end
+      end
+    end
+    with_fake_tc do
+      with_stubbed_externals do
+        reset_pkgmgr!
+        with_pins({}) do
+          _, inst = installed_one
+          refute_includes record(inst), "source:"
+          assert_equal({}, BuildInputs.sources_of(inst.path))
+        end
+      end
+    end
+  end
+
+  def test_an_install_is_judged_on_its_sources_once_it_has_them
+    with_fake_tc do
+      with_stubbed_externals do
+        with_pins({ "foo-1.0.0.tgz" => PIN }) do
+          pkg, inst = installed_one
+          assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+          # The pin moved: built from something else.
+          moved = SourcePins::Pin.new(kind: :git, value: "e" * 40)
+          pkgmgr.pins = { "foo-1.0.0.tgz" => moved }
+          assert_equal :changed, bound(pkg).build_inputs_state_of(inst)
+          # The pin is gone: the registry cannot say what the source
+          # is, which is not the same as agreeing.
+          pkgmgr.pins = {}
+          assert_equal :changed, bound(pkg).build_inputs_state_of(inst)
+        end
+      end
+    end
+  end
+
+  def test_a_record_from_before_sources_is_judged_without_them
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = with_pins({}) { installed_one }
+        refute_includes record(inst), "source:"
+        with_pins({ "foo-1.0.0.tgz" => PIN }) do
+          assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+          assert_equal ["recipe", "file"],
+                       BuildInputs.judged_keys(record(inst))
+        end
+      end
+    end
+  end
+
+  def test_no_record_names_no_sources
+    Dir.mktmpdir { |d| assert_equal({}, BuildInputs.sources_of(Pathname(d))) }
+  end
+
+  def test_the_judged_keys_include_the_sources_once_written
+    text = BuildInputs.render(recipe: "sha256:abc", files: [],
+                              sources: { "x.tgz" => PIN })
+    assert_equal ["recipe", "file", "source"], BuildInputs.judged_keys(text)
+    keys = BuildInputs.judged_keys(text)
+    assert_equal "recipe: sha256:abc\nsource: x.tgz #{PIN}",
+                 BuildInputs.comparable_lines(text, keys: keys)
+    assert_equal "recipe: sha256:abc",
+                 BuildInputs.comparable_lines(text, keys: ["recipe", "file"])
+  end
+
+  def test_add_sources_completes_a_record_that_names_none_and_only_that
+    with_fake_tc do
+      with_stubbed_externals do
+        _, inst = with_pins({}) { installed_one }
+        before = record(inst)
+        refute BuildInputs.add_sources(inst.path, {}), "nothing to add"
+        assert BuildInputs.add_sources(inst.path, { "foo-1.0.0.tgz" => PIN })
+        after = record(inst)
+        assert_equal before.lines.reject { |l| l.start_with?("format:") },
+                     after.lines.reject { |l|
+                       l.start_with?("format:", "source:")
+                     }
+        assert_includes after, "source: foo-1.0.0.tgz #{PIN}\n"
+        assert_match(/\Aformat: #{BuildInputs::FORMAT}$/, after)
+        refute BuildInputs.add_sources(inst.path, { "x" => PIN }), "has them"
+        assert_equal after, record(inst)
+      end
+    end
+    Dir.mktmpdir do |d|
+      refute BuildInputs.add_sources(Pathname(d), { "x" => PIN }), "no record"
+    end
+  end
+
+  def test_add_sources_leaves_an_incomparable_record_alone
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg, inst = with_pins({}) { installed_one }
+        f = inst.path / BuildInputs::FILE
+        File.write(f, "recipe sha256:old\nformat 2\n")
+        refute BuildInputs.add_sources(inst.path, { "foo-1.0.0.tgz" => PIN })
+        assert_equal :old_format, bound(pkg).build_inputs_state_of(inst)
+      end
+    end
+  end
+
+  def test_the_older_spelling_keeps_its_source_lines_when_rewritten
+    Dir.mktmpdir do |d|
+      dir = Pathname(d)
+      File.write(dir / BuildInputs::FILE,
+                 "recipe sha256:r\nsource x.tgz #{PIN}\nformat 3\n")
+      assert BuildInputs.rewrite_in_place(dir)
+      assert_equal({ "x.tgz" => PIN.to_s }, BuildInputs.sources_of(dir))
+    end
+  end
+
+  # The backfill: an install from before, whose cache file is what
+  # its pin names, gets the line; one whose file is missing, unpinned
+  # or something else does not, and is judged without it.
+  def test_the_backfill_records_the_sources_the_cache_can_vouch_for
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        pkg, inst = with_pins({}) { installed_one }
+        # The pack this install was built from, as the packer leaves
+        # one: saying its commit.
+        Dir.mktmpdir do |staging|
+          FileUtils.mkdir_p(File.join(staging, "1.0.0"))
+          File.write(File.join(staging, "1.0.0", ".ref"), PIN.value + "\n")
+          system("tar", "cfz", (tc / "cache" / "foo-1.0.0.tgz").to_s,
+                 "-C", staging, "1.0.0")
+        end
+        with_pins({ "foo-1.0.0.tgz" => PIN }) do
+          out = capture_output { Executor.write_missing_records(pkgmgr) }
+          assert_match(/Recorded the sources of 1 installation/, out)
+          assert_includes record(inst), "source: foo-1.0.0.tgz #{PIN}\n"
+          assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+          # ...and the cache now holds the file to its bytes.
+          assert_equal SourcePins.digest_of(tc / "cache" / "foo-1.0.0.tgz").to_s,
+                       Cache::Hashes.of("foo-1.0.0.tgz")
+        end
+      end
+    end
+  end
+
+  def test_the_backfill_leaves_unsaid_what_the_cache_cannot_vouch_for
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        pkg, inst = with_pins({}) { installed_one }
+        # No file at all...
+        with_pins({ "foo-1.0.0.tgz" => PIN }) do
+          out = capture_output { Executor.write_missing_records(pkgmgr) }
+          refute_match(/Recorded the sources/, out)
+          refute_includes record(inst), "source:"
+        end
+        # ...a file at another commit...
+        Dir.mktmpdir do |staging|
+          FileUtils.mkdir_p(File.join(staging, "1.0.0"))
+          File.write(File.join(staging, "1.0.0", ".ref"), "e" * 40 + "\n")
+          system("tar", "cfz", (tc / "cache" / "foo-1.0.0.tgz").to_s,
+                 "-C", staging, "1.0.0")
+        end
+        with_pins({ "foo-1.0.0.tgz" => PIN }) do
+          Executor.write_missing_records(pkgmgr)
+          refute_includes record(inst), "source:"
+          assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+        end
+        # ...or no pin: nothing is said, nothing is set aside.
+        with_pins({}) do
+          Executor.write_missing_records(pkgmgr)
+          refute_includes record(inst), "source:"
+          assert (tc / "cache" / "foo-1.0.0.tgz").file?
+          refute (tc / "cache" / "rejected").exist?
+        end
       end
     end
   end

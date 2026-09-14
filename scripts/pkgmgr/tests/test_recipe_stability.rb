@@ -117,15 +117,4 @@ class TestNoRecipeNamesTheMachine < Minitest::Test
                       bad.join("\n  ")
   end
 
-  # The real package set registered for the block, and whatever was
-  # there before put back after it.
-  def with_real_registry
-    held = pkgmgr.instance_variable_get(:@packages)
-    reset_pkgmgr!
-    REAL_PACKAGES.each { |p| pkgmgr.register(p) }
-    yield
-  ensure
-    pkgmgr.instance_variable_set(:@packages, held)
-    pkgmgr.installs_changed!
-  end
 end

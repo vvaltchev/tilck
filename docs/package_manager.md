@@ -17,6 +17,7 @@
   * [Build identity](#build-identity)
   * [How the build system finds the toolchain](#how-the-build-system-finds-the-toolchain)
   * [Atomic installs and signal safety](#atomic-installs-and-signal-safety)
+  * [Pinned sources](#pinned-sources)
   * [Resumable downloads](#resumable-downloads)
   * [Retried clones](#retried-clones)
   * [Package reconfiguration](#package-reconfiguration)
@@ -677,8 +678,23 @@ So each install records what it was built FROM, in a hidden
 `.build_inputs` beside what was built: a digest of the *recipe* -- the
 build steps, which are data (`scripts/pkgmgr/recipe.rb`), so that what
 is hashed is exactly what runs -- plus a digest of every patch file
-that applies to it. The Ruby around a recipe may change freely; only
-a step it emits can move the digest.
+that applies to it, and the *sources* it was built from: each cache
+file by name with what `other/pkg_hashes` pinned it to (see [Pinned
+sources](#pinned-sources)). The Ruby around a recipe may change freely;
+only a step it emits can move the digest.
+
+```
+format: 5
+recipe: sha256:967e5ceb5671de5407942fc913c13bf4
+source: mtools-4.0.49.tar.gz sha256:2a9c8e...
+syslib: /usr/lib/ld-linux-x86-64.so.2 sha256:d011113b7054c641c8ca064f58bcc238
+syslib: /usr/lib/libc.so.6 sha256:e221b10fee9ee4776d8f0f1701253bc0
+```
+
+A record from before sources were written is judged on what it says,
+not called stale for a line it could not have; the first run that writes
+to the tree gives it the line where the cache can still vouch for the
+file (the file is there, and it is what its pin names).
 
 Beside it, `.install` says what the install *is*:
 
@@ -803,6 +819,74 @@ On `SIGINT`, `SIGTERM`, `SIGHUP`, or `SIGQUIT` during the build step: a signal
 handler cleans build artifacts from the staging dir (preserving extracted source),
 prints a message, and exits. On the next run, the extracted source is reused and
 only the build is repeated from scratch.
+
+## Pinned sources
+
+A source is declared as a URL and a name, and until the pins that was
+the whole of it: whatever answered at the URL was the source, and
+whatever was in the cache under the name was trusted. `other/pkg_hashes`
+pins each cache file to one thing, by the name the cache knows it under,
+and the package manager refuses a file that is anything else:
+
+```
+aarch64-musl-1.2.5-gcc-13.3.0-x86_64.tar.bz2: sha256:<64 hex>
+acpica-R2024_12_12.tgz: git:<40 hex>
+binutils-2.43.tar.xz: sha256:<64 hex>
+distlib-0.3.9-py2.py3-none-any.whl: sha256:<64 hex>
+zlib-v1.2.11.tgz: git:<40 hex>
+```
+
+Two kinds of pin, because two kinds of file reach the cache. A file
+downloaded as it is -- a release tarball, a forge's tag archive, a wheel,
+the prebuilt compilers -- is pinned by the sha256 of its bytes, in full,
+so that a line can be compared by eye with the upstream's published
+sums. A source we clone and pack ourselves is pinned by the *commit* the
+clone must resolve to: the archive is ours and its bytes depend on how
+we pack it, while the commit is what upstream published and survives a
+change of compression. Which kind a source needs is the source's to say
+(`SourceRef#fetch_via_git?`), never the file's extension, and a lint
+(`tests/test_lint_sources.rb`) holds the table to the registry: every
+file the registry can fetch on this host has a line of its kind, and
+every line names a file some host's registry produces.
+
+A cache name is looked up exactly as written and never parsed. Upstream
+files keep the upstream's name; a packed clone is `<name>-<ver>` with the
+packer's extension (`Cache::Pack`); where the bytes depend on the host,
+the host is in the name. The registry checks at every start that no two
+sources spell one name, compared case-insensitively.
+
+The check runs at every use of a file. A download is what its pin names
+or it is not kept: a wrong one is set aside under `cache/rejected/` with
+its digest shown against the pin's; an unpinned one is left in place,
+unrecorded, and the tool prints the line to add. A clone is checked at
+`rev-parse HEAD` before it is packed -- a tag upstream moved fails
+there -- and the pack says its commit in `.ref` at the top of its tree,
+so that a cached pack can be checked without cloning. A pack carries no
+`.git`. Every archive is checked again right before it is extracted.
+
+Beside the pins the cache keeps its own record, `cache/.hashes`: what the
+bytes under each name were when the package manager placed them, checked
+and found right. A file whose digest is not the recorded one has been
+damaged since -- a disk, a copy, a partial protocol that is not ours --
+and is set aside and fetched again. The bootstrap Ruby, fetched by bash
+before there is a package manager, is held to the same table and the
+same record (`scripts/bash_includes/script_utils`).
+
+Nothing reaches a build from the network. What an upstream keeps as git
+submodules, and its build would fetch at build time from a `.git` the
+pack does not carry, is declared instead: a package's `subsources(ver)`
+name a `SourceRef` each, the version to fetch it at and where in the
+tree it goes, and they are fetched, pinned and recorded like the
+package's own source and placed in the extracted tree before the recipe
+runs. micropython is the case: `micropython-lib-v1.26.0.tgz` and
+`mbedtls-v1.26.0.tgz`, each at the commit micropython v1.26.0 pins for
+it, in place of `make submodules`. Builds also run with git's repository
+discovery stopped at the toolchain root, so an upstream that asks
+`git describe` for its version banner is not answered by this checkout.
+
+A new package, or a new version of one, fails the lint until its line is
+added. The line comes from the upstream's published sum where there is
+one, or from the tool: the first fetch prints it.
 
 ## Resumable downloads
 

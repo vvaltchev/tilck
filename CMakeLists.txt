@@ -376,6 +376,13 @@ endmacro()
 tilck_read_pkg_versions(${CMAKE_SOURCE_DIR}/other/pkg_versions)
 tilck_read_pkg_versions(${CMAKE_SOURCE_DIR}/other/host_pkg_versions)
 
+# What every source must be (other/pkg_hashes): read by the package
+# manager, not here, but a re-pinned source makes an install stale
+# exactly as a bumped version does, so the staleness check below has
+# to run again when it changes.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+   ${CMAKE_SOURCE_DIR}/other/pkg_hashes)
+
 unset(EQUAL_POS)
 unset(KEY)
 unset(LINE)

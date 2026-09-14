@@ -2,12 +2,16 @@
 
 require_relative 'early_logic'
 require_relative 'progress'
+require_relative 'source_pins'
+require_relative 'cache_hashes'
 
 require 'fileutils'
 require 'tmpdir'
 require 'uri'
 require 'io/console'
 require 'open3'
+require 'zlib'
+require 'rubygems/package'
 
 # Extend instances of the URI::Generic (base class for URI::HTTP, URI:HTTPS
 # etc.) with an operator + such that we do URI.join() with the given string
@@ -24,6 +28,15 @@ end
 # that make sense in this context.
 ENV["GIT_TERMINAL_PROMPT"] = "0"
 ENV["GIT_ADVICE"] = "0"
+
+# A build runs under the toolchain, which sits inside this checkout,
+# and an upstream build that asks git about its own tree -- a version
+# banner from `git describe` -- must not be answered by ours: a pack
+# carries no .git, so git would walk up and find Tilck's, and
+# micropython once printed our commit as its version. Discovery stops
+# at the toolchain root; a clone in the cache has its .git where it
+# starts, and is not affected.
+ENV["GIT_CEILING_DIRECTORIES"] = TC.to_s
 
 module Cache
 
@@ -295,20 +308,6 @@ module Cache
       chdir(destdir) do
         ok = run_git("checkout", tag)
         raise LocalError, "Failed to checkout tag: #{tag}" if !ok
-
-        # OK, we succeeded. Now, let's save the commit info before we delete
-        # the .git directory to save space.
-        out, status = capture_git("rev-parse", "--abbrev-ref", "HEAD")
-        raise LocalError, "Git rev-parse failed" if !status.success?
-        File.write(".ref_name", out)
-
-        out, status = capture_git("rev-parse", "--short", "HEAD")
-        raise LocalError, "Git rev-parse failed" if !status.success?
-        File.write(".ref_short", out)
-
-        out, status = capture_git("rev-parse", "HEAD")
-        raise LocalError, "Git rev-parse failed" if !status.success?
-        File.write(".ref", out)
       end
 
       return true # success
@@ -317,9 +316,142 @@ module Cache
       error e
       return false
     end # git_clone()
+
+    # The commit a clone is at -- in full, or as git abbreviates it
+    # with `short: true` -- or nil where git cannot say.
+    def head_of(destdir, short: false)
+      args = ["rev-parse", *(short ? ["--short"] : []), "HEAD"]
+      out, status = chdir(destdir) { capture_git(*args) }
+      return status.success? ? out.strip : nil
+    end
   end # module Impl
 
-  def download_file(url, remote_file, local_file = nil)
+  #
+  # THE ARCHIVE A CLONED SOURCE IS PACKED INTO, owned here and nowhere
+  # else: the extension a packed name ends with, how a tree becomes
+  # one, and how one member is read back without unpacking the rest.
+  # A pack is ours, so nothing about it is promised to stay -- a
+  # better compression is a change to these three -- and that is why
+  # a packed source is pinned by its commit and not by the archive's
+  # digest (SourcePins).
+  #
+  module Pack
+    EXT = ".tgz"
+
+    module_function
+
+    # `dir`, under the current directory, as the archive `out`.
+    def create(dir, out) = system("tar", "cfz", out, dir)
+
+    # The content of `basename` at the top of the packed tree, or nil
+    # where the archive has no such member or is no archive of ours.
+    def member(path, basename)
+      Zlib::GzipReader.open(path.to_s) do |gz|
+        Gem::Package::TarReader.new(gz) do |tar|
+          want = %r{\A[^/]+/#{Regexp.escape(basename)}\z}
+          tar.each do |e|
+            return e.read if e.file? && e.full_name =~ want
+          end
+        end
+      end
+      return nil
+    rescue Zlib::Error, Gem::Package::TarInvalidError, IOError, EOFError
+      return nil
+    end
+  end
+
+  # The commit a packed clone came from, written at the top of its
+  # tree by the packer and read back by the check: what makes a pack
+  # say for itself which source it is.
+  REF = ".ref"
+  REF_SHORT = ".ref_short"
+
+  # Where a file in the cache is set aside when it is not what it
+  # should be, for a person to look at; fetched again in its place.
+  REJECTED = "rejected"
+
+  #
+  # WHERE A CACHED FILE STANDS against `pin`, what other/pkg_hashes
+  # names for it (Hashes.judge): its bytes now, what the cache
+  # recorded when it placed them and, for a pack, the commit it says
+  # it came from. `kind` is what the caller fetches -- :sha256 for a
+  # file downloaded as it is, :git for a pack -- so that a pack is
+  # asked for its commit even before it has a pin.
+  #
+  Look = Data.define(:state, :digest, :ref)
+
+  def look(name, pin, kind:)
+    path = TC_CACHE / name
+    digest = SourcePins.digest_of(path)
+    ref = kind == :git ? SourcePins.commit(Pack.member(path, REF)) : nil
+    st = Hashes.judge(pin: pin, digest: digest, recorded: Hashes.of(name),
+                      ref: ref&.value)
+    return Look.new(state: st, digest: digest, ref: ref)
+  end
+
+  # What the cached file is, as the line that would pin it: the
+  # commit a pack says, else the digest.
+  def observed_line(name, look) = SourcePins.line(name, look.ref || look.digest)
+
+  # The file looked at and, when it stands, recorded if the cache
+  # had not yet: what every use of a cached file does first, quietly,
+  # so that a file checked once is held to its bytes from then on.
+  def vouch(name, pin, kind:)
+    l = look(name, pin, kind: kind)
+    Hashes.record(name, l.digest) if l.state == :ok && Hashes.of(name).nil?
+    return l
+  end
+
+  # A file that stands is accepted; one that does not is explained
+  # and refused, left where it is.
+  def accept(name, pin, look, kind:)
+    case look.state
+    when :ok
+      return true
+    when :unpinned
+      error "no pin for #{name} in other/pkg_hashes"
+      if kind == :git && look.ref.nil?
+        info "the cached pack was made before packs said their commit:"
+        info "delete #{TC_CACHE / name} and run again"
+      else
+        info "the file in the cache is:"
+        info "   #{observed_line(name, look)}"
+        info "add that line to other/pkg_hashes if it is the source " \
+             "you mean, and run again"
+      end
+    when :damaged
+      error "#{name} in the cache is damaged: its bytes are not the " \
+            "ones recorded when it was placed (#{Hashes::FILE})"
+    when :other
+      error "#{name} in the cache is not what other/pkg_hashes names"
+      info "   pinned: #{pin}"
+      info "   cached: #{look.ref || look.digest}"
+    end
+    return false
+  end
+
+  def verified?(name, pin, kind:)
+    return accept(name, pin, vouch(name, pin, kind: kind), kind: kind)
+  end
+
+  # The file out of the way, under REJECTED, and out of the record:
+  # what is fetched next takes its name.
+  def set_aside(name, look, pin)
+    why = look.state == :damaged ? "its bytes moved since it was placed" :
+            "not what other/pkg_hashes names (#{pin})"
+    dir = TC_CACHE / REJECTED
+    mkdir_p(dir)
+    mv(TC_CACHE / name, dir / name)
+    Hashes.forget(name)
+    warning "#{name} set aside as #{REJECTED}/#{name}: #{why}"
+  end
+
+  # A downloaded file is what `pin` names, or it is not kept as
+  # such: a wrong one is set aside with its digest shown against the
+  # pin's, an unpinned one is left in place, unrecorded, with the
+  # line to add printed. One already in the cache is looked at the
+  # same way, and fetched again when it is not what it should be.
+  def download_file(url, remote_file, local_file = nil, pin:)
 
     local_file ||= remote_file
     local_path = TC_CACHE / local_file
@@ -334,28 +466,47 @@ module Cache
     assert { !remote_file.start_with?("/") }
     assert { !remote_file.include?("..") }
 
+    if pin && pin.kind != :sha256
+      error "#{local_file} is downloaded as it is: its pin must be a " \
+            "sha256, not #{pin}"
+      return false
+    end
+
     if file? local_path
-      if local_file == remote_file
-        info "Skipping the download of #{local_file}"
-      else
-        info "Skipping the download of #{local_file} (#{remote_file})"
+      l = vouch(local_file, pin, kind: :sha256)
+      if l.state == :ok || l.state == :unpinned
+        if l.state == :ok && local_file == remote_file
+          info "Skipping the download of #{local_file}"
+        elsif l.state == :ok
+          info "Skipping the download of #{local_file} (#{remote_file})"
+        end
+        return accept(local_file, pin, l, kind: :sha256)
       end
-      return true
+      set_aside(local_file, l, pin)
     end
 
     # Download here the file.
     success = Impl.download_url("#{url}/#{remote_file}", local_path)
 
-    if success == false
-      error "Download failed"
+    if !success
+      error "Download failed" if success == false
       # Partial file stays in cache/partial/ for resume.
       # Don't delete it — that's the whole point.
+      return false
     end
 
-    return !!success
+    l = vouch(local_file, pin, kind: :sha256)
+    ok = accept(local_file, pin, l, kind: :sha256)
+    set_aside(local_file, l, pin) if l.state == :other
+    return ok
   end
 
-  def extract_file(tarfile, newDirName = nil)
+  # The archive extracted into the current directory, its top-level
+  # directory renamed to newDirName -- once it has been checked to be
+  # what `pin` names, bytes and all: an archive is read right before
+  # it is built, and this is the last moment a wrong one can be
+  # refused.
+  def extract_file(tarfile, newDirName = nil, pin:)
 
     extToOpt = {
       ".gz" => "xfz",
@@ -363,9 +514,15 @@ module Cache
       ".bz2" => "xfj",
       ".xz" => "xfJ",
     }
+    # Our own packs are extracted here too: a change of pack format
+    # (Pack) is a change of this table.
+    assert { extToOpt.key?(Pack::EXT) }
 
     filepath = (TC_CACHE / tarfile).to_s()
     assert { exist? filepath }
+
+    kind = pin&.kind == :git ? :git : :sha256
+    return false if !verified?(tarfile, pin, kind: kind)
 
     opt = extToOpt[extname(tarfile)]
     assert { !opt.nil? }
@@ -422,7 +579,11 @@ module Cache
 
       dirname = contents[0]
       newDirName ||= dirname
-      mv(tmp / dirname, current_dir / newDirName)
+      dest = current_dir / newDirName
+      # An upstream tree keeps an empty directory where a submodule
+      # goes: the archive takes its place rather than landing inside.
+      Dir.rmdir(dest) if dest.directory? && Dir.empty?(dest)
+      mv(tmp / dirname, dest)
     end
 
     return true
@@ -435,14 +596,19 @@ module Cache
     rm_rf(tmp) if tmp
   end # extract_file()
 
+  # A cloned source, packed: the clone is what `pin` names or it is
+  # not packed at all; the pack says its commit in REF at the top of
+  # its tree and carries no .git, which is history the build does not
+  # read and the largest part of the clone. One already in the cache
+  # is looked at the same way a downloaded file is.
   def download_git_repo(
     url,                 # git repo URL
     tarname,             # tarname in the cache
     tag = nil,           # git tag or branch to use
-    dir_name = nil       # dir name to use inside the archive
+    dir_name = nil,      # dir name to use inside the archive
+    pin:                 # what other/pkg_hashes names, or nil
   )
 
-    assert { tarname.end_with? ".tgz" }
     filepath_in_cache = TC_CACHE / tarname
     tmp = TC_CACHE / "tmp"
     dir_name ||= tag
@@ -450,10 +616,20 @@ module Cache
     # The dir name cannot contain a path separator char.
     assert { dir_name.nil? or dir_name.index("/").nil? }
 
+    if pin && pin.kind != :git
+      error "#{tarname} is packed from a clone: its pin must be a " \
+            "commit, not #{pin}"
+      return false
+    end
+
     if filepath_in_cache.file?
-      tagstr = tag.nil?? "" : ", tag: #{tag}"
-      info "Skipping git clone of: #{url}#{tagstr}"
-      return true
+      l = vouch(tarname, pin, kind: :git)
+      if l.state == :ok || l.state == :unpinned
+        tagstr = tag.nil?? "" : ", tag: #{tag}"
+        info "Skipping git clone of: #{url}#{tagstr}" if l.state == :ok
+        return accept(tarname, pin, l, kind: :git)
+      end
+      set_aside(tarname, l, pin)
     end
 
     if exist? tmp
@@ -477,15 +653,32 @@ module Cache
       # Either we don't know the dir_name or it's exactly what we expect.
       assert { dir_name.nil? or contents[0] == dir_name }
 
+      head = Impl.head_of(contents[0])
+      short = Impl.head_of(contents[0], short: true)
+      raise LocalError, "Git rev-parse failed" if head.nil? || short.nil?
+
+      if pin && head != pin.value
+        error "#{url}#{tag ? " at #{tag}" : ""} is at commit #{head}"
+        info "   pinned: #{pin}"
+        info "the tag moved, or the pin is wrong: nothing was kept"
+        return false
+      end
+
+      # The commit in full for the check, and as git abbreviates it
+      # for a recipe that prints it ($SRC_REF).
+      File.write(File.join(contents[0], REF), head + "\n")
+      File.write(File.join(contents[0], REF_SHORT), short + "\n")
+      rm_rf(File.join(contents[0], ".git"))
+
       info "Packaging #{tarname} in the cache"
-      ok = system("tar", "cfz", tarname, contents[0])
+      ok = Pack.create(contents[0], tarname)
       raise LocalError, "Failed to pack cloned git repo" if !ok
 
       assert { mkpathname(tarname).file? }
       mv(tarname, filepath_in_cache)
     end
 
-    return true
+    return verified?(tarname, pin, kind: :git)
 
   rescue LocalError => e
     error e

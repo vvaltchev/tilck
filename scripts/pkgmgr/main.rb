@@ -1222,6 +1222,13 @@ module Main
       return 1
     end
 
+    begin
+      pkgmgr.validate_sources
+    rescue PackageManager::SourceNameError => e
+      error "Source error: #{e.message}"
+      return 1
+    end
+
     if options[:list_stacks]
       pkgmgr.show_stacks(scope: scope)
       puts

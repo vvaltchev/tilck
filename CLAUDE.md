@@ -397,6 +397,15 @@ for by name (`-s pkg:ver`, recorded as `origin:` in `.install`) is left
 alone. CMake detects stale at configure (both files are
 `CMAKE_CONFIGURE_DEPENDS`).
 
+Every file the cache holds is pinned in a third file,
+`other/pkg_hashes`: `<cache filename>: sha256:<64 hex>` for a file
+downloaded as it is, `<cache filename>: git:<40 hex>` for a source we
+clone and pack (the commit, never the archive's digest). A new package
+or version fails `test_lint_sources.rb` until its line is added; the
+first fetch prints the line. Never compute a pin from a file already in
+the cache and paste it: take the upstream's published sum, or let the
+tool download fresh and print it.
+
 `-s`, `-u` and `-C` all take `PKG[:VER]`. A `dep_list` entry can pin
 an exact version — `Dep('host_x', true, ver: Ver('1.2'))` — for host
 packages only; the target side is one version per package. An
