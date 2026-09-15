@@ -24,6 +24,8 @@ require_relative 'lint/ambient'
 
 class TestLintAmbient < Minitest::Test
 
+  include SourceAudit
+
   PKGMGR = Pathname(__dir__).parent
 
   ALLOW = {

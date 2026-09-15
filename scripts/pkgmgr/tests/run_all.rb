@@ -14,6 +14,13 @@
 #   --run-also-tilck-tests  With --system-tests: run gtests + system tests
 #   --test-arch ARCH|ALL  With --system-tests: the arch(es) to build for
 #   --test-board B|ALL    With --system-tests: the board(s) of each arch
+#   --fail-fast           Stop at the first failure
+#
+# MUTATION_RUN=1 in the environment is how the mutation driver runs
+# this: the run judges a mutant, which is dead at its first failure,
+# so it stops there; the sampled lane -- the quickest killer -- runs
+# before everything else; and the source audits (SourceAudit in
+# test_helper.rb), which no operator can fail, are left out.
 #
 
 # --- Parse runner options before minitest loads ---
@@ -26,6 +33,8 @@ $all_build_types     = ARGV.delete("--all-build-types")
 $run_tilck_tests     = ARGV.delete("--run-also-tilck-tests")
 $exhaustive          = ARGV.delete("--exhaustive")
 $mutation            = ARGV.delete("--mutation")
+$judging             = !ENV["MUTATION_RUN"].to_s.empty?
+$fail_fast           = ARGV.delete("--fail-fast") || $judging
 
 # A trace is for reading after a kill, and a kill takes the buffer
 # with it: unbuffered, or the last lines -- the ones that matter --
@@ -199,11 +208,11 @@ class PrettyReporter < Minitest::AbstractReporter
       show_captured(result)
       show_failure(result)
 
-      # Stop on first failure
-      @abort = true
-      Minitest::Runnable.runnables.clear
+      @abort = true if $fail_fast
     end
   end
+
+  def aborted? = @abort
 
   def report
     wall = Process.clock_gettime(Process::CLOCK_MONOTONIC) - @wall_start
@@ -330,6 +339,29 @@ end
 
 Minitest::Test.prepend(CaptureOutput)
 
+# --fail-fast: minitest takes its list of suites before the first one
+# runs, so clearing the list stops nothing; each test still to come is
+# told not to run once the reporter has seen a failure. The one test
+# is run by Runnable.run_one_method(klass, name, reporter) in minitest
+# 5 and by Runnable.run(klass, name, reporter) in minitest 6, where
+# the two-argument Runnable.run is the whole suite.
+module StopAtTheFirstFailure
+  def aborted?(reporter)
+    reporter.reporters.any? { |r| r.respond_to?(:aborted?) && r.aborted? }
+  end
+
+  def run_one_method(klass, method_name, reporter)
+    return if aborted?(reporter)
+    super
+  end
+
+  def run(*args)
+    return if args.length == 3 && aborted?(args.last)
+    super
+  end
+end
+Minitest::Runnable.singleton_class.prepend(StopAtTheFirstFailure)
+
 # --- Configure minitest ---
 
 module Minitest
@@ -348,6 +380,25 @@ end
 # --- Load all test files ---
 
 Dir.glob(File.join(__dir__, "test_*.rb")).sort.each { |f| require f }
+
+# --- Judging a mutant: the quickest killer first, the audits not at all ---
+
+if $judging && !$dry_run
+  require_relative 'exhaustive/runner'
+  Minitest::Runnable.runnables.reject! { |k| k.include?(SourceAudit) }
+  Minitest::Runnable.runnables.delete(TestExhaustive)
+
+  seed = ($exhaustive_seed || TestExhaustive::DEFAULT_SEED).to_i
+  problems = Exhaustive.self_test
+  problems += Exhaustive.sample_problems(TestExhaustive::SAMPLE, seed: seed)
+                        .first(3).map(&:to_s) if problems.empty?
+  if !problems.empty?
+    puts "  #{Term::RED256}the sampled lane disagrees (seed #{seed}):" \
+         "#{Term::RESET}"
+    problems.each { |p| puts p }
+    exit 1
+  end
+end
 
 # --- Dry-run: list tests without running, then continue to system tests ---
 
@@ -417,7 +468,8 @@ Minitest.after_run {
   end
 
   # Mutation: every site of the logic core made wrong one way, and
-  # the whole suite run against each. Tens of minutes; a flag.
+  # the suite run against each until its first failure. Minutes; a
+  # flag.
   if $unit_tests_passed && $mutation
     require_relative 'mutation/driver'
     puts Term::HLINE

@@ -171,9 +171,12 @@ module Mutation
 
       runner = File.join(@dir, "scripts", "pkgmgr", "tests", "run_all.rb")
       out = File.join(@dir, "mutant.log")
-      # Traced, so that a suite killed at the timeout names the test
-      # it was in, and watched, so that its stack is in the log before
-      # the kill: the two facts a timeout report is otherwise without.
+      # MUTATION_RUN: the runner judges -- the sampled lane first, the
+      # source audits left out, the run over at its first failure
+      # (run_all.rb). Traced, so that a suite killed at the timeout
+      # names the test it was in, and watched, so that its stack is
+      # in the log before the kill: the two facts a timeout report is
+      # otherwise without.
       pid = Process.spawn(
         { "MUTATION_RUN" => "1", "PKGMGR_TRACE" => "1",
           "PKGMGR_WATCHDOG" => (timeout * 0.8).to_i.to_s },
