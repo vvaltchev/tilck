@@ -306,6 +306,32 @@ class TestCliMatrix < Minitest::Test
 
   # --- -s ------------------------------------------------------------
 
+  # A plan the planner refuses -- two roots pinning one dependency at
+  # two versions -- is refused at the command line too: rc 1, the
+  # reason said, nothing installed. The full lane has this case; the
+  # sampled one need not, and the mutant that dropped the refusal
+  # survived on CI for exactly that reason.
+  def test_s_refuses_a_version_conflict_and_installs_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        x = FakePackage.new("host_x", on_host: true, host_tier: :distro)
+        x.define_singleton_method(:installable_versions) {
+          [Ver("1.0.0"), Ver("2.0.0")]
+        }
+        a = FakePackage.new("host_a", on_host: true, host_tier: :distro,
+                            dep_list: [Dep("host_x", true, ver: Ver("1.0.0"))])
+        b = FakePackage.new("host_b", on_host: true, host_tier: :distro,
+                            dep_list: [Dep("host_x", true, ver: Ver("2.0.0"))])
+        [x, a, b].each { |p| pkgmgr.register(p) }
+
+        rc, out = run_cli("-s", "host_a", "host_b", "-q")
+        assert_equal 1, rc
+        assert_match(/Version conflict/, out)
+        assert_empty snapshot, "a refused plan installed something"
+      end
+    end
+  end
+
   # -f is a removal followed by an install, and both halves have to
   # mean the same installation. When they did not, the run announced
   # a removal and then said "already installed" -- twice, for two
