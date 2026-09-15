@@ -258,10 +258,14 @@ module Model
     return shape.arch_list.include?(scope.arch.name)
   end
 
+  # The scope's board, for every kind of package that has an arch: a
+  # host tool with a board_list is a tool for building that board,
+  # and a noarch package has no board to be bound to.
   def board_supported?(shape, scope)
-    return true if !shape.target? || shape.board_list.nil?
+    return true if shape.board_list.nil? || shape.noarch?
     return shape.board_list.include?(scope.board)
   end
+
 
   # Where a shape may run, by its own word...
   def own_host_supported?(shape, scope)
@@ -449,11 +453,11 @@ module Model
     end
 
     # SPEC: support is checked before anything is touched, for the
-    # arch AND the board. The implementation checks the board inside
-    # the install, after -f has already removed the old tree.
+    # arch AND the board -- of every package, a host tool for one
+    # board included. The implementation checked the board inside the
+    # install, after -f had already removed the old tree.
     for n in names do
       s = registry[n]
-      next if !s.target?
       if !supported?(s, scope, registry)
         return Outcome.new(1, world, "#{n} is not supported here")
       end
@@ -981,7 +985,8 @@ module Model
         s2 = sc.with(arch: a, board: b)
         here = expand_all(registry, req.targets, s2).select { |n, _|
           s = registry[n]
-          s.nil? || !s.target? || supported?(s, s2, registry)
+          s.nil? || supported?(s, s2, registry)
+
         }
         next if here.empty?
         o = install(registry, world, req.with(targets: here), s2)

@@ -492,20 +492,23 @@ class Package
 
   # Is the board supported? nil = any board.
   #
-  # The board that applies to the arch this package would be built
-  # FOR, which is not always the global one -- the same reason
-  # arch_supported? reads the scope's arch. `-a riscv64` from an
-  # i386 shell asked whether u-boot supported the board "pc", refused
-  # to install it, and had already force-removed it by then.
+  # The board is the scope's: the board of the target being built
+  # for, whatever the package itself is built for. A host tool with a
+  # board_list is a tool for building that board -- the SOPHGO
+  # toolchain for licheerv-nano -- and asking instead for the board
+  # of the arch the tool runs on gave the host's "pc", which no such
+  # list contains: `-s host_sophgo_tools` was refused on the one board
+  # that needs it. The scope's board is the target's even from another
+  # arch's shell: `-a riscv64` from i386 asks about riscv64's board,
+  # which is what once refused u-boot for "pc" after -f had removed it.
+  # A package with no arch of its own has no board either: there is
+  # no arch for a board to belong to.
   def board_supported?
-
-    return true if @board_list.nil?
-
-    a = default_arch
-    return true if a.nil?
-
-    return @board_list.include?(scope.board_of(a))
+    return true if @board_list.nil? || noarch?
+    return @board_list.include?(scope.board)
   end
+
+
 
   # Is the scope's target arch supported by this package?
   # Noarch (arch_list nil) and host packages are always true.
