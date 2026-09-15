@@ -1094,7 +1094,14 @@ set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
 
 # END [ARCH-dependent paths]
 
-if (BOARD)
+# A BSP is board DATA -- device tree, u-boot config -- and only the
+# embedded targets have any. Every arch names a board, because the
+# board is part of an installed package's path, but x86's is just "pc"
+# and carries no BSP: BOARD=pc is taken as it is. So the BSP is
+# included only where the arch has a BSP tree at all, and there a
+# board without one is an error -- a misspelled BOARD on riscv64. The
+# same rule as the package manager's early check.
+if (BOARD AND IS_DIRECTORY ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH})
    set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
    include(${BOARD_BSP}/board_bsp.cmake)
 endif()
