@@ -21,29 +21,22 @@ require_relative 'exhaustive/runner'
 class TestExhaustive < Minitest::Test
 
   SAMPLE = 5000
+  DEFAULT_SEED = 20260903
 
-  def seed = ($exhaustive_seed || 20260903).to_i
+  def seed = ($exhaustive_seed || DEFAULT_SEED).to_i
 
   def test_the_instrument_passes_its_self_test
     assert_empty Exhaustive.self_test
   end
 
   def test_a_sample_of_every_shape_agrees_with_the_model
-    ids = $exhaustive_case ? [$exhaustive_case]
-                           : Exhaustive.sample_ids(SAMPLE, seed: seed)
-    failed = []
-
-    Exhaustive.in_lane do
-      for id in ids do
-        r = Exhaustive.run_case(Exhaustive.case_by_id(id))
-        failed << r if !r.ok
-      end
-    end
+    ids = $exhaustive_case ? [$exhaustive_case] : nil
+    failed = Exhaustive.sample_problems(SAMPLE, seed: seed, ids: ids)
 
     assert_empty failed,
-                 "#{failed.length} of #{ids.length} cases disagree with " \
-                 "the model (seed #{seed}; replay one with " \
-                 "--case ID):\n\n" +
+                 "#{failed.length} of #{ids&.length || SAMPLE} cases " \
+                 "disagree with the model (seed #{seed}; replay one " \
+                 "with --case ID):\n\n" +
                  failed.first(5).map(&:to_s).join("\n\n")
   end
 
