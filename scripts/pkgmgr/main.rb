@@ -431,15 +431,12 @@ module Main
       puts "Project's root dir: '#{MAIN_DIR}'"
       exit 1
     end
-    # A BSP is board DATA -- device tree, u-boot config -- and only the
-    # embedded targets have any. Every arch now names a board, because
-    # the board is part of an installed package's path, but x86's is
-    # just "pc" and carries no BSP. So a missing BSP is an error only
-    # for an arch that ships them at all, which still catches a
-    # misspelled BOARD on riscv64.
-    bsp_root = MAIN_DIR / "other" / "bsp" / ARCH.name
-
-    if BOARD && bsp_root.directory? && !board_bsp.exist?
+    # Every board of every arch has a BSP directory under other/bsp,
+    # even x86's "pc", whose only content is a note that there is no
+    # board data for a PC. So a board the arch does not have is caught
+    # here, for every arch, the way CMake catches it: by the directory
+    # that is not there.
+    if BOARD && !board_bsp.exist?
       error "BOARD_BSP: #{board_bsp} not found!"
       exit 1
     end

@@ -214,13 +214,23 @@ define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 define_env_cache_bool_var(TEST_GCOV)
 define_env_cache_bool_var(KERNEL_GCOV)
 
-# Board defaults and stick variable
+# Every arch has a board -- it is a coordinate of every installed
+# package, and other/bsp/<arch>/<board> is its BSP -- and one of them
+# is the default: the PC platform for x86, QEMU's virt machine for
+# riscv64. BOARD is sticky like ARCH.
 if (${ARCH} STREQUAL "riscv64")
    set(ARCH_DEFAULT_BOARD     "qemu-virt")
 else()
-   set(ARCH_DEFAULT_BOARD     "")
+   set(ARCH_DEFAULT_BOARD     "pc")
 endif()
 define_env_cache_str_var(BOARD "${ARCH_DEFAULT_BOARD}")
+
+# A build directory configured before x86 had a board cached BOARD as
+# empty, and a sticky variable keeps what it cached. Empty means the
+# arch's default, now as then.
+if (NOT BOARD)
+   set(BOARD "${ARCH_DEFAULT_BOARD}" CACHE INTERNAL "" FORCE)
+endif()
 
 # Keep USE_SYSCC as a sticky env variable so that we can fail, if used.
 define_env_cache_bool_var(USE_SYSCC)
@@ -979,16 +989,11 @@ message(STATUS "GCC_TC_VER: ${GCC_TC_VER}")
 # nothing creates. So ask instead -- one call, at configure time only.
 #
 # ARCH, BOARD and GCC_TC_VER go through the environment, which is how
-# the package manager takes them everywhere else.
-# BOARD only when one was actually chosen. It is empty here for every
-# arch with a single board, and passing BOARD= would override the
-# package manager's default with nothing -- which is how the i386
-# packages came back as tilck-i386/gcc-13.3.0, one coordinate short.
-set(_layout_env ARCH=${ARCH} GCC_TC_VER=${GCC_TC_VER})
-
-if (BOARD)
-   list(APPEND _layout_env BOARD=${BOARD})
-endif()
+# the package manager takes them everywhere else. BOARD is never
+# empty here: an empty one would override the package manager's
+# default with nothing -- which is how the i386 packages once came
+# back as tilck-i386/gcc-13.3.0, one coordinate short.
+set(_layout_env ARCH=${ARCH} BOARD=${BOARD} GCC_TC_VER=${GCC_TC_VER})
 
 execute_process(
    COMMAND
@@ -1015,12 +1020,7 @@ endforeach()
 # The package manager derives the host identity independently. When the
 # two disagree, every host-tool path is wrong in a way that surfaces
 # much later as a missing file, so stop here instead.
-# BOARD is compared only when CMake has one: where it does not, the
-# package manager's default is the answer, not a disagreement.
 foreach(_v ARCH BOARD HOST_DISTRO HOST_CC)
-   if ("${_v}" STREQUAL "BOARD" AND NOT BOARD)
-      continue()
-   endif()
    if (NOT "${PKGMGR_${_v}}" STREQUAL "${${_v}}")
       message(FATAL_ERROR
          "${_v} disagrees: CMake says '${${_v}}', "
@@ -1094,17 +1094,11 @@ set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
 
 # END [ARCH-dependent paths]
 
-# A BSP is board DATA -- device tree, u-boot config -- and only the
-# embedded targets have any. Every arch names a board, because the
-# board is part of an installed package's path, but x86's is just "pc"
-# and carries no BSP: BOARD=pc is taken as it is. So the BSP is
-# included only where the arch has a BSP tree at all, and there a
-# board without one is an error -- a misspelled BOARD on riscv64. The
-# same rule as the package manager's early check.
-if (BOARD AND IS_DIRECTORY ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH})
-   set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
-   include(${BOARD_BSP}/board_bsp.cmake)
-endif()
+# The board's BSP: board data for the embedded targets, a note that
+# there is none for the PC. Every board of every arch has one, so a
+# board the arch does not have fails here, on every arch.
+set(BOARD_BSP           ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
+include(${BOARD_BSP}/board_bsp.cmake)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
