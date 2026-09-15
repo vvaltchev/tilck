@@ -20,6 +20,8 @@
 #            version nil when none was given
 #   force    -f      dry  -d
 #   arch     Architecture | :all | nil (-a)
+#   board    String | :all | nil (-b): one arch's board, so a name
+#            with -a ALL is refused (Planner.board_refusal)
 #   cc       Version | :all | nil (-c)
 #   stack    Version | nil (-H)
 #   contrib  --contrib: the extras appended to the default set
@@ -27,12 +29,12 @@
 
 require_relative 'version'
 
-Request = Data.define(:mode, :targets, :force, :dry, :arch, :cc, :stack,
-                      :contrib) do
+Request = Data.define(:mode, :targets, :force, :dry, :arch, :board, :cc,
+                      :stack, :contrib) do
   def self.make(mode, targets: [], force: false, dry: false, arch: nil,
-                cc: nil, stack: nil, contrib: false)
+                board: nil, cc: nil, stack: nil, contrib: false)
     new(mode: mode, targets: targets, force: force, dry: dry, arch: arch,
-        cc: cc, stack: stack, contrib: contrib)
+        board: board, cc: cc, stack: stack, contrib: contrib)
   end
 
   # "name[:ver]" as typed, to a target: ALL on either side is :all,
@@ -46,6 +48,10 @@ Request = Data.define(:mode, :targets, :force, :dry, :arch, :cc, :stack,
 
   # -a ALL: every arch, as a scope or as a filter.
   def every_arch? = arch == :all
+
+  # -b ALL: every board of the arch(es), as a scope or as a filter.
+  def every_board? = board == :all
+
 
   def to_s
     words = targets.map { |n, v|

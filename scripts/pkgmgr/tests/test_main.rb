@@ -1848,3 +1848,166 @@ class TestRunActSays < Minitest::Test
     end
   end
 end
+
+# ---------------------------------------------------------------
+# -b: the board, the way -a is the arch
+# ---------------------------------------------------------------
+
+class TestBoardModifier < Minitest::Test
+  include TestHelper
+
+  RV = ALL_ARCHS["riscv64"]
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def request(*argv) = Main.request_of(Main.parse_options(argv))
+
+  # One fake cross compiler per arch, portable like the real ones and
+  # each saying which arch it targets, so that the model sees the
+  # implicit dependency at the same coordinates.
+  def register_compilers!
+    ALL_ARCHS.values.each { |a|
+      pkgmgr.register(FakePackage.new("gcc-#{a.name}-musl", on_host: true,
+                                      host_tier: :portable,
+                                      is_compiler: true, target_arch: a))
+    }
+  end
+
+
+
+  def test_a_board_is_a_modifier_of_the_request
+    r = request("-s", "foo", "-b", "licheerv-nano")
+    assert_equal "licheerv-nano", r.board
+    refute r.every_board?
+
+    r = request("-u", "foo", "-a", "riscv64", "-b", "ALL")
+    assert_equal :all, r.board
+    assert r.every_board?
+
+    assert_nil request("-s", "foo").board
+  end
+
+  def test_a_board_no_arch_has_is_refused_at_parse
+    assert_raises(OptionParser::InvalidArgument) {
+      Main.parse_options(["-s", "foo", "-b", "nowhere"])
+    }
+  end
+
+  # A board belongs to one arch: named for an arch that does not
+  # have it, or beside -a ALL, the request is refused before anything
+  # is planned -- and the same for a query.
+  def test_a_board_of_another_arch_is_refused
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("foo"))
+
+        rc, out = run_cli("-s", "foo", "-b", "licheerv-nano", "-d")
+        assert_equal 1, rc
+        assert_match(/Unknown board licheerv-nano for i386/, out)
+
+        rc, out = run_cli("-s", "foo", "-a", "ALL", "-b", "pc", "-d")
+        assert_equal 1, rc
+        assert_match(/-b pc names one arch's board/, out)
+
+        rc, out = run_cli("--list-installable", "-b", "licheerv-nano")
+        assert_equal 1, rc
+        assert_match(/Unknown board licheerv-nano for i386/, out)
+        assert_empty pkgmgr.get("foo").get_install_list
+
+      end
+    end
+  end
+
+  def test_install_with_b_ALL_iterates_the_boards_of_the_arch
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("foo"))
+
+        rc, out = run_cli("-s", "foo", "-a", "riscv64", "-b", "ALL",
+                          "-d", "--ascii")
+        assert_equal 0, rc
+        RV.boards.each { |b|
+          assert_match(/Architecture: riscv64, board: #{b}/, out)
+        }
+        refute_match(/Architecture: i386/, out)
+      end
+    end
+  end
+
+  def test_install_with_a_ALL_and_b_ALL_covers_every_target
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("foo"))
+
+        rc, out = run_cli("-s", "foo", "-a", "ALL", "-b", "ALL",
+                          "-d", "--ascii")
+        assert_equal 0, rc
+        ALL_ARCHS.each_value { |a|
+          a.all_boards.each { |b|
+            assert_match(/Architecture: #{a.name}, board: #{b}/, out)
+          }
+        }
+
+        # The board is said only when the run is per board.
+        rc, out = run_cli("-s", "foo", "-a", "ALL", "-d", "--ascii")
+        assert_equal 0, rc
+        assert_match(/Architecture: riscv64/, out)
+        refute_match(/board:/, out)
+      end
+    end
+  end
+
+  # A named board is where the install goes.
+  def test_install_at_a_named_board
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+
+        rc, _ = run_cli("-s", "foo", "-a", "riscv64", "-b", "licheerv-nano",
+                        "-q")
+        assert_equal 0, rc
+
+        at = pkg.get_install_list.map { |i| i.coords.to_s }
+        assert_equal ["tilck-riscv64/licheerv-nano/gcc-#{FAKE_GCC_VER}"], at
+      end
+    end
+  end
+
+  # The default install -- no mode -- is the Tilck stack of the target
+  # -a and -b name, not the shell's.
+  def test_the_default_install_follows_a_and_b
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("dflt", default: true))
+        require_relative '../tilck_stack'
+        pkgmgr.register(TilckStackPackage.new(RV, "licheerv-nano"))
+
+        rc, out = run_cli("-d", "--ascii")
+        assert_equal 0, rc
+        assert_match(/No Tilck stack is defined for i386\/pc/, out)
+
+        rc, out = run_cli("-a", "riscv64", "-b", "licheerv-nano", "-d",
+                          "--ascii")
+        assert_equal 0, rc
+        assert_match(/tilck-riscv64-licheerv-nano/, out)
+        refute_match(/No Tilck stack/, out)
+      end
+    end
+  end
+
+  def test_the_self_test_forwards_the_board
+    opts = Main.parse_options(["-t", "--system-tests", "-a", "ALL",
+                               "-b", "ALL"])
+    assert opts[:self_test]
+    assert opts[:system_tests]
+    assert_equal "ALL", opts[:board]
+  end
+end

@@ -12,6 +12,8 @@
 #   --system-tests        After unit tests: install all pkgs, build all archs
 #   --all-build-types     With --system-tests: run all build generator configs
 #   --run-also-tilck-tests  With --system-tests: run gtests + system tests
+#   --test-arch ARCH|ALL  With --system-tests: the arch(es) to build for
+#   --test-board B|ALL    With --system-tests: the board(s) of each arch
 #
 
 # --- Parse runner options before minitest loads ---
@@ -51,6 +53,7 @@ if (budget = ENV["PKGMGR_WATCHDOG"].to_i) > 0
 end
 $test_filter         = nil
 $test_arch           = nil
+$test_board          = nil
 $test_packages_filter = nil
 
 if (idx = ARGV.index("--filter"))
@@ -61,6 +64,11 @@ end
 if (idx = ARGV.index("--test-arch"))
   ARGV.delete_at(idx)
   $test_arch = ARGV.delete_at(idx)
+end
+
+if (idx = ARGV.index("--test-board"))
+  ARGV.delete_at(idx)
+  $test_board = ARGV.delete_at(idx)
 end
 
 if (idx = ARGV.index("--test-packages-filter"))
@@ -435,7 +443,9 @@ Minitest.after_run {
       run_tilck: $run_tilck_tests,
       all_build_types: !!$all_build_types,
       arch: $test_arch,
+      board: $test_board,
       packages_filter: $test_packages_filter
+
     )
   end
 

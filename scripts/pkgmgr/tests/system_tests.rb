@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
-# System tests: install all packages, build Tilck for all architectures,
-# optionally run all build-generator configurations and Tilck's own tests.
+# System tests: install all packages and build Tilck, once per target
+# -- the archs -a names and the boards -b names -- optionally through
+# every build-generator configuration and Tilck's own tests.
 #
 # When $dry_run is set, the exact same code path executes but every
 # action prints [ DRY ] instead of running. Timing works in both modes.
@@ -32,7 +33,6 @@ module SystemTests
   # --- Paths ---
 
   MAIN_DIR   = Pathname.new(File.expand_path("../../..", __dir__))
-  TC         = MAIN_DIR / DEFAULT_TC_NAME
   BTC        = (MAIN_DIR / "scripts" / "build_toolchain").to_s
   CMAKE_RUN  = (MAIN_DIR / "scripts" / "cmake_run").to_s
   BUILDS_DIR = MAIN_DIR / "other_builds"
@@ -46,36 +46,52 @@ module SystemTests
 
   # --- Package constants ---
 
-  # Per-arch package sets come from `build_toolchain --list-installable`
+  # Per-target package sets come from `build_toolchain --list-installable`
   # at runtime (see installable_pkg_tags below). Keeping a hardcoded
   # OPTIONAL_PACKAGES here would drift as packages are added/removed.
 
+  # The CMake flag that builds each optional package into the image,
+  # by the package's name: a flag is passed when its package was
+  # installed for the target being built. By name and not by path --
+  # the paths this table held were toolchain4's, and every flag had
+  # quietly stopped being passed when the layout changed.
   EXTRA_FLAG_MAP = {
-    "EXTRA_VIM"          => ->(arch) { arch_pkg_dir(arch) / "vim" },
-    "EXTRA_TCC"          => ->(arch) { arch_pkg_dir(arch) / "tcc" },
-    "EXTRA_FBDOOM"       => ->(arch) { arch_pkg_dir(arch) / "fbdoom" },
-    "EXTRA_MICROPYTHON"  => ->(arch) { arch_pkg_dir(arch) / "micropython" },
-    "EXTRA_LUA"          => ->(arch) { arch_pkg_dir(arch) / "lua" },
-    "EXTRA_TREE_CMD"     => ->(arch) { arch_pkg_dir(arch) / "treecmd" },
-    "EXTRA_TFBLIB"       => ->(arch) { TC / "noarch" / "tfblib" },
+    "EXTRA_VIM"          => "vim",
+    "EXTRA_TCC"          => "tcc",
+    "EXTRA_FBDOOM"       => "fbdoom",
+    "EXTRA_MICROPYTHON"  => "micropython",
+    "EXTRA_LUA"          => "lua",
+    "EXTRA_TREE_CMD"     => "treecmd",
+    "EXTRA_TFBLIB"       => "tfblib",
   }
 
-  # --- Path helpers ---
-
-  def gcc_ver_for(arch_name)
-    File.read(
-      MAIN_DIR / "other" / "gcc_tc_conf" / arch_name / "default_ver"
-    ).strip
-  end
-
-  def arch_pkg_dir(arch_name)
-    TC / "gcc-#{gcc_ver_for(arch_name)}" / arch_name
-  end
+  # --- Targets ---
 
   def resolve_archs(arch)
     return ALL_TEST_ARCHS if arch == "ALL"
     return [arch] if arch
     [DEFAULT_ARCH]
+  end
+
+  # The [arch, board] pairs a run is about: -a's archs, at the board
+  # -b names, every board of each for -b ALL, the arch's default
+  # otherwise. A board belongs to one arch: a name beside -a ALL, or
+  # one the arch does not have, is refused before anything is wiped.
+  def resolve_targets(arch, board)
+    if board && board != "ALL" && arch == "ALL"
+      fail!("-b #{board} names one arch's board: with -a ALL, use -b ALL")
+    end
+    return resolve_archs(arch).flat_map { |name|
+      a = ALL_ARCHS.fetch(name)
+      boards = if board == "ALL" then a.all_boards
+               elsif board then [board]
+               else [a.default_board]
+               end
+      if (bad = boards.find { |b| !a.all_boards.include?(b) })
+        fail!("Unknown board #{bad} for #{name}")
+      end
+      boards.map { |b| [name, b] }
+    }
   end
 
   # --- Coverage plumbing ---
@@ -86,8 +102,8 @@ module SystemTests
   # Base env hash for subprocesses. Includes COVERAGE_DIR when the
   # test runner has coverage enabled, so subprocess installs also
   # collect coverage data.
-  def base_env(arch_name)
-    env = { "ARCH" => arch_name, "BOARD" => nil }
+  def base_env(arch_name, board)
+    env = { "ARCH" => arch_name, "BOARD" => board }
     env["COVERAGE_DIR"] = COVERAGE_DIR if COVERAGE_DIR
     env
   end
@@ -159,7 +175,9 @@ module SystemTests
   # --- Compound actions ---
 
   # Remove everything this test is about to reinstall, and nothing
-  # else.
+  # else -- once, before the first target: what one target installs
+  # is not what another builds from, so a wipe per target proved
+  # nothing more and left only the last target's packages behind.
   #
   # Through the package manager, not by walking directories. The hand
   # rolled version kept a child called "host" and deleted the rest --
@@ -193,9 +211,12 @@ module SystemTests
     ok(now - t0)
   end
 
-  def install_packages(arch_name, packages_filter: nil)
-    env = base_env(arch_name)
-    installable = installable_pkg_tags(arch_name)
+  # Install every package the target can take, in dependency order,
+  # one -s per package. Returns the names installed, for the flags
+  # the build is given.
+  def install_packages(arch_name, board, packages_filter: nil)
+    env = base_env(arch_name, board)
+    installable = installable_pkg_tags(arch_name, board)
 
     if packages_filter
       re = Regexp.new(packages_filter)
@@ -212,17 +233,18 @@ module SystemTests
       run_cmd("Install #{name}#{suffix}",
               [BTC, "-q", "-n", "-s", name], env: env)
     }
+    return installable.map(&:first)
   end
 
   # Ask the pkgmgr (in a fresh subprocess) for the ordered list of
-  # packages installable on `arch_name`, with each entry tagged as
+  # packages installable on `arch_name` at `board`, with each entry tagged as
   # "default" (auto-installed by `build_toolchain` with no args,
   # either as an explicit default or a transitive dep of one) or
   # "optional" (opt-in only). Returns an array of [name, tag] pairs
   # in topological install order (deps before dependents), so a
   # consumer iterating `-s` per package keeps each step narrow.
-  def installable_pkg_tags(arch_name)
-    env = base_env(arch_name).merge("QUIET" => "1")
+  def installable_pkg_tags(arch_name, board)
+    env = base_env(arch_name, board).merge("QUIET" => "1")
     out = IO.popen(env, [BTC, "-q", "--list-installable"],
                    err: "/dev/null", &:read)
     out.split("\n").reject(&:empty?).map { |line|
@@ -231,17 +253,15 @@ module SystemTests
     }
   end
 
-  def extra_cmake_flags(arch_name)
-    EXTRA_FLAG_MAP.filter_map { |flag, path_proc|
-      if $dry_run || (path_proc.call(arch_name).directory? rescue false)
-        "-D#{flag}=1"
-      end
+  def extra_cmake_flags(installed)
+    EXTRA_FLAG_MAP.filter_map { |flag, name|
+      "-D#{flag}=1" if installed.include?(name)
     }
   end
 
-  def cmake_and_build(arch_name, build_dir)
-    env    = { "ARCH" => arch_name }
-    extras = extra_cmake_flags(arch_name)
+  def cmake_and_build(arch_name, board, build_dir, installed)
+    env    = { "ARCH" => arch_name, "BOARD" => board }
+    extras = extra_cmake_flags(installed)
 
     # The full list of -DEXTRA_*=1 flags is kept out of the step
     # label (it can reach 7+ flags, too long to scan at a glance)
@@ -273,36 +293,42 @@ module SystemTests
     end
   end
 
-  def maybe_run_tilck_tests(arch_name, build_dir, run_tilck)
-    if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
+  # Tilck's own tests boot the image under QEMU, which is what the
+  # arch's default board is: an image for other hardware has nothing
+  # to boot on here.
+  def maybe_run_tilck_tests(arch_name, board, build_dir, run_tilck)
+    if run_tilck && TILCK_TEST_ARCHS.include?(arch_name) &&
+       board == ALL_ARCHS.fetch(arch_name).default_board
       run_tilck_tests(build_dir)
     end
   end
 
-  # --- Per-arch phases ---
+  # --- Per-target phases ---
 
-  def do_install(arch_name, packages_filter)
+  def do_install(arch_name, board, packages_filter)
+    installed = nil
     section("Install packages") do
-      wipe_toolchain
-      install_packages(arch_name, packages_filter: packages_filter)
+      installed = install_packages(arch_name, board,
+                                   packages_filter: packages_filter)
     end
+    return installed
   end
 
-  def do_default_build(arch_name, run_tilck)
-    build_dir = (BUILDS_DIR / "systest_#{arch_name}").to_s
+  def do_default_build(arch_name, board, run_tilck, installed)
+    build_dir = (BUILDS_DIR / "systest_#{arch_name}_#{board}").to_s
 
     section("Default build") do
       in_build_dir(build_dir) do
-        cmake_and_build(arch_name, build_dir)
-        maybe_run_tilck_tests(arch_name, build_dir, run_tilck)
+        cmake_and_build(arch_name, board, build_dir, installed)
+        maybe_run_tilck_tests(arch_name, board, build_dir, run_tilck)
       end
     end
   end
 
-  def do_generator_build(arch_name, gen_name, run_tilck)
+  def do_generator_build(arch_name, board, gen_name, run_tilck)
     gen_script = (GEN_DIR / gen_name).to_s
-    build_dir  = (BUILDS_DIR / "#{gen_name}_#{arch_name}").to_s
-    env        = { "ARCH" => arch_name }
+    build_dir  = (BUILDS_DIR / "#{gen_name}_#{arch_name}_#{board}").to_s
+    env        = { "ARCH" => arch_name, "BOARD" => board }
 
     section(gen_name) do
       in_build_dir(build_dir) do
@@ -326,21 +352,21 @@ module SystemTests
         run_cmd("make -j", ["make", "-j"],
                 log: "#{build_dir}/build.log", env: env)
 
-        maybe_run_tilck_tests(arch_name, build_dir, run_tilck)
+        maybe_run_tilck_tests(arch_name, board, build_dir, run_tilck)
       end
     end
   end
 
-  def do_all_generators(arch_name, run_tilck)
+  def do_all_generators(arch_name, board, run_tilck)
     Dir.children(GEN_DIR).sort.each { |gen_name|
-      do_generator_build(arch_name, gen_name, run_tilck)
+      do_generator_build(arch_name, board, gen_name, run_tilck)
     }
   end
 
   # --- Main entry point ---
 
   def run(run_tilck: false, all_build_types: false,
-          arch: nil, packages_filter: nil)
+          arch: nil, board: nil, packages_filter: nil)
 
     # Everything below drives `build_toolchain` as a subprocess, which
     # gets a world of its own -- except wipe_toolchain, which asks this
@@ -350,15 +376,19 @@ module SystemTests
 
     grand_t0 = now
     FileUtils.mkdir_p(BUILDS_DIR) if !$dry_run
+    targets = resolve_targets(arch, board)
 
-    resolve_archs(arch).each { |arch_name|
+    section("Wipe") { wipe_toolchain }
 
-      section("Architecture: #{arch_name}") do
-        do_install(arch_name, packages_filter)
-        do_default_build(arch_name, run_tilck)
-        do_all_generators(arch_name, run_tilck) if all_build_types
+    targets.each { |arch_name, b|
+
+      section("Target: #{arch_name}/#{b}") do
+        installed = do_install(arch_name, b, packages_filter)
+        do_default_build(arch_name, b, run_tilck, installed)
+        do_all_generators(arch_name, b, run_tilck) if all_build_types
       end
     }
+
 
     puts
     puts HLINE

@@ -34,8 +34,7 @@ class TestLintAmbient < Minitest::Test
       "the CLI boundary: turns GCC_TC_VER and ARCH into gcc_ver",
     "main.rb#early_checks" =>
       "validates the invocation's BOARD against the BSP tree",
-    "main.rb#requested_arch" =>
-      "the one place -a is turned into a scope",
+
     "scope.rb#self.env" =>
       "builds the environment's Scope from ARCH and BOARD: the one " \
       "place the constants become a value",

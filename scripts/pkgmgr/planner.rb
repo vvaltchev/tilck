@@ -411,12 +411,19 @@ module Planner
   # The coordinates an uninstall of `pkg` is about. Written out per
   # kind rather than derived, so that a reader can check each line
   # against the layout table in docs/package_manager.md.
-  def uninstall_where(registry, pkg, all_pkgs, cc, arch, scope)
+  def uninstall_where(registry, pkg, all_pkgs, cc, arch, board, scope)
 
     stack_of = ->(default) {
       next :any    if cc == :any
       next default if cc.nil?
       Coords.stack_name(cc)
+    }
+
+    # The board of an arch's coordinates: -b's, every one for ALL, the
+    # scope's for the arch without it.
+    env_of = ->(a) {
+      next :any if board.eql?("ALL")
+      board.nil? ? scope.board_of(a) : board
     }
 
     arch_of = ->(a) {
@@ -442,33 +449,35 @@ module Planner
       return [
         CoordsFilter.new(machine: "noarch", env: :any, stack: st),
         CoordsFilter.new(machine: HOST_OS_ARCH, env: :any, stack: st),
-        target_at.call(a, scope.board_of(a), :any),
+        target_at.call(a, env_of.call(a), :any),
       ]
     end
 
-    # An orphan has no package to say where it lives, so -a and -c are
-    # read directly as coordinates: an arch's machine, a stack. With
-    # neither, every copy goes.
+    # An orphan has no package to say where it lives, so -a, -b and -c
+    # are read directly as coordinates: an arch's machine, a board's
+    # env, a stack. With none, every copy goes.
     if pkg.nil?
       st = stack_of.call(:any)
-      return [CoordsFilter.new(machine: :any, env: :any, stack: st)] \
+      env = (board.nil? || board.eql?("ALL")) ? :any : board
+      return [CoordsFilter.new(machine: :any, env: env, stack: st)] \
         if arch.nil? || arch.eql?("ALL")
       a = arch_of.call(arch)
-      return [CoordsFilter.new(machine: "tilck-#{a.name}", env: :any,
+      return [CoordsFilter.new(machine: "tilck-#{a.name}", env: env,
                                stack: st)]
     end
 
     at = pkg.at(scope)
 
-    # Noarch: one place, and neither -a nor -c can mean anything.
+    # Noarch: one place, and none of -a, -b and -c can mean anything.
     if pkg.noarch?
-      return [] if !arch.nil? || (!cc.nil? && cc != :any)
+      return [] if !arch.nil? || !board.nil? || (!cc.nil? && cc != :any)
       return [CoordsFilter.exact(at.coords)]
     end
 
-    # Host: -a means nothing. -c selects a stack, for a :stack package.
+    # Host: -a and -b mean nothing. -c selects a stack, for a :stack
+    # package.
     if pkg.on_host
-      return [] if !arch.nil?
+      return [] if !arch.nil? || !board.nil?
       return [CoordsFilter.exact(at.coords)] if cc.nil? || cc == :any
       return [] if pkg.host_tier != :stack
       return [CoordsFilter.exact(Coords.new(HOST_OS_ARCH, nil,
@@ -481,7 +490,7 @@ module Planner
     end
 
     a = arch.nil? ? scope.arch : arch_of.call(arch)
-    return [target_at.call(a, scope.board_of(a), "gcc-#{a.gcc_ver}")]
+    return [target_at.call(a, env_of.call(a), "gcc-#{a.gcc_ver}")]
   end
 
   # WHICH installations `-u` means, as one value.
@@ -498,6 +507,8 @@ module Planner
   #             any; a version = the stack "gcc-<ver>".
   #   arch      nil = the scoped arch; "ALL" = every arch and board;
   #             a name = that arch at its board.
+  #   board     nil = the arch's scoped board; "ALL" = every board of
+  #             the arch; a name = that board.
   #   coords    an explicit list of coordinates, which beats all of the
   #             above (a forced install knows exactly what it will
   #             rewrite).
@@ -505,7 +516,7 @@ module Planner
   # Returns the selector, or a Refusal saying why when a named version
   # is not there.
   def selector(registry, pkg, name, install_list, scope, ver: nil,
-               compiler: nil, arch: nil, coords: nil)
+               compiler: nil, arch: nil, board: nil, coords: nil)
 
     all_pkgs = name.eql?("ALL")
     cc = compiler.eql?("ALL") ? :any : (compiler.blank? ? nil : compiler)
@@ -514,7 +525,7 @@ module Planner
     where = if coords
       coords.map { |c| CoordsFilter.exact(c) }
     else
-      uninstall_where(registry, pkg, all_pkgs, cc, arch, scope)
+      uninstall_where(registry, pkg, all_pkgs, cc, arch, board, scope)
     end
 
     at_where = install_list.select { |e|
@@ -546,7 +557,7 @@ module Planner
   # about it: [installs, notes]. `except` names packages spared; ALL
   # spares the cross compilers unless `force`.
   def select(registry, world, name, scope, ver: nil, compiler: nil,
-             arch: nil, coords: nil, force: false, except: [])
+             arch: nil, board: nil, coords: nil, force: false, except: [])
 
     raise ArgumentError, "Invalid package name: '#{name}'" if name.blank?
 
@@ -563,7 +574,8 @@ module Planner
       end
 
     sel = selector(registry, pkg, name, install_list, scope, ver: ver,
-                   compiler: compiler, arch: arch, coords: coords)
+                   compiler: compiler, arch: arch, board: board,
+                   coords: coords)
     return [[], notes << sel.message] if sel.is_a?(Refusal)
 
     picked = install_list.select { |e|
@@ -592,11 +604,12 @@ module Planner
   end
 
   def plan_uninstall(registry, world, name, scope, ver: nil, compiler: nil,
-                     arch: nil, coords: nil, force: false, except: [])
+                     arch: nil, board: nil, coords: nil, force: false,
+                     except: [])
 
     picked, notes = select(registry, world, name, scope, ver: ver,
-                           compiler: compiler, arch: arch, coords: coords,
-                           force: force, except: except)
+                           compiler: compiler, arch: arch, board: board,
+                           coords: coords, force: force, except: except)
 
     # Nothing matched, and the caller named something specific: say
     # so, and where it is. ALL is exempt -- `-u ALL` on a clean tree
@@ -613,10 +626,11 @@ module Planner
 
   # --mark-manual / --mark-auto: the same selection as -u, re-marked.
   def plan_mark(registry, world, name, manual, scope, ver: nil,
-                compiler: nil, arch: nil, force: false)
+                compiler: nil, arch: nil, board: nil, force: false)
 
     picked, notes = select(registry, world, name, scope, ver: ver,
-                           compiler: compiler, arch: arch, force: force)
+                           compiler: compiler, arch: arch, board: board,
+                           force: force)
     if picked.empty? && notes.none? { |n| n&.include?("not installed") }
       notes << "#{name}: nothing matched, so nothing was marked"
     end
@@ -825,7 +839,11 @@ module Planner
   # its records already. The observations (-l and its kin) change
   # nothing and return the world as it was: what they print is main's.
   def step(registry, world, req, scope)
+    if (why = board_refusal(req, scope))
+      return Outcome.refused(world, why)
+    end
     case req.mode
+
     when :install       then step_install(registry, world, req, scope)
     when :default       then step_default(registry, world, req, scope)
     when :upgrade       then step_upgrade(registry, world, req, scope)
@@ -916,6 +934,20 @@ module Planner
   # arch by name: an Architecture answers `== "ALL"` with true, which
   # made every -a <arch> read as -a ALL.
   def arch_word(req) = req.every_arch? ? "ALL" : req.arch&.name
+  def board_word(req) = req.every_board? ? "ALL" : req.board
+
+  # -b, read at the door for every mode: a board belongs to one arch,
+  # so a name is refused with -a ALL, and refused for an arch that
+  # does not have it -- before anything is planned, filtered or read.
+  # Why, or nil.
+  def board_refusal(req, scope)
+    return nil if !req.board.is_a?(String)
+    return "-b #{req.board} names one arch's board: with -a ALL, " \
+           "use -b ALL" if req.every_arch?
+    a = req.arch || scope.arch
+    return nil if a.all_boards.include?(req.board)
+    return "Unknown board #{req.board} for #{a.name}"
+  end
   def cc_word(req)
     return "ALL" if req.cc == :all
     return req.cc.is_a?(Version) ? req.cc.to_s : req.cc
@@ -923,17 +955,25 @@ module Planner
 
   # `-s`: once per arch (-a ALL threads the world through, an arch that
   # cannot build a root is skipped and said), each arch planned from
-  # the world the one before it leaves.
+  # the world the one before it leaves. -b ALL is once per board of
+  # each arch, the same way; a named board is the board the arch is
+  # built for.
   def step_install(registry, world, req, scope)
 
-    every = req.every_arch?
-    archs = every ? ALL_ARCHS.values : [req.arch || scope.arch]
+    every = req.every_arch? || req.every_board?
+    archs = req.every_arch? ? ALL_ARCHS.values : [req.arch || scope.arch]
     acts = []
 
-    for target in archs do
-      sc = scope.with(arch: target)
+    targets = archs.flat_map { |a|
+      (req.every_board? ? a.all_boards : [req.board]).map { |b| [a, b] }
+
+    }
+
+    for target, board in targets do
+      sc = scope.with(arch: target, board: board)
       notes = []
       label = every ? target : nil
+      blabel = req.every_board? ? board : nil
 
       # ALL expanded inside the arch's scope, so that what is
       # installable is read for the right arch.
@@ -966,7 +1006,7 @@ module Planner
       end
 
       if skipped
-        acts << Act.make(nil, arch: label, notes: notes)
+        acts << Act.make(nil, arch: label, board: blabel, notes: notes)
         next
       end
 
@@ -975,7 +1015,7 @@ module Planner
         if plan.is_a?(Refusal)
 
       acts << Act.make(plan, roots: requested.map(&:first), arch: label,
-                       notes: notes)
+                       board: blabel, notes: notes)
       world = plan.apply(registry, world) if !req.dry
     end
 
@@ -990,6 +1030,13 @@ module Planner
   # user's; the upgrades beside it are upgrades, and inherit the mark
   # of what they replace.
   def step_default(registry, world, req, scope)
+
+    # -a <arch> and -b <board> name the target whose stack this is;
+    # ALL on either is the shell's target, as the model reads it.
+    scope = scope.with(
+      arch: req.arch.is_a?(Architecture) ? req.arch : scope.arch,
+      board: req.board.is_a?(String) ? req.board : nil
+    )
 
     defaults = registry.tilck_stacks.select { |m| m.at(scope).supported? }
     upgrades = upgradable(registry, world, scope)
@@ -1056,7 +1103,7 @@ module Planner
       plan = plan_uninstall(registry, world, n, scope,
                             ver: v == :all ? "ALL" : v,
                             compiler: cc_word(req), arch: arch_word(req),
-                            force: req.force)
+                            board: board_word(req), force: req.force)
       acts << Act.make(plan)
       world = plan.apply(registry, world) if !req.dry
     end
@@ -1079,7 +1126,7 @@ module Planner
       plan = plan_mark(registry, world, n, manual, scope,
                        ver: v == :all ? "ALL" : v,
                        compiler: cc_word(req), arch: arch_word(req),
-                       force: req.force)
+                       board: board_word(req), force: req.force)
       acts << Act.make(plan)
       world = plan.apply(registry, world) if !req.dry
     end

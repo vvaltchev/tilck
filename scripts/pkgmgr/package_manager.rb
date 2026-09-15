@@ -1231,9 +1231,11 @@ class PackageManager
   # WHICH installations `-u` means, as one value (Planner.selector).
   # Returns nil, having said why, when a named version is not there.
   def uninstall_selector(pkg, name, install_list, ver: nil, compiler: nil,
-                         arch: nil, coords: nil, scope: env_scope)
+                         arch: nil, board: nil, coords: nil,
+                         scope: env_scope)
     sel = Planner.selector(self, pkg, name, install_list, scope, ver: ver,
-                           compiler: compiler, arch: arch, coords: coords)
+                           compiler: compiler, arch: arch, board: board,
+                           coords: coords)
     if sel.is_a?(Refusal)
       warning sel.message
       return nil
@@ -1242,8 +1244,9 @@ class PackageManager
   end
 
   # The coordinates an uninstall of `pkg` is about (Planner.uninstall_where).
-  def uninstall_where(pkg, all_pkgs, cc, arch, scope: env_scope)
-    return Planner.uninstall_where(self, pkg, all_pkgs, cc, arch, scope)
+  def uninstall_where(pkg, all_pkgs, cc, arch, board = nil, scope: env_scope)
+    return Planner.uninstall_where(self, pkg, all_pkgs, cc, arch, board,
+                                   scope)
   end
 
   # Uninstall: what Planner.plan_uninstall says, printed, then run
@@ -1252,7 +1255,8 @@ class PackageManager
   # run, how many would be: a caller that reports "removed nothing"
   # when it selected fifty is worse than one that says nothing at all.
   def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil,
-                arch = nil, coords: nil, except: [], scope: env_scope)
+                arch = nil, board: nil, coords: nil, except: [],
+                scope: env_scope)
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
@@ -1261,8 +1265,9 @@ class PackageManager
     name = pkg_or_name.is_a?(Package) ? pkg_or_name.name : pkg_or_name
     plan = Planner.plan_uninstall(self, world, name, scope, ver: ver,
                                   compiler: compiler, arch: arch,
-                                  coords: coords, force: force,
-                                  except: except)
+                                  board: board, coords: coords,
+                                  force: force, except: except)
+
     plan.notes.each { |n| warning n }
     say_removals(plan, dry)
     Executor.run(self, plan) if !dry

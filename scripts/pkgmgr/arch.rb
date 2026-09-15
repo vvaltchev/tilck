@@ -34,6 +34,12 @@ Architecture = Struct.new(
   # To string conversion
   def to_s = name
 
+  # Every board Tilck builds for on this arch -- none for an arch that
+  # is a cross compiler only so far (aarch64), which has no default
+  # board either.
+  def all_boards = boards || []
+
+
   # Comparison operator
   def ==(other)
     case other
