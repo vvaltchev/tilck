@@ -175,45 +175,10 @@ def send_to_qemu_monitor(cmd, delay = 0.2):
    time.sleep(delay)
    echo_qemu_monitor()
 
-def send_single_key_to_vm(key):
-
-   key_name = None
-
-   if not key:
-      return
-
-   if len(key) > 1:
-      key_name = key
-   else:
-      key_name = qemu.KEYS_MAP.get(key, None)
-
-   if key_name is not None:
-      send_to_qemu_monitor("sendkey " + key_name, 0.05)
-
 def send_string_to_vm(s):
 
-   in_special_key = False
-   spk = ""
-
-   for k in s:
-
-      if in_special_key:
-
-         if k == "}":
-            send_single_key_to_vm(spk)
-            in_special_key = False
-            spk = ""
-            continue
-
-         spk += k
-
-      else:
-
-         if k == "{":
-            in_special_key = True
-            continue
-
-         send_single_key_to_vm(k)
+   for keys in qemu.keys_for_string(s):
+      send_to_qemu_monitor("sendkey " + "-".join(keys), 0.05)
 
 def delete_old_screenshots():
 
