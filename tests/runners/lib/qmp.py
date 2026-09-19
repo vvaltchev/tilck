@@ -21,6 +21,7 @@
 
 import os
 import json
+import time
 import codecs
 import socket
 import shutil
@@ -69,7 +70,10 @@ class QmpClient:
 
       self.listener.bind(self.path)
       self.listener.listen(1)
-      self.listener.settimeout(timeout)
+
+   @property
+   def connected(self):
+      return self.conn is not None
 
    @property
    def qemu_arg(self):
@@ -78,19 +82,33 @@ class QmpClient:
       """
       return "unix:" + self.path
 
-   def accept(self):
+   def accept(self, alive = lambda: True):
       """
       Wait for QEMU to connect, read its greeting and negotiate the
-      capabilities. Returns the greeting's version dict.
+      capabilities. Returns the greeting's version dict. `alive` is
+      polled while waiting: a QEMU that exits before connecting (a bad
+      command line) is reported at once, not after the timeout.
       """
 
-      try:
-         self.conn, unused = self.listener.accept()
-      except socket.timeout:
-         raise QmpTimeout(
-            "QEMU did not connect to {} within {}s"
-            .format(self.path, self.timeout)
-         ) from None
+      deadline = time.monotonic() + self.timeout
+      self.listener.settimeout(0.5)
+
+      while True:
+
+         try:
+            self.conn, unused = self.listener.accept()
+            break
+         except socket.timeout:
+            pass
+
+         if not alive():
+            raise QemuGone("QEMU exited before connecting to QMP")
+
+         if time.monotonic() >= deadline:
+            raise QmpTimeout(
+               "QEMU did not connect to {} within {}s"
+               .format(self.path, self.timeout)
+            )
 
       self.conn.settimeout(self.timeout)
       greeting = self.read_message()
@@ -144,6 +162,9 @@ class QmpClient:
 
       if args:
          msg["arguments"] = args
+
+      if not self.connected:
+         raise QmpError("Not connected to QEMU")
 
       try:
          self.conn.sendall((json.dumps(msg) + "\n").encode("utf-8"))
