@@ -22,6 +22,7 @@ FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 ARCH = '@ARCH@'
+QEMU_BIN = 'qemu-system-@ARCH@'
 
 CMAKE_CONFIG = {
    "MOD_serial" : ("@MOD_serial@", True)
@@ -251,7 +252,7 @@ def run_the_vm():
    arch_opts = list(filter(None, arch_opts_str.split(' ')))
    common_opts = list(filter(None, "@QEMU_COMMON_OPTS@".split(' ')))
    args = [
-      'qemu-system-@ARCH@',
+      QEMU_BIN,
       '-m', str(VM_MEMORY_SIZE_IN_MB),
       '-vga', 'none',
       '-nographic',
@@ -428,7 +429,7 @@ def main():
       if args.qemu_kvm_version:
          set_qemu_kvm_version(args.qemu_kvm_version)
 
-      detect_kvm()
+      detect_kvm(QEMU_BIN)
 
    thread = threading.Thread(target = run_the_vm)
    thread.start()

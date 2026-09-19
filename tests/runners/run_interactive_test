@@ -22,6 +22,7 @@ RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
 INTERACTIVE_TESTS = "@CMAKE_SOURCE_DIR@/tests/interactive"
 INTERACTIVE_EXP = "@CMAKE_SOURCE_DIR@/tests/interactive/expected"
 TILCK_IMAGE = "@IMG_FILE@"
+QEMU_BIN = "qemu-system-i386"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 PNM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pnm2text"
 FONT_FILE = "@CMAKE_SOURCE_DIR@/modules/fb/font8x16.psf"
@@ -30,6 +31,18 @@ GEN_KCOV_REPORT = "@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report"
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 QEMU_DEBUG_FILE = "@CMAKE_BINARY_DIR@/tmp/qemu_debugcon.log"
 QEMU_DEBUG_FILE2 = "@CMAKE_BINARY_DIR@/tmp/qemu_debug.log"
+QEMU_STDIO_FILE = "@CMAKE_BINARY_DIR@/tmp/qemu_stdio.log"
+
+# How long to wait for QEMU to connect to QMP, or for any reply.
+QMP_TIMEOUT = 60
+
+# QEMU delivers key press/release events from a queue on the virtual
+# clock, KEY_HOLD_TIME_MS apart, and silently drops past 1024 queued
+# entries; a press costs 4 entries per key name (press, delay, release,
+# delay). So the keys go in bursts of at most KEY_BURST_MAX presses,
+# and every burst is waited out before the next one, or a screenshot.
+KEY_HOLD_TIME_MS = 20
+KEY_BURST_MAX = 64
 
 CMAKE_CONFIG = {
    "EXTRA_VIM" : ("@EXTRA_VIM@", True),
@@ -46,6 +59,7 @@ CMAKE_CONFIG = {
 
 sys.path.append(RUNNERS_DIR)
 from lib import qemu
+from lib.qmp import *
 from lib.utils import *
 from lib.detect_kvm import *
 from lib.env import *
@@ -53,6 +67,7 @@ from lib.exceptions import *
 
 # Global state variables
 g_process = None
+g_qmp = None
 g_dumping_gcda_files = False
 g_timeout = None
 g_next_screenshot = 0
@@ -79,140 +94,44 @@ def wait_for_qemu_to_exit():
    while g_process.poll() is None:
       time.sleep(0.1)
 
-def recv_from_qemu_monitor(max_read_attempts):
+def qemu_alive():
+   return g_process is not None and g_process.poll() is None
 
-   read_anything = False
-   attempts = 0
-   bbuf = b''
-
-   while True:
-
-      btext = g_process.stdout.read()
-
-      # Is there any new text?
-      if btext:
-         bbuf += btext
-         read_anything = True
-         time.sleep(0.05)
-         continue
-
-      # Nope. Did we read anything in the previous iteration?
-      if read_anything:
-         break # Yep, end.
-
-      # Nope. Is the VM still alive?
-      if g_process.poll() is not None:
-         break # Nope. End returning an empty string
-
-      # Yep, the VM is still alive. But, should we re-try to read?
-
-      if max_read_attempts > 0 and attempts == max_read_attempts:
-         break # End returning an empty string
-
-      # Wait some before re-trying to read
-      time.sleep(0.1)
-      attempts += 1
-
-   return bbuf.decode('utf-8')
-
-# Handle the escape sequences used by QEMU's monitor.
-#
-# NOTE: for performance and simplicity, this code has NOT been designed to
-# handle any kind of ANSI sequences, not even by just skipping them.
-# It assumes that QEMU's input something like:
-#
-#     qESC[KESC[DquESC[KESC[DESC[DquiESC[KESC[DESC[DESC[DquitESC[K
-#
-# What's that
-# ------------
-#
-# It starts with a regular character. After that ESC[K is used to clear the rest
-# of the console's row and than ESC[D is used to move back by 1 column, after
-# which the regular character (q) is re-written and then followed by the next
-# regular character (u). The same steps are repeated for the following chars
-# with the only detail that every time the number of ESC[D increases by 1.
-#
-# What we do
-# -------------
-#
-# Well, after observing that the string always finishes with ESC[K preceeded by
-# the a whole substring of regular text, we cheat in the most barbaric way
-# possible by:
-#
-# 1. Skipping the ESC[K sequences. They're useless in this context.
-# 2. Split the new string by ESC[D
-# 3. Take the last element of that list
-
-def qemu_process_tty_text(ttytext):
-   ttytext = ttytext.replace("\033[K", "")
-   seq = ttytext.split("\033[D")
-   return seq[-1]
-
-def echo_qemu_monitor(read_attempts = 3):
-   tty_text = recv_from_qemu_monitor(read_attempts)
-   text = qemu_process_tty_text(tty_text)
-   raw_stdout_write(text)
-   return text
-
-def send_to_qemu_monitor(cmd, delay = 0.2):
+def vm_cmd(name, **args):
+   """
+   One QMP command to the VM. A lost connection marks QEMU as dead for
+   main()'s retry logic, as a broken monitor pipe used to.
+   """
 
    global g_qemu_died
 
-   if g_qemu_died:
-      return
-
    try:
-
-      g_process.stdin.raw.write("{}\n".format(cmd).encode('utf-8'))
-
-   except BrokenPipeError:
-
-      msg_print("BrokenPipeError in send_to_qemu_monitor('{}')".format(cmd))
+      return g_qmp.cmd(name, **args)
+   except QemuGone:
       g_qemu_died = True
       raise
 
-   time.sleep(delay)
-   echo_qemu_monitor()
+def vm_send_keys(key_lists):
+   """
+   Type the key presses. When this returns, the guest has seen them
+   all: each burst is waited out for as long as QEMU's input queue
+   takes to deliver it.
+   """
 
-def send_single_key_to_vm(key):
+   for i in range(0, len(key_lists), KEY_BURST_MAX):
 
-   key_name = None
+      burst = key_lists[i:i + KEY_BURST_MAX]
 
-   if not key:
-      return
+      for keys in burst:
+         vm_cmd("send-key",
+                keys = [{"type": "qcode", "data": k} for k in keys],
+                **{"hold-time": KEY_HOLD_TIME_MS})
 
-   if len(key) > 1:
-      key_name = key
-   else:
-      key_name = qemu.KEYS_MAP.get(key, None)
-
-   if key_name is not None:
-      send_to_qemu_monitor("sendkey " + key_name, 0.05)
+      events = 2 * sum(len(keys) for keys in burst)
+      time.sleep(events * KEY_HOLD_TIME_MS / 1000.0)
 
 def send_string_to_vm(s):
-
-   in_special_key = False
-   spk = ""
-
-   for k in s:
-
-      if in_special_key:
-
-         if k == "}":
-            send_single_key_to_vm(spk)
-            in_special_key = False
-            spk = ""
-            continue
-
-         spk += k
-
-      else:
-
-         if k == "{":
-            in_special_key = True
-            continue
-
-         send_single_key_to_vm(k)
+   vm_send_keys(qemu.keys_for_string(s))
 
 def delete_old_screenshots():
 
@@ -265,9 +184,8 @@ def vm_take_screenshot():
 
    global g_next_screenshot
 
-   name = "s{:03}".format(g_next_screenshot)
-   ppm_name = name + ".ppm"
-   send_to_qemu_monitor("screendump " + ppm_name)
+   ppm_name = "s{:03}.ppm".format(g_next_screenshot)
+   vm_cmd("screendump", filename = os.path.join(TMP_DIR, ppm_name))
    g_next_screenshot += 1
    return ppm_name
 
@@ -315,7 +233,6 @@ def make_and_save_text_screenshot_base(test_name, n):
 
    raw_print("")
    raw_print(t)
-   send_to_qemu_monitor("\n")
 
    fname = "{}-{}.gz".format(test_name, n)
 
@@ -336,47 +253,7 @@ def get_first_different_line(screen_a, screen_b):
 
    return None
 
-def false_positive_handler_vim(t, exp_t):
-
-   # The vim test might fail because of localization. For example, the
-   # line before the last might begin with:
-   #
-   #     |"/usr/lib/vim/samples/numbers.txt" 100L, 292B
-   #
-   # OR
-   #
-   #     |"/usr/lib/vim/samples/numbers.txt" 100L, 292C
-   #
-   # The code below handles these subtle differences.
-   #
-   # FAQ
-   # --------
-   #
-   # Q: Why localization might be different? We're not running on Linux
-   #    but on Tilck, where we control everything.
-   #
-   # A: Well, yeah, but we also support different toolchains and versions of
-   #    libmusl. Also, different versions of vim might be used too. Instead of
-   #    creating an "expected" screen series for each test, for each build
-   #    configuration, just handle any eventual differences with code.
-
-   d = get_first_different_line(t, exp_t)
-   assert(d is not None)
-
-   dx, tot, row, exp_row = d
-
-   if tot > 2 and dx == tot-2:
-
-      # The line before the last one: now replace the 'B' with a 'C',
-      # like in the example above.
-      row2 = re.sub(r'(, [0-9]+)B', r'\1C', row)
-
-      if row2 == exp_row:
-         return True # Everything is fine.
-
-   return False
-
-def check_screenshot_base(test_name, n, false_positive_handler = None):
+def check_screenshot_base(test_name, n):
 
    fname = "{}-{}.gz".format(test_name, n)
    p = os.path.join(INTERACTIVE_EXP, fname)
@@ -404,18 +281,10 @@ def check_screenshot_base(test_name, n, false_positive_handler = None):
    if t == exp_t:
       return # Expectations match: the problem was non-stable screenshot.
 
-   # Ok, that's likely a failure, but it might be a special type of false
-   # positive, where there's a difference and it's still acceptable.
-
-   if false_positive_handler:
-
-      if false_positive_handler(t, exp_t):
-         return # The false positive handler told us that's fine.
-
    raise IntTestScreenshotNoMatchFailure(t, exp_t)
 
 # NOTE: utility function used by the interactive tests
-def do_interactive_actions(test_name, inputs, false_positive_handler = None):
+def do_interactive_actions(test_name, inputs):
 
    counter = 0
 
@@ -426,7 +295,7 @@ def do_interactive_actions(test_name, inputs, false_positive_handler = None):
 
    def check_screenshot():
       nonlocal counter
-      check_screenshot_base(test_name, counter, false_positive_handler)
+      check_screenshot_base(test_name, counter)
       counter += 1
 
    action_func = save_screenshot if GEN_TEST_DATA else check_screenshot
@@ -435,7 +304,6 @@ def do_interactive_actions(test_name, inputs, false_positive_handler = None):
 
       raw_print("\n")
       msg_print("Sending to VM: {}".format(x))
-      send_to_qemu_monitor("\n")
 
       send_string_to_vm(x)
       action_func()
@@ -456,7 +324,6 @@ def send_to_vm_and_find_text(cmd, dump, patterns):
    if dump:
       raw_print("")
       raw_print(t)
-      send_to_qemu_monitor("\n")
 
 # NOTE: utility function used by the interactive tests
 #
@@ -506,7 +373,6 @@ def run_handle_boot():
    # Dump on our text
    raw_stdout_write("\n")
    raw_stdout_write(text)
-   send_to_qemu_monitor("\n")
 
    if text.find("Hello from Tilck") == -1:
       raise NoTilckHelloMessage()
@@ -516,21 +382,21 @@ def run_handle_boot():
 
    send_string_to_vm(r"clear{ret}")
 
+def dump_log_file(title, path):
+
+   msg_print("--- Dump {}: {} ---".format(title, path))
+
+   with open(path, 'r', errors = 'replace') as fh:
+      raw_print(fh.read())
+
+   msg_print("--- END {} ---".format(title))
+
 def dump_qemu_debug_files():
+   dump_log_file("QEMU debugcon log", QEMU_DEBUG_FILE)
+   dump_log_file("QEMU trace log", QEMU_DEBUG_FILE2)
 
-   msg_print("--- Dump QEMU debugcon log: {} ---".format(QEMU_DEBUG_FILE))
-
-   with open(QEMU_DEBUG_FILE, 'r') as fh:
-      raw_print(fh.read())
-
-   msg_print("--- END QEMU debugcon log file ---")
-
-   msg_print("--- Dump QEMU trace log: {} ---".format(QEMU_DEBUG_FILE2))
-
-   with open(QEMU_DEBUG_FILE2, 'r') as fh:
-      raw_print(fh.read())
-
-   msg_print("--- END QEMU trace log file ---")
+def dump_qemu_stdio_log():
+   dump_log_file("QEMU stdout/stderr", QEMU_STDIO_FILE)
 
 def run_main_body():
 
@@ -542,7 +408,7 @@ def run_main_body():
       # Call the test func
       run_all_tests()
 
-   except StableScreenshotFailure as e:
+   except (StableScreenshotFailure, QmpTimeout) as e:
       msg_print("Exception: " + str(e))
       set_once_fail_reason(Fail.timeout)
 
@@ -576,21 +442,16 @@ def run_main_body():
       else:
          set_once_fail_reason(Fail.some_tests_failed)
 
-   except BrokenPipeError:
+   except QemuGone as e:
 
-      msg_print("BrokenPipeError")
+      msg_print("Exception: " + str(e))
 
-      if g_process.poll() is None:
-
+      if qemu_alive():
          msg_print("Note: the QEMU process is still alive")
-
-         try:
-            echo_qemu_monitor()
-         except Exception as e:
-            msg_print("Cannot read from QEMU monitor: {}".format(str(e)))
-
       else:
          msg_print("Note: QEMU died with: {}".format(g_process.returncode))
+
+      dump_qemu_stdio_log()
 
       # dump_qemu_debug_files()
       # set_once_fail_reason(Fail.qemu_died_unexpectedly)
@@ -721,13 +582,43 @@ def dump_coverage_data(pts_file):
       if not run_gen_coverage_report_tool(GEN_KCOV_REPORT):
          set_once_fail_reason(Fail.gcov_error)
 
+def vm_serial_pty():
+   """
+   The host side of the VM's serial port (-serial pty), by asking QEMU.
+   """
+
+   for c in vm_cmd("query-chardev"):
+      if c["label"] == "serial0" and c["filename"].startswith("pty:"):
+         return c["filename"][len("pty:"):]
+
+   return None
+
+def vm_quit():
+
+   if g_qemu_died or not qemu_alive():
+      return
+
+   if not g_qmp.connected:
+      # Alive, but it never got to QMP: stop it as the watchdog would.
+      g_process.send_signal(signal.SIGINT)
+      return
+
+   try:
+      vm_cmd("quit")
+   except QmpError as e:
+      msg_print("quit: {}".format(e))
+
 def run():
 
+   global g_qmp
+
+   g_qmp = QmpClient(QMP_TIMEOUT)
+
    args = [
-      'qemu-system-i386',
+      QEMU_BIN,
       '-m', str(VM_MEMORY_SIZE_IN_MB),
       '-display', 'none',
-      '-monitor', 'stdio',
+      '-qmp', g_qmp.qemu_arg,
       '-device', 'isa-debug-exit,iobase=0xf4,iosize=0x04',
       '-drive', 'id=img1,format=raw,if=none,file=' + TILCK_IMAGE,
       '-device', 'ide-hd,drive=img1,@QEMU_CHS_GEOM@',
@@ -741,29 +632,53 @@ def run():
    if is_kvm_installed():
       args += ['-enable-kvm', '-cpu', 'host']
 
-   # Run the QEMU process
-   p = subprocess.Popen(
-      args,
-      stdin=subprocess.PIPE,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT
-   )
-   set_once_qemu_process(p)
+   # Run the QEMU process. Its stdout/stderr are just a log now: the
+   # conversation goes over QMP.
+   with open(QEMU_STDIO_FILE, 'wb') as stdio:
+      p = subprocess.Popen(
+         args,
+         stdin=subprocess.DEVNULL,
+         stdout=stdio,
+         stderr=subprocess.STDOUT
+      )
 
-   # Make the `stdout` file descriptor non-blocking
-   fh_set_blocking_mode(g_process.stdout, False)
+   set_once_qemu_process(p)
 
    raw_print('-' * 80)
    start_time = time.time()
-   qemu_hello_msg = echo_qemu_monitor(0)
-   raw_print("")
 
-   pts_file = None
-   m = re.search(r"char device redirected to ([^ ]+)[ ]", qemu_hello_msg)
+   try:
+      run_vm_session()
+   finally:
+      g_qmp.close()
 
-   if m:
+   elapsed = time.time() - start_time
+   raw_print('-' * 80)
+   msg_print("Elapsed: {:.2f} s".format(elapsed))
 
-      pts_file = m.group(1)
+def run_vm_session():
+
+   global g_qemu_died
+
+   try:
+      version = g_qmp.accept(qemu_alive)
+      pts_file = vm_serial_pty()
+
+   except QmpError as e:
+
+      msg_print("ERROR: {}".format(e))
+      dump_qemu_stdio_log()
+      set_once_fail_reason(Fail.qemu_died_unexpectedly)
+      g_qemu_died = not qemu_alive()
+      pts_file = None
+
+   else:
+
+      v = version["qemu"]
+      msg_print("QEMU {}.{}.{}".format(v["major"], v["minor"], v["micro"]))
+
+   if pts_file:
+
       msg_print("Serial port: {}".format(pts_file))
 
       try:
@@ -788,17 +703,15 @@ def run():
             msg_print("Exception: {}\n{}".format(str(e), fmtex))
             set_once_fail_reason(Fail.gcov_error)
 
-   else:
-      msg_print("ERROR: unable to find serial port's device in QEMU's msg")
+   elif no_failures():
+      msg_print("ERROR: QEMU has no pty serial port")
       set_once_fail_reason(Fail.qemu_msg_parsing_fail)
 
-   send_to_qemu_monitor("")
-   send_to_qemu_monitor("quit")
+   vm_quit()
    wait_for_qemu_to_exit()
 
-   elapsed = time.time() - start_time
-   raw_print('-' * 80)
-   msg_print("Elapsed: {:.2f} s".format(elapsed))
+   if VERBOSE:
+      dump_qemu_stdio_log()
 
 def setup_tmp_dir():
 
@@ -933,7 +846,6 @@ def run_all_tests():
 
       delete_old_screenshots()
       msg_print("Interactive test: {}".format(k))
-      send_to_qemu_monitor("\n")
       exec(g_tests[k], globals(), {})
       raw_stdout_write("\n\n")
       g_passed_list.append(k)
@@ -1058,7 +970,7 @@ def main():
       g_timeout = 60 * len(g_matching_list)
 
    dump_list_matching_tests_and_timeout()
-   detect_kvm()
+   detect_kvm(QEMU_BIN)
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()

@@ -22,6 +22,7 @@ KERNEL_FILE = '@KERNEL_FILE@'
 BUILD_DIR = '@CMAKE_BINARY_DIR@'
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 ELFHACK = '@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack@ARCH_BITS@'
+ARCH = '@ARCH@'
 ARCH_BITS = int('@ARCH_BITS@')
 KERNEL_SELFTESTS = '@KERNEL_SELFTESTS@'
 GTESTS_FILE = '@CMAKE_BINARY_DIR@/gtests'
@@ -881,9 +882,9 @@ def main():
       coverage_preflight()
 
    # Unit tests run on the host with no VM, so a unit-only run needs no
-   # KVM probe (and shouldn't print the spurious "qemu-kvm not found").
-   if args.test_type != 'unit':
-      detect_kvm()
+   # KVM probe; and the VM runners use KVM only for the x86 archs.
+   if args.test_type != 'unit' and ARCH in ['i386', 'x86_64']:
+      detect_kvm('qemu-system-' + ARCH)
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()

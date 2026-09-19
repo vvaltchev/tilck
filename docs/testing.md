@@ -242,10 +242,10 @@ limitations. While it's true that with some serious mocking it would be possible
 to test part of the PS/2 driver in unit tests, that's not very convenient and
 it's far too *unrealistic*: no IRQs, no (real or emulated) 8042 controller, etc.
 A better way is to test it against a *reference* implementation like the one in
-QEMU but, how to do that? QEMU's monitor has an interface for sending keystrokes
-to the VM, but the real problem is the following: when Tilck's console gets its
-input from the PS/2 keyboard, its output goes to the default (video) monitor,
-not to the serial port and that's how it should be. In order to check if the
+QEMU but, how to do that? QEMU's machine protocol ([QMP]) has a `send-key`
+command for sending keystrokes to the VM, but the real problem is the following:
+when Tilck's console gets its input from the PS/2 keyboard, its output goes to
+the default (video) monitor, not to the serial port and that's how it should be. In order to check if the
 output produced after a given input is correct, the test infrastructure needs
 somehow to compare what's on the (virtual) screen with something expected. In
 other words, that means comparing images and that's pretty problematic.
@@ -283,6 +283,7 @@ also define tests that just search for a series of words in the output and,
 based on that, define test's outcome as *pass* or *fail*. Both kinds of tests
 exist in Tilck.
 
+[QMP]: https://www.qemu.org/docs/master/interop/qmp-intro.html
 [PPM]: https://en.wikipedia.org/wiki/Netpbm#File_formats
 [pnm2text]: ../scripts/build_apps/pnm2text.c
 
