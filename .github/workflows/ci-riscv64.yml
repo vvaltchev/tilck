@@ -47,7 +47,7 @@ jobs:
 
   gcc_12_4:
     runs-on: ubuntu-24.04
-    container: ghcr.io/vvaltchev/tilck-riscv64:latest
+    container: ghcr.io/vvaltchev/tilck-riscv64:v9
     strategy:
       fail-fast: false
       matrix:
@@ -78,7 +78,7 @@ jobs:
 
   gcc_13_3:
     runs-on: ubuntu-24.04
-    container: ghcr.io/vvaltchev/tilck-riscv64:latest
+    container: ghcr.io/vvaltchev/tilck-riscv64:v9
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +109,7 @@ jobs:
 
   coverage:
     runs-on: ubuntu-24.04
-    container: ghcr.io/vvaltchev/tilck-riscv64:latest
+    container: ghcr.io/vvaltchev/tilck-riscv64:v9
     environment: Tilck
     env:
       GCC_TC_VER: 12.4.0

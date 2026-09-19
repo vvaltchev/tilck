@@ -30,17 +30,24 @@ class TfblibPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["include", true],
     ["src",     true],
   ]
 
-  def install_impl_internal(ignored = nil)
-    install_dir = mkpathname(getwd)
-    rm_f(SYMLINK_DEST) if SYMLINK_DEST.symlink?
-    ln_s(install_dir, SYMLINK_DEST)
-    return true
-  end
+  # Nothing is built: the kernel compiles these sources itself, and
+  # the install only has to leave a link where the build expects one.
+  # Symlink replaces a link and refuses anything else, which is the
+  # guard the old rm_f-if-symlink spelled out.
+  #
+  # $FINAL, not the directory the build is standing in. That one is
+  # the STAGING tree, and the atomic move takes it away a moment
+  # later -- so the link this package exists to create has been
+  # dangling ever since staging was introduced. Nothing noticed
+  # because the userapp that needs it is EXTRA_* and off by default.
+  def build_steps(ver = default_ver) = [
+    Symlink(target: "$FINAL", link: "$SRC/userapps/extra/tfblib"),
+  ]
 
   def default_arch = nil
   def default_cc = nil

@@ -46,16 +46,16 @@ class LibmuslPackage < Package
 
   # pkg_versions uses VER_MUSL (not VER_LIBMUSL) so that gcc.rb and
   # this package agree on a single source of truth for the version.
-  def default_ver = pkgmgr.get_config_ver("musl")
+  def default_ver = pkgmgr.get_config_ver("musl", host: false)
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["Makefile", false],
     ["include", true],
     ["src", true],
   ]
 
   # Source-only package: nothing to build.
-  def install_impl_internal(ignored = nil) = true
+  def nothing_to_build? = true
 end
 
 pkgmgr.register(LibmuslPackage.new())

@@ -32,27 +32,29 @@ class BusyBoxPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["busybox", false],
   ]
 
-  def install_impl_internal(install_dir)
-
-    cp CONFIG_FILE, ".config"
-    ok = run_command("build.log", [ "make", "V=1", "-j#{BUILD_PAR}" ])
-    return false if !ok
-
-    fix_config_file
-    cp ".config", ".last_build_config"
-    return ok
-  end
+  # The build ends by putting .config back in the normal form the
+  # source's copy is kept in: make rewrites it with a dated header
+  # and every symbol in Kconfig order, and userapps/CMakeLists.txt
+  # compares the two files byte for byte to know the build is the
+  # source's. (.last_build_config, which the build also used to
+  # write, is read by nothing and is not written.)
+  def build_steps(ver = default_ver) = [
+    Copy(from: src_path(CONFIG_FILE), to: ".config"),
+    Run(log: "build.log", argv: ["make", "V=1", "-j$PAR"]),
+    Normalize(path: ".config", form: "kconfig"),
+  ]
 
   def configurable? = true
 
   def config_impl
-    make_vars, env = host_ncurses_build_flags
+    # configure runs this in the installed version's directory.
+    be = deps_build_env.expand(BuildCtx.new(self, Pathname.pwd))
 
-    ok = system(env, "make", *make_vars, "menuconfig")
+    ok = system(be.env, "make", *be.kconfig_make_vars, "menuconfig")
     return false if !ok
 
     fix_config_file

@@ -61,7 +61,7 @@ class TestResumeDownload < Minitest::Test
     serve_with_range("/file.tar.gz", BODY)
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "file.tar.gz")
+      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
 
       # Final file should exist
@@ -84,7 +84,7 @@ class TestResumeDownload < Minitest::Test
       FileUtils.mkdir_p(partial_dir)
       File.write(partial_dir / "file.tar.gz", BODY[0, 1000])
 
-      ok = Cache.download_file(@server.url, "file.tar.gz")
+      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
 
       # Final file should have the complete content
@@ -112,7 +112,7 @@ class TestResumeDownload < Minitest::Test
       FileUtils.mkdir_p(partial_dir)
       File.write(partial_dir / "file.tar.gz", "old partial data")
 
-      ok = Cache.download_file(@server.url, "file.tar.gz")
+      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
 
       # Should have the complete fresh download
@@ -134,7 +134,7 @@ class TestResumeDownload < Minitest::Test
       FileUtils.mkdir_p(partial_dir)
       File.write(partial_dir / "old.tar.gz", BODY[0, 500])
 
-      ok = Cache.download_file(@server.url, "old.tar.gz")
+      ok = Cache.download_file(@server.url, "old.tar.gz", pin: pin_of(BODY))
       assert ok
       assert_equal BODY, File.read(tc / "cache" / "old.tar.gz")
     end
@@ -151,7 +151,7 @@ class TestResumeDownload < Minitest::Test
       FileUtils.mkdir_p(partial_dir)
       File.write(partial_dir / "file.tar.gz", "x" * (BODY.bytesize + 100))
 
-      ok = Cache.download_file(@server.url, "file.tar.gz")
+      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
       assert_equal BODY, File.read(tc / "cache" / "file.tar.gz")
     end
@@ -209,7 +209,7 @@ class TestResumeDownload < Minitest::Test
     with_fake_tc do |tc|
       # First attempt — will get a partial download (500 bytes)
       # then content-length mismatch → failure
-      ok = Cache.download_file(@server.url, "file.tar.gz")
+      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       refute ok
 
       # Partial file should exist with 500 bytes
@@ -218,7 +218,7 @@ class TestResumeDownload < Minitest::Test
       assert_equal 500, File.size(partial)
 
       # Second attempt — should resume from byte 500
-      ok = Cache.download_file(@server.url, "file.tar.gz")
+      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
 
       # Complete file
@@ -231,10 +231,10 @@ class TestResumeDownload < Minitest::Test
 
   def test_skip_if_already_cached
     with_fake_tc do |tc|
-      FileUtils.touch(tc / "cache" / "file.tar.gz")
+      File.write(tc / "cache" / "file.tar.gz", BODY)
 
       # Server not started — should not attempt download
-      ok = Cache.download_file(@server.url, "file.tar.gz")
+      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
     end
   end
@@ -250,7 +250,8 @@ class TestResumeDownload < Minitest::Test
       FileUtils.mkdir_p(partial_dir)
       File.write(partial_dir / "local.tar.gz", BODY[0, 1500])
 
-      ok = Cache.download_file(@server.url, "remote.tar.gz", "local.tar.gz")
+      ok = Cache.download_file(@server.url, "remote.tar.gz", "local.tar.gz",
+                               pin: pin_of(BODY))
       assert ok
 
       assert_equal BODY, File.read(tc / "cache" / "local.tar.gz")

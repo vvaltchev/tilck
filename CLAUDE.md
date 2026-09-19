@@ -23,6 +23,37 @@ Tilck-native name and a from-scratch implementation; don't mirror their
 identifiers (`__ex_table`, `fixup_exception`, `pcb_onfault`, ...). If unsure
 whether something crosses from idea into copying, stop and ask.
 
+## No hacks: use the proper abstraction
+
+Tilck is a top-quality software project. **Never add a hack, a shortcut,
+or a "temporary" special case.** Every problem gets the abstraction it
+actually needs, in every language in the tree (C, Ruby, Python, CMake).
+
+The most common failure mode is *sharing code by putting concrete
+knowledge in a generic place*. When two consumers need the same thing,
+do not add a provider-specific helper to their common base class: that
+teaches the base class about one concrete subject, and every other user
+of that base class inherits knowledge it must not have.
+
+Real example from this repo (`scripts/pkgmgr/package.rb`, commit
+bf0e54e33): `Package#host_ncurses_build_flags` was added to the abstract
+`Package` class, hardcoding `pkgmgr.get("host_ncurses")` and returning
+ncurses-specific `HOSTCFLAGS`/`HOSTLDFLAGS`, because busybox and u-boot
+both needed it. Every package in the tree — including packages that
+will never touch ncurses — inherited a method naming one specific
+dependency, and the version it picked was whichever install the
+filesystem happened to list first.
+
+The correct shape: an abstract `build_env(ver)` on `Package` that each
+package implements for itself (ncurses owns its own flags and may vary
+them by version), plus a generic `deps_build_env` that merges the
+published interfaces of a package's resolved dependencies. Consumers
+name no dependency; the base class knows no package.
+
+Ask before writing any helper: **which object owns this knowledge?** If
+the helper names a specific package, module or subsystem and lives
+somewhere generic, it belongs in the owner instead.
+
 ## Boot time and runtime latency are non-negotiable
 
 Target: embedded systems with hard-realtime ambitions. Evaluate
@@ -307,9 +338,9 @@ tests/
   runners/        Python test infrastructure
 scripts/          Build automation (build_toolchain, cmake_run, etc.)
   pkgmgr/         Ruby package manager (see docs/package_manager.md)
-  pkgmgr/tests/   Package manager test suite (300+ unit + system tests)
+  pkgmgr/tests/   Package manager test suite (700+ unit + system tests)
 other/cmake/      CMake build modules
-toolchain4/       Generated cross-compiler toolchain (not in repo)
+toolchain5/       Generated cross-compiler toolchain (not in repo)
 ```
 
 `build/` artifacts: `tilck` / `tilck_unstripped`, `tilck.img`,
@@ -317,15 +348,16 @@ toolchain4/       Generated cross-compiler toolchain (not in repo)
 
 ## Toolchain Management
 
-Ruby pkgmgr at `scripts/pkgmgr/`, installed into `toolchain4/`
-(per-target-arch). Entry: `./scripts/build_toolchain` (bootstraps
-Ruby ≥3.2, execs `pkgmgr/main.rb`).
+Ruby pkgmgr at `scripts/pkgmgr/`, installed into `toolchain5/`.
+Entry: `./scripts/build_toolchain` (bootstraps Ruby ≥3.2, execs
+`pkgmgr/main.rb`). The directory name is in `other/toolchain_conf`,
+read by everyone who needs it — never spell it out again.
 
 **For non-trivial pkgmgr work, read `docs/package_manager.md` first**
-(authoritative on architecture, three-tier host layout, dependency
-resolution, atomic installs, resumable downloads, `-C` reconfigure,
-adding packages, the 300+ test suite). This section is only the
-bare minimum.
+(authoritative on the layout, the host tiers, dependency resolution,
+build identity, atomic installs, resumable downloads, `-C`
+reconfigure, adding packages, the 700+ test suite). This section is
+only the bare minimum.
 
 ```bash
 ./scripts/build_toolchain                 # default set for current ARCH
@@ -336,28 +368,84 @@ bare minimum.
 ./scripts/build_toolchain -U <arch>       # uninstall cross-cc for arch
 ./scripts/build_toolchain -C <pkg>        # reconfigure (e.g. busybox)
 ./scripts/build_toolchain --upgrade       # install new versions after bump
+./scripts/build_toolchain --check-for-updates  # 0=ok, 2=needs upgrade/rebuild
+./scripts/build_toolchain --print-layout  # where installed packages live
 ./scripts/build_toolchain -d              # dry-run
 ./scripts/build_toolchain -t [--coverage] # pkgmgr's own tests
-./scripts/build_toolchain --clean         # remove pkgs for current ARCH
-./scripts/build_toolchain --clean-all     # remove everything except cache
+./scripts/build_toolchain --clean         # remove everything except the
+                                          # prebuilt cross-compilers, the
+                                          # bootstrap Ruby and the cache
+./scripts/build_toolchain -u ALL -f -a ALL -c ALL   # ...compilers too
+./scripts/build_toolchain -s ALL --with-host-packages  # + the host world:
+                                          # the default QEMU and the one
+                                          # stack it is built by
 ```
 
-Versions in `other/pkg_versions`. Bump version + `--upgrade` installs
-alongside old. CMake detects stale at configure (it's a
+**Build parallelism is bounded, not unlimited.** `-j` with no number
+means as many jobs as the graph allows, which GCC and QEMU will take
+into the hundreds. `BuildJobs.compute` (`early_logic.rb`) picks the
+lower of two ceilings — a sixth of the cores left free, and 4 GB of
+RAM per job out of five sixths of the machine — so a 24-core / 94 GB
+box gets `-j19`. `BUILD_PAR=<n>` overrides it. Recipes that are
+deliberately serial (tcc) simply do not mention `$PAR`.
+
+Versions live in two unrelated files: `other/pkg_versions`
+(`VER_<PKG>`, target side, what ends up in Tilck) and
+`other/host_pkg_versions` (`HOST_VER_<PKG>`, build-host tools). A
+package on both sides — ncurses — has an entry in each and they may
+differ freely; `get_config_ver(name, host:)` takes the side
+explicitly. Bump a version + `--upgrade` installs alongside the old
+one, but only for installs that used the default version: one asked
+for by name (`-s pkg:ver`, recorded as `origin:` in `.install`) is left
+alone. CMake detects stale at configure (both files are
 `CMAKE_CONFIGURE_DEPENDS`).
 
-Layout:
+Every file the cache holds is pinned in a third file,
+`other/pkg_hashes`: `<cache filename>: sha256:<64 hex>` for a file
+downloaded as it is, `<cache filename>: git:<40 hex>` for a source we
+clone and pack (the commit, never the archive's digest). A new package
+or version fails `test_lint_sources.rb` until its line is added; the
+first fetch prints the line. Never compute a pin from a file already in
+the cache and paste it: take the upstream's published sum, or let the
+tool download fresh and print it.
+
+`-s`, `-u` and `-C` all take `PKG[:VER]`. A `dep_list` entry can pin
+an exact version — `Dep('host_x', true, ver: Ver('1.2'))` — for host
+packages only; the target side is one version per package. An
+explicit pin beats a default (reported at info level); two pins that
+disagree are an error naming both paths.
+
+Layout — three coordinates, always, each with a fixed meaning:
 ```
-toolchain4/
-  cache/                              # tarballs (survive --clean)
-  staging/                            # in-progress (atomic install)
-  noarch/                             # arch-independent (acpica, gnuefi src)
-  gcc-<ver>/<arch>/                   # per-GCC-ver, per-target-arch
-  host/<os>-<arch>/
-    portable/                         # Tier 1: static, any distro
-    <distro>/<pkg>/<ver>/             # Tier 2: distro libc, any host CC
-    <distro>/<host-cc>/<pkg>/<ver>/   # Tier 3: C++ ABI-dependent (gtest)
+toolchain5/<machine>/<env>/<stack>/{ sysroot/, pkgs/<pkg>/<ver>/ }
+
+  <machine>  where it RUNS      linux-x86_64, tilck-i386, noarch
+  <env>      what the machine must already provide, or the BOARD
+             for a Tilck target                any, ubuntu-22.04, pc,
+                                               qemu-virt, licheerv-nano
+  <stack>    which build env made it           any, gcc-14.4.0
+
+toolchain5/
+  cache/                                  # tarballs (survive --clean)
+  staging/                                # in-progress (atomic install)
+  linux-x86_64/any/any/                   # static: musl cross-cc, blobs
+  linux-x86_64/any/gcc-14.4.0/            # our stack + its sysroot/
+  linux-x86_64/ubuntu-22.04/any/          # distro libc (ruby, mtools, mconf)
+  linux-x86_64/ubuntu-22.04/gcc-11.4.0/   # + host C++ ABI (gtest)
+  noarch/any/any/                         # acpica, gnuefi_src, lcov, libmusl
+  tilck-i386/pc/gcc-13.3.0/               # target pkgs, per arch AND board
+  tilck-riscv64/qemu-virt/gcc-13.3.0/
 ```
+A package name appears only under `pkgs/`, so it can never be read as
+structure. **New axes become VALUES, never LEVELS** — a fourth level
+puts us back where toolchain4 ended up, with `gcc-*` meaning four
+different things depending on its depth.
+
+Two boards of one arch are two separate trees. Anything that
+identifies an installation must compare `Coords`
+(`scripts/pkgmgr/coords.rb`), never re-derive part of the path:
+matching on (version, compiler, arch) let one board's build answer
+for another, and `-s ALL` for the second board installed nothing.
 
 Key concepts:
 - `Package` base class (`scripts/pkgmgr/package.rb`): every pkg
@@ -367,8 +455,19 @@ Key concepts:
 - `SourceRef` (`scripts/pkgmgr/source_ref.rb`): decouples upstream
   fetch from pkg def — N pkgs can share one tarball. Example:
   `GNUEFI_SOURCE` → `gnuefi_src` (noarch) + `gnuefi` (arch built).
-- `host_tier`: `:portable` / `:distro` / `:compiler` — selects
-  which tier a pkg installs into (table in `docs/package_manager.md`).
+- `host_tier`: `:portable` / `:stack` / `:distro` / `:compiler` —
+  selects the `<env>`/`<stack>` a host pkg installs into (table in
+  `docs/package_manager.md`).
+- **Build identity**: each install records what it was built FROM in
+  `.build_inputs` (recipe digest + patch digests).
+  `--check-for-updates` reports `ok` / `changed` / `unknown`, and
+  CMake refuses to build when anything is stale. A recipe is only a
+  recipe AT some coordinates — a build step naming
+  `#{default_arch.gcc_tc}-linux-ar` differs per arch — so records are
+  written and checked per install, and the digest must depend on the
+  sources and nothing else (never on `Dir.pwd`).
+- CMake never builds toolchain paths: it asks `--print-layout`.
+  `Coords` is the only thing that knows what a path looks like.
 
 ## FreeBSD Build Host
 
@@ -851,6 +950,175 @@ GIT_EDITOR=true git rebase --continue
 `--no-edit` to set them). The same pattern unblocks any editor-driven git
 command (e.g. `git commit` without `-m`). Verified working in this environment.
 
+## Dry-run first, every time
+
+**Before any destructive action, run the tool's dry-run and read what
+it says it will do.** `-d` / `--dry-run` on the package manager, and
+the equivalent wherever else one exists. This is not optional and it
+is not a judgement call: if the command can remove or overwrite
+something and the tool supports asking first, ask first.
+
+```bash
+./scripts/build_toolchain -u host_qemu:6.2.0 -d   # what would go?
+./scripts/build_toolchain -u host_qemu:6.2.0      # ...then do it
+```
+
+**Why:** a destructive command that removes the wrong thing does not
+announce itself. `-u` removed installs from a second board for as
+long as this tree has had two boards; a forced rebuild removed a
+package and then failed, leaving nothing where something had been,
+and `--check-for-updates` reported the tree as healthy because a
+package that is simply GONE reads as "not installed" rather than
+"stale". In every one of those cases the dry run would have printed
+the paths a moment before they were destroyed, and the whole class of
+"what exactly did I just delete?" would never have come up.
+
+The package manager's dry-run is expected to be **complete**: every
+mode that writes must honour `-d`, and a dry run must not add, remove
+or modify a single file. That is enforced by
+`test_every_destructive_mode_touches_nothing_in_dry_run`, which
+fingerprints the whole toolchain before and after. A new mode that
+writes without honouring `-d` fails that test -- and if a gap is
+found, close the gap rather than working around it.
+
+## The package manager reads its inputs through their owners
+
+`ARCH` and `BOARD` are read in exactly three places: their
+definitions in `early_logic.rb`, the CLI boundary in `main.rb`, and
+`Scope.env` (`scripts/pkgmgr/scope.rb`), the one place the constants
+become a value. That value -- the arch and board being built for,
+the stack being built into -- is what every scoped question is
+answered under: `main.rb` builds one `Scope` from its options and
+hands it down, the planner takes it as an argument, and a package
+answers a scoped question (`coords`, `default_arch`, `installed?`,
+`build_steps`, ...) only once bound to one with `pkg.at(scope)`.
+Asked unbound, it raises `Package::Unbound`. There is no
+`pkgmgr.target_arch`, no `with_target_arch { }` and no scope ivar:
+nothing holds a scope, so nothing can be answered from the wrong
+one. Likewise the identity of an installation is its `Coords`;
+nothing selects installs by comparing `arch` or `compiler` on their
+own. What is installed is a `World` (`world.rb`), the tree scanned
+once per announced change; the planner takes that as an argument
+too, and `pkgmgr.world` is the one place the tree is read.
+
+`scripts/pkgmgr/tests/test_lint_ambient.rb` enforces this on every
+run, by parsing the sources. **A new allowlist entry needs a written
+reason, and it must name a method that exists** -- the test checks
+both. Do not add one to make the suite pass; ask the owner instead.
+
+**The sibling sweep.** When a bug is found in one reader of some
+shared state, every other reader of that state is checked before the
+fix is committed:
+
+```bash
+grep -n '\bBOARD\b' scripts/pkgmgr/*.rb     # sixty seconds
+```
+
+**Why:** every logic bug this package manager had was the same bug
+-- a question about one installation answered from ambient state --
+and each was fixed where it was found while its siblings stayed. The
+block that scoped an install's board learned about boards;
+`board_supported?`, four hundred lines away, kept reading the global
+and refused to rebuild the u-boot that `-f` had just deleted. The
+grep would have found it in the same minute. The scope became a
+value precisely so that this shape cannot be written any more; the
+sweep still applies to every other kind of shared state.
+
+**A pkgmgr logic bug is not fixed until its mutant dies.** The
+package manager's logic core is covered by three instruments, in
+this order of authority, and a fix touches all three:
+
+1. **The model** (`scripts/pkgmgr/tests/model/model.rb`) is the
+   contract. If the bug is a wrong answer, the model already says the
+   right one, or the model is wrong and is fixed first. Every
+   historical bug is a case in `test_model.rb`.
+2. **The exhaustive lane** (`-t --exhaustive`, minutes; sampled in
+   every `-t`) diffs the planner against the model over every world
+   of up to three installations, in memory: a case is a value, and
+   the two answers are compared. A bug it did not catch means a shape
+   or a command line is missing from `tests/exhaustive/domain.rb`:
+   add it, and the lane fails before the fix and passes after. What
+   the executor makes of a plan is judged on disk once per kind of
+   action (`tests/test_executor.rb`), and around every command line
+   the suite drives (the laws' L1_executor).
+3. **Mutation** (`-t --mutation`; `scripts/dev/claude/pmmutate run
+   --file F` for one file) must be able to *express* the bug as an
+   operator and the suite must kill it. If
+   no operator produces the bug, add one to
+   `tests/mutation/operators.rb`. The score to defend is zero
+   survivors in scope; an equivalent mutant is excused on its line
+   with `# mutation: equivalent -- <reason>`, never by shrinking the
+   scope.
+
+**Why:** a fix that only patches the site it was found at leaves the
+class alive. The model states the class, the lane finds every
+instance the domain can express, and the mutant proves the tests
+would notice a recurrence.
+
+## The toolchain tree lives at one absolute path
+
+`toolchain5/` cannot be moved, copied or mounted at another path and
+keep working, and this is a known, deliberate state -- not a bug to
+fix in passing. What is relative and what is not:
+
+- **Sysroot farms are relative** (`Sysroot.compose`, `sysroot.rb`):
+  every link under `<stack>/sysroot/` is a `../` walk to
+  `<stack>/pkgs/`, so the farms survive a move. A tree composed
+  before this is brought forward by any recomposition (every
+  uninstall recomposes all stacks).
+- **Every host-stack binary bakes two absolute paths.** GCC's specs
+  (`host_gcc.rb`, the `*link:` rewrite) put `DT_RPATH
+  <stack>/sysroot/usr/lib` and `PT_INTERP <stack>/sysroot/usr/lib/
+  ld-linux-x86-64.so.2` into everything built in a stack, and our
+  `ld.so` itself carries the sysroot as its compiled-in default
+  search path (glibc's `--prefix`). `RPATH` rather than `RUNPATH`
+  on purpose: it is searched before `LD_LIBRARY_PATH`, which is
+  what the portability audit relies on.
+- **Target packages (`tilck-*/`), `noarch/` and `cache/` bake
+  nothing** and can be copied freely.
+
+Sharing a tree between checkouts is the supported case:
+`TCROOT_PARENT` (`early_logic.rb`) points a checkout at a tree
+elsewhere; the tree does not move, the checkouts do.
+
+### Why not the system's `ld.so`, and why not `$ORIGIN` today
+
+Verified on this machine (system glibc 2.44, stacks glibc 2.41):
+`ld.so` and `libc.so.6` are two halves of one program bound by the
+versionless `GLIBC_PRIVATE` ABI -- our `libc.so.6` imports 325 such
+symbols from the loader, `_rtld_global` among them, a struct whose
+layout changes between releases. Every mismatched pairing failed:
+system loader + our libc segfaults (or exits silently, as QEMU
+did); our loader + system libc dies on
+`__pointer_chk_guard@GLIBC_PRIVATE`. The loader is the LEAST
+stable piece, not the most; it must be exactly its own libc's, and
+the stack exists precisely to not depend on the system's libc. So
+`PT_INTERP` must name our loader, and the ELF interpreter field
+has no `$ORIGIN`: the kernel resolves it before any userland runs.
+
+`$ORIGIN` RPATH for the libraries is possible but not from one
+spec line: `$ORIGIN` is relative to the *binary*, and stack
+binaries sit at five different depths inside their install
+(`bin/`, `usr/bin/`, `usr/lib/gconv/`, `usr/lib/gtk-3.0/3.0.0/
+immodules/`, ...), so one link-time RPATH cannot be right for all
+of them. Distros that ship relocatable trees rewrite per binary at
+install time.
+
+### The plan for a relocatable tree, when it is needed
+
+The tool that fixes the interpreter is the tool that makes
+`$ORIGIN` unnecessary: `patchelf` as a `:portable` host package,
+and a `--relocate` mode that walks `linux-*/` and sets, per ELF
+file, `PT_INTERP` and `DT_RPATH` to the new absolute path, then
+recomposes and re-runs the portability audit (which already
+accepts `$ORIGIN` refs, `portability.rb` `allowed_ref?`). A
+post-install `patchelf` pass writing `$ORIGIN/<depth>/../sysroot/
+usr/lib` per binary is the alternative hygiene step; it costs a
+rebuild of every host stack and should be batched with the next
+reason to rebuild them (the distro-env rule, item B of
+`docs/plans/pkgmgr-schema-longevity-review.md`). Neither is
+urgent; a moved tree is not a need today.
+
 ## No changes without testing
 
 Never commit changes affecting build logic, package installs, or
@@ -873,7 +1141,58 @@ If a change is genuinely untestable in this environment (e.g. needs
 a real TTY), say so and ask for an exception rather than committing
 blind.
 
+### Package changes MUST be verified by RUNNING Tilck, end to end
+
+A package that builds is not a package that works. **Change a package
+— its build, its flags, its patches, anything — and you must boot
+Tilck and exercise what that package produces.** Not the build log,
+not `expected_files`, not "the binary is byte-identical": run it.
+
+TCC is the standing example, and it has failed at the last possible
+step more than once: it built cleanly, installed cleanly, ran on
+Tilck, *compiled a program on Tilck* — and the program it produced
+did not run. Everything up to the final `./ex1` looked perfect.
+
+So the test has to reach the END of the chain. For tcc that is
+`tests/system/scripts/tcc`, which compiles `ex1.c` **and executes the
+result and compares its output**:
+
+```sh
+tcc -static /lib/tcc-examples/ex1.c -o /tmp/ex1
+out=`./ex1`
+[ "$out" = "Hello World" ] || exit 1
+```
+
+**The trap: those tests are OFF by default and skip silently.** The
+`EXTRA_*` apps default to `OFF`, the scripts begin with
+
+```sh
+if ! [ -f /bin/tcc ]; then
+   echo "No TinyCC in /bin/tcc: skipping the test"
+   exit 0
+fi
+```
+
+and the runner then prints `[PASSED]`. A full green `run_all_tests`
+proves nothing about tcc unless tcc is in the image. Build it in and
+look at the output:
+
+```bash
+./scripts/cmake_run -DEXTRA_TCC=1 && make -j
+./build/st/run_all_tests -T shellcmd -f '^extra$' -o   # -o: show output
+```
+
+Do it for **every affected arch** — i386 and riscv64 behave
+differently, and a code generator is exactly the kind of package where
+that matters.
+
 ## CI
-Azure DevOps Pipelines tests all commits across i386, riscv64, x86_64 with
-debug/release builds, unit tests, system tests, and coverage.
-Status: https://dev.azure.com/vkvaltchev/Tilck
+GitHub Actions tests all commits across i386, riscv64, x86_64 with
+debug/release builds, unit tests, system tests, and coverage
+(`.github/workflows/ci-{i386,riscv64,x86_64}.yml`). Six more workflows
+(`ci-tc-{arch,debian,fedora}-{i386,riscv64}.yml`) build the toolchain
+from scratch on a stock distro image, so they validate pkgmgr without
+depending on a prebuilt container.
+
+The kernel workflows skip `readme*`, `temp-*` and `exp-*` branches: on a
+topic branch they must be dispatched explicitly.

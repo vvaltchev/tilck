@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# pmpins -- populate and audit other/pkg_hashes from what upstream
+# serves today, never from what happens to be in the cache.
+#
+# Usage: pmpins <sub-command> ...
+#
+#   list                 every cache file the registry can fetch here
+#   fetch-http           download every http file fresh into $OUT/http
+#                        (skips files already fetched there)
+#   diff-http            fresh downloads against the cache's files:
+#                        name, fresh digest, cache digest, same?
+#   git-commits          what each git tag resolves to upstream now
+#                        (ls-remote, peeled), one `name commit` per line
+#   old-pack-commits     the commit each existing pack in the cache was
+#                        cloned at, read from its .git or .ref
+#   refetch-git          move every pack to cache/backup/ and clone each
+#                        git source again through the package manager
+#   write                assemble other/pkg_hashes from $OUT/http and
+#                        $OUT/git-commits
+#
+set -euo pipefail
+
+TILCK_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+OUT=${PMPINS_DIR:-/tmp/pmpins-$USER}
+TC_CONF="$TILCK_ROOT/other/toolchain_conf"
+TC_NAME=$(sed -n 's/^TOOLCHAIN_DIR_NAME=//p' "$TC_CONF")
+CACHE="${TCROOT_PARENT:-$TILCK_ROOT}/$TC_NAME/cache"
+PINS="$TILCK_ROOT/other/pkg_hashes"
+mkdir -p "$OUT/http"
+
+registry() {
+   if ! [ -s "$OUT/list" ]; then
+      (cd "$TILCK_ROOT" && ruby "$HERE/pmpins.rb" > "$OUT/list")
+   fi
+   cat "$OUT/list"
+}
+
+sha() { sha256sum "$1" | cut -d' ' -f1; }
+
+# One member of a pack, by glob, or nothing.
+member() { tar xOf "$1" --wildcards "$2" 2>/dev/null | head -1 || true; }
+
+case "${1:-}" in
+   list)
+      registry
+      ;;
+
+   fetch-http)
+      registry | while read -r mode name url remote tag; do
+         [ "$mode" = http ] || continue
+         dest="$OUT/http/$name"
+         if [ -s "$dest" ]; then echo "have  $name"; continue; fi
+         echo "fetch $name  <- $url/$remote"
+         if curl -sSfL --retry 3 -o "$dest.part" "$url/$remote"; then
+            mv "$dest.part" "$dest"
+         else
+            echo "FAILED $name" >&2
+            rm -f "$dest.part"
+         fi
+      done
+      ;;
+
+   diff-http)
+      registry | while read -r mode name url remote tag; do
+         [ "$mode" = http ] || continue
+         fresh="$OUT/http/$name"; cached="$CACHE/$name"
+         if ! [ -s "$fresh" ]; then echo "NOFETCH  $name"; continue; fi
+         f=$(sha "$fresh")
+         if ! [ -f "$cached" ]; then echo "NOCACHE  $name $f"; continue; fi
+         c=$(sha "$cached")
+         if [ "$f" = "$c" ]; then
+            echo "same     $name ${f:0:16}"
+         else
+            echo "DIFFER   $name fresh=$f cache=$c"
+         fi
+      done | sort -k1,1 | tee "$OUT/diff-http"
+      echo "--- $(grep -c '^same' "$OUT/diff-http") same," \
+           "$(grep -c '^DIFFER' "$OUT/diff-http") differ," \
+           "$(grep -c '^NO' "$OUT/diff-http") missing"
+      ;;
+
+   git-commits)
+      registry | while read -r mode name url dash tag; do
+         [ "$mode" = git ] || continue
+         if [[ "$tag" =~ ^[0-9a-f]{7,40}$ ]] &&
+            ! git ls-remote --exit-code "$url" "refs/tags/$tag" &>/dev/null
+         then
+            # A commit, not a tag: nothing to ask upstream; the full
+            # SHA is in the pack's .ref (old-pack-commits).
+            echo "$name SHA $tag"
+            continue
+         fi
+         out=$(git ls-remote --tags --heads "$url" "refs/tags/$tag" \
+                  "refs/tags/$tag^{}" "refs/heads/$tag" 2>/dev/null || true)
+         peeled=$(awk '$2 ~ /\^\{\}$/ {print $1}' <<< "$out")
+         plain=$(awk '$2 !~ /\^\{\}$/ {print $1; exit}' <<< "$out")
+         commit="${peeled:-$plain}"
+         echo "$name ${commit:-NONE} $tag"
+      done | tee "$OUT/git-commits"
+      ;;
+
+   old-pack-commits)
+      registry | while read -r mode name url dash tag; do
+         [ "$mode" = git ] || continue
+         pack="$CACHE/$name"
+         [ -f "$pack" ] || { echo "$name NOPACK"; continue; }
+         ref=$(member "$pack" '*/.ref')
+         if [ -n "$ref" ]; then echo "$name $ref (.ref)"; continue; fi
+         head=$(member "$pack" '*/.git/HEAD')
+         if [[ "$head" =~ ^ref:\ (.*)$ ]]; then
+            r="${BASH_REMATCH[1]}"
+            c=$(member "$pack" "*/.git/$r")
+            [ -n "$c" ] || c=$(member "$pack" '*/.git/packed-refs' |
+                               awk -v r="$r" '$2 == r {print $1}')
+            echo "$name ${c:-NONE} ($r)"
+         else
+            echo "$name ${head:-NONE} (detached)"
+         fi
+      done | tee "$OUT/old-pack-commits"
+      ;;
+
+   refetch-git)
+      # The old packs kept aside first, never deleted.
+      mkdir -p "$CACHE/backup"
+      registry | while read -r mode name url dash tag; do
+         [ "$mode" = git ] || continue
+         [ -f "$CACHE/$name" ] && mv -v "$CACHE/$name" "$CACHE/backup/$name"
+      done
+      (cd "$TILCK_ROOT" && ruby "$HERE/pmpins.rb" refetch-git)
+      ;;
+
+   write)
+      {
+         registry | while read -r mode name url remote tag; do
+            case "$mode" in
+               http)
+                  f="$OUT/http/$name"
+                  [ -s "$f" ] ||
+                     { echo "no fresh download: $name" >&2; exit 1; }
+                  echo "$name: sha256:$(sha "$f")"
+                  ;;
+               git)
+                  c=$(awk -v n="$name" '$1 == n {print $2}' \
+                         "$OUT/git-commits")
+                  if ! [[ "$c" =~ ^[0-9a-f]{40}$ ]]; then
+                     c=$(awk -v n="$name" '$1 == n {print $2}' \
+                            "$OUT/old-pack-commits")
+                  fi
+                  [[ "$c" =~ ^[0-9a-f]{40}$ ]] ||
+                     { echo "no commit for $name: '$c'" >&2; exit 1; }
+                  echo "$name: git:$c"
+                  ;;
+            esac
+         done
+         # Lines this host's registry does not produce are kept as they
+         # are: the bootstrap Ruby's, fetched by bash before any
+         # registry exists, and the other hosts' compilers and python,
+         # whose names carry the host. The lint judges an orphan.
+         if [ -f "$PINS" ]; then
+            registry | awk '{print $2}' | sort > "$OUT/here"
+            grep -v '^#' "$PINS" | sort |
+               join -t: -v1 - "$OUT/here" || true
+         fi
+      } | sort > "$PINS.new"
+      {
+         echo "# What every file in the cache must be (docs/package_manager.md,"
+         echo "# Pinned sources): the sha256 of a file downloaded as it is, the"
+         echo "# commit a cloned source must resolve to. Keyed by cache"
+         echo "# filename. A new line comes from the upstream's published sum,"
+         echo "# or from the tool: the first fetch prints it. Kept in name"
+         echo "# order."
+         cat "$PINS.new"
+      } > "$PINS"
+      rm "$PINS.new"
+      echo "wrote $PINS: $(grep -vc '^#' "$PINS") lines"
+      ;;
+
+   *)
+      sed -n '3,22p' "$0"
+      exit 1
+      ;;
+esac

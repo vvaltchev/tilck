@@ -3,7 +3,6 @@
 require_relative 'arch'
 require_relative 'term'
 
-require 'power_assert'
 require 'pathname'
 require 'etc'
 require 'shellwords'
@@ -13,7 +12,15 @@ KB = 1024
 MB = 1024 * KB
 
 # Basic constants specific to this project.
-DEFAULT_TC_NAME = "toolchain4"
+# Read from other/toolchain_conf, which the bash bootstrap sources,
+# so that the two halves cannot disagree about where the toolchain is.
+DEFAULT_TC_NAME = File.read(
+  File.join(File.dirname(File.dirname(__dir__)), "other", "toolchain_conf")
+).lines.grep(/\ATOOLCHAIN_DIR_NAME=/).first.to_s.split("=", 2).last.to_s.strip
+
+if DEFAULT_TC_NAME.empty?
+  raise "TOOLCHAIN_DIR_NAME missing from other/toolchain_conf"
+end
 OS = Etc.uname.fetch(:sysname)
 RUBY_SOURCE_DIR = Pathname.new(File.realpath(__dir__))
 MAIN_DIR = Pathname.new(RUBY_SOURCE_DIR.parent.parent)
@@ -25,26 +32,49 @@ def getenv(name, default)
   return !val.empty? ? val : default
 end
 
+# PowerAssert's message is worth its price only when there is a
+# failure to explain, and its price is steep: it enables a TracePoint
+# and READS THE SOURCE FILE to reconstruct the expression, once per
+# call, whether or not the assertion holds.
+#
+# It was paying that on every assert. A plain `-l` spends about eighty
+# per cent of its time inside PowerAssert, two thirds of it in the
+# File.exist? that goes with re-opening the source -- for assertions
+# that all passed.
+#
+# So the block is evaluated directly first. Only a failure goes
+# through PowerAssert, which re-evaluates the expression to describe
+# it: an assertion that is not side-effect free was already a bug, and
+# this is the path that raises anyway.
 def assert(&expr)
+  return true if expr.call
+
+  # Required here, not at the top: power_assert costs about 8 ms to
+  # load -- it pulls in ripper and installs TracePoint hooks -- and a
+  # run in which no assertion fails never needs a line of it.
+  require 'power_assert'
+
   PowerAssert.start(expr, assertion_method: __method__) do |ctx|
-    ok = ctx.yield
-    raise "Assertion failed:\n#{ctx.message}" unless ok
-    true
+    ctx.yield
+    raise "Assertion failed:\n#{ctx.message}"
   end
 end
 
+# The prefixes are coloured when the stream they are written to is a
+# terminal: $stdout, which a pipe or a test replaces, not the
+# process's own.
 def info(msg)
-  infoStr = STDOUT.tty?? Term.makeBlue("INFO") : "INFO"
+  infoStr = $stdout.tty?? Term.makeBlue("INFO") : "INFO"
   puts "#{infoStr}: #{msg}"
 end
 
 def warning(msg)
-  warnStr = STDOUT.tty?? Term.makeYellow("WARNING") : "WARNING"
+  warnStr = $stdout.tty?? Term.makeYellow("WARNING") : "WARNING"
   puts "#{warnStr}: #{msg}"
 end
 
 def error(msg)
-  errStr = STDOUT.tty?? Term.makeRed("ERROR") : "ERROR"
+  errStr = $stdout.tty?? Term.makeRed("ERROR") : "ERROR"
   puts "#{errStr}: #{msg}"
 end
 
@@ -185,6 +215,17 @@ module InitOnly
   end
 
   # Parse /etc/os-release into a { KEY => value } hash, stripping quotes.
+  # A rolling distro says so (BUILD_ID=rolling: Arch, Manjaro, openSUSE
+  # Tumbleweed spells it too), or is a derivative of one (ID_LIKE=arch:
+  # Omarchy, EndeavourOS, ...), or has no VERSION_ID to offer.
+  def rolling_distro?(data)
+    return true if data["BUILD_ID"] == "rolling"
+    return true if data["ID_LIKE"].to_s.split.include?("arch")
+    return true if data["ID"] == "arch"
+    return true if data["VERSION_ID"].nil?
+    return false
+  end
+
   def parse_os_release
     path = "/etc/os-release"
     if !File.file?(path)
@@ -203,17 +244,41 @@ module InitOnly
     return data
   end
 
-  # Return a distro slug like "ubuntu-22.04", "macos-14.3", "freebsd-14.0".
-  # Different OS releases are considered incompatible: we do NOT try to share
-  # dynamically-linked host packages across them.
+  # Return a distro slug like "ubuntu-22.04", "macos-14.3", "freebsd-14.0"
+  # -- or "arch", "omarchy": the ID alone, for a rolling distro.
+  #
+  # The slug is the <env> of every host package that links the distro's
+  # libraries. On a fixed-release distro the release IS a library set
+  # its maintainers tested together, so "ubuntu-22.04" says what such a
+  # package needs. A rolling distro has no such set: Arch's os-release
+  # says BUILD_ID=rolling and carries no VERSION_ID at all (its
+  # container image puts the image's build date there), and a
+  # derivative's VERSION_ID (Omarchy 4.0.4) versions the desktop layer
+  # and moves every week while the libraries move on Arch's schedule.
+  # A slug that changed on every point release stranded every
+  # distro-tier install for nothing, and one that required VERSION_ID
+  # refused to run on Arch itself. What a rolling distro's package
+  # needs is the exact libraries it was built against, which
+  # .build_inputs records per install (BuildInputs, syslib lines) and
+  # --check-for-updates compares.
+  #
+  # Kept in sync with detect_host_env in scripts/bash_build_toolchain
+  # and with the HOST_DISTRO block of CMakeLists.txt, which read the
+  # same file before Ruby is available and after it, respectively.
   def get_host_distro(host_os)
     case host_os
       when "linux"
         data = parse_os_release()
         id = data["ID"]
+        if id.nil?
+          error "/etc/os-release is missing ID"
+          exit 1
+        end
+        return id if rolling_distro?(data)
         ver = data["VERSION_ID"]
-        if id.nil? || ver.nil?
-          error "/etc/os-release is missing ID or VERSION_ID"
+        if ver.nil?
+          error "/etc/os-release is missing VERSION_ID (and does not " \
+                "say BUILD_ID=rolling)"
           exit 1
         end
         return "#{id}-#{ver}"
@@ -259,9 +324,38 @@ module InitOnly
     exit 1
   end
 
-  # Determine the host compiler family+version from $CC (defaults to "gcc").
-  # If $CXX is also set, require that it points to the same family+version.
-  # If only $CXX is set, fail with a clear message.
+  # A command as the shell would run it, named by the binary it is:
+  # found on PATH when bare, then followed through every link. "gcc",
+  # "/usr/bin/gcc" and "cc" are one compiler on a machine where they
+  # resolve to one file, and the recipe that names the compiler must
+  # read the same however the environment spelled it: cmake hands
+  # its children CC=/usr/bin/gcc, the shell hands them CC=gcc, and a
+  # record made under one read as stale under the other. A command
+  # that is not found is returned as typed, for detect_cc_info to
+  # report.
+  def canonical_cmd(cmd)
+    path = if cmd.include?("/")
+      cmd
+    else
+      dir = ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).find { |d|
+        f = File.join(d, cmd)
+        File.file?(f) && File.executable?(f)
+      }
+      dir ? File.join(dir, cmd) : cmd
+    end
+    return File.realpath(path)
+  rescue SystemCallError
+    return cmd
+  end
+
+  # Determine the host compiler from $CC (defaults to "gcc"): the
+  # command itself, canonical, and its family+version. Both are
+  # published, because a recipe that has to tell the compiler which
+  # C its sources are written in needs the command -- and a recipe
+  # that guessed "cc" or "gcc" for itself would be a second answer to
+  # a question with one owner. If $CXX is also set, require that it
+  # points to the same family+version. If only $CXX is set, fail with
+  # a clear message.
   def get_host_cc
     cc  = ENV["CC"].to_s
     cxx = ENV["CXX"].to_s
@@ -273,21 +367,27 @@ module InitOnly
       exit 1
     end
 
-    cc = "gcc" if cc.empty?
+    cc = canonical_cmd(cc.empty? ? "gcc" : cc)
     cc_family, cc_ver = detect_cc_info(cc)
 
-    if !cxx.empty?
-      cxx_family, cxx_ver = detect_cc_info(cxx)
-      if cxx_family != cc_family || cxx_ver != cc_ver
-        error "CC and CXX refer to different compilers:"
-        error "  CC  = #{cc} -> #{cc_family} #{cc_ver}"
-        error "  CXX = #{cxx} -> #{cxx_family} #{cxx_ver}"
-        error "They must point to the same family and version."
-        exit 1
-      end
+    # A CXX nobody named is the family's own: g++ beside gcc, clang++
+    # beside clang. A CC named by version ("gcc-13") with no CXX gets
+    # the family's default and then fails the comparison below, which
+    # names both and asks for CXX -- better than silently pairing a
+    # gcc-13 with whatever g++ is.
+    cxx = (cc_family == "clang" ? "clang++" : "g++") if cxx.empty?
+    cxx = canonical_cmd(cxx)
+    cxx_family, cxx_ver = detect_cc_info(cxx)
+
+    if cxx_family != cc_family || cxx_ver != cc_ver
+      error "CC and CXX refer to different compilers:"
+      error "  CC  = #{cc} -> #{cc_family} #{cc_ver}"
+      error "  CXX = #{cxx} -> #{cxx_family} #{cxx_ver}"
+      error "They must point to the same family and version."
+      exit 1
     end
 
-    return "#{cc_family}-#{cc_ver}"
+    return [cc, cxx, "#{cc_family}-#{cc_ver}"]
   end
 
 end
@@ -295,7 +395,6 @@ end
 TC = InitOnly.get_tc_root()
 TC_CACHE = TC / "cache"
 TC_STAGING = TC / "staging"
-TC_NOARCH = TC / "noarch"
 ARCH = InitOnly.get_arch(getenv("ARCH", DEFAULT_ARCH))
 HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 
@@ -304,33 +403,126 @@ HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 # HOST_OS      = "linux" | "macos" | "freebsd"
 # HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
 # HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
+# HOST_CC_CMD  = "gcc" | "clang" | whatever $CC named: the command
+#                behind HOST_CC, for a recipe that must pass it on.
+# HOST_CXX_CMD = its C++ counterpart: $CXX, or the family's own.
 #
-# The host toolchain layout is split into two halves:
+# Every installed package sits at exactly three coordinates:
 #
-#   HOST_DIR_PORTABLE   For 100% statically-linked host tools (e.g. the
-#                       cross-compilers) that do not depend on the host
-#                       distro or system libraries. Shared across distros
-#                       and host compilers.
+#   <machine>/<env>/<stack>/pkgs/<pkg>/<ver>/
 #
-#   HOST_DIR            For dynamically-linked host tools (e.g. host_mtools,
-#                       host_gtest) whose binaries or libraries depend on
-#                       glibc/libstdc++ from a specific distro and were
-#                       built by a specific host compiler. Because C++ has
-#                       no stable ABI, the host-compiler version matters
-#                       even for C tools that may depend on C++ host libs.
+# HOST_OS_ARCH, HOST_DISTRO and HOST_CC below supply the values for
+# packages that run on THIS machine. See scripts/pkgmgr/coords.rb for
+# what each coordinate means and docs/plans/toolchain5.md for why the
+# depth is fixed.
+#
+# The coordinates are DECLARED per package (Package#host_tier chooses
+# them), never inferred from a build's outcome: --prefix and RPATH are
+# baked in at configure time, so the location has to be known before
+# anything is built. The portability audit ENFORCES the declaration --
+# a package that claims to need nothing from the machine, and then
+# links something outside the toolchain, fails its install.
 HOST_OS      = InitOnly.get_host_os()
 HOST_DISTRO  = InitOnly.get_host_distro(HOST_OS)
-HOST_CC      = InitOnly.get_host_cc()
+HOST_CC_CMD, HOST_CXX_CMD, HOST_CC = InitOnly.get_host_cc()
 HOST_OS_ARCH = "#{HOST_OS}-#{HOST_ARCH.name}"
 
-HOST_DIR_PORTABLE = TC / "host" / HOST_OS_ARCH / "portable"
-HOST_DIR_DISTRO   = TC / "host" / HOST_OS_ARCH / HOST_DISTRO
-HOST_DIR          = TC / "host" / HOST_OS_ARCH / HOST_DISTRO / HOST_CC
 
 DEFAULT_BOARD = ARCH.default_board
-BOARD = ENV["BOARD"] || DEFAULT_BOARD
-BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD : nil
-BUILD_PAR = ENV["BUILD_PAR"] or ""
+# getenv, not ENV[...] || default: an empty string is truthy in Ruby, so
+# `BOARD=` in the environment used to beat the default and leave the
+# board coordinate blank. CMake passes exactly that whenever the user
+# has not chosen a board.
+BOARD = getenv("BOARD", DEFAULT_BOARD)
+# DERIVED, not stored.
+#
+# It used to be a constant computed at load time from ARCH and BOARD,
+# which are themselves constants -- so anything that changed those
+# afterwards left this one describing the old pair. A check comparing
+# a live ARCH against a frozen BOARD_BSP reported
+#
+#   ERROR: BOARD_BSP: .../other/bsp/i386/pc not found!
+#
+# while looking at riscv64. Production never noticed, because nothing
+# changes ARCH after startup; it surfaced the moment a test drove the
+# command line for a second arch, which is exactly the kind of thing
+# a derived constant hides until it matters.
+def board_bsp
+  return nil if !BOARD
+  return MAIN_DIR / "other" / "bsp" / ARCH.name / BOARD
+end
+#
+# How many jobs a parallel build may use.
+#
+# This used to be the empty string when BUILD_PAR was unset, so every
+# recipe ran `make -j` with NO number: not "one job per core" but
+# UNLIMITED, as many as the dependency graph will admit. GCC and QEMU
+# will happily take hundreds, and a machine that survives it still
+# spends the whole build unusable for anything else.
+#
+# Two ceilings, whichever is lower:
+#
+#   CPU  leave a sixth of the cores free, so the machine stays usable
+#   RAM  4 GB per job, out of five sixths of what the box has -- a C++
+#        translation unit in GCC or QEMU is the reason that number is
+#        not smaller
+#
+# On this 24-core, 94 GB machine: 24 - 4 = 20 by CPU, and
+# (94 * 5/6) / 4 = 19 by RAM. Nineteen.
+#
+# The proportion is the same everywhere rather than a table of special
+# cases, and it lands where it should at both ends: a 4-core laptop
+# gets 3, a 128-core server with 64 GB is held to 13 by memory rather
+# than running 128 compilers into swap.
+#
+# BUILD_PAR in the environment still wins, for a caller that knows
+# better than any of this.
+#
+module BuildJobs
+
+  GB          = 1024 * 1024 * 1024
+  RAM_PER_JOB = 4 * GB
+  RESERVE     = 6      # leave one sixth of each free
+
+  module_function
+
+  def total_ram
+
+    case Etc.uname.fetch(:sysname)
+      when "Linux"
+        kb = File.read("/proc/meminfo")[/^MemTotal:\s+(\d+) kB/, 1]
+        return kb && kb.to_i * 1024
+      when "Darwin"
+        out = `sysctl -n hw.memsize 2>/dev/null`.strip
+      when "FreeBSD"
+        out = `sysctl -n hw.physmem 2>/dev/null`.strip
+      else
+        return nil
+    end
+
+    return out.empty? ? nil : out.to_i
+
+  rescue StandardError
+    # Not knowing how much memory there is only costs the RAM
+    # ceiling; the CPU one still applies.
+    return nil
+  end
+
+  # `cores` and `ram` are arguments so that the arithmetic can be
+  # tested without a machine of the right shape.
+  def compute(cores: Etc.nprocessors, ram: total_ram)
+
+    by_cpu = cores - [cores / RESERVE, 1].max
+    return [by_cpu, 1].max if ram.nil? || ram <= 0
+
+    by_ram = (ram - ram / RESERVE) / RAM_PER_JOB
+    return [[by_cpu, by_ram].min, 1].max
+  end
+end
+
+# `or` rather than `||` here was a precedence bug: it bound after the
+# assignment, so BUILD_PAR was nil when unset and the "" was dead.
+BUILD_PAR = getenv("BUILD_PAR", BuildJobs.compute.to_s)
 
 def get_human_arch_name(arch)
   return "noarch" if arch.nil?
@@ -353,18 +545,66 @@ ensure
   saved&.each { |k,v| ENV[k] = v }
 end
 
-def run_command(out, argv)
+# One word of a command line, written the way a person would type it:
+# bare when it needs nothing, single-quoted when it needs anything.
+#
+# Shellwords.escape is the wrong tool here, and was used for years.
+# It is written for a string about to be handed to a shell, so it
+# backslashes every character that is not plainly safe -- `=` among
+# them -- and prints `make V\=1 -j20` for a command nobody would ever
+# type that way. These lines are read far more often than they are
+# pasted, and they have to survive both.
+SHELL_BARE_WORD = /\A[\w@%+=:,.\/-]+\z/
+
+def shell_word(w)
+  w = w.to_s
+  return w if w.match?(SHELL_BARE_WORD)
+
+  # Inside single quotes every character is itself, which leaves only
+  # the quote to place: close, an escaped one, open again.
+  return "'" + w.gsub("'") { "'\\''" } + "'"
+end
+
+# A whole command line: what somebody could paste into a shell to run
+# exactly this. The log's record of what ran, and the hint that tells
+# a user what to run, are the same sentence and are written once.
+def cmd_to_s(argv) = argv.map { |a| shell_word(a) }.join(" ")
+
+# The environment of one command, written the way somebody would type
+# it. A nil value is a variable REMOVED for this command, which
+# `VAR=` -- the empty string -- would misreport as merely blank, so it
+# is spelled the way a shell spells it.
+def env_to_s(env)
+
+  unset = env.select { |_, v| v.nil? }.keys.sort
+  set = env.reject { |_, v| v.nil? }
+
+  words = unset.map { |k| "-u #{k}" } +
+          set.map { |k, v| "#{k}=#{shell_word(v)}" }
+
+  return words.join(" ") if unset.empty?
+  return "env " + words.join(" ")
+end
+
+# `env` adds variables for this command only, and is logged with it:
+# a build step that behaves differently because of one has to say so,
+# or the log stops being a record of what ran.
+def run_command(out, argv, env: nil)
   assert { argv.is_a? Array }
   assert { argv.length > 0 }
+  assert { env.nil? || env.is_a?(Hash) }
 
-  cmd_str = argv.map { |a| Shellwords.escape(a.to_s) }.join(" ")
+  cmd_str = cmd_to_s(argv)
+  cmd_str = env_to_s(env) + " " + cmd_str if env && !env.empty?
   info "Run: #{cmd_str}"
 
+  args = env ? [env, *argv] : argv
+
   if !out
-    ok = system(*argv)
+    ok = system(*args)
   else
     File.open(out, "wb") do |fh|
-      ok = system(*argv, out: fh, err: fh)
+      ok = system(*args, out: fh, err: fh)
     end
   end
 

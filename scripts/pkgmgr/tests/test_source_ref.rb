@@ -52,7 +52,8 @@ class TestSourceRefOverrides < Minitest::Test
   end
 
   def test_git_tag_override_constant
-    # e.g. treecmd always checks out the "tilck" branch regardless of ver.
+    # A ref that does not follow the version: a source pinned to one
+    # commit, as treecmd and fbdoom are, answers the same for any.
     src = SourceRef.new(
       name: 'treecmd',
       url:  'https://github.com/x/y',
@@ -182,5 +183,162 @@ class TestSourceRefSharing < Minitest::Test
     b = FakePackage.new("b", source: shared)
     assert_same shared, a.source
     assert_same shared, b.source
+  end
+end
+
+class TestSourceRefPins < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def test_the_files_a_source_puts_in_the_cache_and_their_pins
+    src = SourceRef.new(name: 'py', url: 'https://ex/py',
+                        extra_files: [{ url: 'https://ex/w',
+                                        file: 'w-1.whl' }])
+    assert_equal ['py-1.0.tgz', 'w-1.whl'], src.cache_files(Ver('1.0'))
+    held = pkgmgr.pins
+    pkgmgr.pins = { 'w-1.whl' => pin_of("w") }
+    assert_nil src.pin('py-1.0.tgz')
+    assert_equal pin_of("w"), src.pin('w-1.whl')
+  ensure
+    pkgmgr.pins = held
+  end
+
+  def test_a_packed_source_is_named_with_the_packer_s_extension
+    src = SourceRef.new(name: 'zlib', url: GITHUB + '/madler/zlib')
+    assert src.fetch_via_git?
+    assert_equal "zlib-v1.2#{Cache::Pack::EXT}", src.tarname("v1.2")
+  end
+
+  def test_download_and_extract_hand_the_cache_each_file_s_pin
+    src = SourceRef.new(name: 'py', url: 'https://ex/py',
+                        fetch_via_git: false,
+                        extra_files: [{ url: 'https://ex/w',
+                                        file: 'w-1.whl' }])
+    seen = []
+    held = pkgmgr.pins
+    pkgmgr.pins = { 'py-1.0.tgz' => pin_of("t"), 'w-1.whl' => pin_of("w") }
+    with_fake_tc do
+      with_stubbed_externals do
+        Cache.define_singleton_method(:download_file) {
+          |url, remote, local = nil, pin:|
+          seen << [:dl, local || remote, pin]
+          true
+        }
+        Cache.define_singleton_method(:extract_file) {
+          |tarfile, dest = nil, pin:|
+          seen << [:x, tarfile, pin]
+          true
+        }
+        assert src.download(Ver('1.0'))
+        assert src.extract(Ver('1.0'), 'dest')
+      end
+    end
+    assert_equal [[:dl, 'py-1.0.tgz', pin_of("t")],
+                  [:dl, 'w-1.whl', pin_of("w")],
+                  [:x, 'py-1.0.tgz', pin_of("t")]], seen
+  ensure
+    pkgmgr.pins = held
+  end
+end
+
+#
+# A package with more than one source: what upstream keeps as git
+# submodules, declared as subsources (Package#subsources) and placed
+# in the tree before the recipe runs.
+#
+class TestSubsources < Minitest::Test
+  include TestHelper
+
+  SUB = SourceRef.new(name: 'sub', url: GITHUB + '/x/sub',
+                      git_tag: ->(v) { "c" * 40 })
+
+  class WithSub < TestHelper::FakePackage
+    def subsources(ver = default_ver)
+      [Subsource.new(source: SUB, ver: ver, into: "lib/sub")]
+    end
+  end
+
+  def setup
+    reset_pkgmgr!
+    @held = pkgmgr.pins
+  end
+
+  def teardown
+    pkgmgr.pins = @held
+  end
+
+  def test_a_package_reads_its_own_source_and_its_subsources
+    pkg = WithSub.new("main")
+    assert_equal [[pkg.source, Ver("1.0.0")], [SUB, Ver("1.0.0")]],
+                 pkg.sources_at(Ver("1.0.0"))
+    assert_equal [], FakePackage.new("plain").subsources
+  end
+
+  def test_a_build_fetches_and_places_each_subsource_and_records_it
+    pkg = WithSub.new("main")
+    pkgmgr.register(pkg)
+    pin = SourcePins.commit("c" * 40)
+    pkgmgr.pins = { "main-1.0.0.tgz" => pin_of("main"), "sub-1.0.0.tgz" => pin }
+    fetched = []
+    placed = []
+    with_fake_tc do
+      with_stubbed_externals do
+        Cache.define_singleton_method(:download_git_repo) {
+          |url, tarname, tag = nil, dir_name = nil, pin: nil|
+          fetched << [tarname, tag, pin]
+          FileUtils.touch(TC_CACHE / tarname)
+          true
+        }
+        Cache.define_singleton_method(:extract_file) {
+          |tarfile, dest = nil, pin: nil|
+          placed << [tarfile, dest, Pathname.pwd.basename.to_s]
+          FileUtils.mkdir_p(dest)
+          true
+        }
+        assert pkgmgr.install("main")
+        inst = bound(pkg).find_install(Ver("1.0.0"))
+        assert_equal({ "main-1.0.0.tgz" => pin_of("main").to_s,
+                       "sub-1.0.0.tgz" => pin.to_s },
+                     BuildInputs.sources_of(inst.path))
+      end
+    end
+    # The fake's own source is a download (stubbed with the rest);
+    # the subsource is a clone, at its commit, with its pin.
+    assert_equal [["sub-1.0.0.tgz", "c" * 40, pin]], fetched
+    # The subsource is extracted inside the extracted tree.
+    assert_equal [["main-1.0.0.tgz", "1.0.0", "main"],
+                  ["sub-1.0.0.tgz", "lib/sub", "1.0.0"]], placed
+  end
+
+  def test_the_registry_lists_a_subsource_s_file_with_its_source
+    pkg = WithSub.new("main")
+    pkgmgr.register(pkg)
+    with_fake_tc do
+      files = pkgmgr.source_files
+      assert_equal [["main", Ver("1.0.0"), SUB]], files["sub-1.0.0.tgz"]
+      assert_equal [["main", Ver("1.0.0"), pkg.source]], files["main-1.0.0.tgz"]
+    end
+  end
+
+  def test_an_archive_replaces_the_empty_placeholder_a_tree_keeps_for_it
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |staging|
+        FileUtils.mkdir_p(File.join(staging, "v1"))
+        File.write(File.join(staging, "v1", "f.c"), "code")
+        system("tar", "cfz", (tc / "cache" / "sub-1.tgz").to_s,
+               "-C", staging, "v1")
+      end
+      pin = SourcePins.digest_of(tc / "cache" / "sub-1.tgz")
+      tree = noarch_pkgs / "main" / "1.0.0"
+      FileUtils.mkdir_p(tree / "lib" / "sub")   # the placeholder
+      FileUtils.cd(tree) do
+        assert Cache.extract_file("sub-1.tgz", "lib/sub", pin: pin)
+      end
+      assert (tree / "lib" / "sub" / "f.c").file?
+      refute (tree / "lib" / "sub" / "v1").exist?
+    end
   end
 end

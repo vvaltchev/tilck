@@ -31,14 +31,11 @@ class MtoolsPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-  def default_cc = "syscc"
-
-  def expected_files = [
+  def expected_files(ver = nil) = [
     "mtools"
   ]
 
-  def install_impl_internal(install_dir)
+  def build_steps(ver = default_ver)
 
     conf_params = [
       "--without-x",
@@ -48,14 +45,10 @@ class MtoolsPackage < Package
       conf_params << "LIBS=-liconv"
     end
 
-    ok = run_command("configure.log", [
-      "./configure", *conf_params
-    ])
-
-    return false if !ok
-
-    ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
-    return ok
+    return [
+      Run(log: "configure.log", argv: ["./configure", *conf_params]),
+      Run(log: "build.log", argv: ["make", "-j$PAR"]),
+    ]
   end
 end
 

@@ -2,6 +2,13 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 # RUBY CONF
+#
+# 3.2 on purpose: it is what Ubuntu 24.04 ships, and the package
+# manager is meant to run on that system's Ruby rather than download
+# its own. A gem a distro left out (minitest, for the tests) is
+# installed by ensure_ruby_gems; the package manager itself needs
+# nothing beyond the standard library. The floor is the interpreter;
+# the gems are a separate list.
 RUBY_MIN_VER='3.2'
 
 # Project's root directory
@@ -43,6 +50,8 @@ fi
 source $MAIN_DIR/scripts/bash_includes/script_utils
 source $MAIN_DIR/scripts/bash_includes/install_pkgs
 source $MAIN_DIR/other/pkg_versions
+source $MAIN_DIR/other/host_pkg_versions
+source $MAIN_DIR/other/toolchain_conf
 
 function check_ruby_ver {
 
@@ -114,9 +123,9 @@ function download_ruby {
    local ver="$2"
    local compdir=$RUBY_INSTALL_DIR
    local gh="https://github.com/vvaltchev/ruby/releases/download"
-   local ruby_ver_=$(tr '.' '_' <<< $VER_RUBY)
+   local ruby_ver_=$(tr '.' '_' <<< $HOST_VER_RUBY)
    local url="$gh/v${ruby_ver_}"
-   local tarname="ruby-${VER_RUBY}-${distro}${ver}-${HOST_ARCH}.tar.bz2"
+   local tarname="ruby-${HOST_VER_RUBY}-${distro}${ver}-${HOST_ARCH}.tar.bz2"
 
    if [[ "$FORCE_RUBY_BUILD" == 1 ]]; then
       echo "INFO: FORCE_RUBY_BUILD=1, skip download attempt"
@@ -131,7 +140,7 @@ function download_ruby {
    mkdir -p $compdir/..
    pushd $compdir/..
    download_file_in_cache "$url" "$tarname"
-   extract_cachefile_tar_bz $tarname ruby-$VER_RUBY $VER_RUBY
+   extract_cachefile_tar_bz $tarname ruby-$HOST_VER_RUBY $HOST_VER_RUBY
    popd
 
    RUBY=$compdir/bin/ruby
@@ -143,13 +152,13 @@ function build_ruby {
 
    local installdir=$RUBY_INSTALL_DIR
    local compdir=$installdir/source
-   local major=$(cut -d '.' -f 1 <<< $VER_RUBY)
-   local minor=$(cut -d '.' -f 2 <<< $VER_RUBY)
+   local major=$(cut -d '.' -f 1 <<< $HOST_VER_RUBY)
+   local minor=$(cut -d '.' -f 2 <<< $HOST_VER_RUBY)
    local url="https://cache.ruby-lang.org/pub/ruby/${major}.${minor}"
-   local tarname="ruby-${VER_RUBY}.tar.gz"
+   local tarname="ruby-${HOST_VER_RUBY}.tar.gz"
    local params=()
 
-   echo "INFO: Build Ruby $VER_RUBY from source"
+   echo "INFO: Build Ruby $HOST_VER_RUBY from source"
 
    if [[ "$SKIP_INSTALL_PACKAGES" != "1" ]]; then
       # Do check/install all the system dependencies.
@@ -161,9 +170,9 @@ function build_ruby {
    pushd $compdir/..
 
    download_file_in_cache "$url" "$tarname"
-   extract_cachefile_tar_gz $tarname ruby-$VER_RUBY source
+   extract_cachefile_tar_gz $tarname ruby-$HOST_VER_RUBY source
 
-   # Enter in ruby/$VER_RUBY and build.
+   # Enter in ruby/$HOST_VER_RUBY and build.
    cd $compdir
    params+=(--prefix='$installdir')
    params+=(--disable-install-doc)
@@ -222,6 +231,14 @@ function setup_ruby {
             export SKIP_INSTALL_PACKAGES=1
          fi
       fi
+
+      # A system Ruby new enough to use may still lack a gem the
+      # test suite needs, where a distro left it out. One probe, and
+      # a gem install only when something is missing. Running here,
+      # for every invocation, is what makes a fresh machine say what
+      # is missing up front instead of crashing on a `require` deep
+      # inside a run.
+      ensure_ruby_gems
       return
    fi
 
@@ -315,7 +332,19 @@ function detect_host_env {
             | tr -d '"')
          local distro_ver=$(grep -E '^VERSION_ID=' /etc/os-release \
             | cut -d= -f2 | tr -d '"')
-         HOST_DISTRO="${distro_id}-${distro_ver}"
+         local build_id=$(grep -E '^BUILD_ID=' /etc/os-release \
+            | cut -d= -f2 | tr -d '"')
+         local id_like=$(grep -E '^ID_LIKE=' /etc/os-release \
+            | cut -d= -f2 | tr -d '"')
+         # A rolling distro's env is its ID alone: see
+         # InitOnly.rolling_distro? in scripts/pkgmgr/early_logic.rb.
+         if [ "$build_id" = "rolling" ] || [ "$distro_id" = "arch" ] \
+               || [[ " $id_like " == *" arch "* ]] || [ -z "$distro_ver" ]
+         then
+            HOST_DISTRO="$distro_id"
+         else
+            HOST_DISTRO="${distro_id}-${distro_ver}"
+         fi
          ;;
       macos)
          # Use only major.minor (e.g. "26.4") so a minor-patch bump like
@@ -355,7 +384,7 @@ function dump_build_toolchain_env {
 
 
 : ${TCROOT_PARENT:=$MAIN_DIR}
-: ${TCROOT:=$TCROOT_PARENT/toolchain4}
+: ${TCROOT:=$TCROOT_PARENT/$TOOLCHAIN_DIR_NAME}
 TC="$TCROOT"
 export TCROOT
 
@@ -371,7 +400,19 @@ detect_host_env
 # but the host C/C++ compiler used to build it is irrelevant for running
 # Ruby itself. The full Ruby package manager layout (with a host-cc level)
 # applies only to *registered* non-portable packages.
-RUBY_INSTALL_DIR="$TC/host/$HOST_OS-$HOST_ARCH/$HOST_DISTRO/ruby/$VER_RUBY"
+# Ruby is a package like any other and lives at the same three
+# coordinates: it runs on this machine, it needs this distro (a
+# prebuilt binary is built for it, and a source build links its
+# libssl/libyaml/libffi), and no particular compiler matters.
+#
+#   <machine>/<env>/<stack>/pkgs/<pkg>/<ver>/
+#
+# It cannot be portable: that would mean building it inside our own
+# stack, and the stack is built by pkgmgr, which needs Ruby. Bash
+# performs the first install because it is what runs pkgmgr, but it
+# writes to the canonical location so pkgmgr can see it.
+RUBY_COORDS="$HOST_OS-$HOST_ARCH/$HOST_DISTRO/any"
+RUBY_INSTALL_DIR="$TC/$RUBY_COORDS/pkgs/ruby/$HOST_VER_RUBY"
 
 if [[ "$1" == "-n" || $1 == "--skip-install-pkgs" ]]; then
    export SKIP_INSTALL_PACKAGES=1
@@ -380,7 +421,7 @@ fi
 # --contrib is handled on BOTH layers: here (bash) to trigger the
 # install of system packages that contributors need (e.g. clang,
 # extra dev libs), AND on the Ruby side, where it adds extra
-# toolchain packages (host_menuconfig, ...) to the default install
+# toolchain packages (host_mconf, ...) to the default install
 # set. It must therefore be forwarded to the Ruby pkgmgr after being
 # observed here.
 #

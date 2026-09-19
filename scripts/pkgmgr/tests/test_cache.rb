@@ -27,7 +27,8 @@ class TestCacheDownloadFile < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "pkg-1.0.tar.gz")
+      ok = Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                               pin: pin_of(@body))
       assert ok
       assert (tc / "cache" / "pkg-1.0.tar.gz").file?
       assert_equal @body, File.read(tc / "cache" / "pkg-1.0.tar.gz")
@@ -41,7 +42,8 @@ class TestCacheDownloadFile < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "remote.tar.gz", "local.tar.gz")
+      ok = Cache.download_file(@server.url, "remote.tar.gz", "local.tar.gz",
+                               pin: pin_of(@body))
       assert ok
       assert (tc / "cache" / "local.tar.gz").file?
       refute (tc / "cache" / "remote.tar.gz").exist?
@@ -50,12 +52,107 @@ class TestCacheDownloadFile < Minitest::Test
 
   def test_download_skips_if_cached
     with_fake_tc do |tc|
-      # Pre-create the file in cache
-      FileUtils.touch(tc / "cache" / "pkg-1.0.tar.gz")
+      # Pre-create the file in cache, as the pin names it
+      File.write(tc / "cache" / "pkg-1.0.tar.gz", @body)
 
       # Server not even started — should not attempt download
-      ok = Cache.download_file(@server.url, "pkg-1.0.tar.gz")
+      ok = Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                               pin: pin_of(@body))
       assert ok
+      # ...and the cache now records what it checked.
+      assert_equal pin_of(@body).to_s, Cache::Hashes.of("pkg-1.0.tar.gz")
+    end
+  end
+
+  def test_a_cached_file_that_is_not_what_the_pin_names_is_fetched_again
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      { status: 200, body: @body, content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      File.write(tc / "cache" / "pkg-1.0.tar.gz", "something else")
+      out = capture_output {
+        assert Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   pin: pin_of(@body))
+      }
+      assert_equal @body, File.read(tc / "cache" / "pkg-1.0.tar.gz")
+      assert_equal "something else",
+                   File.read(tc / "cache" / "rejected" / "pkg-1.0.tar.gz")
+      assert_match(/set aside as rejected\/pkg-1.0.tar.gz: not what/, out)
+    end
+  end
+
+  def test_a_cached_file_whose_bytes_moved_is_damaged_and_fetched_again
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      { status: 200, body: @body, content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      File.write(tc / "cache" / "pkg-1.0.tar.gz", @body)
+      Cache::Hashes.record("pkg-1.0.tar.gz", pin_of(@body))
+      File.write(tc / "cache" / "pkg-1.0.tar.gz", "bit rot")
+      out = capture_output {
+        assert Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   pin: pin_of(@body))
+      }
+      assert_match(/its bytes moved since it was placed/, out)
+      assert_equal @body, File.read(tc / "cache" / "pkg-1.0.tar.gz")
+      assert_equal pin_of(@body).to_s, Cache::Hashes.of("pkg-1.0.tar.gz")
+    end
+  end
+
+  def test_a_download_that_is_not_what_the_pin_names_is_refused
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      { status: 200, body: "tampered", content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      out = capture_output {
+        refute Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   pin: pin_of(@body))
+      }
+      refute (tc / "cache" / "pkg-1.0.tar.gz").exist?
+      assert (tc / "cache" / "rejected" / "pkg-1.0.tar.gz").file?
+      assert_match(/not what other\/pkg_hashes names/, out)
+      assert_match(/pinned: #{pin_of(@body)}/, out)
+      assert_match(/cached: #{pin_of("tampered")}/, out)
+      assert_nil Cache::Hashes.of("pkg-1.0.tar.gz")
+    end
+  end
+
+  def test_an_unpinned_download_is_kept_unrecorded_and_the_line_printed
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      { status: 200, body: @body, content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      out = capture_output {
+        refute Cache.download_file(@server.url, "pkg-1.0.tar.gz", pin: nil)
+      }
+      assert_match(/no pin for pkg-1.0.tar.gz in other\/pkg_hashes/, out)
+      assert_match(/ pkg-1.0.tar.gz: #{pin_of(@body)}$/, out)
+      assert_equal @body, File.read(tc / "cache" / "pkg-1.0.tar.gz")
+      assert_nil Cache::Hashes.of("pkg-1.0.tar.gz")
+
+      # Pinned afterwards: no download, the file stands and is recorded.
+      @server.stop
+      assert Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                 pin: pin_of(@body))
+      assert_equal pin_of(@body).to_s, Cache::Hashes.of("pkg-1.0.tar.gz")
+    end
+  end
+
+  def test_a_downloaded_file_takes_only_a_sha256_pin
+    with_fake_tc do |tc|
+      out = capture_output {
+        refute Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   pin: SourcePins.commit("c" * 40))
+      }
+      assert_match(/its pin must be a sha256/, out)
     end
   end
 
@@ -69,7 +166,8 @@ class TestCacheDownloadFile < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "old-path.tar.gz")
+      ok = Cache.download_file(@server.url, "old-path.tar.gz",
+                               pin: pin_of(@body))
       assert ok
       assert_equal @body, File.read(tc / "cache" / "old-path.tar.gz")
     end
@@ -88,7 +186,8 @@ class TestCacheDownloadFile < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "r1.tar.gz")
+      ok = Cache.download_file(@server.url, "r1.tar.gz",
+                               pin: pin_of(@body))
       assert ok
       assert_equal @body, File.read(tc / "cache" / "r1.tar.gz")
     end
@@ -101,7 +200,8 @@ class TestCacheDownloadFile < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "missing.tar.gz")
+      ok = Cache.download_file(@server.url, "missing.tar.gz",
+                               pin: pin_of(@body))
       refute ok
       refute (tc / "cache" / "missing.tar.gz").exist?
     end
@@ -114,7 +214,8 @@ class TestCacheDownloadFile < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "error.tar.gz")
+      ok = Cache.download_file(@server.url, "error.tar.gz",
+                               pin: pin_of(@body))
       refute ok
     end
   end
@@ -126,7 +227,8 @@ class TestCacheDownloadFile < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "bad-redirect.tar.gz")
+      ok = Cache.download_file(@server.url, "bad-redirect.tar.gz",
+                               pin: pin_of(@body))
       refute ok
     end
   end
@@ -157,7 +259,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "mismatch.tar.gz")
+      ok = Cache.download_file(@server.url, "mismatch.tar.gz",
+                               pin: pin_of(body))
       refute ok
     end
   end
@@ -181,7 +284,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "nolen.tar.gz")
+      ok = Cache.download_file(@server.url, "nolen.tar.gz",
+                               pin: pin_of(body))
       assert ok
       assert_equal body, File.read(tc / "cache" / "nolen.tar.gz")
     end
@@ -195,7 +299,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "loop.tar.gz")
+      ok = Cache.download_file(@server.url, "loop.tar.gz",
+                               pin: pin_of(""))
       refute ok
     end
   end
@@ -214,7 +319,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "hop1.tar.gz")
+      ok = Cache.download_file(@server.url, "hop1.tar.gz",
+                               pin: pin_of(""))
       refute ok
     end
   end
@@ -238,7 +344,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "drop.tar.gz")
+      ok = Cache.download_file(@server.url, "drop.tar.gz",
+                               pin: pin_of(""))
       refute ok
       # Partial file should NOT be left in cache
       refute (tc / "cache" / "drop.tar.gz").exist?
@@ -252,7 +359,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "empty.tar.gz")
+      ok = Cache.download_file(@server.url, "empty.tar.gz",
+                               pin: pin_of(""))
       # Empty body with 200 — download_url returns true (no
       # content-length mismatch since both are 0), but the file
       # won't be useful. The download itself should succeed.
@@ -269,7 +377,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "large.tar.gz")
+      ok = Cache.download_file(@server.url, "large.tar.gz",
+                               pin: pin_of(body))
       assert ok
       assert_equal body.bytesize,
                    File.size(tc / "cache" / "large.tar.gz")
@@ -293,7 +402,8 @@ class TestCacheDownloadEdgeCases < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "abs-redir.tar.gz")
+      ok = Cache.download_file(@server.url, "abs-redir.tar.gz",
+                               pin: pin_of(body))
       assert ok
       assert_equal body, File.read(tc / "cache" / "abs-redir.tar.gz")
     end
@@ -303,7 +413,8 @@ end
 class TestCacheExtractFile < Minitest::Test
   include TestHelper
 
-  # Create a real .tar.gz containing a single directory with a file.
+  # Create a real .tar.gz containing a single directory with a file,
+  # and answer the pin that names it.
   def make_test_tarball(tc, tarname, inner_dir, filename = "hello.txt")
     Dir.mktmpdir do |staging|
       dir = File.join(staging, inner_dir)
@@ -312,18 +423,19 @@ class TestCacheExtractFile < Minitest::Test
       system("tar", "cfz", (tc / "cache" / tarname).to_s,
              "-C", staging, inner_dir)
     end
+    return SourcePins.digest_of(tc / "cache" / tarname)
   end
 
   def test_extract_success
     with_fake_tc do |tc|
-      make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
+      pin = make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
 
       gcc = FAKE_GCC_VER.to_s
-      dest = tc / "gcc-#{gcc}" / ARCH.name / "mypkg"
+      dest = target_pkgs(ARCH, gcc) / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
-        ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0")
+        ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0", pin: pin)
         assert ok
         assert (dest / "1.0.0" / "hello.txt").file?
       end
@@ -333,13 +445,13 @@ class TestCacheExtractFile < Minitest::Test
   def test_extract_renames_inner_dir
     with_fake_tc do |tc|
       # Tarball has "upstream-name-1.0/" but we want "1.0.0/"
-      make_test_tarball(tc, "pkg-1.0.tgz", "upstream-name-1.0")
+      pin = make_test_tarball(tc, "pkg-1.0.tgz", "upstream-name-1.0")
 
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
-        ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0")
+        ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0", pin: pin)
         assert ok
         assert (dest / "1.0.0" / "hello.txt").file?
         refute (dest / "upstream-name-1.0").exist?
@@ -349,13 +461,13 @@ class TestCacheExtractFile < Minitest::Test
 
   def test_extract_default_dir_name
     with_fake_tc do |tc|
-      make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
+      pin = make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
 
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
-        ok = Cache.extract_file("pkg-1.0.tgz")  # no newDirName
+        ok = Cache.extract_file("pkg-1.0.tgz", pin: pin)  # no newDirName
         assert ok
         assert (dest / "pkg-1.0" / "hello.txt").file?
       end
@@ -364,17 +476,17 @@ class TestCacheExtractFile < Minitest::Test
 
   def test_extract_cleans_stale_tmp
     with_fake_tc do |tc|
-      make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
+      pin = make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
 
       # Create a stale tmp dir in cache
       FileUtils.mkdir_p(tc / "cache" / "tmp")
       File.write(tc / "cache" / "tmp" / "stale", "old")
 
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
-        ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0")
+        ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0", pin: pin)
         assert ok
         # Stale tmp should be cleaned up
         refute (tc / "cache" / "tmp").exist?
@@ -384,12 +496,12 @@ class TestCacheExtractFile < Minitest::Test
 
   def test_extract_outside_toolchain_fails
     with_fake_tc do |tc|
-      make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
+      pin = make_test_tarball(tc, "pkg-1.0.tgz", "pkg-1.0")
 
       # Try to extract from a directory NOT under TC
       Dir.mktmpdir do |outside|
         FileUtils.cd(outside) do
-          ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0")
+          ok = Cache.extract_file("pkg-1.0.tgz", "1.0.0", pin: pin)
           refute ok
         end
       end
@@ -432,16 +544,17 @@ class TestCacheDownloadAndExtractIntegration < Minitest::Test
     with_fake_tc do |tc|
       # Download
       ok = Cache.download_file(@server.url, "upstream-1.0.tar.gz",
-                               "mypkg-1.0.tar.gz")
+                               "mypkg-1.0.tar.gz", pin: pin_of(tarball))
       assert ok
       assert (tc / "cache" / "mypkg-1.0.tar.gz").file?
 
       # Extract
-      dest = tc / "noarch" / "mypkg"
+      dest = noarch_pkgs / "mypkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
-        ok = Cache.extract_file("mypkg-1.0.tar.gz", "1.0.0")
+        ok = Cache.extract_file("mypkg-1.0.tar.gz", "1.0.0",
+                                pin: pin_of(tarball))
         assert ok
         assert (dest / "1.0.0" / "built_binary").file?
         assert_equal "built output",
@@ -462,14 +575,14 @@ class TestCacheDownloadAndExtractIntegration < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      ok = Cache.download_file(@server.url, "old.tar.gz")
+      ok = Cache.download_file(@server.url, "old.tar.gz", pin: pin_of(tarball))
       assert ok
 
-      dest = tc / "noarch" / "pkg"
+      dest = noarch_pkgs / "pkg"
       FileUtils.mkdir_p(dest)
 
       FileUtils.cd(dest) do
-        ok = Cache.extract_file("old.tar.gz", "2.0.0")
+        ok = Cache.extract_file("old.tar.gz", "2.0.0", pin: pin_of(tarball))
         assert ok
         assert (dest / "2.0.0").directory?
       end

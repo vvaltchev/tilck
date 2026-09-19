@@ -50,12 +50,12 @@ class TestGetInstalledCompilers < Minitest::Test
         # get_install_list includes target_arch/libc.
         cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
         target = ARCH
-        cc.define_singleton_method(:get_install_list) {
-          super().map { |info|
+        cc.define_singleton_method(:read_install_list) { |host|
+          super(host).map { |info|
             InstallInfo.new(
               info.pkgname, info.compiler, info.on_host, info.arch,
               info.ver, info.path, info.pkg, info.broken,
-              target, "musl"
+              target, "musl", coords: info.coords
             )
           }
         }
@@ -112,14 +112,14 @@ class TestUninstallEdgeCases < Minitest::Test
         # Also create a manual 2.0.0 install
         gcc = FAKE_GCC_VER.to_s
         FileUtils.mkdir_p(
-          tc / "gcc-#{gcc}" / ARCH.name / "foo" / "2.0.0"
+          target_pkgs(ARCH, gcc) / "foo" / "2.0.0"
         )
         pkgmgr.refresh()
 
         # Uninstall with default ver — 1.0.0 IS installed, so only
         # 1.0.0 is removed
         pkgmgr.uninstall("foo", false, false)
-        v2 = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "2.0.0"
+        v2 = target_pkgs(ARCH, gcc) / "foo" / "2.0.0"
         assert v2.directory?
 
         # Now 1.0.0 is gone. Uninstall again — default ver (1.0.0)
@@ -153,13 +153,13 @@ class TestScanToolchain < Minitest::Test
       with_stubbed_externals do
         # Create a package on disk that's NOT registered
         gcc = FAKE_GCC_VER.to_s
-        orphan_dir = tc / "gcc-#{gcc}" / ARCH.name / "orphan_pkg" / "1.0.0"
+        orphan_dir = target_pkgs(ARCH, gcc) / "orphan_pkg" / "1.0.0"
         FileUtils.mkdir_p(orphan_dir)
 
         pkgmgr.refresh()
 
-        # The orphan should show up in found_installed
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        # The orphan should show up among the world's orphans
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "orphan_pkg" }
         assert_equal 1, orphans.length
         assert_equal Ver("1.0.0"), orphans.first.ver
@@ -170,10 +170,10 @@ class TestScanToolchain < Minitest::Test
   def test_scan_finds_noarch_orphans
     with_fake_tc do |tc|
       with_stubbed_externals do
-        FileUtils.mkdir_p(tc / "noarch" / "some_src" / "2.0.0")
+        FileUtils.mkdir_p(noarch_pkgs / "some_src" / "2.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "some_src" }
         assert_equal 1, orphans.length
       end
@@ -183,10 +183,10 @@ class TestScanToolchain < Minitest::Test
   def test_scan_finds_host_portable_orphans
     with_fake_tc do |tc|
       with_stubbed_externals do
-        FileUtils.mkdir_p(HOST_DIR_PORTABLE / "some_tool" / "3.0.0")
+        FileUtils.mkdir_p(portable_pkgs / "some_tool" / "3.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "some_tool" }
         assert_equal 1, orphans.length
         assert_equal "syscc", orphans.first.compiler
@@ -197,10 +197,10 @@ class TestScanToolchain < Minitest::Test
   def test_scan_finds_host_distro_orphans
     with_fake_tc do |tc|
       with_stubbed_externals do
-        FileUtils.mkdir_p(HOST_DIR / "host_thing" / "1.0.0")
+        FileUtils.mkdir_p(hostcc_pkgs / "host_thing" / "1.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         orphans = found.select { |x| x.pkgname == "host_thing" }
         assert_equal 1, orphans.length
       end
@@ -213,11 +213,11 @@ class TestScanToolchain < Minitest::Test
         gcc = FAKE_GCC_VER.to_s
         # Create a dir with an unparseable version name
         FileUtils.mkdir_p(
-          tc / "gcc-#{gcc}" / ARCH.name / "pkg" / "not_a_version!!"
+          target_pkgs(ARCH, gcc) / "pkg" / "not_a_version!!"
         )
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         bad = found.select { |x| x.pkgname == "pkg" }
         assert_empty bad  # should be skipped, not crash
       end
@@ -238,10 +238,10 @@ class TestScanToolchain < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc}" / "mips" / "foo" / "1.0.0")
+        FileUtils.mkdir_p(tc / "tilck-mips" / "any" / "gcc-#{gcc}" / "pkgs" / "foo" / "1.0.0")
         pkgmgr.refresh()
 
-        found = pkgmgr.instance_variable_get(:@found_installed)
+        found = pkgmgr.orphan_installs
         mips = found.select { |x| x.pkgname == "foo" }
         assert_empty mips  # mips is not in ALL_ARCHS
       end
@@ -266,12 +266,12 @@ class TestWithCc < Minitest::Test
                            host_tier: :portable, arch_list: ALL_HOST_ARCHS.values)
       cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
       target = ARCH
-      cc.define_singleton_method(:get_install_list) {
-        super().map { |info|
+      cc.define_singleton_method(:read_install_list) { |host|
+        super(host).map { |info|
           InstallInfo.new(
             info.pkgname, info.compiler, info.on_host, info.arch,
             info.ver, info.path, info.pkg, info.broken,
-            target, "musl"
+            target, "musl", coords: info.coords
           )
         }
       }
@@ -293,7 +293,7 @@ class TestWithCc < Minitest::Test
       # Now call the REAL with_cc (not stubbed)
       yielded_dir = nil
       saved_cc = ENV["CC"]
-      pkgmgr.with_cc do |arch_dir|
+      pkgmgr.with_cc(ARCH.name) do |arch_dir|
         yielded_dir = arch_dir
         # Verify env vars are set
         assert_match(/linux-gcc$/, ENV["CC"])
@@ -341,16 +341,18 @@ class TestShowStatusAllCompilers < Minitest::Test
         # Create an install under a DIFFERENT gcc version (12.4.0)
         # to trigger the "non-current compiler" group.
         other_gcc = "12.4.0"
-        other_dir = tc / "gcc-#{other_gcc}" / ARCH.name / "foo" / "1.0.0"
+        other_dir = target_pkgs(ARCH, other_gcc) / "foo" / "1.0.0"
         FileUtils.mkdir_p(other_dir)
 
+        pkgmgr.installs_changed!
         pkgmgr.refresh()
 
         output = capture_stdout {
           pkgmgr.show_status_all(nil, true)  # all_compilers = true
         }
-        assert_match(/Packages built by GCC 12\.4\.0/, output)
-        assert_match(/Packages built by GCC #{FAKE_GCC_VER}.*CURRENT/, output)
+        assert_match(/Tilck packages built by GCC 12\.4\.0/, output)
+        assert_match(/Tilck packages built by GCC #{FAKE_GCC_VER}.*CURRENT/,
+                     output)
       end
     end
   end
@@ -369,7 +371,7 @@ class TestReadConfigVersionsErrors < Minitest::Test
         with_context(MAIN_DIR: Pathname.new(fake_main)) do
           pm = PackageManager.instance
           assert_raises(RuntimeError) {
-            pm.send(:read_config_versions)
+            pm.send(:read_config_versions, "pkg_versions", "VER_")
           }
         end
       end
@@ -386,8 +388,59 @@ class TestReadConfigVersionsErrors < Minitest::Test
         with_context(MAIN_DIR: Pathname.new(fake_main)) do
           pm = PackageManager.instance
           assert_raises(RuntimeError) {
-            pm.send(:read_config_versions)
+            pm.send(:read_config_versions, "pkg_versions", "VER_")
           }
+        end
+      end
+    end
+  end
+
+  def test_host_file_requires_the_host_prefix
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "host_pkg_versions"),
+                   "VER_FOO=1.0\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          e = assert_raises(RuntimeError) {
+            pm.send(:read_config_versions, "host_pkg_versions", "HOST_VER_")
+          }
+          assert_match(/host_pkg_versions/, e.message)
+        end
+      end
+    end
+  end
+
+  def test_host_prefix_is_stripped_from_the_keys
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "host_pkg_versions"),
+                   "HOST_VER_FOO=1.2.3\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          got = pm.send(:read_config_versions,
+                        "host_pkg_versions", "HOST_VER_")
+          assert_equal Ver("1.2.3"), got["FOO"]
+        end
+      end
+    end
+  end
+
+  def test_comments_and_blank_lines_are_skipped
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "pkg_versions"),
+                   "#\n# a header comment\n#\n\nVER_FOO=1.0\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          got = pm.send(:read_config_versions, "pkg_versions", "VER_")
+          assert_equal({ "FOO" => Ver("1.0") }, got)
         end
       end
     end
@@ -403,7 +456,7 @@ class TestReadConfigVersionsErrors < Minitest::Test
         with_context(MAIN_DIR: Pathname.new(fake_main)) do
           pm = PackageManager.instance
           assert_raises(RuntimeError) {
-            pm.send(:read_config_versions)
+            pm.send(:read_config_versions, "pkg_versions", "VER_")
           }
         end
       end
@@ -439,7 +492,9 @@ class TestShowStatusEdgeCases < Minitest::Test
     # An orphan install has pkg=nil — should show "found" not "installed"
     info = InstallInfo.new(
       "orphan", FAKE_GCC_VER, false, ARCH, Ver("1.0.0"),
-      Pathname.new("/fake/path"), nil, false
+      Pathname.new("/fake/path"), nil, false,
+      coords: Coords.new("tilck-#{ARCH.name}", ARCH.default_board,
+                         "gcc-#{FAKE_GCC_VER}")
     )
     output = capture_stdout {
       pkgmgr.show_status("orphan", nil, [info])

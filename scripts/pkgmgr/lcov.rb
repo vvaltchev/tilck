@@ -28,14 +28,19 @@ class LcovPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["bin", true],
   ]
 
-  def install_impl_internal(ignored = nil) = true
+  def nothing_to_build? = true
 
   def default_arch = nil
   def default_cc = nil
+
+  # lcov runs on the build host: it is a noarch package (nothing to
+  # compile) rather than a target one, so its version comes from the
+  # host table even though on_host is false.
+  def default_ver = pkgmgr.get_config_ver("lcov", host: true)
 end
 
 pkgmgr.register(LcovPackage.new())

@@ -10,7 +10,11 @@ require_relative 'package_manager'
 TREECMD_SOURCE = SourceRef.new(
   name: 'treecmd',
   url:  GITHUB + '/vvaltchev/tree-command',
-  git_tag: ->(_ver) { "tilck" },
+  # The `tilck` branch of the fork, as a commit: a branch moves, and
+  # a clone of it after a move could only fail its pin
+  # (other/pkg_hashes) with no way back to what the tree was built
+  # from. Moving it is editing this line and the pin together.
+  git_tag: ->(_ver) { "683188c60ce7b4bf4cb5237e8c053958fcfcc90b" },
 )
 
 class TreecmdPackage < Package
@@ -29,7 +33,7 @@ class TreecmdPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["tree", false],
   ]
 
@@ -38,9 +42,9 @@ class TreecmdPackage < Package
            out: "/dev/null", err: "/dev/null")
   end
 
-  def install_impl_internal(install_dir)
-    return run_command("build.log", ["make", "-j#{BUILD_PAR}"])
-  end
+  def build_steps(ver = default_ver) = [
+    Run(log: "build.log", argv: ["make", "-j$PAR"]),
+  ]
 end
 
 pkgmgr.register(TreecmdPackage.new())

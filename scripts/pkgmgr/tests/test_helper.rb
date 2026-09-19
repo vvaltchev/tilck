@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 require 'minitest/autorun'
+
+# Object#stub and Minitest::Mock come from minitest/mock, which older
+# minitest releases happened to load from autorun and newer ones do not.
+# Require it explicitly: relying on the transitive load made the suite
+# pass on the local Ruby and fail on every CI distro image.
+require 'minitest/mock'
 require 'tmpdir'
 require 'fileutils'
 require 'pathname'
@@ -15,8 +21,279 @@ require_relative '../package'
 require_relative '../dep_resolver'
 require_relative '../cache'
 require_relative '../package_manager'
+require_relative '../system_deps'
+
+#
+# A TEST MAY NOT READ THE DEVELOPER'S TOOLCHAIN.
+#
+# Two tests asked the real tree whether host_python was installed.
+# They passed here, where it is, and errored on all six CI images at
+# once, where it is not -- and neither one was about installation at
+# all: one checked a published bin dir, the other a PATH order. A test
+# that consults toolchain5/ is not testing the code, it is reporting
+# what this machine last built, and it does so silently until the day
+# it runs somewhere else.
+#
+# So the reading is made impossible rather than discouraged.
+# get_install_list and get_installable_list are where every such
+# question funnels -- find_install, installed?, install_prefix,
+# build_env, python_interpreter, refresh, the whole listing -- so the
+# guard sits there and names the caller. with_fake_tc builds a world
+# to ask about; with_real_tc is the deliberate opt-out, for a test
+# whose subject IS the real tree.
+#
+REAL_TC = TC
+
+# A test class that judges the SOURCES, or the harness itself, rather
+# than the package manager's behaviour: the lint, the Ripper tree's
+# self-test, the assertion renderer's, the tables held against
+# upstream tarballs. No mutation operator changes what they look at,
+# so a run that judges a mutant leaves them out (run_all.rb).
+module SourceAudit; end
+
+module NoRealToolchainReads
+
+  @@allowed = false
+
+  def self.allowed? = @@allowed
+  def self.allow!(v) = @@allowed = v
+
+  def read_install_list(host)
+    NoRealToolchainReads.check!("#{name}.read_install_list")
+    return super
+  end
+
+  def get_installable_list
+    NoRealToolchainReads.check!("#{name}.get_installable_list")
+    return super
+  end
+
+  def self.check!(what)
+
+    return if @@allowed || TC != REAL_TC
+
+    raise "#{what} would read the real toolchain at #{TC}. A test must " \
+          "build the world it asks about: wrap it in with_fake_tc, or in " \
+          "with_real_tc when the real tree is the subject."
+  end
+end
+
+Package.prepend(NoRealToolchainReads)
+
+# The other thing a test must never touch: the machine's package
+# manager and the installers that download and run code. The stubbed
+# world stands on a machine of its own (with_stubbed_externals); the
+# real one refuses to run anything inside a test, since a test that
+# reaches it has forgotten the stub -- and on CI, where cargo is
+# present and cargo-c is not, `cargo install cargo-c` is what it did.
+module NoRealInstallers
+  def run(argv)
+    raise "a test would run `#{argv.join(' ')}` on this machine. Wrap " \
+          "it in with_stubbed_externals, which hands SystemDeps a " \
+          "machine on which everything is already installed."
+  end
+end
+
+SystemDeps::Env.prepend(NoRealInstallers)
+
+# --- the outside world, faked --------------------------------------------
+#
+# SystemDeps::Env is the only thing in system_deps.rb that runs
+# commands, reads PATH or talks to a terminal, so replacing it makes
+# every decision there testable without a package manager, a network
+# or a tty.
+
+class FakeSysBackend
+
+  attr_reader :id, :queried
+
+  # installed: the packages that are, or :all.
+  def initialize(id: :apt, installed: [])
+    @id = id
+    @installed = installed
+    @queried = []
+  end
+
+  def name = @id.to_s
+
+  def installed?(pkg)
+    @queried << pkg
+    return @installed == :all || @installed.include?(pkg)
+  end
+
+  def full_install_argv(pkgs, assume_yes: false)
+    return ["fakepm", "install", *(assume_yes ? ["-y"] : []), *pkgs]
+  end
+end
+
+class FakeSysEnv
+
+  attr_accessor :tools, :backend, :answers, :interactive, :ci, :flags,
+                :run_result, :on_run
+  attr_reader :ran, :asked
+
+  # tools: { "rustc" => { path: "/usr/bin/rustc", ver: "1.66.1" } }
+  #        a nil :ver means the binary is there but won't say what it is
+  def initialize(tools: {}, backend: nil, answers: [], interactive: true,
+                 ci: false, flags: {}, run_result: true)
+    @tools = tools
+    @backend = backend
+    @answers = answers
+    @interactive = interactive
+    @ci = ci
+    @flags = flags
+    @run_result = run_result
+    @ran = []
+    @asked = []
+    @on_run = nil
+  end
+
+  def which(cmd)
+    t = @tools[cmd]
+    return t ? t[:path] : nil
+  end
+
+  def probe_version(path, flag, re)
+    t = @tools.values.find { |v| v[:path] == path }
+    return nil if t.nil? || t[:ver].nil?
+    return SafeVer(t[:ver])
+  end
+
+  def run(argv)
+    @ran << argv
+    @on_run&.call(argv, self)
+    return @run_result
+  end
+
+  def ask(q, default: true)
+    @asked << q
+    return @answers.empty? ? default : @answers.shift
+  end
+
+  def interactive? = @interactive
+  def in_ci? = @ci
+  def env_flag(name) = !!@flags[name]
+end
+
+
+#
+# THE REAL PACKAGE SET, AND THE ONLY MOMENT IT IS ALL THERE.
+#
+# main.rb registers every package as it loads, `require` loads a file
+# once, and reset_pkgmgr! empties the registry before each test: after
+# the unit lane has run, no later require can put the real packages
+# back. So they are taken here, at load, before a single test has had
+# the chance to swap in its own -- the same reason test_gcc_prereqs.rb
+# and test_no_gating.rb snapshot at load time.
+#
+require_relative '../main'
+REAL_PACKAGES = pkgmgr.all_packages.dup.freeze
+
+require_relative 'laws'
+require_relative 'model/bridge'
+require 'stringio'
 
 module TestHelper
+
+  # The pin that names `body`, as other/pkg_hashes would spell it.
+  def pin_of(body)
+    SourcePins.parse_pin("sha256:" + Digest::SHA256.hexdigest(body))
+  end
+
+  # What the block printed to stdout, where every message goes.
+  def capture_output
+    out, = capture_io { yield }
+    return out
+  end
+
+  # Run one command line through Main.main and return [rc, stdout].
+  #
+  # A command line can exit rather than return, and a test process
+  # must survive that: without the rescue, one `exit 1` deep inside an
+  # argument check takes the whole suite down with no output at all.
+  #
+  # The laws (tests/laws.rb) are checked around every run made inside
+  # a fake toolchain -- there is no world to read outside one. A test
+  # that must switch them off says why: `laws: false, because: "..."`.
+  def run_cli(*argv, laws: :auto, because: nil)
+
+    argv = argv.flatten.map(&:to_s)
+    checking = laws == true || (laws == :auto && TC != REAL_TC)
+
+    if laws == false && because.nil?
+      raise ArgumentError, "run_cli(laws: false) needs a because:"
+    end
+
+    require_relative '../main'
+    before = checking ? Bridge.snapshot : nil
+
+    old = $stdout
+    $stdout = StringIO.new
+
+    # A copy: parse_options consumes argv in place, and the laws need
+    # the line as it was typed.
+    begin
+      rc = Main.main(argv.dup)
+    rescue SystemExit => e
+      rc = e.status
+    ensure
+      out = $stdout.string
+      $stdout = old
+    end
+
+    if checking
+      after = Bridge.snapshot
+      broken = Laws.check(argv, before, after)
+      assert broken.empty?,
+             "the command line broke a law:\n" +
+             broken.map(&:to_s).join("\n\n")
+    end
+
+    return [rc, out]
+  end
+
+  # For a test whose subject really is the installed tree.
+  def with_real_tc
+    prev = NoRealToolchainReads.allowed?
+    NoRealToolchainReads.allow!(true)
+
+    begin
+      yield
+    ensure
+      NoRealToolchainReads.allow!(prev)
+    end
+  end
+
+  # The real package set registered for the block, and whatever was
+  # there before put back after it.
+  def with_real_registry
+    held = pkgmgr.instance_variable_get(:@packages)
+    reset_pkgmgr!
+    REAL_PACKAGES.each { |p| pkgmgr.register(p) }
+    yield
+  ensure
+    pkgmgr.instance_variable_set(:@packages, held)
+    pkgmgr.installs_changed!
+  end
+
+  # For the lane whose subject is the installed tree from end to end.
+  #
+  # The system tests run in this process, after the unit lane, and the
+  # world it leaves behind is the one it needed: a registry holding
+  # whatever fakes its last test registered, and the guard above,
+  # armed. Both are wrong for a lane that uninstalls real packages and
+  # installs them again -- one of them raises, and the other, when the
+  # registry is merely empty, is worse: host_world_names computes []
+  # from it, and the wipe that meant to keep the host world takes it.
+  #
+  # So the real package set goes back and the guard comes off. Not
+  # scoped to a block, unlike with_real_tc: from here on, the real
+  # tree is the subject and there is no unit test left to protect.
+  def real_world!
+    reset_pkgmgr!
+    REAL_PACKAGES.each { |p| pkgmgr.register(p) }
+    NoRealToolchainReads.allow!(true)
+  end
 
   # Temporarily override top-level constants for the duration of a block.
   # Example: with_context(ARCH: ALL_ARCHS["riscv64"], BOARD: "qemu-virt")
@@ -47,10 +324,20 @@ module TestHelper
   def reset_pkgmgr!
     pm = PackageManager.instance
     pm.instance_variable_set(:@packages, {})
-    pm.instance_variable_set(:@known_pkgs_paths, nil)
-    pm.instance_variable_set(:@known_installed, [])
-    pm.instance_variable_set(:@found_installed, [])
-    pm.instance_variable_set(:@installable, [])
+
+    # -H sets this and never restores it -- correct for a one-shot
+    # command line, and a landmine for a test process, where one
+    # `run_cli("-H", "7.7.7", ...)` silently moved the stack for
+    # every test that ran afterwards.
+    pm.default_stack = nil
+    # The resolution of the last request, which resolve_install_plan
+    # sets and nothing unsets: a test that read resolved_ver after
+    # another test's `-s` saw that test's answer.
+    pm.instance_variable_set(:@resolved_versions, nil)
+    pm.instance_variable_set(:@host_world, nil)
+    # A new world: what the manager holds of the tree is of the one
+    # before.
+    pm.installs_changed!
   end
 
   # Create a temp toolchain directory tree and run the block with TC
@@ -60,36 +347,150 @@ module TestHelper
   FAKE_ARCH = ALL_ARCHS["i386"]
   FAKE_GCC_VER = Ver("13.3.0")
 
+  # The pkgs/ directory of a tier, named the way tests used to name
+  # the old HOST_DIR* constants. Everything derives from TC now, so
+  # these are conveniences rather than configuration.
+  def portable_pkgs = Coords.new(HOST_OS_ARCH, nil, nil).pkgs_dir
+  def distro_pkgs   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil).pkgs_dir
+  def hostcc_pkgs   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, HOST_CC).pkgs_dir
+  def stack_pkgs(v) = Coords.new(HOST_OS_ARCH, nil, "gcc-#{v}").pkgs_dir
+  def stack_pkgs_at(id) = Coords.new(HOST_OS_ARCH, nil, id.to_s).pkgs_dir
+
+  # Target and noarch package dirs. Tests used to spell these out as
+  # tc/"gcc-<ver>"/<arch>/..., which is why a layout change broke
+  # forty of them at once.
+  def target_pkgs(arch = ARCH, gcc = nil, board = :default)
+    gcc ||= arch.gcc_ver
+    board = arch.default_board if board == :default
+    return Coords.new("tilck-#{arch.name}", board, "gcc-#{gcc}").pkgs_dir
+  end
+
+  def noarch_pkgs = Coords.new("noarch", nil, nil).pkgs_dir
+
+  # An installation of `pkg` in the world the test is building.
+  #
+  # Everything expected_files names is created, because that list is
+  # what decides `broken`, and a broken install is invisible to
+  # find_install -- so a directory alone answers "not installed" and
+  # the test looks like a bug in the code it is exercising.
+  #
+  #   at:      explicit coordinates (another board, another stack);
+  #            default: where the package puts `ver` in this scope
+  #   record:  :ok (a record matching the recipe), :changed (one that
+  #            does not), :missing (none)
+  #   origin:  :default or :pinned, what .install says under origin
+  #
+  def fake_install(pkg, ver = nil, at: nil, record: :ok, origin: :default,
+                   mark: :manual)
+
+    b = bound(pkg)
+    ver ||= b.default_ver
+    dir = at ? b.pkg_dir_at(at) / b.ver_dirname(ver) : b.install_dir(ver)
+    FileUtils.mkdir_p(dir)
+
+    for name, is_dir in b.expected_files(ver) do
+      path = dir / name
+
+      if is_dir
+        FileUtils.mkdir_p(path)
+      else
+        FileUtils.mkdir_p(path.dirname)
+        FileUtils.touch(path)
+        FileUtils.chmod(0755, path)
+      end
+    end
+
+    InstallRecord.write(dir, name: pkg.name, ver: ver,
+                        coords: at || b.coords(ver),
+                        default_install: origin == :default,
+                        manual: mark == :manual, host: Host.env, stack: nil,
+                        against: {})
+    pkgmgr.installs_changed!
+    pkgmgr.refresh
+
+    case record
+    when :ok
+      inst = pkgmgr.world.of(pkg.name).find { |i| i.path == dir }
+      raise "fake_install: #{dir} is not seen by #{pkg.name}" if inst.nil?
+      bound(pkg).write_build_inputs(inst)
+    when :changed
+      # A record of the CURRENT format naming other sources: changed,
+      # not merely from an older scheme.
+      Record.write(dir / BuildInputs::FILE,
+                   [["format", BuildInputs::FORMAT],
+                    ["recipe", "sha256:not-what-it-was-built-from"]])
+    when :missing
+      nil
+    else
+      raise ArgumentError, "record: #{record.inspect}"
+    end
+
+    pkgmgr.refresh
+    return dir
+  end
+
+  # A patch directory for `pkg`, in a temporary tree.
+  #
+  # Tests used to mkdir under the REAL scripts/patches/ and remove the
+  # version directory afterwards, which left the package directory
+  # behind: an empty scripts/patches/foo/ sat in the source tree, and
+  # would have been applied to the next package that took the name.
+  # A test has no business writing there at all.
+  def with_fake_patches(pkg, ver = "1.0.0")
+    Dir.mktmpdir("pkgmgr-patches-") do |root|
+      r = Pathname.new(root)
+      pkg.define_singleton_method(:patch_root) { r }
+      dir = pkg.patch_base(Ver(ver))
+      FileUtils.mkdir_p(dir)
+      yield dir
+    end
+  end
+
+  # The environment's scope, as Main would build it with no flags:
+  # the shell's ARCH and BOARD (which with_context swaps), and the
+  # stack the configuration names (which with_host_stack swaps).
+  def scope = pkgmgr.env_scope
+
+  # A package bound to that scope: what a test asking a package about
+  # itself means, unless it says another. The world is the manager's,
+  # read when asked and not before.
+  def bound(pkg) = pkg.at(scope)
+
+  # What HOST_VER_GCC says, for the block: the stack the environment's
+  # scope names. Configuration, swapped the way with_context swaps the
+  # constants.
+  def with_host_stack(ver)
+    prev = pkgmgr.instance_variable_get(:@default_stack)
+    pkgmgr.default_stack = ver
+    yield
+  ensure
+    pkgmgr.default_stack = prev
+  end
+
   def with_fake_tc
     Dir.mktmpdir("pkgmgr-test-") do |dir|
       tc = Pathname.new(dir)
       FileUtils.mkdir_p(tc / "cache")
       FileUtils.mkdir_p(tc / "staging")
-      FileUtils.mkdir_p(tc / "noarch")
-      FileUtils.mkdir_p(tc / "gcc-#{FAKE_GCC_VER}" / FAKE_ARCH.name)
 
       # Set gcc_ver for all architectures (normally done by main.rb's
       # read_gcc_ver_defaults, which tests don't call).
       saved_gcc_vers = ALL_ARCHS.map { |name, arch| [name, arch.gcc_ver] }
       ALL_ARCHS.each_value { |arch| arch.gcc_ver = FAKE_GCC_VER }
 
-      host_dir_p = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "portable"
-      host_dir_d = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / HOST_DISTRO
-      host_dir   = host_dir_d / HOST_CC
-      FileUtils.mkdir_p(host_dir_p)
-      FileUtils.mkdir_p(host_dir)
-
+      # Only TC and its two non-install directories need overriding:
+      # every install location is derived from TC through Coords, so
+      # redirecting the root redirects all of them. Under toolchain4
+      # this block had to name five separate path constants, and the
+      # day one of them was missed the tests deleted the developer's
+      # real sysroot.
       with_context(
         ARCH: FAKE_ARCH,
-        BOARD: nil,
-        DEFAULT_BOARD: nil,
+        BOARD: FAKE_ARCH.default_board,
+        DEFAULT_BOARD: FAKE_ARCH.default_board,
         TC: tc,
         TC_CACHE: tc / "cache",
         TC_STAGING: tc / "staging",
-        TC_NOARCH: tc / "noarch",
-        HOST_DIR_PORTABLE: host_dir_p,
-        HOST_DIR_DISTRO: host_dir_d,
-        HOST_DIR: host_dir,
       ) do
         yield tc
       end
@@ -105,6 +506,59 @@ module TestHelper
   # Cache::download_file / download_git_repo → return true (skip download)
   # Cache::extract_file → create the target directory, return true
   # run_command → return true (or false if in fail_commands set)
+  # Like with_stubbed_externals, but run_command is NOT stubbed.
+  #
+  # Downloads and extraction stay faked -- no network, no tarballs --
+  # while everything after them is the real thing: real subprocesses,
+  # real exit codes, the real staging directory, the real atomic move.
+  # That is the half of an install no unit test reaches, because the
+  # ordinary harness answers "did it build?" with a boolean before any
+  # of it runs.
+  def with_real_commands(&block)
+    originals = {
+      download_file: Cache.method(:download_file),
+      download_git_repo: Cache.method(:download_git_repo),
+      extract_file: Cache.method(:extract_file),
+    }
+
+    Cache.define_singleton_method(:download_file) {
+      |url, remote, local = nil, pin: nil|
+      FileUtils.touch(TC_CACHE / (local || remote))
+      true
+    }
+
+    Cache.define_singleton_method(:download_git_repo) {
+      |url, tarname, tag = nil, dir_name = nil, pin: nil|
+      FileUtils.touch(TC_CACHE / tarname)
+      true
+    }
+
+    Cache.define_singleton_method(:extract_file) {
+      |tarfile, newDirName = nil, pin: nil|
+      FileUtils.mkdir_p(newDirName || "extracted")
+      true
+    }
+
+    pm = PackageManager.instance
+    originals[:with_cc] = pm.method(:with_cc)
+    pm.define_singleton_method(:with_cc) { |arch_name = nil, &blk|
+      arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
+      dir = Coords.new("tilck-#{arch.name}", arch.default_board,
+                       "gcc-#{FAKE_GCC_VER}").pkgs_dir
+      FileUtils.mkdir_p(dir)
+      blk.call(dir)
+    }
+
+    block.call
+  ensure
+    Cache.define_singleton_method(:download_file, originals[:download_file])
+    Cache.define_singleton_method(:download_git_repo,
+                                  originals[:download_git_repo])
+    Cache.define_singleton_method(:extract_file, originals[:extract_file])
+    PackageManager.instance.define_singleton_method(:with_cc,
+                                                    originals[:with_cc])
+  end
+
   def with_stubbed_externals(fail_commands: Set.new)
     originals = {}
 
@@ -115,7 +569,8 @@ module TestHelper
     originals[:run_command] = method(:run_command)
 
     # Stub Cache::download_file — pretend the file exists in cache
-    Cache.define_singleton_method(:download_file) { |url, remote, local = nil|
+    Cache.define_singleton_method(:download_file) {
+      |url, remote, local = nil, pin: nil|
       local ||= remote
       FileUtils.touch(TC_CACHE / local)
       true
@@ -123,23 +578,35 @@ module TestHelper
 
     # Stub Cache::download_git_repo — same
     Cache.define_singleton_method(:download_git_repo) {
-      |url, tarname, tag = nil, dir_name = nil|
+      |url, tarname, tag = nil, dir_name = nil, pin: nil|
       FileUtils.touch(TC_CACHE / tarname)
       true
     }
 
     # Stub Cache::extract_file — create the version directory
-    Cache.define_singleton_method(:extract_file) { |tarfile, newDirName = nil|
+    Cache.define_singleton_method(:extract_file) {
+      |tarfile, newDirName = nil, pin: nil|
       newDirName ||= "extracted"
       FileUtils.mkdir_p(newDirName)
       true
     }
 
     # Stub run_command (top-level method = private method on Object)
-    Object.send(:define_method, :run_command) { |out, argv|
+    # The same signature as the real one, env: included. A stub that
+    # takes fewer arguments than what it replaces passes every test
+    # and breaks the moment production uses the argument it does not
+    # know about -- which is what a stub is supposed to prevent.
+    Object.send(:define_method, :run_command) { |out, argv, env: nil|
       cmd = argv.first.to_s
       !fail_commands.include?(cmd)
     }
+
+    # The machine: every tool present at a version nothing asks
+    # beyond, every package installed, and nothing ever run. What a
+    # plan needs from the host is the host's business, not the
+    # stubbed world's.
+    originals[:sys_env] = SystemDeps.env
+    SystemDeps.env = satisfied_sys_env
 
     # Stub PackageManager#with_cc — yield the arch dir without
     # requiring a real compiler to be installed.
@@ -147,7 +614,8 @@ module TestHelper
     originals[:with_cc] = pm.method(:with_cc)
     pm.define_singleton_method(:with_cc) { |arch_name = nil, &block|
       arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
-      arch_dir = TC / "gcc-#{FAKE_GCC_VER}" / arch.name
+      arch_dir = Coords.new("tilck-#{arch.name}", arch.default_board,
+                            "gcc-#{FAKE_GCC_VER}").pkgs_dir
       FileUtils.mkdir_p(arch_dir)
       block.call(arch_dir)
     }
@@ -161,9 +629,29 @@ module TestHelper
                                   originals[:download_git_repo])
     Cache.define_singleton_method(:extract_file, originals[:extract_file])
     Object.send(:define_method, :run_command, originals[:run_command])
+    SystemDeps.env = originals[:sys_env] if originals.key?(:sys_env)
     pm = PackageManager.instance
     pm.define_singleton_method(:with_cc, originals[:with_cc]) if
       originals[:with_cc]
+  end
+
+  # The Tilck stack of the fake world's arch and board, as the real
+  # meta-package: what the no-mode run installs, with the fake
+  # packages declared default as its members.
+  def register_tilck_stack!
+    require_relative '../tilck_stack'
+    stack = TilckStackPackage.new(FAKE_ARCH, FAKE_ARCH.default_board)
+    pkgmgr.register(stack)
+    return stack
+  end
+
+  def satisfied_sys_env
+    tools = Hash.new { |h, cmd|
+      h[cmd] = { path: "/stub/bin/#{cmd}", ver: "999.0.0" }
+    }
+    return FakeSysEnv.new(tools: tools,
+                          backend: FakeSysBackend.new(installed: :all),
+                          interactive: false, ci: false)
   end
 
   # A minimal Package subclass for testing. The only overrides are:
@@ -187,7 +675,23 @@ module TestHelper
                    on_host: false, is_compiler: false,
                    default: false, board_list: nil,
                    host_os_list: nil, host_arch_list: nil,
-                   host_tier: :compiler, source: :default)
+                   host_tier: :compiler, source: :default,
+                   target_arch: nil, libc: nil, versions: nil,
+                   world_root: false)
+      # versions: the choice the fake DECLARES (installable_versions),
+      # for a fake that offers more than its default -- a cross
+      # compiler with two GCCs.
+      @fake_versions = (versions || []).map { |v| Ver(v.to_s) }
+      # world_root: a root of the host world, as host_qemu is: what
+      # only it needs is the world, and ALL stops at its edge.
+      @fake_world_root = world_root
+      # target_arch: makes this fake a CROSS COMPILER, the way
+      # GccPackage is one -- its installs carry the target metadata,
+      # which is what the listing reads to tell a toolchain from an
+      # ordinary package. Without it a fake with is_compiler: true
+      # still produces plain installs, so it cannot stand in for one.
+      @fake_target_arch = target_arch
+      @fake_libc = libc
       # source: :default -> auto-build a fake SourceRef from the name.
       # source: nil      -> explicit no source (for testing vendor/blob-
       #                     style packages with a custom install_impl).
@@ -211,22 +715,40 @@ module TestHelper
       )
     end
 
-    def expected_files = []
+    def expected_files(ver = nil) = []
     def default_ver = Ver("1.0.0")
+    def installable_versions = @fake_versions
+    def host_world_root? = @fake_world_root
 
-    # Match the pattern of real packages: host → syscc/HOST_ARCH,
-    # noarch → nil/nil, target → pkgmgr.target_arch (respects
-    # with_target_arch scope, defaults to ARCH).
-    def default_cc
-      return "syscc" if on_host
-      return nil if arch_list.nil?
-      return pkgmgr.target_arch.gcc_ver
+    # The shape every real recipe has: the declared flags reach a
+    # command. Only a step can move the digest, so a fixture that
+    # varies build_flags to make an install read stale needs one
+    # that carries them -- as meson_stack_steps does for real.
+    def build_steps(ver = default_ver)
+      return [Run(log: "build.log", argv: ["fake-build", *build_flags(ver)])]
     end
 
-    def default_arch
-      return HOST_ARCH if on_host
+    # The same annotation GccPackage applies, for the same reason: an
+    # install of a cross compiler has to say what it targets.
+    def read_install_list(host) = super.map { |i| annotate_install(i) }
+
+    def annotate_install(i)
+      return i if @fake_target_arch.nil?
+      return InstallInfo.new(
+        i.pkgname, i.compiler, i.on_host, i.arch, i.ver, i.path,
+        i.pkg, i.broken, @fake_target_arch, @fake_libc,
+        default_install: i.default_install, manual: i.manual,
+        coords: i.coords, record: i.record
+      )
+    end
+
+    # Match the pattern of real packages: noarch → nil, target → the
+    # scope's arch. Host packages defer to the base, where the tier decides
+    # between the system compiler and the stack's own.
+    def default_cc
+      return super if on_host
       return nil if arch_list.nil?
-      return pkgmgr.target_arch
+      return scope.arch.gcc_ver
     end
 
     def install_impl_internal(install_dir)

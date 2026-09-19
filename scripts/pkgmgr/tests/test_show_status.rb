@@ -57,9 +57,12 @@ class TestShowStatus < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        # Also create an x86_64 install
-        gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc}" / "x86_64" / "foo" / "1.0.0")
+        # A real second install, not a bare directory: an install
+        # carries a .build_inputs record, and one without a record is
+        # a package needing a rebuild, not a healthy second arch.
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
         pkgmgr.refresh()
 
         list = pkg.get_install_list
@@ -77,12 +80,12 @@ class TestShowStatus < Minitest::Test
     with_fake_tc do |tc|
       # Create a version dir with no expected files (broken)
       gcc = FAKE_GCC_VER.to_s
-      FileUtils.mkdir_p(tc / "gcc-#{gcc}" / ARCH.name / "brkpkg" / "1.0.0")
+      FileUtils.mkdir_p(target_pkgs(ARCH, gcc) / "brkpkg" / "1.0.0")
 
       # Register a package that expects a file
       pkg = FakePackage.new("brkpkg")
       # Override expected_files to require something that doesn't exist
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["nonexistent_binary", false]]
       }
       pkgmgr.register(pkg)
@@ -100,26 +103,25 @@ class TestShowStatus < Minitest::Test
     end
   end
 
-  def test_show_status_broken_excluded_from_arch_list
+  # Every arch that has an install appears in the line, whichever arch
+  # the invocation is for. (Broken installs have their own test above;
+  # this one is about the arch list.)
+  def test_arch_list_covers_every_installed_arch
     with_fake_tc do |tc|
       with_stubbed_externals do
-        # Install a working version for i386
         pkg = FakePackage.new("foo")
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        # Create a broken install for riscv64 (empty dir, no expected files
-        # but FakePackage has empty expected_files so it won't be broken)
-        # Instead, create a package that IS broken on riscv64
-        gcc = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc}" / "riscv64" / "foo" / "1.0.0")
+        with_context(ARCH: ALL_ARCHS["riscv64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
         pkgmgr.refresh()
 
         list = pkg.get_install_list
         output = capture_stdout {
           pkgmgr.show_status("foo", nil, list)
         }
-        # Both archs show as installed (FakePackage has empty expected_files)
         assert_match(/installed/, output)
         assert_match(/i386/, output)
         assert_match(/riscv64/, output)
@@ -127,13 +129,55 @@ class TestShowStatus < Minitest::Test
     end
   end
 
+  # An install is judged against the recipe as it reads at ITS OWN
+  # coordinates. Asking the package about a version instead re-derives
+  # the CURRENT ones, finds nothing where it looked, and reports the
+  # install as healthy -- so a stale x86_64 tree was drawn "installed"
+  # from an i386 invocation, while --check-for-updates, which does use
+  # each install's coordinates, called the same tree stale.
+  def test_a_stale_install_of_another_arch_is_still_stale
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        # Spoil only the x86_64 record. The i386 one, which is what
+        # the current coordinates point at, stays correct.
+        other = pkg.get_install_list.find { |i|
+          i.arch == ALL_ARCHS["x86_64"]
+        }
+        refute_nil other, "no x86_64 install to spoil"
+        Record.write(other.path / BuildInputs::FILE,
+                     [["format", BuildInputs::FORMAT],
+                      ["recipe", "sha256:spoiled"]])
+
+        output = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list)
+        }
+        assert_match(/stale/, output)
+      end
+    end
+  end
+
   def test_show_status_noarch_package
     with_fake_tc do |tc|
-      # Create a noarch install
-      FileUtils.mkdir_p(tc / "noarch" / "noarch_foo" / "1.0.0")
+      dir = noarch_pkgs / "noarch_foo" / "1.0.0"
+      FileUtils.mkdir_p(dir)
 
       pkg = FakePackage.new("noarch_foo", arch_list: nil)
       pkgmgr.register(pkg)
+
+      # A directory alone is not an install: without a record of what
+      # it was built from, pkgmgr cannot say it matches the sources.
+      # This test is about the noarch LABEL, so give it one.
+      BuildInputs.write(dir, recipe: pkg.build_recipe_digest(Ver("1.0.0")),
+                        files: pkg.build_files(Ver("1.0.0")))
       pkgmgr.refresh()
 
       list = pkg.get_install_list
@@ -142,6 +186,22 @@ class TestShowStatus < Minitest::Test
       }
       assert_match(/installed/, output)
       assert_match(/noarch/, output)
+    end
+  end
+
+  # ...and without one, it says so rather than claiming the install is
+  # good. A directory somebody created by hand is exactly the case.
+  def test_an_install_with_no_record_shows_stale
+    with_fake_tc do |tc|
+      FileUtils.mkdir_p(noarch_pkgs / "handmade" / "1.0.0")
+      pkg = FakePackage.new("handmade", arch_list: nil)
+      pkgmgr.register(pkg)
+      pkgmgr.refresh()
+
+      output = capture_stdout {
+        pkgmgr.show_status("handmade", nil, pkg.get_install_list)
+      }
+      assert_match(/stale/, output)
     end
   end
 
@@ -204,7 +264,9 @@ class TestShowStatus < Minitest::Test
     # An install that's found on disk but not from a registered package
     info = InstallInfo.new(
       "orphan_pkg", Ver("13.3.0"), false, ARCH, Ver("1.0.0"),
-      Pathname.new("/fake/orphan"), nil, false
+      Pathname.new("/fake/orphan"), nil, false,
+      coords: Coords.new("tilck-#{ARCH.name}", ARCH.default_board,
+                         "gcc-13.3.0")
     )
     output = capture_stdout {
       pkgmgr.show_status("orphan_pkg", nil, [info])
@@ -246,6 +308,90 @@ class TestShowStatusAll < Minitest::Test
     end
   end
 
+  # The same word in two greens: an install asked for by name is
+  # bright, one pulled in as a dependency is dark, and a line for
+  # several installs is dark only when every one of them is. The
+  # legend at the end says so.
+  def test_a_dependency_install_is_dark_green_and_the_legend_says_so
+    with_fake_tc do
+      with_stubbed_externals do
+        asked = FakePackage.new("asked")
+        pulled = FakePackage.new("pulled")
+        pkgmgr.register(asked)
+        pkgmgr.register(pulled)
+        fake_install(asked, mark: :manual)
+        fake_install(pulled, mark: :auto)
+
+        output = capture_stdout { pkgmgr.show_status_all }
+        rows = output.lines.to_h { |l| [l.split.first, l] }
+        assert_includes rows["asked"], Term::GREEN + "installed"
+        assert_includes rows["pulled"], Term::DARK_GREEN256 + "installed"
+        # The legend is the last paragraph, however many lines it
+        # grows to.
+        tail = output.split("Legend:").last
+        assert_match(/installed.* asked for by name/, tail)
+        assert_match(/dependency/, tail)
+        assert_match(/unusable.* a dependency it needs is gone/, tail)
+      end
+    end
+  end
+
+  # Two numbers a stack: what is in it, and what its compiler holds --
+  # and a table for the package that asks for one, with what each of
+  # its installs holds in its stack.
+  def test_a_stack_says_what_is_in_it_and_what_its_compiler_holds
+    with_fake_tc do
+      with_stubbed_externals do
+        a = Ver("11.5.0")
+        libc = FakePackage.new("host_libc", on_host: true, host_tier: :stack,
+                               arch_list: ALL_HOST_ARCHS.values)
+        gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values,
+                              dep_list: [Dep("host_libc", true)])
+        # The stack compiler as the real one: its default version is
+        # the stack in effect, which is what a stack package's
+        # dependency on it resolves to and records.
+        gcc.define_singleton_method(:default_ver) { scope.stack }
+        gcc.define_singleton_method(:installable_versions) { [a] }
+        gcc.define_singleton_method(:stack_gcc_ver) { |v = nil|
+          v || scope.stack
+        }
+        gcc.define_singleton_method(:stack_of_install) { |i| i.ver }
+        emu = FakePackage.new("host_emu", on_host: true, host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values,
+                              dep_list: [Dep("host_gcc", true),
+                                         Dep("host_lib", true)])
+        emu.define_singleton_method(:own_table) { "Emulators" }
+        lib = FakePackage.new("host_lib", on_host: true, host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        [libc, gcc, emu, lib].each { |x| pkgmgr.register(x) }
+
+        with_host_stack(a) {
+          pkgmgr.install("host_libc", manual: false)
+          pkgmgr.install("host_gcc", a, manual: false)
+          pkgmgr.install("host_lib", manual: false)
+          pkgmgr.install("host_emu")
+        }
+        pkgmgr.default_stack = a
+
+        out = capture_stdout { pkgmgr.show_status_all }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+        # the stack holds libc, lib and emu; its compiler holds libc
+        assert_match(/^gcc-11\.5\.0\s+\[ built\s+\]\s+3 pkgs,\s+1 held/, plain)
+        assert_match(/Emulators/, plain)
+        # the emulator holds gcc's libc and lib: two, itself not counted
+        assert_match(/^emu 1\.0\.0\s+gcc-11\.5\.0\s+\[ installed \]\s+2 held/,
+                     plain)
+        assert_operator plain.index("Host stacks"), :<, plain.index("Emulators")
+      end
+    end
+  end
+
+  def test_qemu_asks_for_its_own_table
+    assert_equal "QEMU versions", HostQemuPackage.new.own_table
+    assert_nil FakePackage.new("plain").own_table
+  end
+
   def test_show_all_groups_by_type
     with_fake_tc do
       with_stubbed_externals do
@@ -258,9 +404,33 @@ class TestShowStatusAll < Minitest::Test
         pkgmgr.refresh()
 
         output = capture_stdout { pkgmgr.show_status_all }
-        assert_match(/Packages built by system CC/, output)
+        assert_match(/Host packages built by system CC/, output)
         assert_match(/Source-only packages/, output)
-        assert_match(/Packages built by GCC/, output)
+        assert_match(/Tilck packages built by GCC/, output)
+      end
+    end
+  end
+
+  # Tilck's packages come before the host stacks, and say whose they
+  # are: the stacks are the longest sections and the least often the
+  # reason anyone runs -l.
+  def test_tilck_packages_are_listed_before_the_host_stacks
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("target_pkg"))
+        pkgmgr.register(FakePackage.new("host_thing", on_host: true,
+                                        host_tier: :stack,
+                                        arch_list: ALL_HOST_ARCHS.values))
+        pkgmgr.install("target_pkg")
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        out = capture_stdout { pkgmgr.show_status_all }
+        tilck = out.index("Tilck packages built by GCC")
+        host = out.index("Host packages built by GCC")
+        refute_nil tilck
+        refute_nil host
+        assert_operator tilck, :<, host, "the host stacks came first"
       end
     end
   end
@@ -270,7 +440,8 @@ class TestShowStatusAll < Minitest::Test
       with_stubbed_externals do
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
-                             arch_list: ALL_HOST_ARCHS.values)
+                             arch_list: ALL_HOST_ARCHS.values,
+                             target_arch: ARCH, libc: "musl")
         pkgmgr.register(cc)
         pkgmgr.install("gcc-#{ARCH.name}-musl")
         pkgmgr.refresh()
@@ -278,6 +449,313 @@ class TestShowStatusAll < Minitest::Test
         output = capture_stdout { pkgmgr.show_status_all }
         assert_match(/GCC toolchains/, output)
         assert_match(/gcc-#{ARCH.name}-musl/, output)
+      end
+    end
+  end
+
+  # The listing split into sections, as { title => [lines] }, with the
+  # colour stripped. Assertions can then say WHERE a package appeared,
+  # which is the whole subject of the tests below -- matching the
+  # whole output cannot tell one section from another.
+  def sections_of(output)
+    out = {}
+    title = nil
+
+    for line in output.gsub(/\e\[[0-9;]*m/, "").lines.map(&:chomp) do
+      if line.start_with?("--- ")
+        title = line.sub(/^--- /, "").sub(/ ---$/, "").strip
+        out[title] = []
+      elsif title && !line.strip.empty?
+        out[title] << line
+      end
+    end
+
+    return out
+  end
+
+  def line_for(output, section, pkgname)
+    return (sections_of(output)[section] || []).find { |l|
+      l.split.first == pkgname
+    }
+  end
+
+  # A :stack package is built by a compiler we built ourselves, and
+  # belongs to that compiler's stack. Reporting "syscc" filed QEMU
+  # beside mtools under "Host packages built by system CC" -- the wrong
+  # compiler, and no sign of which of the six stacks held it.
+  def test_a_stack_package_is_filed_under_its_own_stack
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        out = capture_stdout { pkgmgr.show_status_all }
+        stack = scope.stack
+        here = "Host packages built by GCC #{stack} [ CURRENT ]"
+
+        refute_nil line_for(out, here, "host_thing"),
+                   "not under its own stack's section"
+        assert_nil line_for(out, "Host packages built by system CC",
+                            "host_thing"),
+                   "still filed under the system compiler"
+      end
+    end
+  end
+
+  # Two stacks, two sections. An install belonging to another stack is
+  # not missing and not stale: it is reported under that stack, while
+  # the current one simply has nothing built yet.
+  def test_each_stack_is_its_own_section
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+
+        other = Ver("9.9.9")
+        with_host_stack(other) { pkgmgr.install("host_thing") }
+        pkgmgr.refresh()
+
+        out = capture_stdout { pkgmgr.show_status_all(nil, true) }
+        here = "Host packages built by GCC " \
+               "#{scope.stack} [ CURRENT ]"
+        there = "Host packages built by GCC #{other}"
+
+        assert_match(/installed/, line_for(out, there, "host_thing").to_s,
+                     "the other stack's install is not shown as installed")
+
+        mine = line_for(out, here, "host_thing")
+        refute_nil mine, "the current stack does not list it at all"
+        refute_match(/installed|stale/, mine,
+                     "the current stack has nothing built, so neither")
+      end
+    end
+  end
+
+  # --- the status cell ------------------------------------------------
+
+  # How many installs a line stands for. host_gcc is one line and six
+  # compilers; the line said "installed" either way.
+  def test_the_status_carries_the_number_of_installs
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list, 1)
+        }
+        assert_match(/installed \(\s*2\)/, out.gsub(/\e\[[0-9;]*m/, ""))
+      end
+    end
+  end
+
+  # The count is not part of the word: green says "installed", and a
+  # number is not a state.
+  def test_the_count_is_outside_the_colour
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list, 1)
+        }
+        assert_match(/#{Regexp.escape(Term::RESET)} \(\s*2\)/, out,
+                     "the count is inside the coloured span")
+      end
+    end
+  end
+
+  # Every status cell is one width, whatever it says and however many
+  # installs it counts. The padding sits inside the brackets -- "( 4)"
+  # against "(10)" -- because slack after them showed up as a double
+  # space before the closing "]".
+  def test_every_status_cell_is_the_same_width
+    plain = ->(s) { s.gsub(/\e\[[0-9;]*m/, "") }
+
+    # Counts that FIT the width, because that is the contract: the
+    # pre-pass sizes the column from the largest count there is, so a
+    # 42 never arrives with room for one digit.
+    for digits, counts in { 0 => [1], 1 => [1, 2, 9], 2 => [1, 2, 42, 99] } do
+      cells = counts.map { |n|
+                Package.installed_str(n, digits: digits)
+              } +
+              [Package.stale_str(7, digits: digits),
+               Package.found_str(digits: digits),
+               Package.broken_str(digits: digits),
+               Package.empty_str(digits: digits)]
+
+      widths = cells.map { |c| plain.call(c).length }.uniq
+      assert_equal [Package.status_cell(digits)], widths,
+                   "digits=#{digits}: cells of widths #{widths.inspect}"
+    end
+
+    refute_match(/\s\s\z/, plain.call(Package.installed_str(4, digits: 1)),
+                 "trailing slack shows up as a double space before ]")
+  end
+
+  # The pre-pass: what the listing reserves for counts, decided once
+  # from the busiest line rather than per line.
+  def test_a_listing_with_nothing_installed_twice_shows_no_counts
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+        pkgmgr.refresh()
+
+        groups = [["only", pkg.get_install_list]]
+        assert_equal 0, pkgmgr.count_digits(groups)
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", nil, pkg.get_install_list, 0)
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/installed/, plain)
+        refute_match(/\(/, plain, "a count of one was printed")
+      end
+    end
+  end
+
+  def test_the_width_comes_from_the_busiest_line
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        # Two installs of one package: one digit, and one line of a
+        # second package with a single install must not shrink it.
+        groups = [["only", pkg.get_install_list]]
+        assert_equal 1, pkgmgr.count_digits(groups)
+      end
+    end
+  end
+
+  # --- -g ver -----------------------------------------------------------
+
+  # A host package's arch is always "host". Printing it once per
+  # version is a column of the same word.
+  def test_group_by_ver_omits_the_arch_for_host_packages
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+        pkgmgr.install("host_thing")
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("host_thing", "ver", pkg.get_install_list)
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/1\.0\.0/, plain)
+        refute_match(/\{host\}/, plain)
+      end
+    end
+  end
+
+  # ...but a target package's arch is the whole point of the line.
+  def test_group_by_ver_keeps_the_arch_for_target_packages
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+        pkgmgr.install("foo")
+
+        with_context(ARCH: ALL_ARCHS["x86_64"], BOARD: nil) do
+          pkgmgr.install("foo")
+        end
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          pkgmgr.show_status("foo", "ver", pkg.get_install_list)
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/1\.0\.0: \{/, plain)
+        assert_match(/i386/, plain)
+        assert_match(/x86_64/, plain)
+      end
+    end
+  end
+
+  # --- the stacks view (-L) ------------------------------------------
+
+  # A stand-in for the real compiler package: show_stacks asks it
+  # which versions exist and which are installed, nothing else.
+  def fake_stack_compiler(versions)
+    gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                          arch_list: ALL_HOST_ARCHS.values)
+    gcc.define_singleton_method(:installable_versions) { versions }
+    return gcc
+  end
+
+  # A stack is BUILT when the compiler that names it is installed:
+  # everything else in it is built BY that compiler, so a stack
+  # without one is a directory, not a stack.
+  def test_show_stacks_separates_built_from_declared
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(fake_stack_compiler([Ver("1.0.0"), Ver("2.0.0")]))
+        pkgmgr.install("host_gcc")
+        pkgmgr.refresh()
+
+        out = capture_stdout {
+          with_host_stack(Ver("1.0.0")) { pkgmgr.show_stacks }
+        }
+        plain = out.gsub(/\e\[[0-9;]*m/, "")
+
+        assert_match(/gcc-1\.0\.0\s+\[\s*built\s*\].*CURRENT/, plain)
+        assert_match(/^gcc-2\.0\.0\s+\[\s+\]\s+\d+ pkgs/, plain)
+        refute_match(/gcc-2\.0\.0.*built/, plain)
+        refute_match(/gcc-2\.0\.0.*CURRENT/, plain)
+      end
+    end
+  end
+
+  # What -H does, under the option: choosing a stack moves the
+  # coordinates a :stack package installs into. Without this the
+  # option would report on another stack while building into this one.
+  def test_selecting_a_stack_moves_where_packages_install
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_thing", on_host: true,
+                              host_tier: :stack,
+                              arch_list: ALL_HOST_ARCHS.values)
+        pkgmgr.register(pkg)
+
+        here = bound(pkg).coords.to_s
+        there = with_host_stack(Ver("7.7.7")) { bound(pkg).coords.to_s }
+
+        refute_equal here, there
+        assert_includes there, "gcc-7.7.7"
       end
     end
   end

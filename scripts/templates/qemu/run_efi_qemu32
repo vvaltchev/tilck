@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+MAIN_DIR="@CMAKE_SOURCE_DIR@"
+QEMU_ARCH="i386"
+source "$MAIN_DIR/scripts/bash_includes/qemu_select"
+qemu_select "$@"
+set -- "${QEMU_ARGS[@]}"
 MY_OVMF_VARS="$BUILD_DIR/ovmf-vars.fd"
 OS="$(uname -s)"
 f="@IMG_FILE@"
@@ -41,7 +46,7 @@ if [[ "$OVMF_VARS" != "" ]]; then
    OVMF_VARS_PARAM="-drive if=pflash,format=raw,unit=1,file=$MY_OVMF_VARS"
 fi
 
-echo qemu-system-i386                                               \
+echo "$QEMU"                                               \
    @QEMU_COMMON_OPTS@                                               \
    @QEMU_RAM_OPT@                                                   \
    -gdb tcp::$GDB_PORT                                              \
@@ -50,7 +55,7 @@ echo qemu-system-i386                                               \
    -drive if=none,id=hd0,format=raw,file=$f                         \
    -device ide-hd,drive=hd0,bootindex=1 "$@"
 
-qemu-system-i386                                                    \
+"$QEMU"                                                             \
    @QEMU_COMMON_OPTS@                                               \
    @QEMU_RAM_OPT@                                                   \
    -gdb tcp::$GDB_PORT                                              \

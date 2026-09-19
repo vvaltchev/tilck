@@ -22,19 +22,20 @@ require_relative 'package_manager'
 # exercised there (freedoom is fbdoom's runtime dep, so it must be
 # available for every arch where fbdoom is installable).
 #
-# The SourceRef captures the cache filename but not the download URL —
-# the upstream release layout interpolates a `v<ver>/` segment between
-# the URL base and the asset, and Cache::download_file's remote_file
-# param must be a bare filename (no slashes). install_impl drives the
-# download manually and hands the cached zip to a custom unzip +
-# gzip pipeline.
+# The upstream release layout puts a `v<ver>/` segment between the
+# URL base and the asset, which the remote name carries the way
+# host_gcc's does; the cache keeps the bare asset name. A zip, not a
+# tarball, so install_impl hands the cached file to its own unzip +
+# gzip pipeline rather than to SourceRef#extract. Downloaded, not
+# cloned: the release-download URL says so to the heuristic, and the
+# flag says so to a reader.
 #
-FREEDOOM_URL_BASE = GITHUB + '/freedoom/freedoom/releases/download'
-
 FREEDOOM_SOURCE = SourceRef.new(
-  name:    'freedoom',
-  url:     FREEDOOM_URL_BASE,
-  tarname: ->(ver) { "freedoom-#{ver}.zip" },
+  name:           'freedoom',
+  url:            GITHUB + '/freedoom/freedoom/releases/download',
+  tarname:        ->(ver) { "freedoom-#{ver}.zip" },
+  remote_tarname: ->(ver) { "v#{ver}/freedoom-#{ver}.zip" },
+  fetch_via_git:  false,
 )
 
 class FreedoomPackage < Package
@@ -53,7 +54,7 @@ class FreedoomPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["freedoom1.wad.gz", false],
   ]
 
@@ -66,20 +67,29 @@ class FreedoomPackage < Package
       return nil
     end
 
+    return holding_the_build(ver) { install_held(ver) }
+  end
+
+  # The same flow as the base class's, held the same way, for a zip.
+  def install_held(ver)
+
     zip = @source.tarname(ver)
+    return false if !@source.download(ver)
 
-    # Upstream URL: <base>/v<ver>/freedoom-<ver>.zip
-    ok = Cache::download_file("#{FREEDOOM_URL_BASE}/v#{ver}", zip)
-    return false if !ok
-
-    # Set up staging and extract the zip into it.
+    # Set up staging and extract the zip into it -- the zip checked
+    # against its pin first, as every archive is right before it is
+    # read, and read under the file's shared lock, as Cache.extract_file
+    # reads a tarball.
     staging = staging_dir(ver)
     FileUtils.rm_rf(staging)
     FileUtils.mkdir_p(staging)
 
     cached_zip = (TC_CACHE / zip).to_s
     FileUtils.chdir(staging) do
-      ok = system("unzip", "-q", cached_zip)
+      ok = Cache.holding(zip, shared: true, what: "the reading of #{zip}") {
+        Cache.verified?(zip, @source.pin(zip), kind: :sha256) &&
+          system("unzip", "-q", cached_zip)
+      }
       return false if !ok
 
       # The zip's top-level dir is `freedoom-<ver>/`; flatten into
@@ -124,11 +134,11 @@ class FreedoomPackage < Package
     FileUtils.rmdir(staging_pkg) if staging_pkg.directory? &&
                                     Dir.empty?(staging_pkg)
 
-    return check_install_dir(final_ver_dir, true)
+    return check_install_dir(final_ver_dir, ver, true)
   end
 
   # Unused but required to satisfy the Package contract.
-  def install_impl_internal(install_dir) = true
+  def nothing_to_build? = true
 end
 
 pkgmgr.register(FreedoomPackage.new())

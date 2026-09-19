@@ -13,7 +13,7 @@ class TestChdirInstallDirMissing < Minitest::Test
     with_fake_tc do |tc|
       pkg = FakePackage.new("foo")
       gcc = FAKE_GCC_VER.to_s
-      arch_dir = tc / "gcc-#{gcc}" / ARCH.name
+      arch_dir = target_pkgs(ARCH, gcc)
       # Don't create foo/1.0.0 — it doesn't exist
       result = pkg.chdir_install_dir(arch_dir, Ver("1.0.0")) { true }
       assert_equal false, result
@@ -29,25 +29,18 @@ class TestApplyPatchesCoverage < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
 
-        # Create the patch directory with a real diff
-        patch_dir = MAIN_DIR / "scripts" / "patches" / "foo" / "1.0.0"
-        FileUtils.mkdir_p(patch_dir)
+        with_fake_patches(pkg) do |patch_dir|
+          File.write(patch_dir / "001-test.diff",
+            "--- /dev/null\n+++ b/patched.txt\n@@ -0,0 +1 @@\n+patched\n")
 
-        # Create a simple patch file
-        File.write(patch_dir / "001-test.diff",
-          "--- /dev/null\n+++ b/patched.txt\n@@ -0,0 +1 @@\n+patched\n")
-
-        begin
           Dir.mktmpdir do |workdir|
             FileUtils.cd(workdir) do
               # stub system("patch", ...) to succeed
               pkg.define_singleton_method(:system) { |*args| true }
-              result = pkg.apply_patches(Ver("1.0.0"))
+              result = bound(pkg).apply_patches(Ver("1.0.0"))
               assert_equal true, result
             end
           end
-        ensure
-          FileUtils.rm_rf(patch_dir)
         end
       end
     end
@@ -58,23 +51,20 @@ class TestApplyPatchesCoverage < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
 
-        patch_dir = MAIN_DIR / "scripts" / "patches" / "foo" / "1.0.0"
-        arch_patch_dir = patch_dir / ARCH.name
-        FileUtils.mkdir_p(arch_patch_dir)
+        with_fake_patches(pkg) do |patch_dir|
+          arch_patch_dir = patch_dir / ARCH.name
+          FileUtils.mkdir_p(arch_patch_dir)
 
-        File.write(arch_patch_dir / "001-arch.diff",
-          "--- /dev/null\n+++ b/arch_patched.txt\n@@ -0,0 +1 @@\n+arch\n")
+          File.write(arch_patch_dir / "001-arch.diff",
+            "--- /dev/null\n+++ b/arch_patched.txt\n@@ -0,0 +1 @@\n+arch\n")
 
-        begin
           Dir.mktmpdir do |workdir|
             FileUtils.cd(workdir) do
               pkg.define_singleton_method(:system) { |*args| true }
-              result = pkg.apply_patches(Ver("1.0.0"))
+              result = bound(pkg).apply_patches(Ver("1.0.0"))
               assert_equal true, result
             end
           end
-        ensure
-          FileUtils.rm_rf(patch_dir)
         end
       end
     end
@@ -85,21 +75,17 @@ class TestApplyPatchesCoverage < Minitest::Test
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
 
-        patch_dir = MAIN_DIR / "scripts" / "patches" / "foo" / "1.0.0"
-        FileUtils.mkdir_p(patch_dir)
-        File.write(patch_dir / "001-bad.diff", "garbage patch")
+        with_fake_patches(pkg) do |patch_dir|
+          File.write(patch_dir / "001-bad.diff", "garbage patch")
 
-        begin
           Dir.mktmpdir do |workdir|
             FileUtils.cd(workdir) do
               # stub system("patch", ...) to FAIL
               pkg.define_singleton_method(:system) { |*args| false }
-              result = pkg.apply_patches(Ver("1.0.0"))
+              result = bound(pkg).apply_patches(Ver("1.0.0"))
               assert_equal false, result
             end
           end
-        ensure
-          FileUtils.rm_rf(patch_dir)
         end
       end
     end
@@ -109,14 +95,19 @@ end
 class TestCheckInstallDirCoverage < Minitest::Test
   include TestHelper
 
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
   def test_missing_expected_file
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["required_binary", false]]
       }
-      refute pkg.check_install_dir(d)
+      refute pkg.check_install_dir(d, Ver("1.0.0"))
     end
   end
 
@@ -124,10 +115,10 @@ class TestCheckInstallDirCoverage < Minitest::Test
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["required_dir", true]]
       }
-      refute pkg.check_install_dir(d)
+      refute pkg.check_install_dir(d, Ver("1.0.0"))
     end
   end
 
@@ -135,10 +126,10 @@ class TestCheckInstallDirCoverage < Minitest::Test
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["missing", false]]
       }
-      refute pkg.check_install_dir(d, true)
+      refute pkg.check_install_dir(d, Ver("1.0.0"), true)
     end
   end
 
@@ -146,10 +137,10 @@ class TestCheckInstallDirCoverage < Minitest::Test
     Dir.mktmpdir do |dir|
       d = Pathname.new(dir)
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["missing_dir", true]]
       }
-      refute pkg.check_install_dir(d, true)
+      refute pkg.check_install_dir(d, Ver("1.0.0"), true)
     end
   end
 
@@ -159,10 +150,53 @@ class TestCheckInstallDirCoverage < Minitest::Test
       FileUtils.touch(d / "binary")
       FileUtils.mkdir_p(d / "subdir")
       pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:expected_files) {
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
         [["binary", false], ["subdir", true]]
       }
-      assert pkg.check_install_dir(d)
+      assert pkg.check_install_dir(d, Ver("1.0.0"))
+    end
+  end
+
+  # expected_files takes the version so a package whose install layout
+  # diverged across versions can return a different list. Most packages
+  # ignore the argument; these two check the plumbing really delivers it.
+  def test_expected_files_receives_the_version
+    Dir.mktmpdir do |dir|
+      d = Pathname.new(dir)
+      FileUtils.touch(d / "old_binary")
+
+      pkg = FakePackage.new("foo")
+      pkg.define_singleton_method(:expected_files) { |ver = nil|
+        ver >= Ver("2.0.0") ? [["new_binary", false]] : [["old_binary", false]]
+      }
+
+      assert pkg.check_install_dir(d, Ver("1.0.0"))
+      refute pkg.check_install_dir(d, Ver("2.0.0"))
+
+      FileUtils.touch(d / "new_binary")
+      assert pkg.check_install_dir(d, Ver("2.0.0"))
+    end
+  end
+
+  # The install-list scanners must hand each entry ITS OWN version, not
+  # just any version: 1.0.0 stays fine while 2.0.0 is flagged broken.
+  def test_scanner_uses_each_versions_own_expected_files
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
+
+        # Demand a file only from 2.0.0; neither install has it.
+        pkg.define_singleton_method(:expected_files) { |ver = nil|
+          ver >= Ver("2.0.0") ? [["missing", false]] : []
+        }
+
+        list = pkg.get_install_list
+        refute list.find { |x| x.ver == Ver("1.0.0") }.broken
+        assert list.find { |x| x.ver == Ver("2.0.0") }.broken
+      end
     end
   end
 end
@@ -203,7 +237,7 @@ class TestInstallImplNoSource < Minitest::Test
       pkg = FakePackage.new("foo", source: nil)
       pkgmgr.register(pkg)
       assert_raises(NotImplementedError) {
-        pkg.install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("1.0.0"))
       }
     end
   end
@@ -223,7 +257,7 @@ class TestConfigureCoverage < Minitest::Test
         pkg = FakePackage.new("foo")
         pkg.define_singleton_method(:configurable?) { true }
         pkgmgr.register(pkg)
-        result = pkg.configure
+        result = bound(pkg).configure
         assert_equal false, result
       end
     end
@@ -238,8 +272,49 @@ class TestConfigureCoverage < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        result = pkg.configure
+        result = bound(pkg).configure
         assert_equal true, result
+      end
+    end
+  end
+
+  # `-C pkg:ver` reaches configure(ver): with several versions on disk
+  # the requested one is the one entered, and asking for an
+  # uninstalled version fails rather than silently picking another.
+  def test_configure_enters_the_requested_version
+    with_fake_tc do
+      with_stubbed_externals do
+        seen = []
+        pkg = FakePackage.new("foo")
+        pkg.define_singleton_method(:configurable?) { true }
+        pkg.define_singleton_method(:config_impl) {
+          seen << Dir.pwd
+          true
+        }
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
+
+        assert_equal true, bound(pkg).configure(Ver("2.0.0"))
+        assert_equal 1, seen.length
+        assert_match(%r{/foo/2\.0\.0\z}, seen.first)
+
+        assert_equal true, bound(pkg).configure(Ver("1.0.0"))
+        assert_match(%r{/foo/1\.0\.0\z}, seen.last)
+      end
+    end
+  end
+
+  def test_configure_rejects_an_uninstalled_version
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("foo")
+        pkg.define_singleton_method(:configurable?) { true }
+        pkg.define_singleton_method(:config_impl) { true }
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+
+        assert_equal false, bound(pkg).configure(Ver("9.9.9"))
       end
     end
   end

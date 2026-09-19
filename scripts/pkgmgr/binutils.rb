@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
+require_relative 'early_logic'
+require_relative 'arch'
+require_relative 'version'
+require_relative 'package'
+require_relative 'cache'
+require_relative 'package_manager'
+
+BINUTILS_SOURCE = SourceRef.new(
+  name: 'binutils',
+  url:  'https://ftp.gnu.org/gnu/binutils',
+  tarname: ->(ver) { "binutils-#{ver}.tar.xz" },
+)
+
+#
+# host_binutils: the assembler, linker and object tools the portable
+# toolchain is built with and builds through.
+#
+# A :distro package, not a portable one. Its binaries are built by the
+# system compiler and link against the system libc, and the tier
+# describes what a package's own binaries depend on. That is fine:
+# these are build tools running on the host, and what they are linked
+# against does not reach anything they produce. Portability belongs to
+# the sysroot they target.
+#
+# One binutils therefore serves every host stack rather than being
+# rebuilt per compiler version. A GCC needing a particular binutils
+# pins it: Dep('host_binutils', true, ver: ...).
+#
+# --with-sysroot is not optional even though the value is only a
+# default: GNU ld rejects the runtime --sysroot flag unless it was
+# configured with --with-sysroot, and that runtime flag is how GCC
+# points ld at the right stack. The default names the portable base,
+# which exists but holds no usr/lib, so a bare `ld` invoked outside GCC
+# fails to find libraries rather than silently falling back to
+# /usr/lib. Failing closed is the point.
+#
+# See docs/plans/portable-host-stack.md.
+#
+class HostBinutilsPackage < Package
+
+  include FileShortcuts
+  include FileUtilsShortcuts
+
+  def initialize
+    super(
+      name: 'host_binutils',
+      source: BINUTILS_SOURCE,
+      on_host: true,
+      is_compiler: false,
+      host_tier: :distro,
+      arch_list: ALL_HOST_ARCHS.values,
+      dep_list: [],
+      default: false,
+    )
+  end
+
+  # In every stack's sysroot, at usr/bin, beside gcc: one binutils
+  # serves every stack, and a usr/bin with gcc in it and no ld is half
+  # a toolchain.
+  def sysroot_fragments(gcc_ver = nil)
+    inst = find_install(default_ver)
+    return inst.nil? ? [] : [[inst.path / "install" / "bin", "usr/bin"]]
+  end
+
+  def expected_files(ver = nil) = [
+    ["install/bin/ld", false],
+    ["install/bin/as", false],
+    ["install/bin/ar", false],
+    ["install/bin/ranlib", false],
+    ["install/bin/objdump", false],
+    ["install/bin/strip", false],
+  ]
+
+  # $PREFIX, not the staging path we are standing in: ld bakes its
+  # library search dirs and ldscripts location into itself from
+  # --prefix, and staging stops existing the moment the install
+  # completes.
+  def build_steps(ver = default_ver) = [
+
+    # Binutils insists on being configured outside its source tree.
+    Mkdir(path: "build"),
+
+    Within(dir: "build", steps: [
+
+      # MAKEINFO=true: the docs need texinfo, which is not worth
+      # requiring on the host for a tool nobody reads the info pages
+      # of. Said to configure AND to each make: the value given to
+      # configure does not reach bfd's own sub-Makefile, whose doc
+      # rule then runs texinfo's `missing` stub and fails with 127 on
+      # a host without makeinfo -- the Ubuntu image, where the first
+      # container build found it.
+      Run(log: "configure.log", argv: [
+        "../configure",
+        "--prefix=$PREFIX",
+        "--with-sysroot=$SYSROOT",
+
+        # No translations: they would pull in the host's gettext, and
+        # nothing here is user-facing enough to want them.
+        "--disable-nls",
+
+        # Recent GCC warns about things older binutils sources trip over;
+        # those warnings are not ours to fix.
+        "--disable-werror",
+
+        # Byte-identical archives across rebuilds: no timestamps, uids or
+        # gids recorded. Cheap, and it keeps rebuild comparisons honest.
+        "--enable-deterministic-archives",
+
+        # gprofng is a profiler, and not why this package exists:
+        # this is the assembler and linker the host stack is built
+        # through, and nothing here has ever run gprofng. It is also
+        # what breaks the build under GCC 15 and later, whose default
+        # C23 reads its `real_func ()` declarations as taking no
+        # arguments and refuses the calls that pass three.
+        "--disable-gprofng",
+        "MAKEINFO=true",
+      ]),
+
+      Run(log: "build.log", argv: ["make", "-j$PAR", "MAKEINFO=true"]),
+
+      # ...and stage it through DESTDIR, so the tree we hand to the
+      # atomic move is complete while the paths inside it describe
+      # where it is going.
+      Run(log: "install.log", argv: [
+        "make", "install", "MAKEINFO=true", "DESTDIR=$DESTDIR",
+      ]),
+    ]),
+
+    # DESTDIR reproduces the whole absolute prefix beneath it; lift the
+    # tree back out to where the atomic move expects it.
+    Move(from: "$DESTDIR$PREFIX", to: "$INSTALL/install"),
+
+    # The deliverable is the install prefix; the source and the build
+    # tree together are several hundred MB of no further use.
+    Prune(),
+  ]
+end
+
+pkgmgr.register(HostBinutilsPackage.new())

@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
+require_relative 'early_logic'
+require_relative 'arch'
+require_relative 'version'
+require_relative 'package'
+require_relative 'cache'
+require_relative 'package_manager'
+
+LIBSECCOMP_SOURCE = SourceRef.new(
+  name: 'libseccomp',
+  url:  GITHUB + '/seccomp/libseccomp/releases/download',
+  tarname: ->(ver) { "libseccomp-#{ver}.tar.gz" },
+  remote_tarname: ->(ver) { "v#{ver}/libseccomp-#{ver}.tar.gz" },
+  fetch_via_git: false,
+)
+
+#
+# host_libseccomp: the syscall-filter library, needed by glycin.
+#
+# glycin does not merely decode images, it decodes them in a sandbox:
+# each format is handled by a separate process confined with seccomp,
+# on the reasoning that image parsers are where untrusted input meets
+# C. libglycin/meson.build requires libseccomp >= 2.5.0 on Linux and
+# will not configure without it.
+#
+# Pure C with no library dependencies of its own; what it needs is a
+# build tool, gperf, to generate its syscall table with.
+#
+class HostLibseccompPackage < Package
+
+  include FileShortcuts
+  include FileUtilsShortcuts
+
+  def initialize
+    super(
+      name: 'host_libseccomp',
+      source: LIBSECCOMP_SOURCE,
+      on_host: true,
+      is_compiler: false,
+      host_tier: :stack,
+      arch_list: ALL_HOST_ARCHS.values,
+      dep_list: [Dep('host_gcc', true), Dep('host_gperf', true)],
+      default: false,
+    )
+  end
+
+  def pkg_dirname = "libseccomp"
+
+  def expected_files(ver = nil) = [
+    ["install/usr/lib/libseccomp.so", false],
+    ["install/usr/include/seccomp.h", false],
+    ["install/usr/lib/pkgconfig/libseccomp.pc", false],
+  ]
+
+  def build_env(ver)
+    prefix = install_token / "install" / "usr"
+    return BuildEnv.new(
+      include_dirs:    [prefix / "include"],
+      lib_dirs:        [prefix / "lib"],
+      pkg_config_dirs: [prefix / "lib" / "pkgconfig"],
+    )
+  end
+
+  def build_flags(ver = nil) = [
+      "--disable-static",
+      "--libdir=$SYSROOT/usr/lib",
+      "--disable-python",   # the bindings are not wanted, only the C lib
+  ]
+
+  def build_steps(ver = default_ver) = autotools_stack_steps(build_flags(ver))
+end
+
+pkgmgr.register(HostLibseccompPackage.new())

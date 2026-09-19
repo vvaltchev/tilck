@@ -1,0 +1,648 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Package-level tests for the build-interface abstraction:
+#
+#   Package#find_install / #install_prefix  — which install do we mean
+#   Package#build_env                       — what a provider publishes
+#   Package#deps_build_env                  — what a consumer collects
+#
+# The point of the abstraction is that no package name appears in the
+# base class and no consumer names a dependency: adding a library to
+# dep_list is all it takes for its flags to show up.
+#
+
+require_relative 'test_helper'
+
+# A package that publishes a build interface, the way host_ncurses does:
+# relative to its own token, so that what it publishes can be computed
+# before it is installed and never names a machine.
+class ProviderPackage < TestHelper::FakePackage
+
+  def build_env(ver)
+    prefix = install_token
+    return BuildEnv.new(
+      include_dirs:    [prefix / "include"],
+      lib_dirs:        [prefix / "lib"],
+      pkg_config_dirs: [prefix / "lib" / "pkgconfig"],
+    )
+  end
+end
+
+# A provider whose flags differ by version — the case that motivated
+# making build_env take `ver` rather than reading a global.
+class VersionedProviderPackage < TestHelper::FakePackage
+
+  def build_env(ver)
+    prefix = install_token
+    dirs = [prefix / "include"]
+    dirs << prefix / "include" / "wide" if ver >= Ver("2.0.0")
+    return BuildEnv.new(include_dirs: dirs)
+  end
+end
+
+class TestFindInstall < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_find_install_returns_matching_version
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+
+        info = bound(pkg).find_install(Ver("1.0.0"))
+        refute_nil info
+        assert_equal Ver("1.0.0"), info.ver
+      end
+    end
+  end
+
+  def test_find_install_nil_when_not_installed
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        assert_nil bound(pkg).find_install(Ver("1.0.0"))
+      end
+    end
+  end
+
+  def test_find_install_nil_for_other_version
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+        assert_nil bound(pkg).find_install(Ver("9.9.9"))
+      end
+    end
+  end
+
+  #
+  # The regression that motivated replacing
+  #
+  #   info = pkg.get_install_list.find { |x| !x.broken }
+  #
+  # with a version-keyed lookup. get_install_list is built by walking
+  # <root>/<pkg>/<ver>/ with Dir.children, which returns filesystem
+  # order — so "the first one that isn't broken" is whichever version
+  # the directory happens to list first, and that changes as unrelated
+  # packages are installed and removed.
+  #
+  def test_find_install_picks_the_asked_version_with_several_installed
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
+        bound(pkg).install_impl(Ver("3.0.0"))
+
+        assert_equal 3, pkg.get_install_list.length
+
+        for v in ["1.0.0", "2.0.0", "3.0.0"]
+          assert_equal Ver(v), bound(pkg).find_install(Ver(v)).ver
+        end
+      end
+    end
+  end
+
+  def test_installed_agrees_with_find_install
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+
+        assert bound(pkg).installed?(Ver("1.0.0"))
+        assert !bound(pkg).installed?(Ver("2.0.0"))
+      end
+    end
+  end
+end
+
+class TestInstallPrefix < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_install_prefix_points_at_the_version_dir
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+
+        prefix = bound(pkg).install_prefix(Ver("1.0.0"))
+        assert prefix.directory?
+        assert_equal "1.0.0", prefix.basename.to_s
+      end
+    end
+  end
+
+  def test_install_prefix_distinguishes_versions
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
+
+        p1 = bound(pkg).install_prefix(Ver("1.0.0"))
+        p2 = bound(pkg).install_prefix(Ver("2.0.0"))
+        refute_equal p1.to_s, p2.to_s
+      end
+    end
+  end
+
+  # Dependency resolution guarantees the dep is installed, so a miss is
+  # a bug to report — never a cue to fall back on whatever the host
+  # system happens to provide.
+  def test_install_prefix_raises_with_actionable_message
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+
+        e = assert_raises(RuntimeError) {
+          bound(pkg).install_prefix(Ver("1.0.0"))
+        }
+        assert_match(/foo/, e.message)
+        assert_match(/1\.0\.0/, e.message)
+        assert_match(/not installed/, e.message)
+        assert_match(/build_toolchain -s host_foo/, e.message)
+      end
+    end
+  end
+end
+
+class TestPackageBuildEnv < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_base_class_publishes_nothing
+    with_fake_tc do
+      pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+      pkgmgr.register(pkg)
+      assert pkg.build_env(Ver("1.0.0")).empty?
+    end
+  end
+
+  def test_base_class_build_env_does_not_need_an_install
+    with_fake_tc do
+      pkg = FakePackage.new("host_foo", on_host: true, host_tier: :distro)
+      pkgmgr.register(pkg)
+      # No install on disk, and no raise: a package that publishes
+      # nothing never looks its install tree up.
+      assert_equal BuildEnv.empty.include_dirs,
+                   pkg.build_env(Ver("1.0.0")).include_dirs
+    end
+  end
+
+  def test_provider_publishes_its_own_paths
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = ProviderPackage.new("host_prov", on_host: true, host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+
+        be = pkg.build_env(Ver("1.0.0"))
+        assert_equal ["$host_prov/include"], be.include_dirs
+        assert_equal ["$host_prov/lib"], be.lib_dirs
+        assert_equal ["$host_prov/lib/pkgconfig"], be.pkg_config_dirs
+      end
+    end
+  end
+
+  def test_provider_can_vary_flags_by_version
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = VersionedProviderPackage.new("host_vp", on_host: true,
+                                           host_tier: :distro)
+        pkgmgr.register(pkg)
+        bound(pkg).install_impl(Ver("1.0.0"))
+        bound(pkg).install_impl(Ver("2.0.0"))
+
+        assert_equal 1, pkg.build_env(Ver("1.0.0")).include_dirs.length
+        assert_equal 2, pkg.build_env(Ver("2.0.0")).include_dirs.length
+      end
+    end
+  end
+end
+
+class TestDepsBuildEnv < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # Host packages, so nothing drags a cross-compiler into the graph.
+  # Package#initialize asserts that a host package's name starts with
+  # "host_", so the prefix is added here to keep the tests readable.
+  def host_pkg(klass, name, deps: [])
+    return klass.new("host_#{name}", on_host: true, host_tier: :distro,
+                     dep_list: deps.map { |d| Dep("host_#{d}", true) })
+  end
+
+  def test_no_deps_gives_empty_env
+    with_fake_tc do
+      c = host_pkg(TestHelper::FakePackage, "consumer")
+      pkgmgr.register(c)
+      assert bound(c).deps_build_env.empty?
+    end
+  end
+
+  def test_single_provider_dep
+    with_fake_tc do
+      with_stubbed_externals do
+        p = host_pkg(ProviderPackage, "prov")
+        c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+        pkgmgr.register(p)
+        pkgmgr.register(c)
+        bound(p).install_impl(Ver("1.0.0"))
+
+        be = bound(c).deps_build_env
+        assert_equal ["$host_prov/include"], be.include_dirs
+        assert_equal ["HOSTCFLAGS=-I$host_prov/include",
+                      "HOSTLDFLAGS=-L$host_prov/lib"], be.kconfig_make_vars
+      end
+    end
+  end
+
+  def test_dep_that_publishes_nothing_contributes_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        q = host_pkg(TestHelper::FakePackage, "quiet")
+        c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["quiet"])
+        pkgmgr.register(q)
+        pkgmgr.register(c)
+        bound(q).install_impl(Ver("1.0.0"))
+
+        assert bound(c).deps_build_env.empty?
+      end
+    end
+  end
+
+  def test_two_providers_merge_into_one_assignment_each
+    with_fake_tc do
+      with_stubbed_externals do
+        a = host_pkg(ProviderPackage, "pa")
+        b = host_pkg(ProviderPackage, "pb")
+        c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["pa", "pb"])
+        [a, b, c].each { |p| pkgmgr.register(p) }
+        bound(a).install_impl(Ver("1.0.0"))
+        bound(b).install_impl(Ver("1.0.0"))
+
+        vars = bound(c).deps_build_env.kconfig_make_vars
+        assert_equal 1, vars.count { |v| v.start_with?("HOSTCFLAGS=") }
+        assert_equal 1, vars.count { |v| v.start_with?("HOSTLDFLAGS=") }
+
+        cflags = vars.find { |v| v.start_with?("HOSTCFLAGS=") }
+        assert_match(/pa/, cflags)
+        assert_match(/pb/, cflags)
+      end
+    end
+  end
+
+  def test_transitive_dep_is_included
+    with_fake_tc do
+      with_stubbed_externals do
+        deep = host_pkg(ProviderPackage, "deep")
+        mid  = host_pkg(TestHelper::FakePackage, "mid", deps: ["deep"])
+        c    = host_pkg(TestHelper::FakePackage, "consumer", deps: ["mid"])
+        [deep, mid, c].each { |p| pkgmgr.register(p) }
+        bound(deep).install_impl(Ver("1.0.0"))
+        bound(mid).install_impl(Ver("1.0.0"))
+
+        be = bound(c).deps_build_env
+        assert_equal 1, be.include_dirs.length
+        assert_match(/deep/, be.include_dirs.first)
+      end
+    end
+  end
+
+  def test_direct_dep_comes_before_transitive_one
+    with_fake_tc do
+      with_stubbed_externals do
+        near = host_pkg(ProviderPackage, "near")
+        far  = host_pkg(ProviderPackage, "far")
+        mid  = host_pkg(TestHelper::FakePackage, "mid", deps: ["far"])
+        c = host_pkg(TestHelper::FakePackage, "consumer",
+                     deps: ["near", "mid"])
+        [near, far, mid, c].each { |p| pkgmgr.register(p) }
+        [near, far, mid].each { |p| bound(p).install_impl(Ver("1.0.0")) }
+
+        dirs = bound(c).deps_build_env.include_dirs
+        assert_equal 2, dirs.length
+        assert_match(/near/, dirs[0])
+        assert_match(/far/, dirs[1])
+      end
+    end
+  end
+
+  def test_shared_dep_reached_twice_contributes_once
+    with_fake_tc do
+      with_stubbed_externals do
+        shared = host_pkg(ProviderPackage, "shared")
+        l = host_pkg(TestHelper::FakePackage, "left", deps: ["shared"])
+        r = host_pkg(TestHelper::FakePackage, "right", deps: ["shared"])
+        c = host_pkg(TestHelper::FakePackage, "consumer",
+                     deps: ["left", "right"])
+        [shared, l, r, c].each { |p| pkgmgr.register(p) }
+        [shared, l, r].each { |p| bound(p).install_impl(Ver("1.0.0")) }
+
+        dirs = bound(c).deps_build_env.include_dirs
+        assert_equal 1, dirs.length
+        assert_match(/shared/, dirs.first)
+      end
+    end
+  end
+
+  #
+  # Integration-level version of the Dir.children ordering bug: with
+  # several versions of a provider on disk, the consumer must get the
+  # one bound for it (today: the provider's default_ver), not whichever
+  # the filesystem lists first.
+  #
+  def test_consumer_gets_the_bound_version_not_an_arbitrary_one
+    with_fake_tc do
+      with_stubbed_externals do
+        p = host_pkg(ProviderPackage, "prov")
+        c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+        pkgmgr.register(p)
+        pkgmgr.register(c)
+
+        # default_ver for FakePackage is 1.0.0; install newer ones too.
+        bound(p).install_impl(Ver("1.0.0"))
+        bound(p).install_impl(Ver("2.0.0"))
+        bound(p).install_impl(Ver("3.0.0"))
+        assert_equal 3, p.get_install_list.length
+
+        ctx = Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0"))
+        dirs = bound(c).deps_build_env.expand(ctx).include_dirs
+        assert_equal 1, dirs.length
+        assert_match(%r{/1\.0\.0/include\z}, dirs.first)
+        refute_match(/2\.0\.0/, dirs.first)
+        refute_match(/3\.0\.0/, dirs.first)
+      end
+    end
+  end
+
+  def test_deps_build_env_is_deterministic_across_calls
+    with_fake_tc do
+      with_stubbed_externals do
+        a = host_pkg(ProviderPackage, "pa")
+        b = host_pkg(ProviderPackage, "pb")
+        c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["pa", "pb"])
+        [a, b, c].each { |p| pkgmgr.register(p) }
+        bound(a).install_impl(Ver("1.0.0"))
+        bound(b).install_impl(Ver("1.0.0"))
+
+        first = bound(c).deps_build_env.include_dirs
+        5.times { assert_equal first, bound(c).deps_build_env.include_dirs }
+      end
+    end
+  end
+
+  #
+  # Pins: a dependency named with an explicit version is built against
+  # that version, not the default.
+  #
+  def test_pinned_dep_uses_the_pinned_version
+    with_fake_tc do
+      with_stubbed_externals do
+        p = ProviderPackage.new("host_prov", on_host: true,
+                                host_tier: :distro)
+        c = TestHelper::FakePackage.new(
+          "host_consumer", on_host: true, host_tier: :distro,
+          dep_list: [Dep("host_prov", true, ver: Ver("2.0.0"))])
+        pkgmgr.register(p)
+        pkgmgr.register(c)
+        bound(p).install_impl(Ver("1.0.0"))     # the default
+        bound(p).install_impl(Ver("2.0.0"))     # the pinned one
+
+        ctx = Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0"))
+        dirs = bound(c).deps_build_env.expand(ctx).include_dirs
+        assert_equal 1, dirs.length
+        assert_match(%r{/2\.0\.0/include\z}, dirs.first)
+      end
+    end
+  end
+
+  def test_unpinned_dep_still_uses_the_default
+    with_fake_tc do
+      with_stubbed_externals do
+        p = ProviderPackage.new("host_prov", on_host: true,
+                                host_tier: :distro)
+        c = TestHelper::FakePackage.new(
+          "host_consumer", on_host: true, host_tier: :distro,
+          dep_list: [Dep("host_prov", true)])
+        pkgmgr.register(p)
+        pkgmgr.register(c)
+        bound(p).install_impl(Ver("1.0.0"))
+        bound(p).install_impl(Ver("2.0.0"))
+
+        # The version is not in the token; it is in what the token
+        # resolves to.
+        ctx = Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0"))
+        dirs = bound(c).deps_build_env.expand(ctx).include_dirs
+        assert_match(%r{/1\.0\.0/include\z}, dirs.first)
+      end
+    end
+  end
+
+  def test_pin_on_a_target_dep_is_rejected
+    with_fake_tc do
+      e = assert_raises(RuntimeError) {
+        TestHelper::FakePackage.new(
+          "consumer", dep_list: [Dep("other", false, ver: Ver("1.0.0"))])
+      }
+      assert_match(/only host packages can be pinned/, e.message)
+    end
+  end
+
+  def test_pin_on_a_host_dep_is_accepted
+    with_fake_tc do
+      pkg = TestHelper::FakePackage.new(
+        "consumer", dep_list: [Dep("host_other", true, ver: Ver("1.0.0"))])
+      assert_equal Ver("1.0.0"), pkg.dep_list.first.ver
+    end
+  end
+
+  def test_dep_list_for_defaults_to_the_declared_list
+    with_fake_tc do
+      pkg = TestHelper::FakePackage.new(
+        "consumer", dep_list: [Dep("host_other", true)])
+      assert_equal pkg.dep_list, pkg.dep_list_for(Ver("1.0.0"))
+      assert_equal pkg.dep_list, pkg.dep_list_for(nil)
+    end
+  end
+
+  def test_uninstalled_provider_dep_raises_instead_of_degrading
+    with_fake_tc do
+      with_stubbed_externals do
+        p = host_pkg(ProviderPackage, "prov")
+        c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+        pkgmgr.register(p)
+        pkgmgr.register(c)
+        # prov is never installed. The interface itself is still
+        # there -- it is a function of the package, not of the tree --
+        # and it is RESOLVING it that has to say what is missing,
+        # rather than degrade to an empty flag.
+        be = bound(c).deps_build_env
+        assert_equal ["$host_prov/include"], be.include_dirs
+
+        e = assert_raises(RuntimeError) {
+          be.expand(Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0")))
+        }
+        assert_match(/prov/, e.message)
+        assert_match(/not installed/, e.message)
+      end
+    end
+  end
+end
+
+
+#
+# WHAT THE TOKENS BUY.
+#
+# A published interface used to be absolute paths computed from
+# install_prefix, which raises when the publisher is not installed --
+# so a recipe built from it could not be fingerprinted during a
+# staleness check, and the fingerprint named this machine. Both are
+# gone: a publisher speaks relative to its own token, and the token is
+# resolved by the DEPENDENT's build, at build time, to wherever the
+# install actually is.
+#
+class TestPublishedTokens < Minitest::Test
+
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def host_pkg(klass, name, deps: [])
+    return klass.new("host_#{name}", on_host: true, host_tier: :distro,
+                     dep_list: deps.map { |d| Dep("host_#{d}", true) })
+  end
+
+  # The headline: nothing installed, and the answer is still there.
+  def test_the_interface_is_computable_before_anything_is_installed
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+
+      be = bound(c).deps_build_env
+      assert_equal ["$host_prov/include"], be.include_dirs
+      assert_equal ["-I$host_prov/include"], [be.cflags]
+    end
+  end
+
+  def test_nothing_published_names_a_machine
+    with_fake_tc do |tc|
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      fake_install(p)
+
+      be = bound(c).deps_build_env
+      all = be.include_dirs + be.lib_dirs + be.pkg_config_dirs + be.bin_dirs
+      all.each { |d|
+        refute_includes d, tc.to_s, "#{d} names this machine"
+        refute d.start_with?("/"), "#{d} is absolute"
+      }
+    end
+  end
+
+  # ...and expand is where the two worlds meet: the same interface,
+  # every token resolved against the real install.
+  def test_expand_resolves_every_field_against_the_real_install
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer", deps: ["prov"])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      at = fake_install(p)
+
+      ctx = Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0"))
+      be = bound(c).deps_build_env.expand(ctx)
+
+      assert_equal ["#{at}/include"], be.include_dirs
+      assert_equal ["#{at}/lib"], be.lib_dirs
+      assert_equal ["#{at}/lib/pkgconfig"], be.pkg_config_dirs
+      assert_equal "-I#{at}/include", be.cflags
+    end
+  end
+
+  # The token has to resolve wherever it turns up, and it turns up
+  # through the whole closure: what c publishes reaches a through b.
+  def test_a_token_resolves_for_the_whole_closure_not_just_direct_deps
+    with_fake_tc do
+      c = host_pkg(ProviderPackage, "c")
+      b = host_pkg(TestHelper::FakePackage, "b", deps: ["c"])
+      a = host_pkg(TestHelper::FakePackage, "a", deps: ["b"])
+      [c, b, a].each { |p| pkgmgr.register(p) }
+      at_c = fake_install(c)
+      fake_install(b)
+
+      assert_equal ["$host_c/include"], bound(a).deps_build_env.include_dirs
+
+      ctx = Package::BuildCtx.new(bound(a), Pathname.new("/x/1.0.0"))
+      assert_equal at_c.to_s, ctx.expand("$host_c")
+    end
+  end
+
+  # A package outside the closure is not a token: the right complaint
+  # about an undeclared dependency.
+  def test_a_package_outside_the_closure_is_not_a_token
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = host_pkg(TestHelper::FakePackage, "consumer")
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      fake_install(p)
+
+      ctx = Package::BuildCtx.new(bound(c), Pathname.new("/x/1.0.0"))
+      err = assert_raises(Recipe::Error) { ctx.expand("$host_prov/lib") }
+      assert_match(/unknown token \$host_prov/, err.message)
+    end
+  end
+
+  # With no install in progress -- `-C` -- the version a token resolves
+  # to is the solver's answer for this package as the root, which is
+  # what a pin in the dep list decides.
+  def test_with_no_install_in_progress_a_pin_still_picks_the_version
+    with_fake_tc do
+      p = host_pkg(ProviderPackage, "prov")
+      c = TestHelper::FakePackage.new(
+        "host_consumer", on_host: true, host_tier: :distro,
+        dep_list: [Dep("host_prov", true, ver: Ver("2.0.0"))])
+      pkgmgr.register(p)
+      pkgmgr.register(c)
+      fake_install(p, Ver("1.0.0"))
+      at2 = fake_install(p, Ver("2.0.0"))
+
+      assert_nil c.resolved_ver("host_prov"), "no install in progress"
+      assert_equal at2.to_s, bound(c).dep_install_dir("host_prov").to_s
+    end
+  end
+end

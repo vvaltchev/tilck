@@ -28,14 +28,23 @@ if [ "$OS" = "FreeBSD" ] || [ "$OS" = "Darwin" ]; then
    CUT="gcut"
 fi
 
+# A tab between the tool and its verdict. printf's format string is
+# POSIX and the same under every sh; echo's treatment of "\t" is not
+# (dash interprets it, bash prints it), so echo gets no tab at all.
+if command -v printf >/dev/null 2>&1; then
+   tool_line() { printf 'Check for tool: %s\t[ %s ]\n' "$1" "$2"; }
+else
+   tool_line() { echo "Check for tool: $1 [ $2 ]"; }
+fi
+
 missing=0
 for c in $BASH $SED $GREP $CUT; do
    if command -v "$c" >/dev/null; then
       if ! [ "$QUIET" = 1 ]; then
-         echo "Check for tool: $c\t[ OK ]"
+         tool_line "$c" OK
       fi
    else
-      echo "Check for tool: $c\t[ MISSING ]"
+      tool_line "$c" MISSING
       missing=1
    fi
 done

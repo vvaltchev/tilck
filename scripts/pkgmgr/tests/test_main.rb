@@ -71,6 +71,52 @@ class TestParseOptionsBasic < Minitest::Test
   end
 end
 
+# -h fits the terminal: 80 columns when stdout is not one, else its
+# width up to 120, the descriptions re-flowed beside their switches.
+class TestHelpFitsTheTerminal < Minitest::Test
+
+  include TestHelper
+
+  def help_lines(columns)
+    out = StringIO.new
+    old = $stdout
+    $stdout = out
+    Term.stub(:columns, columns) { Main.parse_options(["-h"]) }
+    return out.string.lines.map(&:chomp)
+  ensure
+    $stdout = old
+  end
+
+  def test_eighty_columns_when_stdout_is_not_a_terminal
+    lines = help_lines(80)
+    assert lines.length > 100, "the help lost its options"
+    assert_equal 80, lines.map(&:length).max
+    assert lines.any? { |l| l.start_with?("    -l, --list") }
+    # the description column is one column, every continuation on it
+    col = lines.find { |l| l =~ /\A\s+-l, --list\s+\S/ }.index("List")
+    conts = lines.select { |l| l.start_with?(" " * col) && l[col] != " " }
+    assert conts.length > 50
+  end
+
+  def test_a_wider_terminal_gets_wider_lines_up_to_the_cap
+    wide = help_lines(100)
+    assert_equal 100, wide.map(&:length).max
+    assert wide.length < help_lines(80).length, "not re-flowed"
+  end
+
+  # A description line beginning with a dash is read by OptionParser
+  # as another switch of the option -- "-d to see what would go" made
+  # -d an argument-taking alias, and "-a <arch> for cross-arch queries"
+  # gave -D an argument spec of prose. No switch may carry one.
+  def test_no_switch_was_made_out_of_a_description
+    Main::PARSER.top.list.each { |sw|
+      next if !sw.respond_to?(:arg)
+      refute_match(/\s\S+\s/, sw.arg.to_s,
+                   "#{sw.long.first || sw.short.first}: #{sw.arg.inspect}")
+    }
+  end
+end
+
 class TestParseOptionsInstall < Minitest::Test
 
   def test_single_package
@@ -117,62 +163,156 @@ class TestParseOptionsInstall < Minitest::Test
   end
 end
 
+# The command line as a value: what main hands the planner.
+class TestRequestOf < Minitest::Test
+  include TestHelper
+
+  def request(*argv) = Main.request_of(Main.parse_options(argv))
+
+  def test_a_target_is_the_name_and_the_version_as_typed
+    assert_equal ["foo", nil], Request.target("foo")
+    assert_equal ["foo", Ver("1.2.0")], Request.target("foo:1.2.0")
+    assert_equal ["foo", :all], Request.target("foo:ALL")
+    assert_equal [:all, nil], Request.target("ALL")
+    assert_equal ["gcc-i386-musl", nil], Request.target("gcc-i386-musl:")
+  end
+
+  def test_the_modes_and_the_modifiers
+    r = request("-s", "foo", "bar:2.0.0", "-f", "-d", "-a", "riscv64")
+    assert_equal :install, r.mode
+    assert_equal [["foo", nil], ["bar", Ver("2.0.0")]], r.targets
+    assert r.force
+    assert r.dry
+    assert_equal ALL_ARCHS["riscv64"], r.arch
+    refute r.every_arch?
+
+    r = request("-u", "foo:ALL", "-a", "ALL", "-c", "ALL")
+    assert_equal :uninstall, r.mode
+    assert_equal [["foo", :all]], r.targets
+    assert r.every_arch?
+    assert_equal :all, r.cc
+
+    r = request("--mark-auto", "foo", "-c", "7.7.7", "-H", "gcc-8.8.8")
+    assert_equal :mark_auto, r.mode
+    assert_equal Ver("7.7.7"), r.cc
+    assert_equal Ver("8.8.8"), r.stack
+
+    assert_equal :mark_manual, request("--mark-manual", "foo").mode
+    assert_equal :configure, request("-C", "foo").mode
+    assert_equal :upgrade, request("--upgrade").mode
+    assert_equal :rebuild, request("--rebuild").mode
+    assert_equal :autoremove, request("--autoremove").mode
+    assert_equal :clean, request("--clean").mode
+    assert_equal :list, request("-l").mode
+    assert_equal :check_updates, request("--check-for-updates").mode
+    assert_equal :installable, request("--list-installable").mode
+    assert_equal :layout, request("--print-layout").mode
+    assert_equal :context, request("-j").mode
+    assert_equal :other, request("--deps", "foo").mode
+    assert_equal :other, request("-L").mode
+    assert_equal :other, request("-t").mode
+    quietly { assert_equal :other, request("-h").mode }
+    assert_equal :default, request.mode
+    assert request("--contrib").contrib
+    refute request.contrib
+    assert request("-s", "ALL", "--with-host-packages").host_packages
+    refute request("-s", "ALL").host_packages
+  end
+
+  def quietly
+    old = $stdout
+    $stdout = StringIO.new
+    yield
+  ensure
+    $stdout = old
+  end
+
+  # What a request reads as, for a message.
+  def test_a_request_reads_as_its_mode_and_targets
+    assert_equal "install foo:1.0.0 ALL bar:ALL",
+                 request("-s", "foo:1.0.0", "ALL", "bar:ALL").to_s
+    assert_equal "upgrade", request("--upgrade").to_s
+  end
+
+  # -S is -s of the compiler package, and the version is the default.
+  def test_a_compiler_request_names_the_compiler_package
+    r = request("-S", "riscv64")
+    assert_equal :install, r.mode
+    assert_equal [["gcc-riscv64-musl", nil]], r.targets
+    assert_equal [["gcc-i386-musl", nil]], request("-U", "i386").targets
+  end
+end
+
 class TestExpandInstallAll < Minitest::Test
   include TestHelper
 
-  # expand_install_all runs inside a with_target_arch scope in main().
-  # Tests set up their own fake registry and call the helper directly.
+  # ALL is expanded by the planner (Planner.expand_all), under the
+  # scope of the arch being installed for. Tests set up their own
+  # fake registry and call it directly.
 
   def setup
     reset_pkgmgr!
   end
 
-  def test_install_ALL_expands_to_installable_non_compilers
-    pkgmgr.register(FakePackage.new("foo"))
-    pkgmgr.register(FakePackage.new("bar"))
-    pkgmgr.register(
-      FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
-    )
+  # ALL is "everything installABLE", which is a question about a
+  # world: what is registered, and what is already there. These asked
+  # it of the developer's toolchain -- so the set they expanded to
+  # depended on what that machine had built, and the assertions held
+  # by luck. with_fake_tc gives them a world with nothing in it.
 
-    result = Main.expand_install_all(["ALL"])
-    names = result.map { |s| s.split(":").first }.sort
-    assert_equal ["bar", "foo"], names
+  def test_install_ALL_expands_to_installable_non_compilers
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("foo"))
+      pkgmgr.register(FakePackage.new("bar"))
+      pkgmgr.register(
+        FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
+      )
+
+      result = Planner.expand_all(pkgmgr, [[:all, nil]], scope)
+      names = result.map(&:first).sort
+      assert_equal ["bar", "foo"], names
+    end
   end
 
   def test_install_ALL_skips_packages_not_supported_on_current_arch
-    other_arch = (ALL_ARCHS.values - [ARCH]).first
-    pkgmgr.register(FakePackage.new("universal"))
-    pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
+    with_fake_tc do
+      other_arch = (ALL_ARCHS.values - [ARCH]).first
+      pkgmgr.register(FakePackage.new("universal"))
+      pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
 
-    result = Main.expand_install_all(["ALL"])
-    names = result.map { |s| s.split(":").first }
-    assert_includes names, "universal"
-    refute_includes names, "other_only"
+      result = Planner.expand_all(pkgmgr, [[:all, nil]], scope)
+      names = result.map(&:first)
+      assert_includes names, "universal"
+      refute_includes names, "other_only"
+    end
   end
 
   def test_install_ALL_coexists_with_named_packages
-    pkgmgr.register(FakePackage.new("foo"))
-    pkgmgr.register(FakePackage.new("bar"))
+    with_fake_tc do
+      pkgmgr.register(FakePackage.new("foo"))
+      pkgmgr.register(FakePackage.new("bar"))
 
-    result = Main.expand_install_all(["custom", "ALL"])
-    names = result.map { |s| s.split(":").first }
-    assert_includes names, "custom"
-    assert_includes names, "foo"
-    assert_includes names, "bar"
+      result = Planner.expand_all(pkgmgr, [["custom", nil], [:all, nil]],
+                                  scope)
+      names = result.map(&:first)
+      assert_includes names, "custom"
+      assert_includes names, "foo"
+      assert_includes names, "bar"
+    end
   end
 
   def test_install_ALL_respects_target_arch_scope
     # When with_target_arch scopes to riscv64, a package that only
     # supports riscv64 is included; an i386-only package is excluded.
-    rv = ALL_ARCHS["riscv64"]
-    i3 = ALL_ARCHS["i386"]
-    pkgmgr.register(FakePackage.new("rv_pkg", arch_list: [rv]))
-    pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
-    pkgmgr.register(FakePackage.new("universal"))
+    with_fake_tc do
+      rv = ALL_ARCHS["riscv64"]
+      i3 = ALL_ARCHS["i386"]
+      pkgmgr.register(FakePackage.new("rv_pkg", arch_list: [rv]))
+      pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
+      pkgmgr.register(FakePackage.new("universal"))
 
-    pkgmgr.with_target_arch(rv) do
-      result = Main.expand_install_all(["ALL"])
-      names = result.map { |s| s.split(":").first }
+      result = Planner.expand_all(pkgmgr, [[:all, nil]], scope.with(arch: rv))
+      names = result.map(&:first)
       assert_includes names, "rv_pkg"
       assert_includes names, "universal"
       refute_includes names, "i3_pkg"
@@ -309,7 +449,7 @@ class TestMainListMode < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("foo")
 
-        output = capture_stdout { Main.main(["-l"]) }
+        output = run_cli("-l").last
         assert_match(/foo/, output)
         assert_match(/installed/, output)
       end
@@ -322,7 +462,7 @@ class TestMainListMode < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("foo")
 
-        output = capture_stdout { Main.main(["-l", "-g", "arch"]) }
+        output = run_cli("-l", "-g", "arch").last
         assert_match(/foo/, output)
         assert_match(/i386/, output)
       end
@@ -335,7 +475,7 @@ class TestMainListMode < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("foo")
 
-        output = capture_stdout { Main.main(["-l", "-c", "ALL"]) }
+        output = run_cli("-l", "-c", "ALL").last
         assert_match(/foo/, output)
       end
     end
@@ -355,7 +495,7 @@ class TestMainDumpContext < Minitest::Test
   end
 
   def test_dump_context
-    output = capture_stdout { Main.dump_context }
+    output = capture_stdout { Main.dump_context(scope) }
     assert_match(/MAIN_DIR/, output)
     assert_match(/TC/, output)
     assert_match(/HOST_ARCH/, output)
@@ -366,7 +506,7 @@ class TestMainDumpContext < Minitest::Test
   def test_just_context_mode
     with_fake_tc do
       with_stubbed_externals do
-        result = Main.main(["-j"])
+        result = run_cli("-j").first
         assert_equal 0, result
       end
     end
@@ -388,7 +528,7 @@ class TestMainIntegration < Minitest::Test
         pkgmgr.register(pkg)
         pkgmgr.install("foo")
 
-        result = Main.main(["--check-for-updates"])
+        result = run_cli("--check-for-updates").first
         assert_equal 0, result
       end
     end
@@ -398,11 +538,12 @@ class TestMainIntegration < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         gcc_ver = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0")
+        old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
+        FileUtils.mkdir_p(old_dir)
 
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["--check-for-updates"])
+        result = run_cli("--check-for-updates").first
         assert_equal 2, result
       end
     end
@@ -413,7 +554,7 @@ class TestMainIntegration < Minitest::Test
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["-s", "foo"])
+        result = run_cli("-s", "foo").first
         assert_equal 0, result
         assert_equal ["foo"], FakePackage.install_log
       end
@@ -427,7 +568,7 @@ class TestMainIntegration < Minitest::Test
           dep_list: [Dep("b", false)]))
         pkgmgr.register(FakePackage.new("b"))
 
-        result = Main.main(["-s", "a"])
+        result = run_cli("-s", "a").first
         assert_equal 0, result
         assert_equal ["b", "a"], FakePackage.install_log
       end
@@ -437,7 +578,7 @@ class TestMainIntegration < Minitest::Test
   def test_install_unknown_package
     with_fake_tc do
       with_stubbed_externals do
-        result = Main.main(["-s", "nonexistent"])
+        result = run_cli("-s", "nonexistent").first
         assert_equal 1, result
       end
     end
@@ -447,12 +588,11 @@ class TestMainIntegration < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         gcc_ver = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(
-          tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
-        )
+        old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
+        FileUtils.mkdir_p(old_dir)
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["--upgrade"])
+        result = run_cli("--upgrade").first
         assert_equal 0, result
         assert_includes FakePackage.install_log, "foo"
       end
@@ -466,23 +606,66 @@ class TestMainIntegration < Minitest::Test
         pkgmgr.install("foo")
         FakePackage.clear_log!
 
-        result = Main.main(["--upgrade"])
+        result = run_cli("--upgrade").first
         assert_equal 0, result
         assert_empty FakePackage.install_log
       end
     end
   end
 
+  # The no-mode run installs the Tilck stack of this target: the
+  # meta-package, and with it what is declared default, as its
+  # dependencies.
   def test_default_install_mode
     with_fake_tc do
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("dflt", default: true))
         pkgmgr.register(FakePackage.new("opt"))
+        stack = register_tilck_stack!
 
-        result = Main.main([])
+        result = run_cli().first
         assert_equal 0, result
         assert_includes FakePackage.install_log, "dflt"
         refute_includes FakePackage.install_log, "opt"
+        assert bound(stack).installed?(bound(stack).default_ver),
+               "the stack itself"
+      end
+    end
+  end
+
+  # An arch with no board -- aarch64, a cross compiler only so far --
+  # gets no target directory: a board is the <env> of a target's
+  # coordinates, and `any` there would mean "no board yet" beside
+  # its one meaning for host and noarch packages. The directory used
+  # to be created on every run.
+  def test_an_arch_without_a_board_gets_no_target_directory
+    with_fake_tc do
+      with_stubbed_externals do
+        run_cli("-l", "-q")
+        boardless = ALL_ARCHS.values.select { |a| a.default_board.nil? }
+        refute_empty boardless, "the test needs a board-less arch"
+        for a in boardless do
+          refute (TC / Coords.target_machine(a)).exist?,
+                 "#{a.name}: a directory was created for an arch with no board"
+        end
+        assert_empty Dir.glob("#{TC}/tilck-*/any"), "an env of any on a target"
+        for a in ALL_ARCHS.values.reject { |x| x.default_board.nil? } do
+          assert (TC / Coords.target_machine(a) / a.default_board).directory?
+        end
+      end
+    end
+  end
+
+  # A target without a Tilck stack gets nothing installed by default,
+  # and is told so.
+  def test_default_install_without_a_stack_installs_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("dflt", default: true))
+        result, out = run_cli()
+        assert_equal 0, result
+        assert_match(/No Tilck stack is defined for i386\/pc/, out)
+        assert_empty FakePackage.install_log
       end
     end
   end
@@ -497,21 +680,17 @@ class TestMainIntegration < Minitest::Test
           default: true,
           dep_list: [Dep("dflt_dep", false)]))
         pkgmgr.register(FakePackage.new("dflt_dep", default: true))
+        register_tilck_stack!
 
-        old = $stdout
-        $stdout = StringIO.new
-        begin
-          result = Main.main(["--ascii"])
-          out = $stdout.string
-        ensure
-          $stdout = old
-        end
+        result, out = run_cli("--ascii")
 
         assert_equal 0, result
         assert_match(/Install plan:/, out)
-        # ASCII tree: root "dflt_root" with child "dflt_dep" indented.
-        assert_match(/^dflt_root$/, out)
-        assert_match(/^  dflt_dep$/, out)
+        # ASCII tree: the stack is the root, dflt_root its child,
+        # dflt_dep the child's child.
+        assert_match(/^tilck-i386-pc$/, out)
+        assert_match(/^  dflt_root$/, out)
+        assert_match(/^    dflt_dep$/, out)
         # Old linear format must be gone.
         refute_match(/Install order:/, out)
       end
@@ -523,7 +702,7 @@ class TestMainIntegration < Minitest::Test
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("foo"))
 
-        result = Main.main(["-C", "foo"])
+        result = run_cli("-C", "foo").first
         assert_equal 1, result
       end
     end
@@ -532,7 +711,7 @@ class TestMainIntegration < Minitest::Test
   def test_config_unknown_package
     with_fake_tc do
       with_stubbed_externals do
-        result = Main.main(["-C", "nonexistent"])
+        result = run_cli("-C", "nonexistent").first
         assert_equal 1, result
       end
     end
@@ -562,9 +741,7 @@ class TestMainDryRunInstall < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-d", "--ascii"])
-        }
+        result, out = run_cli("-s", "foo", "-d", "--ascii")
         assert_equal 0, result
         assert_empty FakePackage.install_log
         assert_match(/Install plan:/, out)
@@ -582,9 +759,7 @@ class TestMainDryRunInstall < Minitest::Test
         pkgmgr.register(FakePackage.new("b"))
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["-s", "a", "-d", "--ascii"])
-        }
+        result, out = run_cli("-s", "a", "-d", "--ascii")
         assert_equal 0, result
         assert_empty FakePackage.install_log
         # ASCII tree: root "a" with child "b" indented.
@@ -603,14 +778,12 @@ class TestMainDryRunInstall < Minitest::Test
         FakePackage.clear_log!
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-f", "-d"])
-        }
+        result, out = run_cli("-s", "foo", "-f", "-d")
         assert_equal 0, result
         # Dry-run force message, no actual uninstall.
         assert_match(/Would force-remove: foo/, out)
         # Package still installed (nothing was removed).
-        assert pkgmgr.get("foo").installed?(Ver("1.0.0"))
+        assert bound(pkgmgr.get("foo")).installed?(Ver("1.0.0"))
       end
     end
   end
@@ -621,15 +794,12 @@ class TestMainDryRunInstall < Minitest::Test
         # Seed an older install on disk to make the package
         # upgradable.
         gcc_ver = FAKE_GCC_VER.to_s
-        FileUtils.mkdir_p(
-          tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
-        )
+        old_dir = target_pkgs(ARCH, gcc_ver) / "foo" / "0.9.0"
+        FileUtils.mkdir_p(old_dir)
         pkgmgr.register(FakePackage.new("foo"))
 
         result = nil
-        out = capture_stdout {
-          result = Main.main(["--upgrade", "-d"])
-        }
+        result, out = run_cli("--upgrade", "-d")
         assert_equal 0, result
         assert_empty FakePackage.install_log
         assert_match(/Packages to upgrade.*foo/, out)
@@ -640,7 +810,8 @@ class TestMainDryRunInstall < Minitest::Test
 end
 
 # ---------------------------------------------------------------
-# Tests for -a <arch> / with_target_arch in install mode.
+# Tests for -a <arch>: a package answers for the arch of the scope it
+# is bound to, and for no other.
 # ---------------------------------------------------------------
 
 class TestTargetArchScope < Minitest::Test
@@ -650,101 +821,46 @@ class TestTargetArchScope < Minitest::Test
     reset_pkgmgr!
   end
 
-  def test_target_arch_defaults_to_ARCH
-    assert_equal ARCH, pkgmgr.target_arch
+  def test_the_environment_scope_is_ARCH
+    assert_equal ARCH, scope.arch
   end
 
-  def test_with_target_arch_overrides_and_restores
-    x64 = ALL_ARCHS["x86_64"]
-    assert_equal ARCH, pkgmgr.target_arch
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64, pkgmgr.target_arch
-    end
-
-    assert_equal ARCH, pkgmgr.target_arch
-  end
-
-  def test_with_target_arch_nests_correctly
-    x64 = ALL_ARCHS["x86_64"]
-    rv  = ALL_ARCHS["riscv64"]
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64, pkgmgr.target_arch
-
-      pkgmgr.with_target_arch(rv) do
-        assert_equal rv, pkgmgr.target_arch
-      end
-
-      assert_equal x64, pkgmgr.target_arch
-    end
-
-    assert_equal ARCH, pkgmgr.target_arch
-  end
-
-  def test_with_target_arch_restores_on_exception
-    x64 = ALL_ARCHS["x86_64"]
-    begin
-      pkgmgr.with_target_arch(x64) do
-        raise "boom"
-      end
-    rescue RuntimeError
-    end
-    assert_equal ARCH, pkgmgr.target_arch
-  end
-
-  def test_default_arch_reads_target_arch
+  def test_default_arch_is_the_bound_scopes
     x64 = ALL_ARCHS["x86_64"]
     pkg = FakePackage.new("foo")
-    assert_equal ARCH, pkg.default_arch
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64, pkg.default_arch
-    end
-
-    assert_equal ARCH, pkg.default_arch
+    assert_equal ARCH, bound(pkg).default_arch
+    assert_equal x64, pkg.at(scope.with(arch: x64)).default_arch
+    assert_equal ARCH, bound(pkg).default_arch, "a binding is a copy"
   end
 
-  def test_default_cc_reads_target_arch
+  def test_default_cc_is_the_bound_scopes
     # Ensure gcc_ver is set for the test arch (read_gcc_ver_defaults
     # only runs in main(), not in tests).
     x64 = ALL_ARCHS["x86_64"]
     saved = x64.gcc_ver
     x64.gcc_ver ||= FAKE_GCC_VER
     pkg = FakePackage.new("foo")
-
-    pkgmgr.with_target_arch(x64) do
-      assert_equal x64.gcc_ver, pkg.default_cc
-    end
+    assert_equal x64.gcc_ver, pkg.at(scope.with(arch: x64)).default_cc
   ensure
     x64.gcc_ver = saved
   end
 
-  def test_arch_supported_reads_target_arch
+  def test_arch_supported_is_the_bound_scopes
     rv = ALL_ARCHS["riscv64"]
     x64 = ALL_ARCHS["x86_64"]
     pkg = FakePackage.new("rv_only", arch_list: [rv])
-
-    pkgmgr.with_target_arch(rv) do
-      assert pkg.arch_supported?
-    end
-
-    pkgmgr.with_target_arch(x64) do
-      refute pkg.arch_supported?
-    end
+    assert pkg.at(scope.with(arch: rv)).arch_supported?
+    refute pkg.at(scope.with(arch: x64)).arch_supported?
   end
 
-  def test_build_dep_graph_uses_target_arch
+  def test_build_dep_graph_uses_the_scopes_arch
     rv = ALL_ARCHS["riscv64"]
     pkgmgr.register(
       FakePackage.new("gcc-riscv64-musl", on_host: true, is_compiler: true)
     )
     pkgmgr.register(FakePackage.new("foo"))
-
-    pkgmgr.with_target_arch(rv) do
-      graph = pkgmgr.build_dep_graph
-      assert_includes graph["foo"], "gcc-riscv64-musl"
-    end
+    graph = pkgmgr.build_dep_graph(scope: scope.with(arch: rv))
+    assert_includes graph["foo"], "gcc-riscv64-musl"
   end
 
   def test_build_dep_graph_default_uses_ARCH
@@ -787,10 +903,8 @@ class TestInstallWithTargetArch < Minitest::Test
         )
         pkgmgr.register(FakePackage.new("foo"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "riscv64", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "foo", "-a", "riscv64", "-d", "--ascii")
+        assert_equal 0, result
         # Plan should include the riscv64 compiler as a dep.
         assert_match(/gcc-riscv64-musl/, out)
         assert_match(/^foo$/, out)
@@ -806,10 +920,8 @@ class TestInstallWithTargetArch < Minitest::Test
         rv = ALL_ARCHS["riscv64"]
         pkgmgr.register(FakePackage.new("rv_only", arch_list: [rv]))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "rv_only", "-a", "x86_64"])
-          assert_equal 1, result
-        }
+        result, _out = run_cli("-s", "rv_only", "-a", "x86_64")
+        assert_equal 1, result
       end
     end
   end
@@ -828,10 +940,8 @@ class TestInstallWithTargetArch < Minitest::Test
         pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
         pkgmgr.register(FakePackage.new("universal"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "ALL", "-a", "riscv64", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "ALL", "-a", "riscv64", "-d", "--ascii")
+        assert_equal 0, result
         # rv_pkg and universal in the plan; i3_pkg excluded.
         assert_match(/rv_pkg/, out)
         assert_match(/universal/, out)
@@ -852,10 +962,8 @@ class TestInstallWithTargetArch < Minitest::Test
         end
         pkgmgr.register(FakePackage.new("foo"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "ALL", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "foo", "-a", "ALL", "-d", "--ascii")
+        assert_equal 0, result
         ALL_ARCHS.values.each do |a|
           assert_match(/Architecture: #{a.name}/, out)
         end
@@ -875,13 +983,11 @@ class TestInstallWithTargetArch < Minitest::Test
         end
         pkgmgr.register(FakePackage.new("rv_only", arch_list: [rv]))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "rv_only", "-a", "ALL", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "rv_only", "-a", "ALL", "-d", "--ascii")
+        assert_equal 0, result
         assert_match(/Architecture: riscv64/, out)
         assert_match(/^rv_only$/, out)
-        assert_match(/Skipping rv_only: not supported on i386/, out)
+        assert_match(/Skipping rv_only: not supported on arch i386/, out)
       end
     end
   end
@@ -897,10 +1003,8 @@ class TestInstallWithTargetArch < Minitest::Test
         )
         pkgmgr.register(FakePackage.new("foo"))
 
-        out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "riscv64", "-d", "--ascii"])
-          assert_equal 0, result
-        }
+        result, out = run_cli("-s", "foo", "-a", "riscv64", "-d", "--ascii")
+        assert_equal 0, result
         # In ASCII tree: foo has gcc-riscv64-musl as child.
         assert_match(/^foo$/, out)
         assert_match(/^  gcc-riscv64-musl$/, out)
@@ -989,5 +1093,950 @@ class TestRenderDepTreesFancy < Minitest::Test
       "    │",
       "    └── c",
     ], out
+  end
+end
+
+# ---------------------------------------------------------------
+# A subtree is drawn once. The graphs are diamonds all the way down,
+# and a tree that redraws a shared subtree at every mention grows
+# exponentially in its depth: twenty thousand lines for host_qemu's
+# fifty packages. Later mentions say "(+ deps)" and point back up.
+# ---------------------------------------------------------------
+
+class TestRenderDepTreesOnce < Minitest::Test
+
+  # a needs b and c; both need d; d needs e. Two subtrees are shared:
+  # d (with something under it) and, through it, e.
+  DIAMOND = {
+    "a" => ["b", "c"], "b" => ["d"], "c" => ["d"], "d" => ["e"], "e" => []
+  }.freeze
+
+  def fancy(roots, graph, **kw)
+    Main.render_dep_trees(roots, graph, ascii: false, **kw)
+  end
+
+  def ascii(roots, graph, **kw)
+    Main.render_dep_trees(roots, graph, ascii: true, **kw)
+  end
+
+  def test_the_second_mention_is_marked_and_not_redrawn
+    assert_equal [
+      "    ┌ a",
+      "    │",
+      "    ├── b",
+      "    │   │",
+      "    │   └── d",
+      "    │       │",
+      "    │       └── e",
+      "    │",
+      "    └── c",
+      "        │",
+      "        └── d (+ deps)",
+    ], fancy(["a"], DIAMOND).map { |l| l.gsub(/\e\[[0-9;]*m/, "") }
+  end
+
+  def test_the_mark_is_dim_in_the_fancy_mode
+    line = fancy(["a"], DIAMOND).last
+    assert_equal "        └── d#{Term::DIM} (+ deps)#{Term::RESET}", line
+  end
+
+  def test_a_shared_leaf_is_never_marked
+    # Nothing is left out under a leaf, so there is nothing to point
+    # back at: the name is repeated bare, every time.
+    out = fancy(["a"], {"a" => ["b", "c"], "b" => ["e"], "c" => ["e"],
+                        "e" => []})
+    assert_equal 2, out.count { |l| l.end_with?("── e") }
+    assert_empty out.grep(/\+ deps/)
+  end
+
+  def test_a_root_already_drawn_under_an_earlier_root_is_marked
+    out = fancy(["a", "d"], DIAMOND).map { |l| l.gsub(/\e\[[0-9;]*m/, "") }
+    assert_equal "    ─ d (+ deps)", out.last
+    refute_includes out, "    (no dependencies)"
+  end
+
+  def test_ascii_mode_follows_the_same_rule
+    assert_equal ["a", "  b", "    d", "      e", "  c", "    d (+ deps)"],
+                 ascii(["a"], DIAMOND)
+  end
+
+  def test_installed_deps_hidden_by_the_plan_do_not_count_as_drawn
+    # In plan mode d is installed and hidden; b and c become leaves,
+    # and a leaf is never marked.
+    out = fancy(["a"], DIAMOND, installed: Set.new(["d"]))
+    assert_empty out.grep(/\+ deps/)
+  end
+
+  def test_a_cycle_ends_at_its_first_repeat
+    out = ascii(["a"], {"a" => ["b"], "b" => ["a"]})
+    assert_equal ["a", "  b", "    a (+ deps)"], out
+  end
+end
+
+class TestDepTreeClosure < Minitest::Test
+
+  DIAMOND = TestRenderDepTreesOnce::DIAMOND
+
+  def test_each_package_once_dependencies_first
+    assert_equal ["e", "d", "b", "c", "a"],
+                 Main.dep_tree_closure(["a"], DIAMOND)
+  end
+
+  def test_the_plan_mode_leaves_out_what_is_installed
+    assert_equal ["b", "c", "a"],
+                 Main.dep_tree_closure(["a"], DIAMOND,
+                                       installed: Set.new(["d"]))
+  end
+
+  def test_two_roots_share_one_closure
+    assert_equal ["e", "d", "b", "c", "a"],
+                 Main.dep_tree_closure(["a", "d"], DIAMOND)
+  end
+end
+
+class TestRenderNameList < Minitest::Test
+
+  def test_a_short_list_is_one_indented_line
+    assert_equal ["    a, b, c"], Main.render_name_list(%w[a b c])
+  end
+
+  def test_wraps_at_eighty_columns_with_the_comma_kept_on_the_line
+    names = (1..30).map { |i| "package_%02d" % i }
+    out = Main.render_name_list(names)
+
+    assert out.length > 1
+    assert out.all? { |l| l.length <= 80 }, out.map(&:length).inspect
+    assert out[0..-2].all? { |l| l.end_with?(",") }
+    refute out.last.end_with?(",")
+    assert_equal names, out.join(" ").split(/,\s*/).map(&:strip)
+  end
+
+  def test_installed_names_are_dimmed_in_deps_mode
+    out = Main.render_name_list(%w[a b], installed: Set.new(["b"]),
+                                show_installed: true)
+    assert_equal ["    a, #{Term::DIM}b#{Term::RESET}"], out
+  end
+
+  def test_an_empty_list_is_one_empty_line
+    assert_equal ["    "], Main.render_name_list([])
+  end
+end
+
+class TestMainPlanShowsTheFlatList < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_install_plan_ends_with_the_packages_in_install_order
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("a", dep_list: [Dep("b", false),
+                                                        Dep("c", false)]))
+        pkgmgr.register(FakePackage.new("b", dep_list: [Dep("d", false)]))
+        pkgmgr.register(FakePackage.new("c", dep_list: [Dep("d", false)]))
+        pkgmgr.register(FakePackage.new("d", dep_list: [Dep("e", false)]))
+        pkgmgr.register(FakePackage.new("e"))
+
+        result, out = run_cli("-s", "a", "-d", "--ascii")
+        assert_equal 0, result
+
+        assert_match(/^    d \(\+ deps\)$/, out)
+        assert_equal 1, out.scan(/^      e$/).length
+
+        assert_match(/5 package\(s\) to install, in this order:/, out)
+        list = out[/in this order:\n(.*)$/, 1]
+        names = list.strip.split(", ")
+        assert_equal 5, names.length
+        assert_operator names.index("e"), :<, names.index("d")
+        assert_operator names.index("d"), :<, names.index("b")
+        assert_equal "a", names.last
+      end
+    end
+  end
+
+  def test_deps_mode_ends_with_the_whole_closure
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("a", dep_list: [Dep("b", false)]))
+        pkgmgr.register(FakePackage.new("b", dep_list: [Dep("c", false)]))
+        pkgmgr.register(FakePackage.new("c"))
+
+        result, out = run_cli("--deps", "a", "--ascii")
+        assert_equal 0, result
+        assert_match(/3 package\(s\) in all, dependencies first:/, out)
+        assert_match(/^    c, b, a$/, out)
+      end
+    end
+  end
+end
+
+# The same rule, in the implementation, at the door where the package
+# name is resolved: a version is one the package declares, exactly or
+# by a series that picks one, or the request is refused with the list.
+class TestMainResolvesVersions < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def choosy
+    q = FakePackage.new("choosy")
+    q.define_singleton_method(:installable_versions) {
+      [Ver("6.2.0"), Ver("7.2.0")]
+    }
+    q
+  end
+
+  def test_a_series_installs_the_one_release_it_has
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(choosy)
+        rc, out = run_cli("-s", "choosy:6", "-d", "--ascii")
+        assert_equal 0, rc, out
+        assert_match(/^choosy$/, out)
+        refute_match(/not a version/, out)
+      end
+    end
+  end
+
+  def test_a_version_nobody_offers_is_refused_with_the_list
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(choosy)
+        rc, out = run_cli("-s", "choosy:9.9.9", "-d")
+        assert_equal 1, rc
+        assert_match(/choosy:9.9.9 is not a version choosy can install/, out)
+        assert_match(/Available: 6.2.0, 7.2.0/, out)
+        refute_match(/Install plan/, out)
+      end
+    end
+  end
+
+  def test_a_package_declaring_nothing_takes_the_version_as_written
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("plain"))
+        rc, out = run_cli("-s", "plain:3.3.3")
+        assert_equal 0, rc, out
+        assert_match(/Install plain version: 3.3.3/, out)
+      end
+    end
+  end
+
+  def test_uninstall_resolves_the_same_way
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(choosy)
+        rc, out = run_cli("-u", "choosy:9.9.9")
+        assert_equal 1, rc
+        assert_match(/not a version choosy can install/, out)
+      end
+    end
+  end
+end
+
+# --rebuild: the installs --check-for-updates lists as NEEDS_REBUILD,
+# rebuilt where they are, at their version, as they were asked for.
+# --upgrade is the remedy for a bumped version and does not touch
+# these; running it and being told "up to date" while fifteen installs
+# read changed is how this mode came to exist.
+class TestMainRebuild < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # An install, then a recipe edit under it: the record reads changed.
+  def install_then_change(pkg)
+    rc, _ = run_cli("-s", pkg.name)
+    assert_equal 0, rc
+    pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+    pkgmgr.refresh
+    inst = bound(pkg).find_install(bound(pkg).default_ver)
+    assert_equal :changed, bound(pkg).build_inputs_state_of(inst)
+    FakePackage.clear_log!
+    return inst
+  end
+
+  def test_nothing_stale_rebuilds_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        run_cli("-s", "foo")
+        FakePackage.clear_log!
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc
+        assert_match(/built from the sources we have/, out)
+        assert_empty FakePackage.install_log
+      end
+    end
+  end
+
+  def test_a_changed_install_is_rebuilt_where_it_is
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        before = install_then_change(foo)
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_match(/foo:#{Regexp.escape(before.ver.to_s)} at /, out)
+        assert_equal ["foo"], FakePackage.install_log
+
+        pkgmgr.refresh
+        after = bound(foo).find_install(bound(foo).default_ver)
+        assert_equal :ok, bound(foo).build_inputs_state_of(after)
+        assert_equal before.coords, after.coords
+        assert_equal before.ver, after.ver
+        assert after.default_install, "a default install came back pinned"
+      end
+    end
+  end
+
+  def test_dry_run_lists_and_touches_nothing
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        install_then_change(foo)
+
+        rc, out = run_cli("--rebuild", "-d")
+        assert_equal 0, rc
+        assert_match(/Installs to rebuild/, out)
+        assert_match(/nothing rebuilt/, out)
+        assert_empty FakePackage.install_log
+        inst = bound(foo).find_install(bound(foo).default_ver)
+        assert_equal :changed, bound(foo).build_inputs_state_of(inst)
+      end
+    end
+  end
+
+  def test_a_bumped_version_is_left_to_upgrade
+    with_fake_tc do
+      with_stubbed_externals do
+        foo = FakePackage.new("foo")
+        pkgmgr.register(foo)
+        install_then_change(foo)
+        # ...and its default moves on: now it is an upgrade, not a rebuild.
+        foo.define_singleton_method(:default_ver) { Ver("2.0.0") }
+        pkgmgr.refresh
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc
+        assert_match(/built from the sources we have/, out)
+        assert_empty FakePackage.install_log
+      end
+    end
+  end
+
+  def test_dependencies_are_rebuilt_first
+    with_fake_tc do
+      with_stubbed_externals do
+        base = FakePackage.new("base")
+        top = FakePackage.new("top", dep_list: [Dep("base", false)])
+        pkgmgr.register(base)
+        pkgmgr.register(top)
+        run_cli("-s", "top")
+        [top, base].each { |p|
+          p.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        }
+        pkgmgr.refresh
+        FakePackage.clear_log!
+
+        rc, _ = run_cli("--rebuild")
+        assert_equal 0, rc
+        assert_equal ["base", "top"], FakePackage.install_log
+      end
+    end
+  end
+end
+
+# What an install was built against is recorded beside it, and a
+# rebuild builds against the same: mpfr asked alone answers gmp's
+# default, while the gcc that pulled it in pinned another, and that
+# resolution is gone the moment the request is done.
+# A rebuild that does not finish leaves the old install where it was.
+# The first real --rebuild removed first and built second, and left
+# no isl and then no GCC.
+class TestMainRebuildKeepsTheOldTreeOnFailure < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # Builds once, and never again.
+  # Class-level, because a build runs on a copy of the package bound
+  # to its plan; a count on the instance would start over each time.
+  class Once < TestHelper::FakePackage
+    @@built = 0
+    def self.reset! = @@built = 0
+    def install_impl_internal(install_dir)
+      @@built += 1
+      return false if @@built > 1
+      super
+    end
+  end
+
+  def test_the_old_install_survives_a_failed_rebuild
+    with_fake_tc do
+      with_stubbed_externals do
+        Once.reset!
+        pkg = Once.new("once")
+        pkgmgr.register(pkg)
+        assert_equal 0, run_cli("-s", "once").first
+        pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        pkgmgr.refresh
+        before = bound(pkg).find_install(bound(pkg).default_ver)
+        assert_equal :changed, bound(pkg).build_inputs_state_of(before)
+
+        rc, out = run_cli("--rebuild", laws: false,
+                          because: "a build that fails is outside the " \
+                                   "model, which has no failing builds")
+        assert_equal 1, rc
+        assert_match(/Could not rebuild: once/, out)
+
+        pkgmgr.refresh
+        after = bound(pkg).find_install(bound(pkg).default_ver)
+        refute_nil after, "the old install is gone"
+        assert_equal before.path, after.path
+        assert_equal :changed, bound(pkg).build_inputs_state_of(after),
+                     "the old install came back as something else"
+        refute (TC_STAGING / "replaced" / "once").exist?,
+               "the tree set aside was left under staging"
+      end
+    end
+  end
+end
+
+# ...and when it raises rather than returns false, which is how a
+# recipe reports a dependency it cannot find.
+class TestMainRebuildKeepsTheOldTreeOnARaise < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  class Raising < TestHelper::FakePackage
+    @@built = 0
+    def self.reset! = @@built = 0
+    def install_impl_internal(install_dir)
+      @@built += 1
+      raise "host_nothing version 1.0.0 is not installed" if @@built > 1
+      super
+    end
+  end
+
+  def test_the_old_install_survives_and_the_run_ends_cleanly
+    with_fake_tc do
+      with_stubbed_externals do
+        Raising.reset!
+        pkg = Raising.new("raisy")
+        pkgmgr.register(pkg)
+        assert_equal 0, run_cli("-s", "raisy").first
+        pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        pkgmgr.refresh
+        before = bound(pkg).find_install(bound(pkg).default_ver)
+
+        rc, out = run_cli("--rebuild", laws: false,
+                          because: "a build that raises is outside the " \
+                                   "model, which has no failing builds")
+        assert_equal 1, rc
+        assert_match(/host_nothing version 1.0.0 is not installed/, out)
+        assert_match(/Could not rebuild: raisy/, out)
+
+        pkgmgr.refresh
+        after = bound(pkg).find_install(bound(pkg).default_ver)
+        refute_nil after, "the old install is gone"
+        assert_equal before.path, after.path
+        refute (TC_STAGING / "replaced").exist?,
+               "the tree set aside was left under staging"
+      end
+    end
+  end
+end
+
+class TestMainRebuildBuildsAgainstTheSame < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+    Noting.reset!
+  end
+
+  # A dependency with two versions, a user of it that notes which one
+  # it saw, and a root that pins the older.
+  # Class-level, because a build runs on a copy of the package bound
+  # to its plan, and what it saw has to reach the test.
+  class Noting < TestHelper::FakePackage
+    @@saw = []
+    def self.saw = @@saw
+    def self.reset! = @@saw = []
+    def saw = @@saw
+    def install_impl_internal(install_dir)
+      @@saw << resolved_ver("host_gmp")
+      super
+    end
+  end
+
+  # Host packages, because only a host dependency can be pinned.
+  HOST = { on_host: true, host_tier: :distro,
+           arch_list: ALL_HOST_ARCHS.values }.freeze
+
+  def world
+    gmp = FakePackage.new("host_gmp", **HOST)
+    gmp.define_singleton_method(:default_ver) { Ver("2.0.0") }
+    gmp.define_singleton_method(:installable_versions) {
+      [Ver("1.0.0"), Ver("2.0.0")]
+    }
+    user = Noting.new("host_user", dep_list: [Dep("host_gmp", true)], **HOST)
+    root = FakePackage.new("host_root", **HOST,
+                           dep_list: [Dep("host_user", true),
+                                      Dep("host_gmp", true, ver: Ver("1.0.0"))])
+    [gmp, user, root].each { |p| pkgmgr.register(p) }
+    return [gmp, user, root]
+  end
+
+  # The install with its `against` lines removed: what an install
+  # from before the record looks like to a rebuild.
+  def forget_against(pkg)
+    InstallRecord.remark_against(bound(pkg).find_install(pkg.default_ver).path,
+                                 {})
+  end
+
+  def make_stale(pkg)
+    pkg.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+    pkgmgr.refresh
+  end
+
+  def test_the_record_names_the_version_the_request_resolved
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        assert_equal 0, run_cli("-s", "host_root").first
+        inst = bound(user).find_install(user.default_ver)
+        assert_equal({ "host_gmp" => Ver("1.0.0") },
+                     InstallRecord.against(inst.path))
+        assert_equal [Ver("1.0.0")], user.saw
+      end
+    end
+  end
+
+  def test_a_rebuild_builds_against_what_the_record_says
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        run_cli("-s", "host_root")
+        make_stale(user)
+        FakePackage.clear_log!
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_equal ["host_user"], FakePackage.install_log
+        assert_equal [Ver("1.0.0"), Ver("1.0.0")], user.saw,
+                     "the rebuild resolved gmp to something else"
+      end
+    end
+  end
+
+  def test_without_a_record_the_one_installed_version_is_taken
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        run_cli("-s", "host_root")
+        forget_against(user)
+        make_stale(user)
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_equal Ver("1.0.0"), user.saw.last, "gmp 1.0.0 is the only one"
+      end
+    end
+  end
+
+  def test_without_a_record_and_two_installed_it_refuses_before_removing
+    with_fake_tc do
+      with_stubbed_externals do
+        gmp, user, = world
+        run_cli("-s", "host_root")
+        run_cli("-s", "host_gmp:2.0.0")
+        forget_against(user)
+        make_stale(user)
+        FakePackage.clear_log!
+
+        # The refusal reads a per-install record the model does not
+        # carry; the model would rebuild, and rightly says so.
+        rc, out = run_cli("--rebuild", laws: false,
+                          because: "what an install was built against " \
+                                   "is not part of the model's world")
+        assert_equal 1, rc
+        assert_match(/no record of which host_gmp it was built against/, out)
+        assert_empty FakePackage.install_log
+        refute_nil bound(user).find_install(user.default_ver),
+                   "old install removed"
+      end
+    end
+  end
+end
+
+# The order of -l: Tilck's packages, then the host side -- the tools
+# the system compiler built, the stacks (every one with a count,
+# because the listing shows only the current stack's packages), and
+# the current stack's packages last.
+class TestMainListOrder < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def test_tilck_then_host_tools_then_stacks_then_the_current_stack
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("target_pkg"))
+        pkgmgr.register(FakePackage.new("host_tool", on_host: true,
+                                        arch_list: ALL_HOST_ARCHS.values))
+        pkgmgr.register(FakePackage.new("host_thing", on_host: true,
+                                        host_tier: :stack,
+                                        arch_list: ALL_HOST_ARCHS.values))
+        run_cli("-s", "target_pkg")
+        run_cli("-s", "host_tool")
+        run_cli("-s", "host_thing")
+
+        rc, out = run_cli("-l")
+        assert_equal 0, rc
+
+        at = ->(text) { out.index(text) || flunk("#{text.inspect} missing") }
+        tilck  = at.call("Tilck packages built by GCC")
+        tools  = at.call("Host packages built by system CC")
+        stacks = out.index("Host stacks") || at.call("No host stacks")
+        stack  = at.call("Host packages built by GCC")
+
+        assert tilck < tools && tools < stacks && stacks < stack,
+               "order was #{[tilck, tools, stacks, stack].inspect}"
+      end
+    end
+  end
+end
+
+# A rebuild plans the install as it was made: a dependency the recipe
+# has grown since is put in first. QEMU learned libslirp after four of
+# it had been built, and the first --rebuild died asking for it.
+class TestMainRebuildPlansItsDependencies < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_a_dependency_grown_since_the_install_is_installed_first
+    with_fake_tc do
+      with_stubbed_externals do
+        top = FakePackage.new("top")
+        pkgmgr.register(top)
+        run_cli("-s", "top")
+
+        # The recipe grows a dependency, which is also a change.
+        base = FakePackage.new("base")
+        pkgmgr.register(base)
+        top.define_singleton_method(:dep_list) { [Dep("base", false)] }
+        top.define_singleton_method(:build_flags) { |v = nil| ["--changed"] }
+        pkgmgr.refresh
+        assert_nil bound(base).find_install(bound(base).default_ver)
+        FakePackage.clear_log!
+
+        rc, out = run_cli("--rebuild")
+        assert_equal 0, rc, out
+        assert_equal ["base", "top"], FakePackage.install_log
+        refute_nil bound(base).find_install(bound(base).default_ver)
+      end
+    end
+  end
+end
+
+# What each mode prints around its plan, and only when it applies.
+class TestRunActSays < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def two(name)
+    p = FakePackage.new(name)
+    p.define_singleton_method(:installable_versions) {
+      [Ver("1.0.0"), Ver("2.0.0")]
+    }
+    p.define_singleton_method(:default_ver) { Ver("2.0.0") }
+    pkgmgr.register(p)
+    return p
+  end
+
+  # A short name resolves on the way out too, and the match is said
+  # before the removal. The model reads names as typed, so the laws
+  # sit this one out.
+  def test_uninstall_and_mark_resolve_a_short_name
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("longname"))
+        fake_install(pkgmgr.get("longname"), mark: :manual)
+        why = "the model reads a name as typed; a short one is the CLI's"
+        rc, out = run_cli("--mark-auto", "long", "-q", laws: false,
+                          because: why)
+        assert_equal 0, rc
+        assert_match(/Matched 'long' -> 'longname'.*Mark longname/m, out)
+        refute bound(pkgmgr.get("longname")).find_install(Ver("1.0.0")).manual
+        rc, out = run_cli("-u", "long", "-q", laws: false, because: why)
+        assert_equal 0, rc
+        assert_nil bound(pkgmgr.get("longname")).find_install(Ver("1.0.0"))
+        assert_match(/Matched 'long' -> 'longname'.*Remove pkg 'longname'/m,
+                     out)
+        refute_match(/Removed:/, out, "the count is --clean's")
+      end
+    end
+  end
+
+  def test_nothing_to_upgrade_or_rebuild_says_only_that
+    with_fake_tc do
+      with_stubbed_externals do
+        t = two("t")
+        fake_install(t, Ver("2.0.0"))
+        rc, out = run_cli("--upgrade", "-d", "-q")
+        assert_equal 0, rc
+        assert_match(/up to date/, out)
+        refute_match(/Packages to upgrade|Dry run/, out)
+        rc, out = run_cli("--rebuild", "-d", "-q")
+        assert_equal 0, rc
+        assert_match(/built from the sources we have/, out)
+        refute_match(/Dry run/, out)
+        rc, out = run_cli("--autoremove", "-q")
+        assert_equal 0, rc
+        refute_match(/Removed:/, out)
+      end
+    end
+  end
+
+  # The default install says which of its builds are upgrades, and
+  # says nothing about upgrades when there are none; a dry default
+  # install re-marks nothing.
+  def test_the_default_install_says_its_upgrades_only_when_it_has_them
+    with_fake_tc do
+      with_stubbed_externals do
+        stack = register_tilck_stack!
+        d = FakePackage.new("dflt", default: true)
+        pkgmgr.register(d)
+        rc, out = run_cli("-q", "-d")
+        assert_equal 0, rc
+        refute_match(/Packages to upgrade/, out)
+        fake_install(d)
+        fake_install(stack, mark: :auto)
+        rc, out = run_cli("-q", "-d")
+        assert_equal 0, rc
+        assert_match(/Would set #{stack.name}:.* to manually/, out)
+        i = bound(stack).find_install(bound(stack).default_ver)
+        assert_equal false, i.manual, "a dry run re-marked nothing"
+      end
+    end
+  end
+
+  # "Building into" is said only when the stack moved.
+  def test_the_stack_is_said_only_when_it_moved
+    with_fake_tc do
+      with_stubbed_externals do
+        gcc = FakePackage.new("host_gcc", on_host: true, host_tier: :distro,
+                              arch_list: ALL_HOST_ARCHS.values)
+        gcc.define_singleton_method(:installable_versions) {
+          [Ver("7.7.7"), Ver("8.8.8")]
+        }
+        gcc.define_singleton_method(:default_ver) { scope.stack }
+        s = FakePackage.new("host_s", on_host: true, host_tier: :stack,
+                            arch_list: ALL_HOST_ARCHS.values,
+                            dep_list: [Dep("host_gcc", true)])
+        [gcc, s].each { |p| pkgmgr.register(p) }
+        pkgmgr.default_stack = Ver("7.7.7")
+        rc, out = run_cli("-s", "host_s", "-d", "-q")
+        assert_equal 0, rc
+        refute_match(/Building into/, out)
+        rc, out = run_cli("-s", "host_gcc:8.8.8", "-d", "-q")
+        assert_equal 0, rc
+        assert_match(/Building into the gcc-8.8.8 stack/, out)
+      end
+    end
+  end
+end
+
+# ---------------------------------------------------------------
+# -b: the board, the way -a is the arch
+# ---------------------------------------------------------------
+
+class TestBoardModifier < Minitest::Test
+  include TestHelper
+
+  RV = ALL_ARCHS["riscv64"]
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def request(*argv) = Main.request_of(Main.parse_options(argv))
+
+  # One fake cross compiler per arch, portable like the real ones and
+  # each saying which arch it targets, so that the model sees the
+  # implicit dependency at the same coordinates.
+  def register_compilers!
+    ALL_ARCHS.values.each { |a|
+      pkgmgr.register(FakePackage.new("gcc-#{a.name}-musl", on_host: true,
+                                      host_tier: :portable,
+                                      is_compiler: true, target_arch: a))
+    }
+  end
+
+
+
+  def test_a_board_is_a_modifier_of_the_request
+    r = request("-s", "foo", "-b", "licheerv-nano")
+    assert_equal "licheerv-nano", r.board
+    refute r.every_board?
+
+    r = request("-u", "foo", "-a", "riscv64", "-b", "ALL")
+    assert_equal :all, r.board
+    assert r.every_board?
+
+    assert_nil request("-s", "foo").board
+  end
+
+  def test_a_board_no_arch_has_is_refused_at_parse
+    assert_raises(OptionParser::InvalidArgument) {
+      Main.parse_options(["-s", "foo", "-b", "nowhere"])
+    }
+  end
+
+  # A board belongs to one arch: named for an arch that does not
+  # have it, or beside -a ALL, the request is refused before anything
+  # is planned -- and the same for a query.
+  def test_a_board_of_another_arch_is_refused
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("foo"))
+
+        rc, out = run_cli("-s", "foo", "-b", "licheerv-nano", "-d")
+        assert_equal 1, rc
+        assert_match(/Unknown board licheerv-nano for i386/, out)
+
+        rc, out = run_cli("-s", "foo", "-a", "ALL", "-b", "pc", "-d")
+        assert_equal 1, rc
+        assert_match(/-b pc names one arch's board/, out)
+
+        rc, out = run_cli("--list-installable", "-b", "licheerv-nano")
+        assert_equal 1, rc
+        assert_match(/Unknown board licheerv-nano for i386/, out)
+        assert_empty pkgmgr.get("foo").get_install_list
+
+      end
+    end
+  end
+
+  def test_install_with_b_ALL_iterates_the_boards_of_the_arch
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("foo"))
+
+        rc, out = run_cli("-s", "foo", "-a", "riscv64", "-b", "ALL",
+                          "-d", "--ascii")
+        assert_equal 0, rc
+        RV.boards.each { |b|
+          assert_match(/Architecture: riscv64, board: #{b}/, out)
+        }
+        refute_match(/Architecture: i386/, out)
+      end
+    end
+  end
+
+  def test_install_with_a_ALL_and_b_ALL_covers_every_target
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("foo"))
+
+        rc, out = run_cli("-s", "foo", "-a", "ALL", "-b", "ALL",
+                          "-d", "--ascii")
+        assert_equal 0, rc
+        ALL_ARCHS.each_value { |a|
+          a.all_boards.each { |b|
+            assert_match(/Architecture: #{a.name}, board: #{b}/, out)
+          }
+        }
+
+        # The board is said only when the run is per board.
+        rc, out = run_cli("-s", "foo", "-a", "ALL", "-d", "--ascii")
+        assert_equal 0, rc
+        assert_match(/Architecture: riscv64/, out)
+        refute_match(/board:/, out)
+      end
+    end
+  end
+
+  # A named board is where the install goes.
+  def test_install_at_a_named_board
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkg = FakePackage.new("foo")
+        pkgmgr.register(pkg)
+
+        rc, _ = run_cli("-s", "foo", "-a", "riscv64", "-b", "licheerv-nano",
+                        "-q")
+        assert_equal 0, rc
+
+        at = pkg.get_install_list.map { |i| i.coords.to_s }
+        assert_equal ["tilck-riscv64/licheerv-nano/gcc-#{FAKE_GCC_VER}"], at
+      end
+    end
+  end
+
+  # The default install -- no mode -- is the Tilck stack of the target
+  # -a and -b name, not the shell's.
+  def test_the_default_install_follows_a_and_b
+    with_fake_tc do
+      with_stubbed_externals do
+        register_compilers!
+        pkgmgr.register(FakePackage.new("dflt", default: true))
+        require_relative '../tilck_stack'
+        pkgmgr.register(TilckStackPackage.new(RV, "licheerv-nano"))
+
+        rc, out = run_cli("-d", "--ascii")
+        assert_equal 0, rc
+        assert_match(/No Tilck stack is defined for i386\/pc/, out)
+
+        rc, out = run_cli("-a", "riscv64", "-b", "licheerv-nano", "-d",
+                          "--ascii")
+        assert_equal 0, rc
+        assert_match(/tilck-riscv64-licheerv-nano/, out)
+        refute_match(/No Tilck stack/, out)
+      end
+    end
+  end
+
+  def test_the_self_test_forwards_the_board
+    opts = Main.parse_options(["-t", "--system-tests", "-a", "ALL",
+                               "-b", "ALL"])
+    assert opts[:self_test]
+    assert opts[:system_tests]
+    assert_equal "ALL", opts[:board]
   end
 end

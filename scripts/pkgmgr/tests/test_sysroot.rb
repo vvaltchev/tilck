@@ -1,0 +1,378 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# The composed sysroot. Pure filesystem work, so these build the
+# fragments out of temp directories.
+#
+
+require_relative 'test_helper'
+require_relative '../sysroot'
+
+class TestSysrootCompose < Minitest::Test
+
+  def frag(root, name, files)
+    d = File.join(root, name)
+    files.each do |rel, content|
+      path = File.join(d, rel)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, content)
+    end
+    return d
+  end
+
+  def test_files_become_symlinks_to_their_fragment
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/libfoo.so" => "x" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a])
+
+      link = File.join(target, "usr/lib/libfoo.so")
+      assert File.symlink?(link)
+      assert_equal File.join(a, "usr/lib/libfoo.so"),
+                   File.realpath(link), "resolves to the fragment's file"
+      refute File.readlink(link).start_with?("/"),
+             "an absolute link ties the farm to one path"
+      assert_equal "x", File.read(link)
+    end
+  end
+
+  # The whole point of a relative link: the farm survives the tree
+  # being moved, and a link resolves through the moved tree rather
+  # than back to where it was composed.
+  def test_the_farm_survives_a_move_of_the_tree
+    Dir.mktmpdir do |dir|
+      tree = File.join(dir, "tree")
+      a = frag(tree, "pkgs/foo/1.0/install",
+               { "usr/lib/libfoo.so" => "x", "usr/bin/foo" => "y" })
+      target = File.join(tree, "sysroot")
+      Sysroot.compose(target, [a])
+
+      moved = File.join(dir, "elsewhere")
+      FileUtils.mv(tree, moved)
+      for rel, content in { "usr/lib/libfoo.so" => "x", "usr/bin/foo" => "y" }
+        link = File.join(moved, "sysroot", rel)
+        assert File.symlink?(link)
+        assert_equal content, File.read(link), "#{rel} dangles after a move"
+        assert File.realpath(link).start_with?(moved)
+      end
+    end
+  end
+
+  def test_directories_are_real_not_linked
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/libfoo.so" => "x" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a])
+
+      d = File.join(target, "usr/lib")
+      assert File.directory?(d)
+      refute File.symlink?(d)
+    end
+  end
+
+  # The point of mirroring directories rather than linking them: two
+  # packages contribute to the same usr/lib.
+  def test_two_fragments_merge_into_one_tree
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/liba.so" => "a",
+                           "usr/include/a.h" => "a" })
+      b = frag(dir, "b", { "usr/lib/libb.so" => "b",
+                           "usr/include/b.h" => "b" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a, b])
+
+      assert_equal "a", File.read(File.join(target, "usr/lib/liba.so"))
+      assert_equal "b", File.read(File.join(target, "usr/lib/libb.so"))
+      assert_equal "a", File.read(File.join(target, "usr/include/a.h"))
+      assert_equal "b", File.read(File.join(target, "usr/include/b.h"))
+    end
+  end
+
+  def test_deeply_nested_paths
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/include/sys/deep/nested/x.h" => "x" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a])
+      assert_equal "x",
+                   File.read(File.join(target, "usr/include/sys/deep/nested/x.h"))
+    end
+  end
+
+  # Which of the two won would depend on install order, so it is an
+  # error rather than a silent last-one-wins.
+  def test_same_file_from_two_fragments_is_an_error
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/libc.so" => "a" })
+      b = frag(dir, "b", { "usr/lib/libc.so" => "b" })
+      target = File.join(dir, "sysroot")
+
+      e = assert_raises(Sysroot::ConflictError) {
+        Sysroot.compose(target, [a, b])
+      }
+      assert_match(%r{usr/lib/libc\.so}, e.message)
+      assert_match(/#{Regexp.escape(a)}/, e.message)
+      assert_match(/#{Regexp.escape(b)}/, e.message)
+    end
+  end
+
+  # A stale link from a version no longer selected is the failure mode
+  # hardest to notice, so composition rebuilds rather than updates.
+  def test_composition_drops_entries_from_a_previous_run
+    Dir.mktmpdir do |dir|
+      old = frag(dir, "old", { "usr/lib/libold.so" => "old" })
+      new = frag(dir, "new", { "usr/lib/libnew.so" => "new" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [old])
+      assert File.exist?(File.join(target, "usr/lib/libold.so"))
+
+      Sysroot.compose(target, [new])
+      refute File.exist?(File.join(target, "usr/lib/libold.so"))
+      assert File.exist?(File.join(target, "usr/lib/libnew.so"))
+    end
+  end
+
+  def test_missing_fragment_is_skipped
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/liba.so" => "a" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a, File.join(dir, "nope")])
+      assert File.exist?(File.join(target, "usr/lib/liba.so"))
+    end
+  end
+
+  def test_no_fragments_gives_an_empty_sysroot
+    Dir.mktmpdir do |dir|
+      target = File.join(dir, "sysroot")
+      assert_equal 0, Sysroot.compose(target, [])
+      assert File.directory?(target)
+    end
+  end
+
+  def test_returns_the_number_of_links
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/x.so" => "x", "usr/include/y.h" => "y" })
+      assert_equal 2, Sysroot.compose(File.join(dir, "sysroot"), [a])
+    end
+  end
+
+  def test_dotfiles_are_included
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/.hidden" => "h" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a])
+      assert_equal "h", File.read(File.join(target, "usr/lib/.hidden"))
+    end
+  end
+end
+
+#
+# Grafted fragments: a package whose own layout is not sysroot-shaped
+# contributing part of itself anyway. GCC keeps libstdc++ and libgcc_s
+# in lib64/ and is not a stack package, but that runtime is built
+# against our glibc and has to be in the sysroot or every C++ binary it
+# produces dies at startup.
+#
+class TestSysrootGraftedFragments < Minitest::Test
+
+  def frag(root, name, files)
+    d = File.join(root, name)
+    files.each do |rel, content|
+      path = File.join(d, rel)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, content)
+    end
+    return d
+  end
+
+  def test_a_pair_grafts_at_the_given_subpath
+    Dir.mktmpdir do |dir|
+      lib64 = frag(dir, "gcc/lib64", { "libstdc++.so.6" => "cxx" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [[lib64, "usr/lib"]])
+
+      assert_equal "cxx",
+                   File.read(File.join(target, "usr/lib/libstdc++.so.6"))
+    end
+  end
+
+  def test_grafted_and_plain_fragments_merge
+    Dir.mktmpdir do |dir|
+      libc = frag(dir, "glibc", { "usr/lib/libc.so.6" => "libc" })
+      lib64 = frag(dir, "gcc/lib64", { "libstdc++.so.6" => "cxx" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [libc, [lib64, "usr/lib"]])
+
+      assert_equal "libc", File.read(File.join(target, "usr/lib/libc.so.6"))
+      assert_equal "cxx",
+                   File.read(File.join(target, "usr/lib/libstdc++.so.6"))
+    end
+  end
+
+  # Ownership is keyed by the path in the SYSROOT, not in the fragment,
+  # or two fragments grafted to the same place would collide unnoticed.
+  def test_a_graft_colliding_with_a_plain_fragment_is_an_error
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/libfoo.so" => "a" })
+      b = frag(dir, "b/lib64", { "libfoo.so" => "b" })
+      target = File.join(dir, "sysroot")
+
+      assert_raises(Sysroot::ConflictError) {
+        Sysroot.compose(target, [a, [b, "usr/lib"]])
+      }
+    end
+  end
+
+  def test_two_grafts_to_different_places_do_not_collide
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "libfoo.so" => "a" })
+      b = frag(dir, "b", { "libfoo.so" => "b" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [[a, "usr/lib"], [b, "usr/lib32"]])
+      assert_equal "a", File.read(File.join(target, "usr/lib/libfoo.so"))
+      assert_equal "b", File.read(File.join(target, "usr/lib32/libfoo.so"))
+    end
+  end
+
+  def test_a_missing_graft_source_is_skipped
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/liba.so" => "a" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a, [File.join(dir, "nope"), "usr/lib"]])
+      assert File.exist?(File.join(target, "usr/lib/liba.so"))
+    end
+  end
+end
+
+#
+# Documentation is not part of a sysroot, and usr/share/info/dir in
+# particular is a generated index every GNU package writes into — so
+# any two autotools packages collide there by construction. glibc and
+# libffi did exactly that.
+#
+class TestSysrootExcludes < Minitest::Test
+
+  def frag(root, name, files)
+    d = File.join(root, name)
+    files.each do |rel, content|
+      path = File.join(d, rel)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, content)
+    end
+    return d
+  end
+
+  def test_info_dir_from_two_packages_is_not_a_conflict
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/share/info/dir" => "a",
+                           "usr/lib/liba.so" => "a" })
+      b = frag(dir, "b", { "usr/share/info/dir" => "b",
+                           "usr/lib/libb.so" => "b" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a, b])
+
+      assert File.exist?(File.join(target, "usr/lib/liba.so"))
+      assert File.exist?(File.join(target, "usr/lib/libb.so"))
+      refute File.exist?(File.join(target, "usr/share/info/dir"))
+    end
+  end
+
+  def test_man_and_doc_are_excluded_too
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/share/man/man1/x.1" => "m",
+                           "usr/share/doc/x/README" => "d",
+                           "usr/include/x.h" => "h" })
+      target = File.join(dir, "sysroot")
+
+      Sysroot.compose(target, [a])
+      assert File.exist?(File.join(target, "usr/include/x.h"))
+      refute File.exist?(File.join(target, "usr/share/man/man1/x.1"))
+      refute File.exist?(File.join(target, "usr/share/doc/x/README"))
+    end
+  end
+
+  # A real collision must still be an error: the exclusion is a
+  # narrow list, not a general softening of the check.
+  def test_a_real_library_collision_is_still_an_error
+    Dir.mktmpdir do |dir|
+      a = frag(dir, "a", { "usr/lib/libfoo.so" => "a" })
+      b = frag(dir, "b", { "usr/lib/libfoo.so" => "b" })
+      assert_raises(Sysroot::ConflictError) {
+        Sysroot.compose(File.join(dir, "sysroot"), [a, b])
+      }
+    end
+  end
+end
+
+
+#
+# Translations are filtered out of the VIEW, not removed from the
+# installs. Most of the GTK stack exposes no nls option -- gtk3,
+# gdk-pixbuf and at-spi2-core have none -- so the only alternative was
+# deleting files out of each package's install directory, which would
+# make the install a lie about what the build produced.
+#
+class TestSysrootLocaleFilter < Minitest::Test
+
+  include TestHelper
+
+  def test_english_is_kept
+    assert Sysroot.excluded?("usr/share/locale/de/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/en/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/en_US/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/en_GB/LC_MESSAGES/gtk30.mo")
+    refute Sysroot.excluded?("usr/share/locale/C/LC_MESSAGES/gtk30.mo")
+  end
+
+  # A language whose name merely starts with "en" is not English.
+  def test_prefix_matching_does_not_leak
+    assert Sysroot.excluded?("usr/share/locale/eo/LC_MESSAGES/x.mo")
+    assert Sysroot.excluded?("usr/share/locale/en_AU_x/LC_MESSAGES/x.mo")
+  end
+
+  # Everything outside share/locale is untouched by this rule.
+  def test_other_paths_are_unaffected
+    refute Sysroot.excluded?("usr/lib/libglib-2.0.so")
+    refute Sysroot.excluded?("usr/share/glycin-loaders/2+/conf.d/x.conf")
+    refute Sysroot.excluded?("usr/share/locale")
+  end
+
+  # The documentation rules still apply.
+  def test_docs_still_excluded
+    assert Sysroot.excluded?("usr/share/man/man1/x.1")
+    assert Sysroot.excluded?("usr/share/info/dir")
+  end
+
+  # End to end: a package shipping many languages contributes only the
+  # English ones to the composed view.
+  def test_compose_links_only_english
+    Dir.mktmpdir do |d|
+      frag = File.join(d, "frag")
+      %w[de fr en en_US].each do |lang|
+        FileUtils.mkdir_p(File.join(frag, "usr/share/locale", lang,
+                                    "LC_MESSAGES"))
+        File.write(File.join(frag, "usr/share/locale", lang,
+                             "LC_MESSAGES/app.mo"), "x")
+      end
+      FileUtils.mkdir_p(File.join(frag, "usr/lib"))
+      File.write(File.join(frag, "usr/lib/libapp.so"), "x")
+
+      target = File.join(d, "sysroot")
+      Sysroot.compose(Pathname.new(target), [Pathname.new(frag)])
+
+      langs = Dir.children(File.join(target, "usr/share/locale")).sort
+      assert_equal ["en", "en_US"], langs
+      assert File.exist?(File.join(target, "usr/lib/libapp.so"))
+    end
+  end
+end

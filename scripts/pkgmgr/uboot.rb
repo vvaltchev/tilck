@@ -36,27 +36,31 @@ class UbootPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["u-boot.bin", false],
     ["tools/mkimage", false],
   ]
 
-  def uboot_config = BOARD_BSP / "u-boot.config"
+  def uboot_config = board_bsp / "u-boot.config"
 
-  def install_impl_internal(install_dir)
-    patch_qemu_riscv_scriptaddr
-    cp uboot_config, ".config"
+  def build_steps(ver = default_ver) = [
+    Copy(from: src_path(uboot_config), to: ".config"),
+    Run(log: "build.log", argv: make_argv),
+  ]
 
-    ok = run_command("build.log", make_argv)
-    return ok
-  end
+  # mkimage links OpenSSL. Declared, so the check before the first
+  # build says so when it is missing -- and so the recipe may name
+  # where the host keeps it.
+  def system_deps(ver = nil) = [SystemDeps::OPENSSL]
 
   def configurable? = true
 
   def config_impl
-    nc_vars, nc_env = host_ncurses_build_flags
+    # configure runs this in the installed version's directory.
+    ctx = BuildCtx.new(self, Pathname.pwd)
+    be = deps_build_env.expand(ctx)
 
-    ok = system(nc_env, "make", *nc_vars, "menuconfig")
+    ok = system(be.env, "make", *be.kconfig_make_vars, "menuconfig")
     return false if !ok
 
     fix_config_file
@@ -69,11 +73,11 @@ class UbootPackage < Package
       info "Source file #{uboot_config} UPDATED"
     end
 
-    # Rebuild with the new configuration. Uses make_argv (which carries
-    # the Darwin openssl workaround); ncurses is only needed for
-    # menuconfig itself.
+    # Rebuild with the new configuration: the recipe's own make line,
+    # its tokens resolved here since this is not a recipe run.
+    # ncurses is only needed for menuconfig itself.
     info "Rebuilding #{name}..."
-    ok = run_command("build.log", make_argv)
+    ok = run_command("build.log", ctx.expand_all(make_argv))
     return false if !ok
 
     return true
@@ -81,37 +85,25 @@ class UbootPackage < Package
 
   private
 
+  # In tokens, because it is part of the recipe. On macOS Homebrew's
+  # openssl@3 is keg-only -- on no default path -- and $openssl is
+  # where the host says it is, resolved when the step runs. The
+  # recipe used to run `brew --prefix` right here, which made it a
+  # function of the machine rather than of the coordinates, on every
+  # staleness check.
   def make_argv
-    argv = [ "make", "V=1", "-j#{BUILD_PAR}" ]
+    argv = ["make", "V=1", "-j$PAR"]
 
     if OS == "Darwin"
-      ssl = `brew --prefix openssl@3`.strip
-      if !ssl.empty? && File.directory?(ssl)
-        argv += [
-          "HOSTCFLAGS=-I#{ssl}/include",
-          "HOSTLDFLAGS=-L#{ssl}/lib",
-        ]
-      end
+      argv += [
+        "HOSTCFLAGS=-I$openssl/include",
+        "HOSTLDFLAGS=-L$openssl/lib",
+      ]
     end
 
     return argv
   end
 
-  #
-  # The default scriptaddr in qemu-riscv.h (0x8c100000) sits above the top
-  # of RAM when QEMU is launched with the 128 MB default, so u-boot fails
-  # to load boot.scr. Move the address into the low 128 MB range to match
-  # what the bash bootloader script does.
-  #
-  def patch_qemu_riscv_scriptaddr
-    file = "include/configs/qemu-riscv.h"
-    if !File.exist?(file)
-      raise LocalError, "uboot: expected file not found: #{file}"
-    end
-    data = File.read(file)
-    data.gsub!("scriptaddr=0x8c100000", "scriptaddr=0x80200000")
-    File.write(file, data)
-  end
 end
 
 pkgmgr.register(UbootPackage.new())

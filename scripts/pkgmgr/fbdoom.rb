@@ -9,7 +9,8 @@ require_relative 'package_manager'
 
 #
 # fbDOOM — framebuffer port of DOOM. Upstream has no release tags — the
-# ver string is used only as a cache key / staging dir name. Runtime
+# clone names a commit, and the ver string is used only as a cache key
+# / staging dir name. Runtime
 # data (the freedoom WAD) comes from the `freedoom` package, declared
 # here as a dep so the install plan pulls both.
 #
@@ -27,8 +28,13 @@ FBDOOM_URL = GITHUB + '/maximevince/fbDOOM'
 FBDOOM_SOURCE = SourceRef.new(
   name: 'fbdoom',
   url:  FBDOOM_URL,
-  # Upstream has no release tags; always clone HEAD.
-  git_tag: ->(_ver) { nil },
+  # Upstream has no release tags, so the commit is named here: HEAD
+  # of a branch someone else moves is not a source, and a clone of it
+  # after a move could only fail its pin (other/pkg_hashes) with no
+  # way back to what the tree was built from. This is master as it
+  # stood when the package was added; moving it is editing this line
+  # and the pin together.
+  git_tag: ->(_ver) { "17280163bc95e5d954d2efaa0633489b763b4cd1" },
 )
 
 class FbDoomPackage < Package
@@ -47,77 +53,33 @@ class FbDoomPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["fbdoom.gz", false],
   ]
 
-  def install_impl_internal(install_dir)
+  def build_steps(ver = default_ver)
 
     arch_tc = default_arch().gcc_tc
 
-    patch_sources
+    return [
+      Within(dir: "fbdoom", env: { "LDFLAGS" => "-static" }, steps: [
+        Run(log: "build.log", argv: ["make", "NOSDL=1", "-j$PAR"]),
+        Run(argv: ["#{arch_tc}-linux-strip", "--strip-all", "fbdoom"]),
+        Run(argv: ["gzip", "-f", "fbdoom"]),
+      ]),
 
-    ok = false
-    with_saved_env(["LDFLAGS"]) do
-      ENV["LDFLAGS"] = "-static"
-      chdir("fbdoom") do
-        ok = run_command("build.log", [
-          "make", "NOSDL=1", "-j#{BUILD_PAR}",
-        ])
-        next if !ok
-
-        ok = system("#{arch_tc}-linux-strip", "--strip-all", "fbdoom")
-        next if !ok
-        ok = system("gzip", "-f", "fbdoom")
-      end
-    end
-    return false if !ok
-
-    # The package's deliverable is a single fbdoom.gz binary. Move it
-    # out of the fbdoom/ source subdir, then discard everything else
-    # so the install tree stays small and matches expected_files.
-    mv("fbdoom/fbdoom.gz", "fbdoom.gz")
-    Dir.children(".").each { |e|
-      next if e == "fbdoom.gz"
-      rm_rf(e)
-    }
-    return true
-  end
-
-  private
-
-  #
-  # Tilck doesn't have a writable /mnt at runtime, so redirect fbdoom's
-  # config home and WAD search path to /tmp.
-  #
-  def patch_sources
-    chdir("fbdoom") do
-      mc = "m_config.c"
-      if File.exist?(mc)
-        data = File.read(mc)
-        if data.include?('homedir = "/mnt"')
-          data.gsub!('homedir = "/mnt"', 'homedir = "/tmp"')
-          File.write(mc, data)
-        else
-          warning "fbdoom: homedir hack not found in #{mc}"
-        end
-      else
-        raise LocalError, "fbdoom: missing #{mc}"
-      end
-
-      ch = "config.h"
-      if File.exist?(ch)
-        data = File.read(ch)
-        if data =~ /FILES_DIR .+/
-          data.gsub!(/FILES_DIR .+/, 'FILES_DIR "/tmp"')
-          File.write(ch, data)
-        else
-          raise LocalError, "fbdoom: FILES_DIR define not found in #{ch}"
-        end
-      else
-        raise LocalError, "fbdoom: missing #{ch}"
-      end
-    end
+      # The package's deliverable is a single fbdoom.gz binary. Move
+      # it out of the fbdoom/ source subdir, then discard everything
+      # else so the install tree stays small and matches
+      # expected_files.
+      #
+      # The log is kept, which the hand-written loop this replaces did
+      # not do: it lived inside fbdoom/ and went with the source. A
+      # build log costs a few KB and is the only account of how the
+      # binary came to be.
+      Move(from: "fbdoom/fbdoom.gz", to: "fbdoom.gz"),
+      Prune(keep: ["fbdoom.gz", "*.log"]),
+    ]
   end
 end
 

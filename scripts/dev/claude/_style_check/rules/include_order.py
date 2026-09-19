@@ -88,7 +88,7 @@ class IncludeOrder(Rule):
       # ordering rule does not apply.
       path_s = str(ctx.file_path)
       exempt_fragments = ('/include/system_headers/', '/3rd_party/',
-                          '/toolchain4/', '/build/')
+                          '/toolchain', '/build/')
 
       if any(frag in path_s for frag in exempt_fragments):
          return []

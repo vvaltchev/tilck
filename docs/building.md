@@ -130,7 +130,7 @@ Running `ccmake` is simple as:
 
 But, as for the `cmake_run` case, it's **highly recommended** to run the
 `run_config` helper instead. Since it needs to know the exact build
-directory, its paths, and where the `host_menuconfig` toolchain package is
+directory, its paths, and where the `host_mconf` toolchain package is
 installed, CMake generates it automatically at configure time from the
 template at `scripts/templates/run_config.in`. The generated script lives
 next to the build, so for in-tree builds it is simply:

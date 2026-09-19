@@ -187,6 +187,137 @@ function fail_if_too_old {
    fi
 }
 
+# The digest of a file, spelled as other/pkg_hashes spells a pin:
+# sha256:<64 hex>. The tool differs per host: sha256sum on Linux,
+# sha256 on FreeBSD, shasum on Darwin.
+function sha256_of {
+
+   local f="$1"
+
+   if command -v sha256sum &> /dev/null; then
+      echo "sha256:$(sha256sum "$f" | cut -d' ' -f1)"
+   elif command -v sha256 &> /dev/null; then
+      echo "sha256:$(sha256 -q "$f")"
+   else
+      echo "sha256:$(shasum -a 256 "$f" | cut -d' ' -f1)"
+   fi
+}
+
+# The value a `name: value` table holds for a name, or nothing. An
+# exact match on the name: nothing in a cache filename is parsed, and
+# the characters one may have ('+', '.') mean things to a regex.
+function table_value {
+
+   local name="$1"
+   local file="$2"
+
+   [ -f "$file" ] || return 0
+   awk -v n="$name" -F': ' '$1 == n { print $2; exit }' "$file"
+}
+
+# The file out of the way, under cache/rejected, for a person to look
+# at; the next run fetches one in its place.
+function set_aside_cachefile {
+
+   local name="$1"
+
+   local record="$TC/cache/.hashes"
+
+   mkdir -p "$TC/cache/rejected"
+   mv "$TC/cache/$name" "$TC/cache/rejected/$name"
+
+   # ...and out of the record: what is fetched next takes its name.
+   if [ -f "$record" ]; then
+      awk -v n="$name" -F': ' '$1 != n' "$record" > "$record.tmp"
+      mv "$record.tmp" "$record"
+   fi
+
+   echo "WARNING: $name set aside as rejected/$name"
+}
+
+# A file in the cache is what other/pkg_hashes pins it to, and what
+# the cache recorded when it placed it (cache/.hashes), or the
+# bootstrap stops: the same three refusals the package manager makes
+# (scripts/pkgmgr/cache.rb), in the one place a file is fetched
+# before there is a package manager to fetch it. A file that stands
+# and is not yet recorded is recorded.
+function check_cachefile {
+
+   local name="$1"
+   local path="$TC/cache/$name"
+   local pins="$MAIN_DIR/other/pkg_hashes"
+   local record="$TC/cache/.hashes"
+   local pin=$(table_value "$name" "$pins")
+   local recorded=$(table_value "$name" "$record")
+   local digest=$(sha256_of "$path")
+
+   if [[ -n "$recorded" && "$recorded" != "$digest" ]]; then
+      echo "ERROR: $name in the cache is damaged: its bytes are not the" \
+           "ones recorded when it was placed (.hashes)"
+      set_aside_cachefile "$name"
+      exit 1
+   fi
+
+   if [[ -z "$pin" ]]; then
+      echo "ERROR: no pin for $name in other/pkg_hashes"
+      echo "INFO: the file in the cache is:"
+      echo "INFO:    $name: $digest"
+      echo "INFO: add that line to other/pkg_hashes if it is the source" \
+           "you mean, and run again"
+      exit 1
+   fi
+
+   if [[ "$pin" != "$digest" ]]; then
+      echo "ERROR: $name in the cache is not what other/pkg_hashes names"
+      echo "INFO:    pinned: $pin"
+      echo "INFO:    cached: $digest"
+      set_aside_cachefile "$name"
+      exit 1
+   fi
+
+   if [[ -z "$recorded" ]]; then
+      echo "$name: $digest" >> "$record"
+   fi
+}
+
+# One bootstrap at a time per cache file: mkdir is atomic on every
+# host we build on, where flock(1) is Linux's alone. The lock is a
+# directory under cache/.locks holding its owner's pid; one whose
+# owner is gone is taken over. The package manager holds its own
+# locks (scripts/pkgmgr/lock.rb) on files it fetches; the bootstrap
+# fetches only Ruby's, which the package manager never touches.
+function lock_cachefile {
+
+   local name="$1"
+   local dir="$TC/cache/.locks/bash-$name.d"
+   local waited=0
+
+   mkdir -p "$TC/cache/.locks"
+
+   while ! mkdir "$dir" 2> /dev/null; do
+
+      local owner=$(cat "$dir/pid" 2> /dev/null)
+
+      if [[ -n "$owner" ]] && ! kill -0 "$owner" 2> /dev/null; then
+         rm -rf "$dir"
+         continue
+      fi
+
+      if [[ $waited == 0 ]]; then
+         echo "INFO: Waiting for another package manager: $name"
+      fi
+
+      sleep 1
+      waited=$((waited + 1))
+   done
+
+   echo $$ > "$dir/pid"
+}
+
+function unlock_cachefile {
+   rm -rf "$TC/cache/.locks/bash-$1.d"
+}
+
 function download_file_in_cache {
 
    local url="$1"
@@ -196,6 +327,8 @@ function download_file_in_cache {
    if [[ "$local_file" == "" ]]; then
       local_file="$remote_file"
    fi
+
+   lock_cachefile "$local_file"
 
    if ! [ -f $TC/cache/$local_file ]; then
 
@@ -225,6 +358,9 @@ function download_file_in_cache {
          echo "NOTE: Skipping the download of $local_file ($remote_file)"
       fi
    fi
+
+   check_cachefile "$local_file"
+   unlock_cachefile "$local_file"
 }
 
 function extract_cachefile_tar_generic {
@@ -247,8 +383,14 @@ function extract_cachefile_tar_generic {
       exit 1
    fi
 
+   # Checked right before it is read, as the package manager checks
+   # every archive it extracts, and read under the file's lock.
+   lock_cachefile "$tarfile"
+   check_cachefile "$tarfile"
+
    echo "Extracting $tarfile..."
    tar $tarOpt $TC/cache/$tarfile
+   unlock_cachefile "$tarfile"
 
    if ! [ "$internalDirName" = "--" ]; then
       if ! [ "$internalDirName" = "$newDirName" ]; then

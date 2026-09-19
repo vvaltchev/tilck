@@ -1,0 +1,13 @@
+# Shared by the bash bootstrap and the Ruby package manager.
+#
+# Sourced by scripts/bash_build_toolchain and parsed by
+# scripts/pkgmgr/early_logic.rb, so the two cannot disagree about
+# which directory the toolchain lives in -- they did once, and the
+# bootstrap installed Ruby into one tree while pkgmgr installed
+# everything else into another.
+#
+# The name carries a generation number because a layout change moves
+# every path, and therefore every RPATH and ELF interpreter, in every
+# installed binary. A new generation is a new directory rather than a
+# migration, so the old one keeps working until it is deleted.
+TOOLCHAIN_DIR_NAME=toolchain5

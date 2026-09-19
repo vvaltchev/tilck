@@ -10,13 +10,22 @@
     - [Host tool tiers](#host-tool-tiers)
     - [Package lifecycle](#package-lifecycle)
   * [Dependency resolution](#dependency-resolution)
+    - [Where a version comes from](#where-a-version-comes-from)
+    - [A package's own version can decide its dependencies'](#a-packages-own-version-can-decide-its-dependencies)
+  * [System dependencies](#system-dependencies)
   * [Default packages and upgrades](#default-packages-and-upgrades)
+  * [Build identity](#build-identity)
+  * [How the build system finds the toolchain](#how-the-build-system-finds-the-toolchain)
   * [Atomic installs and signal safety](#atomic-installs-and-signal-safety)
+  * [Pinned sources](#pinned-sources)
+  * [One package manager at a time](#one-package-manager-at-a-time)
   * [Resumable downloads](#resumable-downloads)
+  * [Retried clones](#retried-clones)
   * [Package reconfiguration](#package-reconfiguration)
   * [Test infrastructure](#test-infrastructure)
     - [Unit tests](#unit-tests)
     - [System tests](#system-tests)
+    - [Correctness guarantees](#correctness-guarantees)
     - [Code coverage](#code-coverage)
   * [Adding a new package](#adding-a-new-package)
 
@@ -44,7 +53,10 @@ The package manager handles three categories of packages:
 # First-time setup (installs default packages for the current ARCH)
 ./scripts/build_toolchain
 
-# List all packages and their install status
+# List all packages and their install status: Tilck's packages, the host
+# tools, the host stacks (packages in each, and how many its compiler
+# holds), the QEMUs (and how much of their stack each holds), then the
+# current stack's own list
 ./scripts/build_toolchain -l
 
 # Install specific packages (dependencies resolved automatically)
@@ -58,12 +70,31 @@ The package manager handles three categories of packages:
 
 # Reconfigure a package interactively (make menuconfig)
 ./scripts/build_toolchain -C busybox
+./scripts/build_toolchain -C busybox:1.36.1   # a specific version
 
-# Upgrade packages after a version bump in other/pkg_versions
+# Install or remove a specific version (-s, -u and -C all take PKG:VER)
+./scripts/build_toolchain -s host_ncurses:6.4
+./scripts/build_toolchain -u host_ncurses:6.4
+
+# Remove the installs that came in as dependencies and that nothing still
+# installed needs (like apt); mark an install as asked for by name, or not,
+# with the modifiers -u takes
+./scripts/build_toolchain --autoremove
+./scripts/build_toolchain --mark-manual host_glib2
+./scripts/build_toolchain --mark-auto host_qemu:8.2.0 -c 12.5.0
+
+# Upgrade packages after a version bump in one of the version files
 ./scripts/build_toolchain --upgrade
 
-# Check if upgrades are needed (used by CMake at configure time)
+# Check if anything needs upgrading or rebuilding (CMake runs this)
 ./scripts/build_toolchain --check-for-updates
+
+# Rebuild every install whose recipe or patches changed since it was built,
+# each where it is and at its own version
+./scripts/build_toolchain --rebuild
+
+# Print where installed packages live, as KEY=value (CMake runs this too)
+./scripts/build_toolchain --print-layout
 
 # Run the package manager's own test suite
 ./scripts/build_toolchain -t
@@ -71,8 +102,8 @@ The package manager handles three categories of packages:
 # Run with code coverage
 ./scripts/build_toolchain -t --coverage
 
-# System tests: install all packages + build for all architectures
-./scripts/build_toolchain -t --system-tests -a ALL
+# System tests: install all packages + build for every arch and board
+./scripts/build_toolchain -t --system-tests -a ALL -b ALL
 
 # Dry-run: see what would happen without executing
 ./scripts/build_toolchain -t -d --system-tests --all-build-types -a ALL
@@ -82,44 +113,233 @@ The package manager handles three categories of packages:
 
 ### Toolchain layout
 
+Every installation lives at three coordinates, always in the same
+order, each with a fixed meaning:
+
 ```
-toolchain4/
-  cache/                            # Downloaded tarballs (preserved across cleans)
-    partial/                        # Incomplete downloads (for resume)
-  staging/                          # In-progress builds (atomic install)
-  noarch/                           # Arch-independent packages
-    acpica/<ver>/
-    gnuefi/<ver>/
-    libmusl/<ver>/
-  gcc-<ver>/                        # Per-GCC-version cross-compiled packages
-    i386/
-      busybox/<ver>/
-      zlib/<ver>/
-    x86_64/
-      ...
-    riscv64/
-      ...
-  host/
-    <os>-<host_arch>/               # e.g. linux-x86_64
-      portable/                     # Tier 1: statically linked (cross-compilers)
-        gcc-i386-musl/<ver>/
-        gcc-x86_64-musl/<ver>/
-      <distro>/                     # e.g. ubuntu-22.04
-        mtools/<ver>/               # Tier 2: distro libc, any host CC
-        ruby/<ver>/                 # Bootstrap Ruby (not a registered package)
-        <host-cc>/                  # e.g. gcc-11.4.0
-          gtest/<ver>/              # Tier 3: depends on host CC C++ ABI
+toolchain5/<machine>/<env>/<stack>/{ sysroot/, pkgs/<pkg>/<ver>/ }
 ```
+
+| coordinate | answers | example values |
+|------------|---------|----------------|
+| `<machine>` | where does it RUN? | `linux-x86_64`, `tilck-i386`, `noarch` |
+| `<env>` | which environment does it belong to? | `any`, `ubuntu-22.04`, `pc`, `qemu-virt` |
+| `<stack>` | which build environment made it? | `any`, `gcc-14.4.0`, `gcc-13.3.0` |
+
+`<env>` is *what the machine must already provide*; `any` means the
+artifact is self-contained. For a Tilck target it names the board
+instead — the same question asked of a system we configure rather than
+one we find. `pc` is the board for i386 and x86_64.
+
+`<stack>` is deliberately not called "the compiler". It is the identity
+of a build environment, which today is always a compiler but must be
+free to become `gcc-14.4.0-lto` without a schema change. Its grammar is
+`<family>-<version>[-<variant>]` and lives in one place, `StackId`
+(`scripts/pkgmgr/stack_id.rb`): a directory is a stack when that
+parses it, `gcc-14.4.0-lto` and `clang-18.1.0` included, and the
+compiler version inside is read through the family and the variant.
+Such a stack is scanned, listed by `-L` and identified by its
+coordinates like any other; what an invocation can *build into*
+(`-H`, `Scope#stack`) is still the plain `gcc-<version>` stack, and
+naming another kind is refused as that rather than as unknown. `any`
+means no particular build environment matters: a static binary, or a
+blob.
+
+A package name can appear only under `pkgs/`, so it can never be
+mistaken for structure. `sysroot/` exists exactly when we built the
+environment — when `<env>` is `any` and `<stack>` is ours.
+
+```
+toolchain5/
+  cache/                                # Tarballs (kept across cleans)
+    partial/                            # Incomplete downloads (for resume)
+  staging/                              # In-progress builds (atomic install)
+
+  linux-x86_64/any/any/                 # Static: needs nothing from the host
+    pkgs/ gcc-i386-musl/<ver>/          #   the musl cross-compilers
+          gcc-x86_64-musl/<ver>/
+          gcc-riscv64-musl/<ver>/
+          sophgo_tools/<ver>/           #   a prebuilt board tool
+
+  linux-x86_64/any/gcc-14.4.0/          # Our stack: our glibc and loader
+    sysroot/                            #   a view of the stack, not an install
+    pkgs/ glibc/<ver>/  glib2/<ver>/  gtk3/<ver>/  qemu/<ver>/ ...
+
+  linux-x86_64/ubuntu-22.04/any/        # Needs this distro's libc
+    pkgs/ binutils/<ver>/  mtools/<ver>/  ninja/<ver>/  meson/<ver>/
+          mconf/<ver>/  ncurses/<ver>/
+          gcc/<ver>/                    #   our host gcc: system cc built it
+          ruby/<ver>/                   #   bootstrap Ruby (not a package)
+
+  linux-x86_64/ubuntu-22.04/gcc-11.4.0/ # + needs that host C++ ABI
+    pkgs/ gtest/<ver>/
+
+  noarch/any/any/
+    pkgs/ acpica/<ver>/  gnuefi/<ver>/  lcov/<ver>/  libmusl/<ver>/
+
+  tilck-i386/pc/gcc-13.3.0/             # Target packages, per arch AND board
+    pkgs/ busybox/<ver>/  zlib/<ver>/  vim/<ver>/ ...
+
+  tilck-riscv64/qemu-virt/gcc-13.3.0/
+    pkgs/ busybox/<ver>/  dtc/<ver>/  uboot/<ver>/ ...
+
+  tilck-riscv64/licheerv-nano/gcc-13.3.0/
+    pkgs/ busybox/<ver>/  licheerv_nano_boot/<ver>/ ...
+```
+
+Two boards of one architecture are two separate trees. They were not,
+until an install for one silently answered for the other: `-s ALL` with
+`BOARD=licheerv-nano` planned nineteen packages, installed two, and
+left the board without a C library — every package reporting as already
+installed on the strength of the qemu-virt build in a different
+directory.
+
+The board is named the way the arch is: `BOARD=` in the environment, or
+`-b <board>` beside `-a <arch>`. `-b` is a scope for the modes that
+build (`-s`, the default install) and a filter for `-u` and the marks,
+and `-b ALL` means every board of the arch — `-s zlib -a riscv64 -b ALL`
+builds zlib for qemu-virt and for licheerv-nano, `-u zlib -b ALL` takes
+both. A board belongs to one arch, so a name is refused for an arch
+that does not have it, and refused beside `-a ALL` (use `-b ALL`).
+
+**New axes become values, never levels.** A fourth coordinate would put
+the schema back where toolchain4 ended up, with a directory name whose
+meaning depends on its depth. Anything else that needs distinguishing
+becomes a new *value* of one of the three — a new board, a new stack
+name — or, if it truly cannot, `<stack>` collapses to an opaque id with
+a manifest beside it.
+
+**One installation, one stack.** An artifact has one ABI, so it belongs
+to exactly one build environment: `Scope#stack` is a single value and a
+recipe sees a single `$STACK_SYSROOT`. A package that needs two stacks
+at once — a Canadian cross, whose *build* machine is neither where it
+runs nor what it produces code for — is not a reason for a second stack
+coordinate. Placement is by where the result runs and by what built it;
+the machine the build happened on is not a coordinate, and never was.
 
 ### Host tool tiers
 
-Host packages are placed in one of three tiers depending on their portability:
+A host package's directory answers exactly one question: **where can this
+run?** Another machine sharing the toolchain reads the answer off the path
+and knows whether to consume the package or rebuild it.
 
-| Tier | `host_tier` | Path | When to use |
-|------|-------------|------|-------------|
-| 1 | `:portable` | `host/<os>-<arch>/portable/` | Statically linked, any distro (cross-compilers) |
-| 2 | `:distro` | `host/<os>-<arch>/<distro>/` | Links distro libc, any host CC (mtools) |
-| 3 | `:compiler` | `host/<os>-<arch>/<distro>/<host-cc>/` | C++ ABI dependent (gtest) |
+| `host_tier` | `<env>` / `<stack>` | Runs on |
+|-------------|---------------------|---------|
+| `:portable` | `any` / `any` | any host of this OS + arch — statically linked (cross-compilers) |
+| `:stack` | `any` / `gcc-<ver>` | the same, carrying our own glibc and loader (glibc, glib2, GTK, QEMU) |
+| `:distro` | `<distro>` / `any` | this distro only — links its libc (mtools, our gcc and binutils) |
+| `:compiler` | `<distro>` / `<host-cc>` | + this host C++ ABI (gtest) |
+
+`:stack` and `:portable` share an `<env>` of `any`, because both run
+anywhere: our compiler is a *variant key*, not a restriction on where the
+result runs. It is in the path for the same reason `:compiler` carries the
+host compiler — a GCC bump can change the C++ ABI, so the whole set is
+rebuilt beside the old one rather than in place, and several stacks
+coexist as siblings without a new level.
+
+`<distro>` is `ID-VERSION_ID` from `/etc/os-release` on a fixed-release
+distro (`ubuntu-22.04`, `fedora-41`), where the release names a library set
+its maintainers tested together. On a rolling distro it is the `ID` alone
+(`arch`, `omarchy`): Arch says `BUILD_ID=rolling` and carries no
+`VERSION_ID` (its container image puts the image's build date there), and
+a derivative's `VERSION_ID` versions its desktop layer while glibc moves on
+Arch's schedule — a slug that moved on every point release stranded every
+distro-tier install for nothing. The rule is `InitOnly.rolling_distro?`
+(`BUILD_ID=rolling`, `ID=arch`, `ID_LIKE` naming arch, or no `VERSION_ID`),
+spelled the same way in the bash bootstrap and in CMake, which read the
+file before Ruby is available and after it.
+
+What a `:distro` or `:compiler` install was built against is then recorded
+per install, not per release: `.build_inputs` carries one `syslib:` line
+per host library its binaries resolve to (`SystemLibs.of_install`, asked of
+`ldd`, symlinks followed, ~36 files for the whole tier), each with the
+file's digest at build time. An install whose recorded libraries have moved
+or vanished reads as `changed`, exactly as one whose patches changed:
+`--check-for-updates` lists it under `NEEDS_REBUILD`, `-l` names the
+libraries under "Changed under them", and `--rebuild` builds it again
+against what is there now. The digests are exact — a compatible update
+rebuilds too — which is the honest reading of a distro that ships no
+tested set; the research behind the choice is in
+`docs/plans/library-abi-stability-report.md`.
+
+A stack says what it is made of in a manifest at its own root,
+`<machine>/<env>/<stack>/stack.conf` (`scripts/pkgmgr/stack_manifest.rb`),
+one format for host stacks and Tilck stacks alike:
+
+```
+format      1
+kind        host | target
+compiler    <package> <version>
+compiler_at <machine>/<env>/<stack>     host stacks only
+libc        <package> <version>
+host        <machine> <distro> <cc>     host stacks only
+```
+
+A stack's compiler does not live in the stack it defines -- `host_gcc` is
+a `:distro` package under the distro's env, a cross compiler a `:portable`
+one under the host's -- and the association used to be a naming
+coincidence, the stack `gcc-14.4.0` being `host_gcc 14.4.0`'s because
+both spell 14.4.0. The manifest records it instead, written by the executor
+when a compiler is installed (`Package#stacks_defined`) and backfilled for
+stacks from before the record the first time anything is written to the
+tree. A host stack is one machine's, so its compiler's coordinates are
+recorded as written, and the listing and the sysroot composition find the
+compiler there even after the distro env has moved underneath it. A
+target stack is every host's -- a Linux and a Darwin host both build into
+`tilck-i386/pc/gcc-13.3.0/` with their own prebuilt cross compiler -- so
+its manifest names the compiler by identity and each host locates its own
+copy through the registry. Unknown keys are ignored, so a later format can
+add fields.
+
+The tier is **declared** per package and never inferred from a build's
+outcome: `--prefix` and RPATH are baked in at configure time, so the
+directory has to be known before anything is built. The portability audit
+(`scripts/pkgmgr/portability.rb`) **enforces** the declaration — a package
+declared portable whose binaries reference anything outside the toolchain
+fails its install. A `:distro` package makes no such promise and is not
+asked to keep it.
+
+A composed sysroot sits beside `pkgs/`, not inside it: a sysroot is a
+*view* over installed packages rather than an installation, and putting
+packages one level down means no scanner has to be taught to skip it. It
+is the stack's merged prefix, programs included: `sysroot/usr/bin` holds
+the QEMU built in that stack, the gcc that names it and the binutils it
+builds through, so one PATH entry is the whole stack.
+
+#### The host world runs on x86_64 Linux only
+
+`host_gcc` and `host_qemu` are the roots of the *host world*: our own
+GCC with its glibc sysroot, the QEMU matrix built by it, and the fifty
+packages nothing else needs -- the GTK closure, meson, ninja, python,
+the maths libraries GCC wants. That world is a Linux userland by
+construction (kernel headers, a glibc, a compiler targeting them), and
+it has been built and exercised on x86_64 only.
+
+The two roots declare it -- `host_os_list: ["linux"]`,
+`host_arch_list: ["x86_64"]` -- and `Package#host_supported?` derives
+the rest: a package in `host_world_names` (reachable from a root and
+from nothing else) is supported only where every root is. Fifty
+packages hidden by two declarations and one rule, not by fifty flags.
+On any other host they are not listed, `-s` refuses them at the door
+(`host_qemu requires a linux x86_64 host`), and `-L` says there are no
+stacks. Other host arches join once every package of the world has
+been built and exercised there.
+
+#### `ALL` stops at the edge of the host world
+
+`-s ALL` is Tilck's packages and the host tools they need -- the cross
+compilers as dependencies, mtools, ncurses, gtest, lcov -- and nothing of
+the host world; `-u ALL` and `--mark-* ALL` select the same set. The
+world is reached by name (`-s host_qemu`, `-s host_qemu:ALL`) or by
+`--with-host-packages`, which lets `ALL` reach into it: `-s ALL
+--with-host-packages` adds the world's roots at their default versions,
+so resolution brings one QEMU, the one stack it is built by and one of
+everything underneath -- never every version of every stack; `-u ALL
+--with-host-packages` removes every install of the world as well.
+`--clean` spares nothing either way. The flag given with a name is
+refused: it widens `ALL` and means nothing else. The CI images are built
+with a plain `-s ALL`, which is why they carry the Tilck packages and not
+the stacks.
 
 ### Package lifecycle
 
@@ -129,19 +349,158 @@ registers itself with `pkgmgr.register(MyPackage.new())` at file load time.
 Key methods:
   * `initialize` — declares name, URL, arch_list, dep_list, host_tier, default, etc.
   * `install_impl_internal(dir)` — build logic (configure + make + make install)
-  * `expected_files` — list of files/dirs that must exist after a successful build
-  * `clean_build(dir)` — remove build artifacts (for recovery after interruption)
+  * `expected_files(ver)` — files/dirs that must exist after a successful build.
+  * `postconditions(ver)` — the behavioural half of that: checks run once,
+    after the atomic move, against the install where it lives (e.g.
+    `Runs(argv: ["install/bin/meson", "--version"])`). Never on a scan,
+    never in the recipe digest; a failing one removes the install.
+    Most packages ignore `ver`; it is there so a package whose install layout
+    changed between versions can return a different list
+  * `clean_build(dir)` — remove build artifacts (for recovery after interruption).
+    The base class already knows both shapes: it removes `build/` and
+    `install/`, and runs `make distclean` only if the source tree was
+    configured in place. Override only for a tree with its own idea of clean
   * `config_impl` — interactive reconfiguration (optional, e.g. make menuconfig)
+  * `build_env(ver)` — what this package offers to packages that depend on it:
+    include dirs, lib dirs, pkg-config dirs, extra environment. The base class
+    offers nothing; a package others link against overrides it
+  * `dep_list_for(ver)` — the dependency list at a given version, for a package
+    whose non-default versions need different dependency versions
 
-Package versions are defined in `other/pkg_versions`.
+### Version files
+
+There are two, and they are unrelated:
+
+| File | Keys | Holds |
+|------|------|-------|
+| `other/pkg_versions` | `VER_<PKG>` | versions that end up in Tilck (target side) |
+| `other/host_pkg_versions` | `HOST_VER_<PKG>` | versions of build-host tools |
+
+A package that exists on both sides — ncurses is both a Tilck library and a
+host kconfig dependency — has one entry in each, and they may differ freely.
+`pkgmgr.get_config_ver(name, host:)` takes the side explicitly rather than
+guessing it from the name.
+
+The keys carry different prefixes because all three readers (the Ruby package
+manager, CMake, and the bash scripts that `source` them) hold both files in
+one namespace.
+
+At startup every registered package must resolve to a version in its file;
+a missing entry is reported by name, not left as a silent nil.
+
+**`HOST_VER_GCC` must be the compiler the default QEMU is built by.**
+Each QEMU series pins its GCC (`HostQemuPackage::GCC_FOR`), so
+`-s host_qemu` builds the right stack whatever the configuration says;
+but everything asked for on its own -- `-s host_gtk3`, `-H`'s default,
+the `CURRENT` of `-l` -- goes into the configured stack, and a
+configuration naming another would put a second stack beside QEMU's,
+hours of building for nothing. The package manager refuses to start
+when `HOST_VER_GCC` and `HOST_VER_QEMU` disagree, naming both.
+
+### Build interfaces
+
+A package that others build against publishes `build_env(ver)` and consumers
+call `deps_build_env`, which merges what the whole dependency closure
+publishes, nearest dependency first. No consumer names a dependency and the
+base class knows no package: adding a library to `dep_list` is all it takes
+for its flags to appear.
+
+`BuildEnv` holds neutral data — include dirs, lib dirs, pkg-config dirs — and
+renders it once at the end (`cflags`, `ldflags`, `env`, `kconfig_make_vars`).
+That is what makes several providers combinable: two providers each handing
+over a ready-made `HOSTCFLAGS=...` string would land as two assignments on the
+same `make` command line, where GNU make keeps only the last.
 
 ## Dependency resolution
 
 Packages declare dependencies via `dep_list`:
 
 ```ruby
-dep_list: [Dep('ncurses', false)]   # vim depends on ncurses
+dep_list: [Dep('ncurses', false)]                    # the default version
+dep_list: [Dep('host_ncurses', true, ver: Ver('6.4'))]  # pinned exactly
 ```
+
+Leaving `ver` out — the normal case — means "the default version", so the
+version files stay readable as one coherent set instead of every edge
+restating the version it would have got anyway. A package built at a
+non-default version pins only the dependencies whose version has to differ,
+not its whole closure.
+
+Only host packages can be pinned; a pin on a target dependency is rejected,
+because Tilck itself is built from exactly one version of each package.
+
+Version selection (`version_solver.rb`) follows two rules:
+
+  * an explicit pin beats an implicit default, and says so at info level —
+    a default silently not being used is worth seeing;
+  * two explicit pins that disagree are an error naming both paths, since
+    nothing can satisfy both.
+
+Within one resolution a package name therefore has exactly one version.
+
+### Where a version comes from
+
+Exactly two places, and the order matters:
+
+  * **a pin**, if something in this resolution named one — a `ver:` on a
+    dependency edge, or `PKG:VER` on the command line;
+  * **the default** from the version file, otherwise.
+
+So the default in `other/host_pkg_versions` is what a package gets when
+*nobody said otherwise*: when the user types `-s host_glib2` with no
+version, and when a dependency edge points at it without one. It is not a
+global that overrides anything; it is the answer to a question nobody
+asked.
+
+### A package's own version can decide its dependencies'
+
+`dep_list` is the graph — who depends on whom — and it is version-less by
+design, because the graph does not change with the version. What may change
+is which versions those edges carry, and a package says so by overriding
+`dep_list_for(ver)`:
+
+```ruby
+# host_qemu: each QEMU is built by a compiler from its own time.
+def dep_list_for(ver = nil)
+  gcc = GCC_FOR[(ver || default_ver).series]
+  return dep_list if gcc.nil?
+
+  # Replace rather than append: the same package named twice, once bare
+  # and once pinned, leaves the winner to the solver's walk order.
+  base = dep_list.reject { |d| d.name == "host_gcc" }
+  return base + [Dep('host_gcc', true, ver: gcc)]
+end
+```
+
+Two packages do this today, for the same reason — a build is a pairing, not
+a package:
+
+| Package | Carries | Because |
+|---------|---------|---------|
+| `host_gcc` | gmp, mpfr, mpc, isl | GCC 11 wants gmp 6.1.0 where GCC 16 wants 6.3.0; its own sources were tested against those |
+| `host_qemu` | the compiler | building a 2021 QEMU with a 2026 GCC tests neither of them |
+
+The effect is that asking for one package can bring a whole world with it.
+With `HOST_VER_GCC` naming 14.4.0:
+
+```
+$ ./scripts/build_toolchain -s host_qemu:7.2.0
+INFO: host_gcc:  using 12.5.0, not the default 14.4.0
+      (pinned via host_qemu -> host_gcc)
+INFO: host_gmp:  using 6.1.0, not the default 6.2.1
+      (pinned via host_qemu -> host_gcc -> host_gmp)
+INFO: Building into the gcc-12.5.0 stack
+```
+
+The pins compose: QEMU names its compiler, that compiler names its maths
+libraries, and the default reaches none of them. `-s host_glib2` on its own
+still gets the default, because nothing pinned it.
+
+That last line is the other half. A `:stack` package lives under the
+compiler that built it, so the host_gcc version a request resolves to also
+decides which stack the install goes into — `-s host_qemu:7.2.0` builds
+into `gcc-12.5.0` however `HOST_VER_GCC` is set, and `-H` (see `--help`)
+moves the default for a run that has no pin to follow.
 
 When installing a package, the dependency resolver:
 
@@ -157,31 +516,315 @@ The dependency graph is validated at startup for cycles and missing references.
 If a cycle is detected, `build_toolchain` fails with a clear error before any
 install attempt.
 
-## Default packages and upgrades
+## System dependencies
 
-When `build_toolchain` is run without arguments, it installs the **default
-package set** for the current `ARCH` and `BOARD`:
+Some packages need things the package manager does **not** build: a Rust
+toolchain, a `-dev` library, a code generator. A package declares those by
+overriding `system_deps`, and the install path checks the union of the
+declarations across the whole resolved closure **before building anything** —
+so a missing toolchain stops the run in the first second, instead of forty
+minutes in when a `configure` script finally goes looking for it.
+
+The generic half lives in `scripts/pkgmgr/system_pkgs.rb`: one `Backend` per
+host package manager (apt, dnf, pacman, FreeBSD `pkg`, Homebrew), each knowing
+how to query what is installed and how to install more. It has no dependency on
+`Package` or `PackageManager`, so anything else that needs to check for a host
+tool can use it as-is. `scripts/pkgmgr/system_deps.rb` builds the declarations
+and the check flow on top.
+
+This is the Ruby counterpart of `scripts/bash_includes/install_pkgs`, which
+still does the bootstrap — it runs before Ruby exists, so it cannot be replaced
+outright. But that list is installed **unconditionally on every machine**,
+whether or not a given package is ever built, which is why it must stay small.
+Anything needed by only some builds belongs here instead, and over time
+requirements can move out of `install_pkgs` and into the packages that actually
+want them.
+
+### Two shapes of requirement
+
+A **package** — `libssl-dev` — is named per backend and only the host package
+manager can answer for it:
+
+```ruby
+SysDep.new(key: :ssl, what: "OpenSSL headers",
+           pkgs: { apt: "libssl-dev", dnf: "openssl-devel" })
+```
+
+A **command** — `rustc` — is checked by *running* it, and may carry a minimum
+version:
+
+```ruby
+SysDep.new(key: :rustc, what: "the Rust compiler", command: "rustc",
+           min_ver: Ver("1.85"), installer: SystemDeps::RUSTUP)
+```
+
+The distinction is not cosmetic. A command can arrive from somewhere the
+package manager has never heard of — rustup, Homebrew, a hand-built tree on
+`PATH`. On the machine this was written on, `dpkg-query` reports `rustc` as not
+installed while a perfectly good rustup toolchain sits in `~/.cargo/bin`;
+asking the package manager would send you installing a *worse* rustc than the
+one already there. So commands are looked for on `PATH` plus the prefixes those
+installers use, and their `--version` is parsed and compared — the same thing
+`version_check.rb` does to the Ruby it is running under.
+
+A version floor requires `command`: it is not portably expressible across five
+package managers, and a constraint that cannot be checked would read as
+satisfied everywhere.
+
+### Outcomes
+
+| State | Meaning |
+|---|---|
+| `ok` | present, and new enough if a floor was declared |
+| `missing` | not found at all |
+| `too_old` | found, but below `min_ver` |
+| `broken` | on disk, but would not run or report a version |
+| `unknown` | no backend for this distro, or no package name for it there |
+
+`unknown` is reported rather than guessed at: on an unsupported distro,
+claiming a dependency is satisfied would be a lie, and claiming it is missing
+would send people installing something already present under another name. It
+warns and lets the build proceed.
+
+`too_old` is deliberately **not** routed to the host package manager —
+reinstalling what is already there fixes nothing.
+
+### Installing
+
+Missing packages are batched into a single command, shown, and installed after
+a prompt. After any install, every requirement is checked **again from
+scratch**: an install command exiting 0 is not evidence the requirement is met
+— a package manager will happily install a `rustc` that is still too old.
+
+Some dependencies are better served by their own installer than by the distro.
+Rust is the case in point: Ubuntu 22.04 ships 1.66 and cannot be updated to
+what modern crates need, so `SystemDeps::RUSTUP` offers rustup instead.
+
+Both routes follow the **same** policy, decided by two predicates in
+`system_pkgs.rb`: `interactive?` is `STDIN.tty? && STDOUT.tty?` (both, because
+a prompt written to a redirected stdout is invisible), and `in_ci?` is a
+non-empty `RUNNING_IN_CI` or `CI`.
+
+| | host package manager | rustup |
+|---|---|---|
+| a terminal | prompt, default **yes** | prompt, default **yes** |
+| no tty, `CI=1` | install with `-y` | install |
+| no tty, no `CI` | refuse, print the command | refuse, say what to install |
+
+Setting `CI=1` by hand is therefore the way to get an unattended auto-yes run.
+`-y` is passed to the package manager only in that case; the command *shown* to
+a human never carries it, because somebody typing it wants to see what their
+package manager proposes first.
+
+When rustup runs interactively it also asks whether to add `~/.cargo/bin` to
+`PATH` permanently. This build does not need that — the directory is prepended
+to the pkgmgr process's own `PATH` either way — but somebody installing Rust
+usually wants it for other things too, so it is asked rather than decided. An
+unattended run passes `--no-modify-path`: nobody was there to consent to a
+shell profile being edited.
+
+## Tilck stacks, default packages and upgrades
+
+Every target has a **Tilck stack**: a meta-package named
+`tilck-<arch>-<board>` -- `tilck-i386-pc`, `tilck-x86_64-pc`,
+`tilck-riscv64-qemu-virt`, `tilck-riscv64-licheerv-nano` -- that builds
+nothing and installs an empty directory carrying the records every install
+has, and exists for its dependencies: the cross compiler(s) the target is
+built with and every package declared default for that arch and board.
+Running `build_toolchain` without arguments installs the stack of the
+current `ARCH` and `BOARD`, so the **default package set** comes in as what
+it is -- dependencies, held by the stack:
 
   * **Always**: cross-compilers (x86 gets both i386 + x86_64), acpica,
-    gnuefi_src, host_mtools, zlib, busybox
+    gnuefi_src, host_mtools, host_ncurses, zlib, busybox
   * **x86 only**: gnuefi
   * **riscv64 only**: dtc, uboot (qemu-virt) or licheerv_nano_boot (licheerv-nano)
 
-Each package's `default?` method determines if it's in the default set, gated
-by `arch_supported?`, `host_supported?`, and `board_supported?`.
+Each package's `default?` method says whether it is a member, gated by
+`arch_supported?`, `host_supported?` and `board_supported?`; the stack's
+`dep_list` is that answer under its own coordinates. Members show dark green
+in `-l`, `--autoremove` leaves them alone while the stack is installed, and
+`-u tilck-i386-pc` sets them free. A stack's version is its own (`1`): what
+it is made of is a matter of dependencies, not of versions, so adding a
+default package is a dependency the next no-mode run installs. `-l` opens
+with the stacks, built or not, and how many packages each holds.
 
-**Upgrades**: when a version is bumped in `other/pkg_versions`, running
+**Upgrades**: when a version is bumped in either version file, running
 `build_toolchain --upgrade` (or just `build_toolchain` with no arguments)
 installs the new version alongside the old one. The old version is NOT deleted.
 
+Only installs that used the *default* version are upgraded. A version someone
+asked for by name is deliberate and is left alone however old it is. The two
+are indistinguishable from the directory tree alone — both are just
+`<pkg>/<ver>/` — so each install records which it was as `origin:` in its
+`.install` record (below). Installs predating the record read as default,
+which is what they were: naming a version at install time is newer than they
+are.
+
+## Manual and automatic installs
+
+The same file records a second thing, as apt does: whether the install was
+asked for by name (`manual`) or came in as somebody's dependency (`auto`).
+`-s host_qemu` marks qemu manual and the forty packages it pulls in auto;
+`-s host_glib2` afterwards marks glib2 manual without building anything,
+because a package asked for by name is the user's from then on. `--upgrade`
+and `--rebuild` give the new install the mark of the one it replaces; a
+one-word record predates the mark and reads as manual, which every install
+was until there was a way to say otherwise.
+
+`--autoremove` removes every auto install that nothing kept needs — kept
+being the manual installs and, transitively, what they need, each
+dependency at the version it was built against (the `against:` lines of
+`.install`, else the one version present, else the default; every version
+present when there are
+two and no record says which). Dependents go before their dependencies, and
+`-d` lists without removing. So `-u host_qemu:8.2.0` followed by
+`--autoremove` takes the QEMU and then whatever only that QEMU needed,
+leaving what another QEMU or the user still wants.
+
+`--mark-manual PKG[:VER]` and `--mark-auto PKG[:VER]` move an install from
+one side to the other. They select exactly what `-u` would with the same
+arguments — the same `-a`, `-b`, `-c`, version and `ALL` rules, the cross
+compilers left out of `ALL` unless `-f` — and `-d` shows the selection
+without writing it.
+
 CMake detects stale packages at configure time via `--check-for-updates` and
 fails the build with a clear message telling the user to run `--upgrade`.
-The `other/pkg_versions` file is a `CMAKE_CONFIGURE_DEPENDS`, so `make`
-automatically re-runs CMake when versions change.
+Both version files are `CMAKE_CONFIGURE_DEPENDS`, so `make` automatically
+re-runs CMake when versions change.
+
+## Build identity
+
+A version number is not enough to say an install is current. Add a patch
+to a package, change a configure flag, edit the build steps — the version
+is the same and what is installed no longer matches the sources it claims
+to come from.
+
+So each install records what it was built FROM, in a hidden
+`.build_inputs` beside what was built: a digest of the *recipe* -- the
+build steps, which are data (`scripts/pkgmgr/recipe.rb`), so that what
+is hashed is exactly what runs -- plus a digest of every patch file
+that applies to it, and the *sources* it was built from: each cache
+file by name with what `other/pkg_hashes` pinned it to (see [Pinned
+sources](#pinned-sources)). The Ruby around a recipe may change freely;
+only a step it emits can move the digest.
+
+```
+format: 5
+recipe: sha256:967e5ceb5671de5407942fc913c13bf4
+source: mtools-4.0.49.tar.gz sha256:2a9c8e...
+syslib: /usr/lib/ld-linux-x86-64.so.2 sha256:d011113b7054c641c8ca064f58bcc238
+syslib: /usr/lib/libc.so.6 sha256:e221b10fee9ee4776d8f0f1701253bc0
+```
+
+A record from before sources were written is judged on what it says,
+not called stale for a line it could not have; the first run that writes
+to the tree gives it the line where the cache can still vouch for the
+file (the file is there, and it is what its pin names).
+
+Beside it, `.install` says what the install *is*:
+
+```
+format: 1
+name: host_qemu
+version: 9.2.0
+coords: linux-x86_64/any/gcc-14.4.0
+origin: pinned
+mark: manual
+host: linux-x86_64 omarchy-4.0.4 gcc-16.2.1
+stack: gcc-14.4.0
+against: host_gcc 14.4.0
+against: host_glib2 2.88.3
+```
+
+The identity as written — name, version, coordinates, the host that wrote it
+— so that a reader can hold the path to the record, and a move of the schema
+can re-judge an install from the record rather than from a path read with
+yesterday's rule. Then the two facts a path cannot say (`origin:` and
+`mark:`, above), the stack the install belongs to, and which version of each
+dependency it was built against. That last is knowable only while the
+request that pulled it in is being resolved — mpfr asked alone answers gmp's
+default, while the GCC that asked for it pinned another — and a rebuild of
+the install on its own, later, builds against the same one.
+
+The two files are kept apart on purpose: `.build_inputs` is compared to decide
+whether an install is stale, and nothing in `.install` is a change to what
+the install was built from. Every record the package manager writes —
+these two and each stack's `stack.conf` — is one shape
+(`scripts/pkgmgr/record.rb`): `key: value` lines, `format:` first, a key
+repeated once per value, a key the reader does not ask for ignored, a line
+with no separator a broken file. A tree from before the records is brought
+forward the first time anything is written to it: `.install` is derived
+from the path and the older pair it replaces (the host left unsaid, since
+nobody wrote it down), and a `.build_inputs` of the older spelling is
+rewritten with its digests as they are.
+
+`--check-for-updates` compares each record against the sources present
+now, and reports three distinguishable states:
+
+| state | meaning | remedy |
+|-------|---------|--------|
+| `ok` | built from the sources we have | — |
+| `changed` | built from something else | `--rebuild` (or `-s <pkg>:<ver> -f`) |
+| `unknown` | no record at all | `--rebuild` (or `-s <pkg>:<ver> -f`) |
+
+`unknown` is reported rather than assumed benign. Every install is made
+by this mechanism, so a missing record means something went wrong while
+writing it — which is exactly the case that stays invisible if a missing
+record counts as fine.
+
+**A recipe is only a recipe at some coordinates.** A build step may name
+the archiver as `#{default_arch.gcc_tc}-linux-ar`, so the same version
+installed for two architectures was genuinely built from two different
+recipes. Each record is therefore written, and checked, against the
+recipe as it reads at *that install's* coordinates. A digest quoted
+without the coordinates it was computed for means nothing.
+
+The digest must also be **reproducible**: it may depend on the sources
+and on nothing else. A flag naming an absolute path built from the
+current working directory once made the same tree report as stale from a
+build directory and fresh from the repository root — an instrument that
+invents work is one people learn to ignore.
+
+## How the build system finds the toolchain
+
+CMake does not construct install paths. It asks:
+
+```
+$ ./scripts/build_toolchain -q --print-layout
+ARCH=i386
+BOARD=pc
+HOST_DISTRO=ubuntu-22.04
+HOST_CC=gcc-11.4.0
+TCROOT=/home/user/tilck/toolchain5
+PKGS_HOST_PORTABLE=.../linux-x86_64/any/any/pkgs
+PKGS_HOST_DISTRO=.../linux-x86_64/ubuntu-22.04/any/pkgs
+PKGS_HOST_CC=.../linux-x86_64/ubuntu-22.04/gcc-11.4.0/pkgs
+PKGS_NOARCH=.../noarch/any/any/pkgs
+PKGS_TARGET=.../tilck-i386/pc/gcc-13.3.0/pkgs
+PKGS_TARGET_<arch>=...              # one per arch, at its own default board
+```
+
+The alternative is the schema written down twice, and the copies drift:
+CMake went on describing toolchain4's layout after every install had
+moved, so a build looked for directories nothing creates. `Coords`
+(`scripts/pkgmgr/coords.rb`) stays the only thing that knows what a path
+looks like.
+
+The answer also carries `ARCH`, `BOARD`, `HOST_DISTRO` and `HOST_CC`,
+which CMake derives independently. They are compared, and a
+disagreement stops configure rather than surfacing much later as a
+missing file in a subtree nobody thought to look at.
+
+Which directory the toolchain itself lives in is named once, in
+`other/toolchain_conf`, and read by the bash bootstrap, the package
+manager, CMake, the root `Makefile` and the CI test wrapper. A
+generation bump moves every path, so a consumer left behind looks for a
+directory that is not built any more.
 
 ## Atomic installs and signal safety
 
-All package installs go through a **staging directory** (`toolchain4/staging/`).
+All package installs go through a **staging directory** (`toolchain5/staging/`).
 The flow:
 
   1. Download to `cache/` (or use cached tarball)
@@ -194,10 +837,121 @@ The flow:
 The final install directory is **never** in a partial state. Either it doesn't
 exist (package not installed) or it was atomically moved after full verification.
 
+After the move, the package's `postconditions` run against the final
+directory. An install that fails one is removed again: a failed install
+installs nothing, and this one has only just stopped being a failed build.
+
 On `SIGINT`, `SIGTERM`, `SIGHUP`, or `SIGQUIT` during the build step: a signal
 handler cleans build artifacts from the staging dir (preserving extracted source),
 prints a message, and exits. On the next run, the extracted source is reused and
 only the build is repeated from scratch.
+
+## Pinned sources
+
+A source is declared as a URL and a name, and until the pins that was
+the whole of it: whatever answered at the URL was the source, and
+whatever was in the cache under the name was trusted. `other/pkg_hashes`
+pins each cache file to one thing, by the name the cache knows it under,
+and the package manager refuses a file that is anything else:
+
+```
+aarch64-musl-1.2.5-gcc-13.3.0-x86_64.tar.bz2: sha256:<64 hex>
+acpica-R2024_12_12.tgz: git:<40 hex>
+binutils-2.43.tar.xz: sha256:<64 hex>
+distlib-0.3.9-py2.py3-none-any.whl: sha256:<64 hex>
+zlib-v1.2.11.tgz: git:<40 hex>
+```
+
+Two kinds of pin, because two kinds of file reach the cache. A file
+downloaded as it is -- a release tarball, a forge's tag archive, a wheel,
+the prebuilt compilers -- is pinned by the sha256 of its bytes, in full,
+so that a line can be compared by eye with the upstream's published
+sums. A source we clone and pack ourselves is pinned by the *commit* the
+clone must resolve to: the archive is ours and its bytes depend on how
+we pack it, while the commit is what upstream published and survives a
+change of compression. Which kind a source needs is the source's to say
+(`SourceRef#fetch_via_git?`), never the file's extension, and a lint
+(`tests/test_lint_sources.rb`) holds the table to the registry: every
+file the registry can fetch on this host has a line of its kind, and
+every line names a file some host's registry produces.
+
+A cache name is looked up exactly as written and never parsed. Upstream
+files keep the upstream's name; a packed clone is `<name>-<ver>` with the
+packer's extension (`Cache::Pack`); where the bytes depend on the host,
+the host is in the name. The registry checks at every start that no two
+sources spell one name, compared case-insensitively.
+
+The check runs at every use of a file. A download is what its pin names
+or it is not kept: a wrong one is set aside under `cache/rejected/` with
+its digest shown against the pin's; an unpinned one is left in place,
+unrecorded, and the tool prints the line to add. A clone is checked at
+`rev-parse HEAD` before it is packed -- a tag upstream moved fails
+there -- and the pack says its commit in `.ref` at the top of its tree,
+so that a cached pack can be checked without cloning. A pack carries no
+`.git`. Every archive is checked again right before it is extracted.
+
+Beside the pins the cache keeps its own record, `cache/.hashes`: what the
+bytes under each name were when the package manager placed them, checked
+and found right. A file whose digest is not the recorded one has been
+damaged since -- a disk, a copy, a partial protocol that is not ours --
+and is set aside and fetched again. The bootstrap Ruby, fetched by bash
+before there is a package manager, is held to the same table and the
+same record (`scripts/bash_includes/script_utils`).
+
+Nothing reaches a build from the network. What an upstream keeps as git
+submodules, and its build would fetch at build time from a `.git` the
+pack does not carry, is declared instead: a package's `subsources(ver)`
+name a `SourceRef` each, the version to fetch it at and where in the
+tree it goes, and they are fetched, pinned and recorded like the
+package's own source and placed in the extracted tree before the recipe
+runs. micropython is the case: `micropython-lib-v1.26.0.tgz` and
+`mbedtls-v1.26.0.tgz`, each at the commit micropython v1.26.0 pins for
+it, in place of `make submodules`. Builds also run with git's repository
+discovery stopped at the toolchain root, so an upstream that asks
+`git describe` for its version banner is not answered by this checkout.
+
+A new package, or a new version of one, fails the lint until its line is
+added. The line comes from the upstream's published sum where there is
+one, or from the tool: the first fetch prints it.
+
+## One package manager at a time
+
+Two package managers on one tree -- two shells, a tree shared over
+`TCROOT_PARENT`, two CI jobs -- used to corrupt each other in every
+place they both wrote. Each of those places is one thing, and one thing
+is held by one process at a time (`scripts/pkgmgr/lock.rb`): an advisory
+`flock` on a small file named for it under `cache/.locks/`, taken for the
+duration, released with the process whatever happens to it. The same
+call on Linux, FreeBSD and macOS, and on NFS v4.
+
+- **A cache file** is one process's while it is fetched, checked, recorded
+  or set aside, and every reader's while it is read: the lock is exclusive
+  for a download or a clone, shared for an extraction, so readers do not
+  wait on each other and a writer waits for all of them. The download's
+  partial file lives under the same lock.
+- **The cache's record** (`cache/.hashes`) is read, changed and written
+  back under its own lock, so two processes recording at once keep both
+  entries.
+- **A build** holds its staging directory from the fetch through the
+  extraction, the build and the move into place. A second package manager
+  asked for the same build waits, prints who it is waiting for, and then
+  finds the install in place and nothing to do. Two packages that build
+  the same sources (ncurses and host_ncurses) share the directory and
+  therefore the lock.
+- **The temporary directory** under the cache is one per process,
+  `cache/tmp.<pid>`; one left by a process that died is swept by the next
+  to look, one whose owner runs is kept.
+
+Nothing is ever deleted from the lock directory: a lock file is a name,
+and removing one under a holder would let a second holder in through a
+new inode. The lock directory is under the cache, which `--clean` keeps.
+The bash bootstrap, which fetches Ruby before there is a package manager,
+uses a `mkdir` lock for the same files, `flock(1)` being Linux's alone.
+
+`tests/test_parallel.rb` runs several package managers as real processes
+against a throwaway tree, half of them building one package and half
+their own, with real tarballs served by the test, and checks the tree they
+leave. It is written to run on FreeBSD and macOS as well.
 
 ## Resumable downloads
 
@@ -206,6 +960,20 @@ preserved in `cache/partial/` and the next attempt resumes from where it left of
 using the HTTP `Range` header. If the server doesn't support resume (returns 200
 instead of 206), the partial file is deleted and the download restarts. If the
 range is invalid (416), the partial is also deleted.
+
+## Retried clones
+
+A `git clone` has nothing to resume, so a failed one is simply attempted
+again: three times, two and then eight seconds apart. An upstream git server
+can be slow rather than broken — `git.musl-libc.org` answers a 5 KB request in
+anywhere between half a second and forty — and one failed attempt is not an
+answer about the repository. Each retry starts by removing the destination
+directory, since an attempt that died half-way leaves it behind and git
+refuses to clone into a non-empty one.
+
+The one exception is the `--branch <sha>` shot taken for a package pinned to a
+commit (tcc): git rejects the same SHA every time, so that one gets a single
+attempt and it is the full clone following it that gets retried.
 
 ## Package reconfiguration
 
@@ -221,7 +989,7 @@ to update the base config file (e.g. `other/busybox.config`) and rebuild.
 
 ## Test infrastructure
 
-The package manager has a comprehensive test suite with 300+ tests. All tests
+The package manager has a comprehensive test suite with 1000+ tests. All tests
 are run via `./scripts/build_toolchain -t`.
 
 ### Unit tests
@@ -244,6 +1012,11 @@ externals (no real downloads, builds, or network access):
   * **test_progress.rb** — progress bar rendering and update throttling
   * **test_package_coverage.rb** — edge cases for 100% coverage on package.rb
   * **test_pkgmgr_coverage.rb** — edge cases for package_manager.rb
+  * **test_build_env.rb** — BuildEnv: merging, de-duplication, rendering
+  * **test_deps_build_env.rb** — what a package publishes and what a consumer
+    collects, including which version each dependency resolves to
+  * **test_version_solver.rb** — version selection: defaults, pins, pins that
+    displace a default, and pins that conflict
 
 Key testing patterns:
   * `with_fake_tc` — creates a temp toolchain directory, pins ARCH to i386
@@ -257,8 +1030,12 @@ System tests install real packages, build Tilck, and optionally run Tilck's
 own test suites:
 
 ```bash
-# Install all packages + build for all architectures
+# Install all packages + build for all architectures, at their default board
 ./scripts/build_toolchain -t --system-tests -a ALL
+
+# ...for every board of every arch (i386/pc, x86_64/pc, riscv64/qemu-virt,
+# riscv64/licheerv-nano)
+./scripts/build_toolchain -t --system-tests -a ALL -b ALL
 
 # Also run all 11 build generator configurations
 ./scripts/build_toolchain -t --system-tests --all-build-types -a ALL
@@ -273,8 +1050,114 @@ own test suites:
 ./scripts/build_toolchain -t -d --system-tests --all-build-types -a ALL
 ```
 
-System tests wipe the toolchain (except cache and Ruby) before each architecture,
-then install all default + optional packages from the cached archives.
+System tests wipe the toolchain once (keeping the cache, Ruby and the host
+world), then, for each target -- an arch at a board -- install every default
+and optional package from the cached archives and build Tilck with the
+`EXTRA_*` flags of the optional packages installed. Tilck's own tests run
+only at an arch's default board, which is the one QEMU boots.
+
+
+### Correctness guarantees
+
+The package manager's *logic* -- placement, identity, scoping,
+dependency and version resolution, staleness, listing -- is held to a
+stronger standard than "well tested". Four instruments, each answering
+a question the others cannot:
+
+**The lint** (`tests/test_lint_ambient.rb`) parses every source file
+(with Ripper, via `tests/ruby_tree.rb`, so that the suite runs on any
+Ruby the package manager does) and fails the suite if anything reads
+`ARCH` or `BOARD` outside their definitions, the CLI boundary and
+`Scope.env`, or compares an installation by part of a coordinate
+(`.arch ==`, `.compiler ==`) outside `InstallSelector`. There used to
+be a third rule, on scope variables written outside the methods that
+opened and closed them; a scope is a value now (`scope.rb`), handed
+to whoever asks a scoped question, and a package asked one unbound
+raises (`Package::Unbound`) -- there is no block to open and nothing
+to leave open. Every logic bug the package manager has had was one
+of those shapes, and this is what makes the class unwritable rather
+than merely caught. The
+allowlist lives in the test, each entry with a reason, and an entry
+that no longer names a real method fails the test.
+
+**The model** (`tests/model/model.rb`) is the contract as a program:
+a world is a set of installations `(name, version, coordinates,
+record, origin)`, and every command line is a pure function from
+(registry, world, invocation) to (exit code, world', output). No I/O,
+no packages, small enough to audit. It is validated before it judges
+anything: every historical bug is a case in `test_model.rb` with the
+answer written by hand, and the model's own laws (`select` is total,
+dry-run changes nothing, determinism) hold.
+
+**The laws** (`tests/laws.rb`) run around every command line the
+suite drives, inside `TestHelper#run_cli`: the world after equals what
+the model computes (L1, asked three ways: the tree against the model,
+the planner's own answer -- `Planner.step` on the world before, its
+plans applied with `Plan#apply` -- against the model, and the tree
+against the planner's answer, so that a disagreement names its
+layer); `-d` changed nothing (L2); every installation sits where its
+package says, judged at its own coordinates (L3); everything
+installed carries a record that reads ok (L4); what the package
+manager holds about the tree is what the tree says (L5 -- the world
+is scanned once per announced change, and a change nobody announced
+is a world that lies). A test about `-l`'s output is thereby also a
+test that `-l` changed nothing. The runner prints how many lines were
+judged and how many fell outside the model's grammar.
+
+**The exhaustive lane** (`tests/exhaustive/`) is the theorem. For
+seventeen registry shapes -- one feature each -- it enumerates every
+world of at most three installations, every invocation context, and
+every command line in the grammar, and asks the planner and the model
+the same question: the world is built in memory (`World.of` the
+installs the case names), the command line is parsed by main's own
+parser into a `Request`, and `Planner.step` and `Model.step` each say
+what world it leaves and with what exit code. Nothing is written and
+nothing is scanned: a case is a value, and costs a fraction of a
+millisecond. About 2.2 million cases; `-t --exhaustive` runs them
+all -- each shape cut into parts of forty thousand cases, the parts
+spread over every core, what the cases of a shape share built once --
+in half a minute on a desktop and a few minutes on a CI runner, in
+every toolchain workflow and in the package manager's own workflow
+(`ci-pkgmgr.yml`, which also runs the mutation job), and every `-t`
+runs a fixed-seed sample of five thousand in half a second. It self-tests first (a
+world built in memory equals the scan of the same world built on
+disk, install for install and record for record; the planner and the
+model each answer twice alike; an empty plan applied is the identity;
+a planted disagreement is seen) and refuses to run otherwise. A
+failure prints its id, the world, the argv and both worlds; `--case
+ID` replays it. What the executor makes of a plan is judged on disk,
+once per kind of action, in `tests/test_executor.rb`: the tree it
+leaves must equal the world the plan says it leaves.
+
+**Mutation** (`-t --mutation`, or `scripts/dev/claude/pmmutate` to
+run a subset) is the certificate that the above is enough. Each of ~450 sites in the logic core is
+rewritten one way it could be wrong -- a comparison flipped, a
+conjunct dropped, a guard deleted, `nil` for `"ALL"`, a scope not
+opened or not restored, the ways this tree has actually been wrong --
+and the suite must fail. A survivor is a test that does not exist,
+named to the line; a mutant that hangs is a walk without a bound,
+which is a defect in the code. The score to defend is zero of either.
+The unmutated suite must pass first, or nothing is judged. A mutant
+is dead at its first failure, so the run that judges one stops there,
+runs the sampled lane -- the quickest killer -- before everything
+else, and leaves out the tests that audit the sources rather than the
+behaviour (`SourceAudit`): a dead mutant costs about a second.
+
+What this proves, mechanically, on every commit: for the catalogue of
+shapes and worlds of up to three, the planner's answer equals the
+model's, and what the executor makes of a plan is what the plan says,
+for every kind of action and around every command line the suite
+drives; the implementation reads its inputs only through their
+owners; and every line of the logic core is defended by a test that
+fails if it is wrong. What it does not prove: worlds of four or more
+(the bound rises when a bug appears there -- none has), shapes
+outside the catalogue (add one when a package with a new feature
+appears), and anything about the real recipes or the network.
+
+When a logic bug is found, the fix touches all four: the model says
+the right answer (or is corrected first), a shape or a line is added
+so the lane fails before the fix and passes after, and the mutant
+that reproduces the bug is expressible and killed. See CLAUDE.md.
 
 ### Code coverage
 
@@ -312,14 +1195,9 @@ class MyPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["mybin", false],             # file that must exist after build
   ]
-
-  def clean_build(dir)
-    system("make", "distclean", chdir: dir.to_s,
-           out: "/dev/null", err: "/dev/null")
-  end
 
   def install_impl_internal(install_dir)
     ok = run_command("configure.log", ["./configure", "--prefix=#{install_dir}"])
@@ -334,7 +1212,9 @@ pkgmgr.register(MyPackage.new())
 
 2. Add `require_relative 'mypackage'` to `scripts/pkgmgr/main.rb`.
 
-3. Add `VER_MYPACKAGE=1.0.0` to `other/pkg_versions`.
+3. Add the version: `VER_MYPACKAGE=1.0.0` in `other/pkg_versions` for a
+   target package, or `HOST_VER_MYPACKAGE=1.0.0` in
+   `other/host_pkg_versions` for a host one.
 
 4. Run: `./scripts/build_toolchain -s mypackage`
 

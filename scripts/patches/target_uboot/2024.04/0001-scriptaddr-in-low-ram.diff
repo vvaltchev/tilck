@@ -1,0 +1,18 @@
+Move scriptaddr into the low 128 MB of RAM.
+
+qemu-riscv.h defaults scriptaddr to 0x8c100000, which is above the top
+of RAM when QEMU is started with its default 128 MB, so u-boot cannot
+load boot.scr at all. 0x80200000 is inside the range the bash
+bootloader script already uses.
+
+--- a/include/configs/qemu-riscv.h
++++ b/include/configs/qemu-riscv.h
+@@ -37,7 +37,7 @@
+ 	"kernel_comp_addr_r=0x88000000\0" \
+ 	"kernel_comp_size=0x4000000\0" \
+ 	"fdt_addr_r=0x8c000000\0" \
+-	"scriptaddr=0x8c100000\0" \
++	"scriptaddr=0x80200000\0" \
+ 	"pxefile_addr_r=0x8c200000\0" \
+ 	"ramdisk_addr_r=0x8c300000\0" \
+ 	BOOTENV

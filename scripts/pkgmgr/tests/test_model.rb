@@ -1,0 +1,805 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# THE MODEL, VALIDATED.
+#
+# A model that is wrong is the broken instrument: everything diffed
+# against it looks right, and is not. So before the exhaustive lane
+# trusts tests/model/model.rb, this file checks it two ways.
+#
+# First, against history. Every logic bug the package manager has had
+# is a case here, with the answer written by hand from what the bug
+# report said was RIGHT -- not from what the code does now. If the
+# model cannot get these, it is describing the bugs rather than the
+# contract.
+#
+# Second, on its own terms. select() is total (it never names an
+# installation the world does not have), the transitions are
+# deterministic, and a dry run changes nothing -- laws the model must
+# obey before it can be asked to judge anything else.
+#
+
+require_relative 'test_helper'
+require_relative 'model/model'
+
+class TestModel < Minitest::Test
+
+  include TestHelper
+
+  I386 = ALL_ARCHS["i386"]
+  X64  = ALL_ARCHS["x86_64"]
+  RV   = ALL_ARCHS["riscv64"]
+
+  GCC  = Ver("13.3.0")
+  A    = Ver("14.4.0")
+  B    = Ver("16.2.0")
+
+  # Coordinates the cases talk about.
+  def tgt(arch, board = nil)
+    Coords.new("tilck-#{arch.name}", board || arch.default_board, "gcc-#{GCC}")
+  end
+
+  def stack(v) = Coords.new(HOST_OS_ARCH, nil, "gcc-#{v}")
+  def distro   = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
+
+  def inv(arch: I386, board: nil, stack: A, os: "linux", host: "x86_64")
+    Model::Inv.new(env_arch: arch, env_board: board, default_stack: stack,
+                   host: Host.new(os: os, arch: ALL_ARCHS.fetch(host),
+                                  distro: "distro-1.0", cc: "gcc-0.0.0"))
+  end
+
+  def reg(*shapes) = Model::Registry.new(shapes)
+
+  def go(registry, world, argv, inv)
+    Model.step(registry, world, Model.parse(argv.split), inv)
+  end
+
+  def k(*a, **kw) = Model.key(*a, **kw)
+
+  # Every arch has a compiler version in the fake world.
+  def setup
+    @saved = ALL_ARCHS.transform_values(&:gcc_ver)
+    ALL_ARCHS.each_value { |a| a.gcc_ver = GCC }
+  end
+
+  def teardown
+    @saved.each { |n, v| ALL_ARCHS[n].gcc_ver = v }
+  end
+
+  # --- the history ---------------------------------------------------------
+
+  # `-H 14.4.0 -u host_qemu:6.2.0` removed nothing: the filter used
+  # `default_cc == "syscc"` as a proxy for "host package", which is
+  # false for a :stack one.
+  def test_uninstall_in_one_stack_leaves_the_other
+    r = reg(Model::Shape.make("host_qemu", :stack, versions: %w[6.2.0]))
+    w = Model.world(k("host_qemu", "6.2.0", stack(A)),
+                    k("host_qemu", "6.2.0", stack(B)))
+
+    o = go(r, w, "-H 14.4.0 -u host_qemu:6.2.0", inv)
+    assert_equal 0, o.rc
+    assert_equal Model.world(k("host_qemu", "6.2.0", stack(B))), o.world
+  end
+
+  # `-f -s host_qemu:6.2.0` removed 6.2.0 AND 11.1.0: nil passed for
+  # the compiler, which the filter read as "any".
+  def test_force_rebuilds_one_version_and_keeps_the_other
+    r = reg(Model::Shape.make("host_qemu", :stack, versions: %w[6.2.0 11.1.0]))
+    w = Model.world(k("host_qemu", "6.2.0", stack(A), record: :changed),
+                    k("host_qemu", "11.1.0", stack(A)))
+
+    o = go(r, w, "-f -s host_qemu:6.2.0", inv)
+    assert_equal 0, o.rc
+    assert_equal Model.world(k("host_qemu", "6.2.0", stack(A), origin: :pinned),
+                             k("host_qemu", "11.1.0", stack(A))),
+                 o.world
+  end
+
+  # `-u zlib` on riscv64 removed qemu-virt AND licheerv-nano: it
+  # matched on the arch, which is two thirds of a coordinate.
+  def test_uninstall_takes_one_board_only
+    r = reg(Model::Shape.make("zlib", :target, arch_list: %w[riscv64]))
+    w = Model.world(k("zlib", "1.0.0", tgt(RV, "qemu-virt")),
+                    k("zlib", "1.0.0", tgt(RV, "licheerv-nano")))
+
+    o = go(r, w, "-u zlib", inv(arch: RV, board: "qemu-virt"))
+    assert_equal Model.world(k("zlib", "1.0.0", tgt(RV, "licheerv-nano"))),
+                 o.world
+  end
+
+  # --check-for-updates called 22 fresh packages stale: their recipe
+  # was rendered at the CURRENT stack instead of at each install's.
+  # In the model a record is a property of the key, so the scope's
+  # stack cannot reach it -- the case pins that it does not.
+  def test_staleness_is_a_property_of_the_install
+    r = reg(Model::Shape.make("host_x11", :stack))
+    w = Model.world(k("host_x11", "1.0.0", stack(A)),
+                    k("host_x11", "1.0.0", stack(B), record: :changed))
+
+    from_a = go(r, w, "--check-for-updates", inv(stack: A))
+    from_b = go(r, w, "--check-for-updates", inv(stack: B))
+
+    assert_equal 2, from_a.rc
+    assert_equal from_a.out, from_b.out
+    assert_equal "NEEDS_REBUILD host_x11", from_a.out
+
+    fresh = Model.world(k("host_x11", "1.0.0", stack(A)),
+                        k("host_x11", "1.0.0", stack(B)))
+    assert_equal 0, go(r, fresh, "--check-for-updates", inv(stack: B)).rc
+  end
+
+  # `-a riscv64 -f -s uboot` from an i386 shell: "requires board
+  # qemu-virt" -- board_supported? read the shell's BOARD -- after -f
+  # had already removed the install.
+  def test_a_board_package_is_rebuilt_through_the_arch_flag
+    r = reg(Model::Shape.make("uboot", :target, arch_list: %w[riscv64],
+                              board_list: %w[qemu-virt]))
+    w = Model.world(k("uboot", "1.0.0", tgt(RV, "qemu-virt"),
+                      record: :changed))
+
+    o = go(r, w, "-a riscv64 -f -s uboot", inv(arch: I386, board: "pc"))
+    assert_equal 0, o.rc, o.out
+    assert_equal Model.world(k("uboot", "1.0.0", tgt(RV, "qemu-virt"))),
+                 o.world
+  end
+
+  # ...and where the board really is unsupported, nothing is removed
+  # first. SPEC: support is checked before -f touches the tree.
+  def test_an_unsupported_board_removes_nothing
+    r = reg(Model::Shape.make("uboot", :target, arch_list: %w[riscv64],
+                              board_list: %w[qemu-virt]))
+    w = Model.world(k("uboot", "1.0.0", tgt(RV, "qemu-virt")))
+
+    o = go(r, w, "-f -s uboot", inv(arch: RV, board: "licheerv-nano"))
+    assert_equal 1, o.rc
+    assert_equal w, o.world
+  end
+
+  # The install for one board must not answer "already installed"
+  # for the other.
+  def test_the_other_board_does_not_count_as_installed
+    r = reg(Model::Shape.make("boardy", :target, arch_list: %w[riscv64]))
+    w = Model.world(k("boardy", "1.0.0", tgt(RV, "qemu-virt")))
+
+    o = go(r, w, "-s boardy", inv(arch: RV, board: "licheerv-nano"))
+    assert_equal 0, o.rc
+    assert_equal Model.world(k("boardy", "1.0.0", tgt(RV, "qemu-virt")),
+                             k("boardy", "1.0.0", tgt(RV, "licheerv-nano"))),
+                 o.world
+  end
+
+  # `-s host_stacky` under -H B, installed only at A: builds at B.
+  def test_a_stack_package_installs_into_the_named_stack
+    r = reg(Model::Shape.make("host_stacky", :stack))
+    w = Model.world(k("host_stacky", "1.0.0", stack(A)))
+
+    o = go(r, w, "-H 16.2.0 -s host_stacky", inv(stack: A))
+    assert_equal Model.world(k("host_stacky", "1.0.0", stack(A)),
+                             k("host_stacky", "1.0.0", stack(B))),
+                 o.world
+  end
+
+  # -s ALL on i386 skips a riscv64-only package and takes the rest.
+  def test_install_all_skips_what_this_arch_cannot_build
+    r = reg(Model::Shape.make("universal", :target,
+                              arch_list: %w[i386 x86_64 riscv64]),
+            Model::Shape.make("rv_only", :target, arch_list: %w[riscv64]),
+            Model::Shape.make("gcc-i386-musl", :cross_cc, target_arch: "i386"))
+    o = go(r, Model.world, "-s universal -s rv_only -a ALL", inv)
+
+    assert_equal 0, o.rc
+    names = o.world.map { |x| [x.name, x.coords.machine] }.to_set
+    assert_includes names, ["universal", "tilck-i386"]
+    assert_includes names, ["universal", "tilck-riscv64"]
+    assert_includes names, ["rv_only", "tilck-riscv64"]
+    refute_includes names, ["rv_only", "tilck-i386"]
+  end
+
+  # -b is to the board what -a is to the arch: a scope for -s, every
+  # board of the arch for ALL; a filter for -u. A board belongs to one
+  # arch, so a name the arch does not have, or a name beside -a ALL,
+  # is refused before anything is touched.
+  def test_install_with_b_ALL_covers_every_board_of_the_arch
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[riscv64]),
+            Model::Shape.make("gcc-riscv64-musl", :cross_cc,
+                              target_arch: "riscv64"))
+    o = go(r, Model.world, "-s t -a riscv64 -b ALL",
+           inv(arch: I386, board: "pc"))
+
+    assert_equal 0, o.rc, o.out
+    at = o.world.select { |x| x.name == "t" }.map { |x| x.coords }.to_set
+    assert_equal [tgt(RV, "qemu-virt"), tgt(RV, "licheerv-nano")].to_set, at
+  end
+
+  def test_install_at_a_named_board
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[riscv64]),
+            Model::Shape.make("gcc-riscv64-musl", :cross_cc,
+                              target_arch: "riscv64"))
+    o = go(r, Model.world, "-s t -b licheerv-nano",
+           inv(arch: RV, board: "qemu-virt"))
+
+    assert_equal 0, o.rc, o.out
+    at = o.world.select { |x| x.name == "t" }.map { |x| x.coords }
+    assert_equal [tgt(RV, "licheerv-nano")], at
+  end
+
+  def test_a_board_of_another_arch_is_refused_at_the_door
+    r = reg(Model::Shape.make("t", :target))
+    w = Model.world(k("t", "1.0.0", tgt(I386, "pc"), record: :changed))
+
+    o = go(r, w, "-s t -b licheerv-nano -f", inv)
+    assert_equal 1, o.rc
+    assert_equal w, o.world, "refused, so -f removed nothing"
+
+    o = go(r, w, "-s t -a ALL -b pc", inv)
+    assert_equal 1, o.rc
+    assert_equal w, o.world
+
+    o = go(r, w, "-u t -b licheerv-nano", inv)
+    assert_equal 1, o.rc
+    assert_equal w, o.world
+  end
+
+  def test_uninstall_with_b_selects_boards_of_the_arch_only
+    r = reg(Model::Shape.make("t", :target))
+    w = Model.world(k("t", "1.0.0", tgt(I386, "pc")),
+                    k("t", "1.0.0", tgt(RV, "qemu-virt")),
+                    k("t", "1.0.0", tgt(RV, "licheerv-nano")))
+
+    # -b ALL from an i386 shell: i386's boards, which is pc alone.
+    o = go(r, w, "-u t -b ALL", inv)
+    assert_equal 0, o.rc
+    assert_equal [tgt(RV, "qemu-virt"), tgt(RV, "licheerv-nano")].to_set,
+                 o.world.map(&:coords).to_set
+
+    o = go(r, w, "-u t -a riscv64 -b ALL", inv)
+    assert_equal [tgt(I386, "pc")], o.world.map(&:coords)
+
+    o = go(r, w, "-u t -a riscv64 -b licheerv-nano", inv)
+    assert_equal [tgt(I386, "pc"), tgt(RV, "qemu-virt")].to_set,
+                 o.world.map(&:coords).to_set
+
+    o = go(r, w, "-u ALL -b ALL", inv(arch: RV, board: "qemu-virt"))
+    assert_equal [tgt(I386, "pc")], o.world.map(&:coords)
+  end
+
+  # --upgrade installs the new default beside an old DEFAULT install
+  # and leaves a pinned one alone.
+  def test_upgrade_moves_defaults_and_leaves_pins
+    r = reg(Model::Shape.make("multi", :target, versions: %w[2.0.0 1.0.0],
+                              arch_list: %w[i386]))
+    old_default = Model.world(k("multi", "1.0.0", tgt(I386)))
+    pinned = Model.world(k("multi", "1.0.0", tgt(I386), origin: :pinned))
+
+    o = go(r, old_default, "--upgrade", inv)
+    assert_equal Model.world(k("multi", "1.0.0", tgt(I386)),
+                             k("multi", "2.0.0", tgt(I386))), o.world
+
+    assert_equal pinned, go(r, pinned, "--upgrade", inv).world
+  end
+
+  # A cross compiler offers more than one GCC and every one is in use
+  # at once, so an install of the one that is not the default -- put
+  # there as the default of a GCC_TC_VER=12.4.0 invocation -- is not
+  # behind: neither --check-for-updates nor --upgrade touches it. One
+  # at a version no longer offered is behind, and is upgraded.
+  def test_a_cross_compiler_at_an_offered_version_is_not_behind
+    r = reg(Model::Shape.make("gcc-i386-musl", :cross_cc,
+                              target_arch: "i386",
+                              versions: %w[13.3.0 12.4.0]))
+    port = Coords.new(HOST_OS_ARCH, nil, nil)
+    both = Model.world(k("gcc-i386-musl", "13.3.0", port),
+                       k("gcc-i386-musl", "12.4.0", port))
+    assert_equal 0, go(r, both, "--check-for-updates", inv).rc
+    assert_equal both, go(r, both, "--upgrade", inv).world
+
+    old = Model.world(k("gcc-i386-musl", "11.0.0", port))
+    o = go(r, old, "--check-for-updates", inv)
+    assert_equal [2, "NEEDS_UPGRADE gcc-i386-musl"], [o.rc, o.out]
+    assert_equal Model.world(k("gcc-i386-musl", "11.0.0", port),
+                             k("gcc-i386-musl", "13.3.0", port)),
+                 go(r, old, "--upgrade", inv).world
+  end
+
+  # --- ALL and the host world -------------------------------------------
+
+  # The host world in small: a root (as host_qemu is) and what only
+  # it needs, beside a target and a host tool the target needs. -s ALL
+  # is the target and its tool; with --with-host-packages the root
+  # comes at its default and brings what it needs; -u ALL spares the
+  # world unless asked, and --clean spares nothing. The flag with a
+  # name is refused.
+  def test_all_stops_at_the_host_world_unless_asked
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386],
+                              deps: [["host_tool", nil]]),
+            Model::Shape.make("host_tool", :portable),
+            Model::Shape.make("host_only", :portable),
+            Model::Shape.make("host_q", :portable, world_root: true,
+                              deps: [["host_only", nil]]))
+    assert_equal %w[host_only host_q].sort, r.world_names.sort
+
+    o = go(r, Model.world, "-s ALL", inv)
+    assert_equal %w[host_tool t], o.world.map(&:name).sort
+
+    o = go(r, Model.world, "-s ALL --with-host-packages", inv)
+    assert_equal %w[host_only host_q host_tool t], o.world.map(&:name).sort
+    full = o.world
+
+    o = go(r, Model.world, "-s t --with-host-packages", inv)
+    assert_equal 1, o.rc
+    assert_match(/applies to ALL/, o.out)
+
+    assert_equal %w[host_only host_q],
+                 go(r, full, "-u ALL", inv).world.map(&:name).sort
+    assert_empty go(r, full, "-u ALL --with-host-packages", inv).world
+    assert_empty go(r, full, "--clean", inv).world
+  end
+
+  # The world's roots come at their default version only, even under
+  # ALL:ALL, which asks every version of Tilck's packages.
+  def test_the_host_world_s_roots_come_at_their_default_only
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386],
+                              versions: %w[1.0.0 2.0.0]),
+            Model::Shape.make("host_q", :portable, world_root: true,
+                              versions: %w[1.0.0 2.0.0]))
+    o = go(r, Model.world, "-s ALL:ALL --with-host-packages", inv)
+    assert_equal 0, o.rc
+    assert_equal [["host_q", "1.0.0"], ["t", "1.0.0"], ["t", "2.0.0"]],
+                 o.world.map { |k| [k.name, k.ver.to_s] }.sort
+  end
+
+  # --- marks: manual and auto -------------------------------------------
+
+  # -s marks what it was asked for manual and what it brought in auto;
+  # asking for the dependency later makes it manual with nothing built.
+  def test_install_marks_the_roots_manual_and_the_rest_auto
+    r = reg(Model::Shape.make("a", :target, deps: [["b", nil]],
+                              arch_list: %w[i386]),
+            Model::Shape.make("b", :target, arch_list: %w[i386]))
+
+    o = go(r, Model.world, "-s a", inv)
+    assert_equal Model.world(k("a", "1.0.0", tgt(I386)),
+                             k("b", "1.0.0", tgt(I386), mark: :auto)),
+                 o.world
+
+    again = go(r, o.world, "-s b", inv)
+    assert_equal "already installed", again.out
+    assert_equal Model.world(k("a", "1.0.0", tgt(I386)),
+                             k("b", "1.0.0", tgt(I386))), again.world
+
+    dry = go(r, o.world, "-s b -d", inv)
+    assert_equal o.world, dry.world
+  end
+
+  # The version a request means is the bound one: asked for beside
+  # the root that pins it, the dependency is claimed at the pin.
+  def test_asking_for_a_pinned_dependency_claims_the_pinned_version
+    r = reg(Model::Shape.make("host_a", :distro,
+                              deps: [["host_x", "2.0.0"]]),
+            Model::Shape.make("host_x", :distro,
+                              versions: %w[1.0.0 2.0.0]))
+    w = Model.world(k("host_x", "2.0.0", distro, origin: :pinned,
+                                                 mark: :auto))
+    o = go(r, w, "-s host_a host_x", inv)
+    assert_equal Model.world(k("host_a", "1.0.0", distro),
+                             k("host_x", "2.0.0", distro,
+                               origin: :pinned)), o.world
+  end
+
+  # --upgrade: the new version is the user's exactly as much as the
+  # old one was.
+  def test_upgrade_keeps_the_mark
+    r = reg(Model::Shape.make("multi", :target, versions: %w[2.0.0 1.0.0],
+                              arch_list: %w[i386]))
+    w = Model.world(k("multi", "1.0.0", tgt(I386), mark: :auto))
+    assert_equal Model.world(k("multi", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "2.0.0", tgt(I386), mark: :auto)),
+                 go(r, w, "--upgrade", inv).world
+  end
+
+  # The default install claims the default set -- one already here as
+  # a dependency becomes the user's -- and upgrades what is beside it
+  # the way --upgrade does, mark included.
+  def test_the_default_install_installs_the_stack_over_its_members
+    r = reg(Model::Shape.make("dflt", :target, default: true,
+                              arch_list: %w[i386]),
+            Model::Shape.make("multi", :target, versions: %w[2.0.0 1.0.0],
+                              arch_list: %w[i386]),
+            Model::Shape.make("tilck-i386-pc", :target, versions: %w[1],
+                              arch_list: %w[i386], board_list: %w[pc],
+                              meta: true))
+    w = Model.world(k("dflt", "1.0.0", tgt(I386), mark: :auto),
+                    k("multi", "1.0.0", tgt(I386), mark: :auto))
+
+    o = go(r, w, "", inv)
+    assert_equal Model.world(k("tilck-i386-pc", "1", tgt(I386)),
+                             k("dflt", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "2.0.0", tgt(I386), mark: :auto)),
+                 o.world
+
+    # ...and --upgrade alone claims nothing.
+    assert_equal Model.world(k("dflt", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "1.0.0", tgt(I386), mark: :auto),
+                             k("multi", "2.0.0", tgt(I386), mark: :auto)),
+                 go(r, w, "--upgrade", inv).world
+  end
+
+  # --mark-* selects what -u selects: -a narrows to an arch, ALL
+  # leaves the compilers alone unless -f, ruby is never touched, and
+  # -d changes nothing.
+  def test_mark_follows_the_selection_of_uninstall
+    r = reg(Model::Shape.make("zlib", :target, arch_list: %w[i386 riscv64]),
+            Model::Shape.make("gcc-i386-musl", :cross_cc, target_arch: "i386"),
+            Model::Shape.make("ruby", :distro))
+    cc = Coords.new(HOST_OS_ARCH, nil, nil)
+    w = Model.world(k("zlib", "1.0.0", tgt(I386)),
+                    k("zlib", "1.0.0", tgt(RV)),
+                    k("gcc-i386-musl", "13.3.0", cc),
+                    k("ruby", "3.4.7", distro))
+
+    o = go(r, w, "--mark-auto zlib -a riscv64", inv)
+    assert_equal Model.world(k("zlib", "1.0.0", tgt(I386)),
+                             k("zlib", "1.0.0", tgt(RV), mark: :auto),
+                             k("gcc-i386-musl", "13.3.0", cc),
+                             k("ruby", "3.4.7", distro)), o.world
+
+    plain = go(r, w, "--mark-auto ALL -a ALL", inv)
+    assert_equal Model.world(k("zlib", "1.0.0", tgt(I386), mark: :auto),
+                             k("zlib", "1.0.0", tgt(RV), mark: :auto),
+                             k("gcc-i386-musl", "13.3.0", cc),
+                             k("ruby", "3.4.7", distro)), plain.world
+
+    forced = go(r, w, "--mark-auto ALL -a ALL -f", inv)
+    assert_equal Model.world(k("zlib", "1.0.0", tgt(I386), mark: :auto),
+                             k("zlib", "1.0.0", tgt(RV), mark: :auto),
+                             k("gcc-i386-musl", "13.3.0", cc, mark: :auto),
+                             k("ruby", "3.4.7", distro)), forced.world
+
+    assert_equal w, go(r, w, "--mark-auto ALL -a ALL -f -d", inv).world
+    assert_equal 1, go(r, w, "--mark-auto nothing", inv).rc
+  end
+
+  # --autoremove keeps the manual installs and what they need, at the
+  # version they need it; an auto install two manual ones could mean
+  # is kept both ways.
+  def test_autoremove_keeps_the_manual_installs_and_what_they_need
+    r = reg(Model::Shape.make("a", :target, deps: [["b", nil]],
+                              arch_list: %w[i386]),
+            Model::Shape.make("b", :target, arch_list: %w[i386]),
+            Model::Shape.make("c", :target, deps: [["d", nil]],
+                              arch_list: %w[i386]),
+            Model::Shape.make("d", :target, arch_list: %w[i386]))
+    w = Model.world(k("a", "1.0.0", tgt(I386)),
+                    k("b", "1.0.0", tgt(I386), mark: :auto),
+                    k("c", "1.0.0", tgt(I386), mark: :auto),
+                    k("d", "1.0.0", tgt(I386), mark: :auto))
+
+    o = go(r, w, "--autoremove", inv)
+    assert_equal Model.world(k("a", "1.0.0", tgt(I386)),
+                             k("b", "1.0.0", tgt(I386), mark: :auto)),
+                 o.world
+    assert_equal w, go(r, w, "--autoremove -d", inv).world
+    assert_equal "nothing to remove", go(r, o.world, "--autoremove", inv).out
+  end
+
+  # The stack compiler needs its libc in the stack it defines, whatever
+  # stack is in effect.
+  def test_autoremove_asks_a_stack_compiler_at_its_own_stack
+    r = reg(Model::Shape.make("host_libc", :stack),
+            Model::Shape.make("host_gcc", :stack_cc,
+                              versions: %w[14.4.0 16.2.0],
+                              deps: [["host_libc", nil]]))
+    w = Model.world(k("host_gcc", "16.2.0", distro, origin: :pinned),
+                    k("host_libc", "1.0.0", stack(B), mark: :auto),
+                    k("host_libc", "1.0.0", stack(A), mark: :auto))
+    o = go(r, w, "--autoremove", inv)
+    assert_equal Model.world(k("host_gcc", "16.2.0", distro, origin: :pinned),
+                             k("host_libc", "1.0.0", stack(B), mark: :auto)),
+                 o.world
+  end
+
+  def test_autoremove_keeps_every_version_a_dependency_could_mean
+    r = reg(Model::Shape.make("host_a", :distro, deps: [["host_x", nil]]),
+            Model::Shape.make("host_x", :distro, versions: %w[1.0.0 2.0.0]))
+    w = Model.world(k("host_a", "1.0.0", distro),
+                    k("host_x", "1.0.0", distro, mark: :auto),
+                    k("host_x", "2.0.0", distro, origin: :pinned,
+                                                 mark: :auto))
+    assert_equal w, go(r, w, "--autoremove", inv).world
+
+    pinned = reg(Model::Shape.make("host_a", :distro,
+                                   deps: [["host_x", "2.0.0"]]),
+                 Model::Shape.make("host_x", :distro,
+                                   versions: %w[1.0.0 2.0.0]))
+    assert_equal Model.world(k("host_a", "1.0.0", distro),
+                             k("host_x", "2.0.0", distro, origin: :pinned,
+                                                          mark: :auto)),
+                 go(pinned, w, "--autoremove", inv).world
+  end
+
+  # A version conflict installs nothing -- and with -f, removes nothing.
+  # SPEC: the conflict is found before the tree is touched.
+  def test_a_conflict_touches_nothing_even_with_force
+    r = reg(Model::Shape.make("host_a", :distro,
+                              deps: [["host_shared", "1.0.0"]]),
+            Model::Shape.make("host_b", :distro,
+                              deps: [["host_shared", "2.0.0"]]),
+            Model::Shape.make("host_shared", :distro,
+                              versions: %w[1.0.0 2.0.0]))
+    w = Model.world(k("host_a", "1.0.0", distro))
+
+    o = go(r, w, "-f -s host_a -s host_b", inv)
+    assert_equal 1, o.rc
+    assert_equal w, o.world
+  end
+
+  # A dependency already installed is not walked: `-s a` with a
+  # present and its dep absent installs nothing.
+  def test_an_installed_node_cuts_the_closure
+    r = reg(Model::Shape.make("host_a", :distro, deps: [["host_b", nil]]),
+            Model::Shape.make("host_b", :distro))
+    w = Model.world(k("host_a", "1.0.0", distro))
+
+    o = go(r, w, "-s host_a", inv)
+    assert_equal w, o.world
+    assert_equal "already installed", o.out
+  end
+
+  # A package named at two versions -- by name, or by X:ALL -- is
+  # installed once per version, in rounds; one plan cannot hold both,
+  # since each pins its own dependencies. The implementation planned
+  # `-s host_qemu:6.2.0 host_qemu:7.2.0` as one plan in one stack.
+  def test_two_versions_of_a_package_are_two_rounds
+    r = reg(Model::Shape.make("host_q", :stack, versions: %w[1.0.0 2.0.0],
+                              deps: [["host_gcc", nil]]),
+            Model::Shape.make("host_gcc", :stack_cc,
+                              versions: %w[14.4.0 16.2.0]))
+    both = Model.world(k("host_q", "1.0.0", stack(A), origin: :pinned),
+                       k("host_q", "2.0.0", stack(A), origin: :pinned))
+
+    o = go(r, Model.world, "-s host_q:1.0.0 host_q:2.0.0", inv)
+    assert_equal 0, o.rc, o.out
+    assert_equal both, o.world.select { |x| x.name == "host_q" }.to_set
+
+    o = go(r, Model.world, "-s host_q:ALL", inv)
+    assert_equal 0, o.rc, o.out
+    assert_equal both, o.world.select { |x| x.name == "host_q" }.to_set
+
+    # ALL of a package declaring no versions is its default.
+    r2 = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    o = go(r2, Model.world, "-s t:ALL", inv)
+    assert_equal Model.world(k("t", "1.0.0", tgt(I386))), o.world
+
+    # -C takes one version.
+    assert_equal 1, go(r, Model.world, "-C host_q:ALL", inv).rc
+  end
+
+  # A pin reaches a dependency: -s host_a installs host_shared at the
+  # pinned version, and records it as pinned.
+  def test_a_pin_reaches_the_dependency
+    r = reg(Model::Shape.make("host_a", :distro,
+                              deps: [["host_shared", "2.0.0"]]),
+            Model::Shape.make("host_shared", :distro,
+                              versions: %w[1.0.0 2.0.0]))
+
+    o = go(r, Model.world, "-s host_a", inv)
+    assert_equal Model.world(k("host_a", "1.0.0", distro),
+                             k("host_shared", "2.0.0", distro,
+                               origin: :pinned, mark: :auto)),
+                 o.world
+  end
+
+  # `-u ALL` keeps the cross compilers unless -f, and never takes ruby.
+  def test_uninstall_all_keeps_compilers_and_ruby
+    r = reg(Model::Shape.make("zlib", :target, arch_list: %w[i386]),
+            Model::Shape.make("gcc-i386-musl", :cross_cc, target_arch: "i386"),
+            Model::Shape.make("ruby", :distro))
+    cc = Coords.new(HOST_OS_ARCH, nil, nil)
+    w = Model.world(k("zlib", "1.0.0", tgt(I386)),
+                    k("gcc-i386-musl", "13.3.0", cc),
+                    k("ruby", "3.4.7", distro))
+
+    plain = go(r, w, "-u ALL", inv)
+    assert_equal Model.world(k("gcc-i386-musl", "13.3.0", cc),
+                             k("ruby", "3.4.7", distro)), plain.world
+
+    forced = go(r, w, "-u ALL -f", inv)
+    assert_equal Model.world(k("ruby", "3.4.7", distro)), forced.world
+  end
+
+  # An orphan -- on disk, no package -- goes everywhere it is, unless
+  # -a names the arch.
+  def test_an_orphan_is_removed_wherever_it_is
+    r = reg
+    w = Model.world(k("gone", "1.0.0", tgt(I386)), k("gone", "1.0.0", tgt(RV)))
+    assert_equal Model.world, go(r, w, "-u gone", inv).world
+    assert_equal Model.world(k("gone", "1.0.0", tgt(I386))),
+                 go(r, w, "-u gone -a riscv64", inv).world
+  end
+
+  # --- the model's own laws ------------------------------------------------
+
+  # select never names what the world does not have.
+  def test_select_is_total
+    r = reg(Model::Shape.make("zlib", :target, arch_list: %w[i386 riscv64]),
+            Model::Shape.make("host_s", :stack))
+    w = Model.world(k("zlib", "1.0.0", tgt(I386)),
+                    k("zlib", "1.0.0", tgt(RV, "licheerv-nano")),
+                    k("host_s", "1.0.0", stack(A)))
+    sc = Model.scope(inv, Model.parse([]), arch_is_scope: false)
+
+    for argv in ["-u zlib", "-u zlib -a riscv64", "-u zlib -a ALL",
+                 "-u zlib:9.9.9", "-u host_s", "-u host_s -c 16.2.0",
+                 "-u ALL", "-u ALL -f", "-u ALL -c 13.3.0", "-u nothing"] do
+      picked = Model.select(r, w, Model.parse(argv.split), sc)
+      assert picked.subset?(w), "#{argv}: named #{(picked - w).to_a}"
+    end
+  end
+
+  # Every destructive mode with -d leaves the world as it was.
+  def test_dry_run_changes_nothing
+    r = reg(Model::Shape.make("zlib", :target, versions: %w[2.0.0 1.0.0],
+                              arch_list: %w[i386]),
+            Model::Shape.make("host_s", :stack))
+    w = Model.world(k("zlib", "1.0.0", tgt(I386)),
+                    k("host_s", "1.0.0", stack(A), record: :changed))
+
+    for argv in ["-s zlib -d", "-s zlib -f -d", "-s host_s -d", "-u zlib -d",
+                 "-u ALL -d", "-u ALL -f -d", "--upgrade -d", "--clean -d",
+                 "-C zlib -d", "-d"] do
+      assert_equal w, go(r, w, argv, inv).world, argv
+    end
+  end
+
+  def test_deterministic
+    r = reg(Model::Shape.make("host_a", :distro, deps: [["host_b", nil]]),
+            Model::Shape.make("host_b", :distro))
+    a = go(r, Model.world, "-s host_a", inv)
+    b = go(r, Model.world, "-s host_a", inv)
+    assert_equal a, b
+  end
+
+  # The parser reads the grammar the exhaustive lane will emit.
+  def test_parse
+    q = Model.parse(%w[-s foo:1.2.0 -s bar -f -d -a riscv64 -H 16.2.0])
+    assert_equal :install, q.mode
+    assert_equal [["foo", Ver("1.2.0")], ["bar", nil]], q.targets
+    assert q.force && q.dry
+    assert_equal RV, q.arch
+    assert_equal Ver("16.2.0"), q.stack
+
+    assert_equal [[:all, nil]], Model.parse(%w[-u ALL]).targets
+    assert_equal [["x", :all]], Model.parse(%w[-u x:ALL]).targets
+    assert_equal :all, Model.parse(%w[-s x -a ALL]).arch
+    assert_equal [["gcc-riscv64-musl", nil]],
+                 Model.parse(%w[-S riscv64]).targets
+    assert_equal :default, Model.parse([]).mode
+  end
+end
+
+# A version is resolved against what the package declares, or refused
+# at the door -- so that `host_qemu:6` means 6.2.0 rather than a
+# two-hour build of the compiler for a tarball that does not exist.
+class TestModelResolvesVersions < Minitest::Test
+
+  include TestHelper
+
+  def reg(*shapes) = Model::Registry.new(shapes)
+  def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                           default_stack: Ver("14.4.0"),
+                           host: Host.env)
+
+  def install(r, argv)
+    Model.step(r, Set.new, Model.parse(argv), ctx)
+  end
+
+  def test_a_series_names_the_one_release_it_has
+    r = reg(Model::Shape.make("q", :stack, versions: %w[6.2.0 7.2.0]))
+    o = install(r, %w[-s q:6])
+    assert_equal 0, o.rc, o.inspect
+    assert_equal [Ver("6.2.0")], o.world.map(&:ver)
+  end
+
+  def test_a_version_nobody_offers_is_refused_and_nothing_changes
+    r = reg(Model::Shape.make("q", :stack, versions: %w[6.2.0 7.2.0]))
+    o = install(r, %w[-s q:9.9.9])
+    assert_equal 1, o.rc
+    assert_empty o.world
+  end
+
+  def test_a_series_with_two_releases_is_refused
+    r = reg(Model::Shape.make("q", :stack, versions: %w[6.1.0 6.2.0]))
+    assert_equal 1, install(r, %w[-s q:6]).rc
+  end
+
+  def test_a_package_declaring_nothing_takes_the_version_as_written
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    o = install(r, %w[-s t:3.3.3])
+    assert_equal 0, o.rc, o.inspect
+    assert_equal [Ver("3.3.3")], o.world.map(&:ver)
+  end
+end
+
+# --rebuild in the model: a record that does not read :ok is made to,
+# in place; a bumped version is --upgrade's; -d moves nothing.
+class TestModelRebuild < Minitest::Test
+
+  include TestHelper
+
+  def reg(*shapes) = Model::Registry.new(shapes)
+  def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                           default_stack: Ver("14.4.0"),
+                           host: Host.env)
+  def tgt = Coords.new("tilck-i386", "pc", "gcc-#{ALL_ARCHS["i386"].gcc_ver}")
+
+  def test_a_changed_record_is_rebuilt_in_place_as_it_was_asked_for
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    k = Model.key("t", "1.0.0", tgt, record: :changed, origin: :pinned)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild]), ctx)
+    assert_equal 0, o.rc
+    assert_equal [Model.key("t", "1.0.0", tgt, origin: :pinned)], o.world.to_a
+  end
+
+  def test_dry_run_moves_nothing
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386]))
+    k = Model.key("t", "1.0.0", tgt, record: :missing)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild -d]), ctx)
+    assert_equal Set[k], o.world
+  end
+
+  def test_a_bumped_version_is_not_a_rebuild
+    r = reg(Model::Shape.make("t", :target, arch_list: %w[i386],
+                              versions: %w[2.0.0], default_ver: "2.0.0"))
+    k = Model.key("t", "1.0.0", tgt, record: :changed, origin: :default)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild]), ctx)
+    assert_equal Set[k], o.world, "an upgrade candidate was rebuilt in place"
+  end
+end
+
+# A gcc installed as the default of its own stack is not an upgrade
+# candidate from another stack's scope: it is that stack.
+class TestModelStackCompilerNeverUpgrades < Minitest::Test
+
+  include TestHelper
+
+  def test_a_default_gcc_of_another_stack_is_left_alone
+    r = Model::Registry.new([Model::Shape.make("host_gcc", :stack_cc,
+                                               versions: %w[12.5.0 14.4.0],
+                                               default_ver: "14.4.0")])
+    inv = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                         default_stack: Ver("14.4.0"),
+                         host: Host.env)
+    c = Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
+    k = Model.key("host_gcc", "12.5.0", c, origin: :default)
+
+    o = Model.step(r, Set[k], Model.parse(%w[--check-for-updates]), inv)
+    assert_equal 0, o.rc, o.out
+    o = Model.step(r, Set[k], Model.parse(%w[--upgrade]), inv)
+    assert_equal Set[k], o.world
+  end
+end
+
+# A rebuild puts a dependency the recipe has grown in first.
+class TestModelRebuildPlansItsDependencies < Minitest::Test
+
+  include TestHelper
+
+  def ctx = Model::Inv.new(env_arch: ALL_ARCHS["i386"], env_board: "pc",
+                           default_stack: Ver("14.4.0"),
+                           host: Host.env)
+  def tgt = Coords.new("tilck-i386", "pc", "gcc-#{ALL_ARCHS["i386"].gcc_ver}")
+
+  def test_a_missing_dependency_is_installed_and_the_install_rebuilt
+    r = Model::Registry.new([
+      Model::Shape.make("top", :target, arch_list: %w[i386],
+                        deps: [["base", nil]]),
+      Model::Shape.make("base", :target, arch_list: %w[i386]),
+    ])
+    k = Model.key("top", "1.0.0", tgt, record: :changed)
+    o = Model.step(r, Set[k], Model.parse(%w[--rebuild]), ctx)
+    assert_equal 0, o.rc, o.out
+    assert_equal [["base", Ver("1.0.0")], ["top", Ver("1.0.0")]],
+                 o.world.map { |x| [x.name, x.ver] }.sort
+    assert o.world.all? { |x| x.record == :ok }
+  end
+end

@@ -96,12 +96,14 @@ endif()
 #   HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
 #   HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
 #
-# These values are used to construct the toolchain4 host tool paths
-# (HOST_DIR_PORTABLE / HOST_DIR below). They MUST stay in sync with the
-# Ruby pkgmgr implementation in scripts/pkgmgr/early_logic.rb (InitOnly
-# module: get_host_os, get_host_distro, get_host_cc), otherwise CMake
-# will look for host tools in a different subtree than where the
-# package manager installed them.
+# CMake no longer builds host tool paths from these -- it asks the
+# package manager, further down. They are still derived here because
+# the answer is CHECKED against them: the package manager computes the
+# same three independently (scripts/pkgmgr/early_logic.rb, InitOnly:
+# get_host_os, get_host_distro, get_host_cc), and a disagreement means
+# one of the two is looking in a subtree the other never wrote to. That
+# used to be a comment asking these to stay in sync by hand, which they
+# did not.
 if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 
    set(HOST_OS "linux")
@@ -110,22 +112,40 @@ if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
       message(FATAL_ERROR "/etc/os-release not found: cannot detect distro")
    endif()
 
-   file(STRINGS "/etc/os-release" _id_line  REGEX "^ID=")
-   file(STRINGS "/etc/os-release" _ver_line REGEX "^VERSION_ID=")
-   string(REPLACE "ID="         "" _id  "${_id_line}")
-   string(REPLACE "VERSION_ID=" "" _ver "${_ver_line}")
-   string(REPLACE "\""          "" _id  "${_id}")
-   string(REPLACE "\""          "" _ver "${_ver}")
+   file(STRINGS "/etc/os-release" _id_line    REGEX "^ID=")
+   file(STRINGS "/etc/os-release" _ver_line   REGEX "^VERSION_ID=")
+   file(STRINGS "/etc/os-release" _build_line REGEX "^BUILD_ID=")
+   file(STRINGS "/etc/os-release" _like_line  REGEX "^ID_LIKE=")
+   string(REPLACE "ID="         "" _id    "${_id_line}")
+   string(REPLACE "VERSION_ID=" "" _ver   "${_ver_line}")
+   string(REPLACE "BUILD_ID="   "" _build "${_build_line}")
+   string(REPLACE "ID_LIKE="    "" _like  "${_like_line}")
+   string(REPLACE "\""          "" _id    "${_id}")
+   string(REPLACE "\""          "" _ver   "${_ver}")
+   string(REPLACE "\""          "" _build "${_build}")
+   string(REPLACE "\""          "" _like  "${_like}")
 
-   if ("${_id}" STREQUAL "" OR "${_ver}" STREQUAL "")
-      message(FATAL_ERROR "/etc/os-release is missing ID or VERSION_ID")
+   if ("${_id}" STREQUAL "")
+      message(FATAL_ERROR "/etc/os-release is missing ID")
    endif()
 
-   set(HOST_DISTRO "${_id}-${_ver}")
+   # A rolling distro's env is its ID alone: the same rule as
+   # InitOnly.rolling_distro? in scripts/pkgmgr/early_logic.rb, which
+   # is the owner; this is the reading CMake checks that answer against.
+   if ("${_build}" STREQUAL "rolling" OR "${_id}" STREQUAL "arch"
+       OR " ${_like} " MATCHES " arch " OR "${_ver}" STREQUAL "")
+      set(HOST_DISTRO "${_id}")
+   else()
+      set(HOST_DISTRO "${_id}-${_ver}")
+   endif()
    unset(_id_line)
    unset(_ver_line)
+   unset(_build_line)
+   unset(_like_line)
    unset(_id)
    unset(_ver)
+   unset(_build)
+   unset(_like)
 
 elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
 
@@ -188,19 +208,47 @@ endif()
 
 # Main variables
 define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
-define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain4)
+
+# The toolchain generation, from the one file that names it. Re-run
+# configure when it changes: a bump moves TCROOT and every path cached
+# below it.
+set_property(
+   DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+   ${CMAKE_SOURCE_DIR}/other/toolchain_conf
+)
+file(
+   STRINGS ${CMAKE_SOURCE_DIR}/other/toolchain_conf TC_NAME_LINE
+   REGEX "^TOOLCHAIN_DIR_NAME="
+)
+string(REGEX REPLACE "^TOOLCHAIN_DIR_NAME=" "" TC_NAME "${TC_NAME_LINE}")
+
+if ("${TC_NAME}" STREQUAL "")
+   message(FATAL_ERROR "TOOLCHAIN_DIR_NAME missing from other/toolchain_conf")
+endif()
+
+define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/${TC_NAME})
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 
 define_env_cache_bool_var(TEST_GCOV)
 define_env_cache_bool_var(KERNEL_GCOV)
 
-# Board defaults and stick variable
+# Every arch has a board -- it is a coordinate of every installed
+# package, and other/bsp/<arch>/<board> is its BSP -- and one of them
+# is the default: the PC platform for x86, QEMU's virt machine for
+# riscv64. BOARD is sticky like ARCH.
 if (${ARCH} STREQUAL "riscv64")
    set(ARCH_DEFAULT_BOARD     "qemu-virt")
 else()
-   set(ARCH_DEFAULT_BOARD     "")
+   set(ARCH_DEFAULT_BOARD     "pc")
 endif()
 define_env_cache_str_var(BOARD "${ARCH_DEFAULT_BOARD}")
+
+# A build directory configured before x86 had a board cached BOARD as
+# empty, and a sticky variable keeps what it cached. Empty means the
+# arch's default, now as then.
+if (NOT BOARD)
+   set(BOARD "${ARCH_DEFAULT_BOARD}" CACHE INTERNAL "" FORCE)
+endif()
 
 # Keep USE_SYSCC as a sticky env variable so that we can fail, if used.
 define_env_cache_bool_var(USE_SYSCC)
@@ -227,20 +275,9 @@ set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
 
-# Host-side install roots in the toolchain4 layout.
-#
-# HOST_DIR_PORTABLE — statically-linked, distro-agnostic host tools (cross
-#    compilers). Shared across distros and host compilers; a GCC_TC_VER
-#    bump does not invalidate extracted tarballs here.
-#
-# HOST_DIR         — non-portable host tools (host_mtools, host_gtest) whose
-#    binaries or libraries depend on glibc/libstdc++ from a specific distro,
-#    built with a specific host compiler. Because C++ has no stable ABI, the
-#    host-compiler version is part of the path even for C-only tools that
-#    may pull in C++ host libs.
-set(HOST_DIR_PORTABLE   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/portable)
-set(HOST_DIR_DISTRO     ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO})
-set(HOST_DIR            ${HOST_DIR_DISTRO}/${HOST_CC})
+# The host-side and target-side install roots are NOT built here: they
+# come from the package manager, further down, once GCC_TC_VER is known
+# (see "Ask the package manager where things are").
 set(CMAKE_DIR           ${CMAKE_SOURCE_DIR}/other/cmake)
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
@@ -294,35 +331,57 @@ endif()
 
 
 #
-# Read all the VER_<PACKAGE>=<VALUE> pairs from pkg_versions
+# Read the <KEY>=<VALUE> pairs from the two version files:
+#
+#   other/pkg_versions       VER_<PKG>       target side (in Tilck)
+#   other/host_pkg_versions  HOST_VER_<PKG>  build-host tools
+#
+# The two are unrelated (ncurses appears in both). Their keys carry
+# different prefixes, so both files can be read into this scope without
+# one overwriting the other.
 #
 
-# Re-run CMake automatically when pkg_versions changes (e.g. version bump)
-# so that the upgrade check below fires and VER_* variables are refreshed.
-set_property(DIRECTORY APPEND PROPERTY
-   CMAKE_CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/other/pkg_versions)
+# Re-run CMake automatically when either file changes (e.g. version
+# bump) so that the upgrade check below fires and the variables are
+# refreshed.
+macro(tilck_read_pkg_versions FILE_PATH)
 
-file(STRINGS ${CMAKE_SOURCE_DIR}/other/pkg_versions PKG_VERSIONS)
+   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      ${FILE_PATH})
 
-foreach(LINE ${PKG_VERSIONS})
-   if(NOT "${LINE}" STREQUAL "" AND NOT "${LINE}" MATCHES "^#")
+   file(STRINGS ${FILE_PATH} PKG_VERSIONS)
 
-      string(FIND "${LINE}" "=" EQUAL_POS)
+   foreach(LINE ${PKG_VERSIONS})
+      if(NOT "${LINE}" STREQUAL "" AND NOT "${LINE}" MATCHES "^#")
 
-      if (EQUAL_POS EQUAL -1)
-         message(FATAL_ERROR "Broken key/value syntax in pkg_versions")
+         string(FIND "${LINE}" "=" EQUAL_POS)
+
+         if (EQUAL_POS EQUAL -1)
+            message(FATAL_ERROR "Broken key/value syntax in ${FILE_PATH}")
+         endif()
+
+         string(SUBSTRING "${LINE}" 0 ${EQUAL_POS} KEY)
+         math(EXPR VALUE_START_POS "${EQUAL_POS} + 1")
+         string(SUBSTRING "${LINE}" ${VALUE_START_POS} -1 VALUE)
+
+         set(${KEY} "${VALUE}")
+         list(APPEND PKG_VERSION_VARS ${KEY})
+         message(STATUS "${KEY} = '${VALUE}'")
+
       endif()
+   endforeach()
 
-      string(SUBSTRING "${LINE}" 0 ${EQUAL_POS} KEY)
-      math(EXPR VALUE_START_POS "${EQUAL_POS} + 1")
-      string(SUBSTRING "${LINE}" ${VALUE_START_POS} -1 VALUE)
+endmacro()
 
-      set(${KEY} "${VALUE}")
-      list(APPEND PKG_VERSION_VARS ${KEY})
-      message(STATUS "${KEY} = '${VALUE}'")
+tilck_read_pkg_versions(${CMAKE_SOURCE_DIR}/other/pkg_versions)
+tilck_read_pkg_versions(${CMAKE_SOURCE_DIR}/other/host_pkg_versions)
 
-   endif()
-endforeach()
+# What every source must be (other/pkg_hashes): read by the package
+# manager, not here, but a re-pinned source makes an install stale
+# exactly as a bumped version does, so the staleness check below has
+# to run again when it changes.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+   ${CMAKE_SOURCE_DIR}/other/pkg_hashes)
 
 unset(EQUAL_POS)
 unset(KEY)
@@ -339,35 +398,76 @@ unset(VALUE_START_POS)
 # bootstrap) or be the system Ruby (used when the system version >= 3.2).
 # Try the toolchain path first, fall back to system `ruby`.
 #
+# This is the ONE installed path CMake constructs by hand, and it has
+# to be: it is the interpreter used to ask where everything else is.
+# It is a distro-tier install -- <machine>/<distro>/any/pkgs -- because
+# Ruby links against the distro's libc.
 set(PKGMGR_RUBY "")
 set(_tc_ruby
-   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/ruby/${VER_RUBY}/bin/ruby)
+   ${TCROOT}/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/any/pkgs/ruby/${HOST_VER_RUBY}/bin/ruby)
 
 if (EXISTS ${_tc_ruby})
    set(PKGMGR_RUBY ${_tc_ruby})
 else()
-   find_program(PKGMGR_RUBY ruby)
+   # Into a FRESH name. find_program writes a cache entry, and the
+   # normal variable set above shadows it, so searching straight into
+   # PKGMGR_RUBY left it empty -- silently, because the only use was
+   # guarded by "if (PKGMGR_RUBY ...)". Every CI image builds no Ruby
+   # of its own, the distro's being new enough, so the fallback was
+   # taken on all of them and the staleness check never ran anywhere
+   # but on a developer's machine.
+   find_program(_sys_ruby ruby)
+
+   if (_sys_ruby)
+      set(PKGMGR_RUBY ${_sys_ruby})
+   endif()
 endif()
 unset(_tc_ruby)
 
 set(PKGMGR_MAIN ${CMAKE_SOURCE_DIR}/scripts/pkgmgr/main.rb)
 
-if (PKGMGR_RUBY AND EXISTS ${PKGMGR_MAIN})
-   execute_process(
-      COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
-      RESULT_VARIABLE _upgrade_rc
-      OUTPUT_VARIABLE _upgrade_out
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-   )
-   if (_upgrade_rc EQUAL 2)
-      message(FATAL_ERROR
-         "\nSome installed toolchain packages need upgrading:\n"
-         "   ${_upgrade_out}\n\n"
-         "Run: ${BTC_SCRIPT_REL} --upgrade\n")
-   endif()
-   unset(_upgrade_rc)
-   unset(_upgrade_out)
+# Not optional: the layout below is read from the package manager, so
+# the build cannot proceed without being able to run it. Checked here,
+# once, right where it is found, rather than at each use.
+if (NOT PKGMGR_RUBY OR NOT EXISTS ${PKGMGR_MAIN})
+   message(FATAL_ERROR
+      "Cannot run the package manager (ruby: '${PKGMGR_RUBY}'): "
+      "run ${BTC_SCRIPT_REL} first.")
 endif()
+
+execute_process(
+   COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
+   RESULT_VARIABLE _upgrade_rc
+   OUTPUT_VARIABLE _upgrade_out
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+# 0 = up to date, 2 = something needs rebuilding. Anything else means
+# the check did not run, which is not the same as having nothing to
+# report and must not pass for it.
+if (NOT _upgrade_rc EQUAL 0 AND NOT _upgrade_rc EQUAL 2)
+   message(FATAL_ERROR
+      "\nCould not check whether the toolchain is up to date:\n"
+      "   ${_upgrade_out}\n")
+endif()
+
+if (_upgrade_rc EQUAL 2)
+   # NEEDS_UPGRADE: a version was bumped     -> --upgrade
+   # NEEDS_REBUILD: sources changed under an installed package, or
+   #                the host's libraries it links did (a rolling
+   #                distro moved them), so what is installed no
+   #                longer matches what it was built from
+   #                -> --rebuild
+   # NEEDS_INSTALL: a package an installed one was built against is
+   #                gone -> -s <pkg>, or the plain default install
+   message(FATAL_ERROR
+      "\nSome installed toolchain packages are out of date:\n"
+      "   ${_upgrade_out}\n\n"
+      "For NEEDS_UPGRADE run: ${BTC_SCRIPT_REL} --upgrade\n"
+      "For NEEDS_REBUILD run: ${BTC_SCRIPT_REL} --rebuild\n"
+      "For NEEDS_INSTALL run: ${BTC_SCRIPT_REL} -s <pkg>\n")
+endif()
+unset(_upgrade_rc)
+unset(_upgrade_out)
 
 # Reset the default flags
 set(CMAKE_C_FLAGS "")
@@ -910,29 +1010,86 @@ endif()
 message(STATUS "TCROOT: ${TCROOT}")
 message(STATUS "GCC_TC_VER: ${GCC_TC_VER}")
 
-# Target-side per-arch package root. toolchain4 layout:
+# --- Ask the package manager where things are ------------------------
 #
-#     ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH}/<pkg>/<ver>/
+# CMake used to build these paths from the layout schema itself. That
+# put the schema in two places, and the copies drifted the first time
+# the layout changed: CMake went on describing the previous generation
+# while every install had moved, and the build looked for directories
+# nothing creates. So ask instead -- one call, at configure time only.
 #
-# The "gcc-" prefix leaves room for other compiler families in the future
-# (clang/llvm slots) and the dotted version matches the rest of the
-# ecosystem (vs. the underscore-mangled path used in toolchain3).
-set(TCROOT_ARCH_DIR           ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH})
-set(TCROOT_ARCH_DIR_PARENT    ${TCROOT}/gcc-${GCC_TC_VER})
+# ARCH, BOARD and GCC_TC_VER go through the environment, which is how
+# the package manager takes them everywhere else. BOARD is never
+# empty here: an empty one would override the package manager's
+# default with nothing -- which is how the i386 packages once came
+# back as tilck-i386/gcc-13.3.0, one coordinate short.
+set(_layout_env ARCH=${ARCH} BOARD=${BOARD} GCC_TC_VER=${GCC_TC_VER})
+
+execute_process(
+   COMMAND
+      ${CMAKE_COMMAND} -E env ${_layout_env}
+         ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --print-layout
+   RESULT_VARIABLE _layout_rc
+   OUTPUT_VARIABLE _layout_out
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if (NOT _layout_rc EQUAL 0)
+   message(FATAL_ERROR "Failed to read the toolchain layout: ${_layout_out}")
+endif()
+
+string(REPLACE "\n" ";" _layout_lines "${_layout_out}")
+
+foreach(_line ${_layout_lines})
+   string(REGEX MATCH "^([A-Za-z0-9_]+)=(.*)$" _m "${_line}")
+   if (_m)
+      set(PKGMGR_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}")
+   endif()
+endforeach()
+
+# The package manager derives the host identity independently. When the
+# two disagree, every host-tool path is wrong in a way that surfaces
+# much later as a missing file, so stop here instead.
+foreach(_v ARCH BOARD HOST_DISTRO HOST_CC)
+   if (NOT "${PKGMGR_${_v}}" STREQUAL "${${_v}}")
+      message(FATAL_ERROR
+         "${_v} disagrees: CMake says '${${_v}}', "
+         "the package manager says '${PKGMGR_${_v}}'.")
+   endif()
+endforeach()
+
+# Host-side install roots, one per tier.
+#
+# HOST_DIR_PORTABLE — statically-linked, distro-agnostic host tools
+#    (the cross compilers). Shared across distros and host compilers.
+#
+# HOST_DIR_DISTRO   — host tools that link against the distro's libc.
+#
+# HOST_DIR          — host tools whose ABI additionally depends on the
+#    host compiler (anything that may pull in C++ host libs, since C++
+#    has no stable ABI).
+set(HOST_DIR_PORTABLE         ${PKGMGR_PKGS_HOST_PORTABLE})
+set(HOST_DIR_DISTRO           ${PKGMGR_PKGS_HOST_DISTRO})
+set(HOST_DIR                  ${PKGMGR_PKGS_HOST_CC})
+set(NOARCH_DIR                ${PKGMGR_PKGS_NOARCH})
+
+# Target-side package root for the arch AND board being built.
+set(TCROOT_ARCH_DIR           ${PKGMGR_PKGS_TARGET})
 
 set(BUSYBOX_DIR               ${TCROOT_ARCH_DIR}/busybox/${VER_BUSYBOX})
 set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
 set(ZLIB_DIR                  ${TCROOT_ARCH_DIR}/zlib/${VER_ZLIB})
 set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnuefi/${VER_GNUEFI})
 set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
-set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${VER_LCOV})
+set(LCOV_DIR                  ${NOARCH_DIR}/lcov/${HOST_VER_LCOV})
 
 set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
 
 # BEGIN [ARCH-dependent paths]
 
    # Musl toolchains live under HOST_DIR_PORTABLE because they are 100%
-   # statically-linked and libc-independent. toolchain4 layout:
+   # statically-linked and libc-independent -- <machine>/any/any, an
+   # artifact that needs nothing from the machine it runs on:
    #
    #     ${HOST_DIR_PORTABLE}/gcc-${ARCH}-musl/${GCC_TC_VER}/
    #
@@ -967,10 +1124,11 @@ set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
 
 # END [ARCH-dependent paths]
 
-if (BOARD)
-   set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
-   include(${BOARD_BSP}/board_bsp.cmake)
-endif()
+# The board's BSP: board data for the embedded targets, a note that
+# there is none for the PC. Every board of every arch has one, so a
+# board the arch does not have fails here, on every arch.
+set(BOARD_BSP           ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
+include(${BOARD_BSP}/board_bsp.cmake)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -1250,7 +1408,8 @@ set(TILCK_EXPORTED_VARS
    BOARD BOARD_BSP
 
    # Toolchain paths, labels and versions
-   TCROOT TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
+   TCROOT TCROOT_ARCH_DIR NOARCH_DIR
+   PKGMGR_PKGS_TARGET_i386 PKGMGR_PKGS_TARGET_x86_64
    HOST_DIR_PORTABLE HOST_DIR_DISTRO HOST_DIR
    GCC_TC_VER
    GCC_TC_ROOT GCC_TC_ROOT_i386 GCC_TC_ROOT_x86_64
@@ -1741,7 +1900,7 @@ add_custom_target(
       ${IMG_FILE}
 )
 
-set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${VER_GTEST}/install)
+set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${HOST_VER_GTEST}/install)
 set(GTEST_BTC_COMMAND "host_gtest")
 
 add_custom_command(
@@ -1871,7 +2030,7 @@ set(KCFG_DIR     "${CMAKE_BINARY_DIR}/kconfig")
 set(GEN_KCONFIG  "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/gen_kconfig.py")
 set(APPLY_CONFIG "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/apply_config.py")
 set(CMAKE_RUN    "${CMAKE_SOURCE_DIR}/scripts/cmake_run")
-set(MCONF_ROOT   "${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/menuconfig")
+set(MCONF_ROOT   "${HOST_DIR_DISTRO}/mconf")
 configure_file(
    "${CMAKE_SOURCE_DIR}/scripts/templates/run_config.in"
    "${CMAKE_BINARY_DIR}/run_config"

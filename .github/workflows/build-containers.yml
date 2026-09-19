@@ -31,6 +31,7 @@ on:
       - 'scripts/bash_includes/**'
       - 'scripts/pkgmgr/**'
       - 'other/pkg_versions'
+      - 'other/host_pkg_versions'
 
 permissions:
   contents: read
@@ -85,12 +86,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The version the Dockerfile declares (`# version: vN`) is the tag
+      # the kernel workflows consume, so that an image changes under
+      # them only when someone bumps it; :latest and the commit tag
+      # stay for whoever wants the newest.
+      - id: ver
+        run: |
+          v=$(sed -n 's/^# version: //p' \
+                 other/containers/${{ matrix.image }}/Dockerfile)
+          [ -n "$v" ] || { echo "no '# version:' line" >&2; exit 1; }
+          echo "tag=$v" >> "$GITHUB_OUTPUT"
+
       - uses: docker/build-push-action@v7
         with:
           context: .
           file: other/containers/${{ matrix.image }}/Dockerfile
           push: true
           tags: |
+            ${{ env.IMG }}:${{ steps.ver.outputs.tag }}
             ${{ env.IMG }}:latest
             ${{ env.IMG }}:${{ github.sha }}
           # Reuse unchanged layers across rebuilds (per-image scope).

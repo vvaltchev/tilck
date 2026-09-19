@@ -9,13 +9,26 @@ require_relative 'package_manager'
 
 class GccCompiler < Package
 
-  include FileShortcuts
-  include FileUtilsShortcuts
-
   PROJ_NAME = "musl-cross-make"
-  CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME).to_s
-  VER_MUSL = pkgmgr.get_config_ver("musl")
-  ALL_VERSIONS = [Ver("12.4.0"), Ver("13.3.0")]
+  CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME, host: true).to_s
+
+  # Deliberately a TARGET version read from a host package: the musl
+  # libc baked into the cross-compiler is the one Tilck links against,
+  # and it is part of the release tarball's name (see build_tarname).
+  # libmusl reads the same entry, so the two cannot drift apart.
+  VER_MUSL = pkgmgr.get_config_ver("musl", host: false)
+
+  # The GCC versions the release page has a prebuilt compiler for,
+  # per host OS -- as build_tarname reads the host, by uname's word.
+  # Linux got both; FreeBSD and macOS only the newer, and a version
+  # offered here without a tarball to fetch is a download that fails
+  # after the lint said every source was pinned.
+  VERSIONS_BY_OS = {
+    "Linux"   => [Ver("12.4.0"), Ver("13.3.0")],
+    "FreeBSD" => [Ver("13.3.0")],
+    "Darwin"  => [Ver("13.3.0")],
+  }.freeze
+  ALL_VERSIONS = VERSIONS_BY_OS.fetch(OS, [Ver("13.3.0")])
 
   attr_reader :target_arch, :libc
 
@@ -25,13 +38,18 @@ class GccCompiler < Package
     # Each (target_arch, libc) pair has its own pre-built tarball on
     # the musl-cross-make release page; the compiler binaries inside
     # differ by target arch, so no SourceRef sharing is possible.
+    # The name is the arch's word for its compiler (Architecture#
+    # cross_cc_pkg), asserted rather than derived from libc: the
+    # arch says which libc its compiler is built with.
+    pkg_name = target_arch.cross_cc_pkg
+    assert { pkg_name == "gcc-#{target_arch.name}-#{libc}" }
     src = SourceRef.new(
-      name: "gcc-#{target_arch.name}-#{libc}",
+      name: pkg_name,
       url:  make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG),
       tarname: ->(ver) { self.class.build_tarname(target_arch, libc, ver) },
     )
     super(
-      name: "gcc-#{target_arch.name}-#{libc}",
+      name: pkg_name,
       source: src,
       on_host: true,
       is_compiler: true,
@@ -41,7 +59,21 @@ class GccCompiler < Package
     )
   end
 
-  def expected_files = [
+  # The target stacks this version defines: one per board of its
+  # arch, each with the same manifest -- this compiler, by identity,
+  # and the musl it bundles. No compiler_at and no host: a target
+  # stack is every host's, and each locates its own copy of the
+  # compiler through the registry.
+  def stacks_defined(ver, against, compiler_at: nil)
+    m = StackManifest.new(kind: :target, compiler_name: name,
+                          compiler_ver: ver, compiler_at: nil, libc: libc,
+                          libc_ver: VER_MUSL, host: nil)
+    return target_arch.all_boards.map { |b|
+      [Coords.target(target_arch, b, ver), m]
+    }
+  end
+
+  def expected_files(ver = nil) = [
     "bin/#{target_arch.gcc_tc}-linux-gcc",
     "bin/#{target_arch.gcc_tc}-linux-g++",
     "bin/#{target_arch.gcc_tc}-linux-ar",
@@ -55,18 +87,25 @@ class GccCompiler < Package
     "bin/#{target_arch.gcc_tc}-linux-strip",
   ]
 
-  # Wrap the base class install list with target_arch/libc metadata, so
-  # PackageManager#get_installed_compilers can select installed cross-
-  # compilers for a specific target architecture.
-  def get_install_list
-    super.map { |info|
-      InstallInfo.new(
-        info.pkgname, info.compiler, info.on_host, info.arch,
-        info.ver, info.path, info.pkg, info.broken,
-        @target_arch, @libc
-      )
-    }
+  # Wrap the base class reading of the tree with target_arch/libc
+  # metadata, so PackageManager#get_installed_compilers can select
+  # installed cross-compilers for a specific target architecture.
+  def read_install_list(host) = super.map { |info| annotate_install(info) }
+
+  # An install of a cross compiler says what it targets.
+  def annotate_install(info)
+    return InstallInfo.new(
+      info.pkgname, info.compiler, info.on_host, info.arch,
+      info.ver, info.path, info.pkg, info.broken,
+      @target_arch, @libc,
+      default_install: info.default_install, manual: info.manual,
+      coords: info.coords, record: info.record
+    )
   end
+
+  # Every version this host can install: what the registry asks to
+  # know which files the cache may hold (PackageManager#known_versions).
+  def installable_versions = ALL_VERSIONS
 
   def get_installable_list
     ALL_VERSIONS.map { |ver|
@@ -78,19 +117,26 @@ class GccCompiler < Package
   end
 
   def default_ver = @target_arch.gcc_ver
-  def default_arch = HOST_ARCH
-  def default_cc = "syscc"
 
-  # GCC compilers are default based on the current target ARCH:
-  # x86 family needs both i386 and x86_64 (UEFI bootloader requires
-  # x86_64); other arches need just their own compiler.
+  # GCC compilers are default based on the target arch being built
+  # for: x86 family needs both i386 and x86_64 (UEFI bootloader
+  # requires x86_64); other arches need just their own compiler.
+  #
+  # The arch of the invocation's scope, not the global: `-a riscv64`
+  # with no mode installs riscv64's defaults, and this is what says
+  # which compiler that includes.
   def default?
+
     return false if !host_supported?
-    if ARCH.family == "generic_x86"
+
+    arch = scope.arch
+
+    if arch.family == "generic_x86"
       return @target_arch == ALL_ARCHS["i386"] ||
              @target_arch == ALL_ARCHS["x86_64"]
     end
-    return @target_arch == ARCH
+
+    return @target_arch == arch
   end
 
   # Called by the SourceRef's tarname Proc: the cache filename
@@ -119,33 +165,26 @@ class GccCompiler < Package
   # directory. Rename binaries like i686-linux-musl-gcc to i686-linux-gcc
   # (and fix any symlinks that point to them) to produce a canonical,
   # libc-agnostic tool name that package_manager#with_cc can use.
-  def install_impl_internal(install_dir)
-    chdir("bin") do
-      Dir.children(".").each(&method(:fix_single_file_name))
-    end
-    return true
-  end
-
-  private
-  def fix_single_file_name(name)
-
-    new_name = name.sub("musl-", "")
-
-    if file? name
-
-      mv(name, new_name) unless new_name == name
-
-    elsif symlink? name
-
-      target = readlink(name)
-      new_target = target.sub("musl-", "")
-      if new_target != target || new_name != name
-        rm_f(name)
-        symlink(new_target, new_name)
-      end
-
-    end
-  end
+  # The tarball's tools are named <triple>-musl-<tool>, and the one
+  # symlink in bin/ (cc -> gcc) points at a musl name too; Tilck's
+  # build wants them without the "musl-". Links first, while their
+  # names still match the glob and their targets still say what to
+  # strip; then every entry is renamed. A link whose target is NOT a
+  # musl name would fail the Transform, which is right: in this
+  # tarball that would be news.
+  def build_steps(ver = default_ver) = [
+    Within(dir: "bin", steps: [
+      ForEach(glob: "*musl*", as: "l", kind: :symlink, steps: [
+        Readlink(bind: "t", path: "$l"),
+        Transform(bind: "t", from: "$t", subs: [["musl-", ""]]),
+        Symlink(target: "$t", link: "$l"),
+      ]),
+      ForEach(glob: "*musl*", as: "f", steps: [
+        Transform(bind: "g", from: "$f", subs: [["musl-", ""]]),
+        Move(from: "$f", to: "$g"),
+      ]),
+    ]),
+  ]
 end # class GccCompiler
 
 for name, arch in ALL_ARCHS do

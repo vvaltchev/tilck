@@ -1,5 +1,6 @@
 # Coverage artifacts produced by `style_check test --coverage`.
 htmlcov/
+coverage.xml
 .coverage
 .coverage.*
 __pycache__/

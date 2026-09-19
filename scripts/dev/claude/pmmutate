@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# pmmutate: mutation testing for the package manager's logic core.
+#
+#   pmmutate sites [--file F] [--op O]      list the mutation sites
+#   pmmutate count                          sites per file and operator
+#   pmmutate run [--jobs N] [--limit N] [--file F] [--op O] [--timeout S]
+#                                           run mutants, report survivors
+#   pmmutate check-annotations              every "# mutation: equivalent"
+#                                           still sits on a site
+#
+# A mutant is one site rewritten (tests/mutation/operators.rb) in its
+# own copy of the tree, judged by the suite there: killed if the suite
+# fails, survived if it passes, and a timeout if the suite hangs. A
+# survivor is a test that does not exist; a timeout is a walk without
+# a bound. The score to defend is zero of either, in scope.
+#
+# Dev-only: this is the instrument, not part of the product.
+#
+
+set -euo pipefail
+
+MAIN_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+TC_NAME="$(sed -n 's/^TOOLCHAIN_DIR_NAME=//p' "$MAIN_DIR/other/toolchain_conf")"
+TC_NAME="${TC_NAME:-toolchain5}"
+RUBY="$(ls "$MAIN_DIR/$TC_NAME"/linux-*/*/any/pkgs/ruby/*/bin/ruby \
+           2>/dev/null | head -1 || true)"
+
+# No bootstrap Ruby means the package manager runs on the system's
+# (scripts/bash_build_toolchain takes it when it is >= 3.2), and so
+# does this.
+if [ -z "$RUBY" ]; then
+   RUBY="$(command -v ruby || true)"
+fi
+
+if [ -z "$RUBY" ]; then
+   echo "pmmutate: no bootstrap ruby under $MAIN_DIR/$TC_NAME," \
+        "and none on PATH" >&2
+   exit 1
+fi
+
+cmd="${1:-}"; shift || true
+
+exec "$RUBY" - "$MAIN_DIR" "$RUBY" "$cmd" "$@" <<'RUBY'
+main_dir, ruby, cmd, *args = ARGV
+require File.join(main_dir, "scripts/pkgmgr/tests/mutation/driver")
+
+opts = { jobs: 8, limit: nil, file: nil, op: nil, timeout: nil }
+while !args.empty?
+  case (a = args.shift)
+  when "--jobs"    then opts[:jobs] = args.shift.to_i
+  when "--limit"   then opts[:limit] = args.shift.to_i
+  when "--file"    then opts[:file] = args.shift
+  when "--op"      then opts[:op] = args.shift
+  when "--timeout" then opts[:timeout] = args.shift.to_i
+  else abort "pmmutate: unknown option #{a}"
+  end
+end
+
+mutants = Mutation.all_mutants
+mutants.select! { |m| File.basename(m.file) == opts[:file] } if opts[:file]
+mutants.select! { |m| m.site.op == opts[:op] } if opts[:op]
+mutants = mutants.first(opts[:limit]) if opts[:limit]
+
+case cmd
+when "sites"
+  mutants.each { |m| puts m.site }
+  puts "#{mutants.length} sites"
+
+when "count"
+  by_file = mutants.group_by { |m| File.basename(m.file) }
+  ops = mutants.map { |m| m.site.op }.uniq.sort
+  printf("%-22s %s  total\n", "file", ops.map { |o| o.rjust(4) }.join)
+  by_file.sort.each { |f, ms|
+    row = ops.map { |o| ms.count { |m| m.site.op == o }.to_s.rjust(4) }
+    printf("%-22s %s  %5d\n", f, row.join, ms.length)
+  }
+  puts "#{mutants.length} sites in #{by_file.length} files"
+
+when "check-annotations"
+  bad = Mutation.check_annotations
+  bad.each { |b| puts b }
+  puts(bad.empty? ? "annotations ok" : "#{bad.length} stale annotation(s)")
+  exit(bad.empty? ? 0 : 1)
+
+when "run"
+  ok = Mutation.certify(mutants, jobs: opts[:jobs], ruby: ruby,
+                        timeout: opts[:timeout])
+  exit(ok ? 0 : 1)
+
+else
+  abort "pmmutate: sites | count | run | check-annotations"
+end
+RUBY

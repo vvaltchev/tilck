@@ -1,0 +1,1176 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# THE MODEL: what the package manager is supposed to do, as a program.
+#
+# This is the contract, written to be read. It has no I/O, no globals
+# of its own, no packages and no package manager: a world is a set of
+# installations, a request is a parsed command line, and every
+# operation is a function from (registry, world, request, invocation)
+# to (exit code, world', output). Small enough to audit in one sitting,
+# and wrong in the open rather than wrong in a branch nobody reads.
+#
+# It exists because the implementation cannot be its own oracle. Every
+# logic bug this tree has had was an operation that acted on AN
+# installation when it meant a specific one, and each was plausible
+# enough that a test asserting "something happened" passed. The
+# exhaustive lane (tests/exhaustive/) asks the model and the
+# implementation the same question for every small world and every
+# command, and any disagreement is a bug in one of them -- and which
+# one is a decision made in the open, here.
+#
+# Where the implementation and this file disagree today, this file is
+# the spec: it states what is RIGHT, not what the code does. Three
+# such places are marked SPEC below.
+#
+# What it reuses from the implementation, deliberately: Coords, Ver
+# and Scope, which are pure value objects with their own tests, and
+# ALL_ARCHS (the harness sets every gcc_ver). Nothing that decides
+# anything.
+#
+# Validated two ways before it is trusted (tests/test_model.rb): every
+# historical bug is a case with the hand-written correct answer, and
+# select() is total -- it never names an installation the world does
+# not have.
+#
+
+require 'set'
+require_relative '../../early_logic'
+require_relative '../../arch'
+require_relative '../../version'
+require_relative '../../coords'
+require_relative '../../scope'
+require_relative '../../request'
+
+module Model
+
+  # --- types --------------------------------------------------------------
+
+  # One installation, entire. `record` is what .build_inputs says about
+  # it (:ok built from the sources we have, :changed built from
+  # something else, :missing no record); `origin` and `mark` are what
+  # .install_origin says: how the version was chosen (:default
+  # installed as the default version, :pinned asked for by name), and
+  # why it is here (:manual asked for by name, :auto pulled in as a
+  # dependency -- what --autoremove may take).
+  Key = Data.define(:name, :ver, :coords, :record, :origin, :mark) do
+    def to_s = "#{name}@#{ver} #{coords} #{record}/#{origin}/#{mark}"
+    def same_install?(o) = name == o.name && ver == o.ver && coords == o.coords
+  end
+
+  # A package as the model sees it: no recipe, only what decides
+  # placement and resolution.
+  #
+  #   kind         :target | :noarch | :portable | :distro | :compiler
+  #                | :stack | :stack_cc (host_gcc) | :cross_cc (gcc-*-musl)
+  #   versions     the choice the package DECLARES (installable_versions):
+  #                a request must name one of them, exactly or by a
+  #                series that picks one. Empty: any version, as written
+  #   deps         [[name, pin_or_nil], ...]
+  #   arch_list    target only: arch NAMES it builds for
+  #   board_list   target only: board names, nil = any
+  #   install_archs  nil, or arch NAMES one install writes (gnuefi)
+  #   target_arch  cross_cc only: the arch NAME it targets
+  #   host_os, host_arch  where this package may run: lists of names,
+  #                       nil = anywhere
+  #   world_root   a root of the host world (host_gcc, host_qemu):
+  #                everything only the roots need runs where they do
+  Shape = Data.define(:name, :kind, :versions, :default_ver, :deps,
+                      :arch_list, :board_list, :default, :install_archs,
+                      :target_arch, :host_os, :host_arch, :world_root,
+                      :meta) do
+    def self.make(name, kind, versions: [], default_ver: nil,
+                  deps: [], arch_list: nil, board_list: nil,
+                  default: false, install_archs: nil, target_arch: nil,
+                  host_os: nil, host_arch: nil, world_root: false,
+                  meta: false)
+      vs = versions.map { |v| Ver(v) }
+      new(name: name, kind: kind, versions: vs,
+          default_ver: Ver(default_ver || versions.first || "1.0.0"),
+          deps: deps.map { |d, p| [d, p && Ver(p)] },
+          arch_list: arch_list, board_list: board_list, default: default,
+          install_archs: install_archs, target_arch: target_arch,
+          host_os: host_os, host_arch: host_arch, world_root: world_root,
+          meta: meta)
+    end
+
+    def target?   = kind == :target
+    def noarch?   = kind == :noarch
+    def host?     = !target? && !noarch?
+    def compiler? = kind == :cross_cc          # what `-u ALL` keeps
+    def stack?    = kind == :stack
+  end
+
+  class Registry
+    def initialize(shapes)
+      @by_name = shapes.to_h { |s| [s.name, s] }
+    end
+
+    def [](name)  = @by_name[name]
+    def names     = @by_name.keys
+    def shapes    = @by_name.values
+    def key?(n)   = @by_name.key?(n)
+
+    # The cross compiler for an arch, if one is registered: a target
+    # package depends on it implicitly.
+    def cross_cc_for(arch)
+      shapes.find { |s| s.kind == :cross_cc && s.target_arch == arch.name }
+    end
+
+    def deps_of(name, scope)
+      s = self[name]
+      return members_of(scope).map { |n| [n, nil] } if s.meta
+      out = s.deps.dup
+      if s.target? && (cc = cross_cc_for(scope.arch))
+        out << [cc.name, nil] if out.none? { |d, _| d == cc.name }
+      end
+      return out
+    end
+
+    # SPEC: a Tilck stack's members at a scope are what is declared
+    # default and supported there, and the cross compilers the arch
+    # is built with -- x86 takes both of its own, the UEFI loader
+    # being 64-bit whatever the kernel is.
+    def members_of(scope)
+      named = shapes.select { |m|
+        !m.meta && m.default && Model.supported?(m, scope, self)
+      }.map(&:name)
+      return (named + compilers_for(scope.arch).map(&:name)).uniq
+    end
+
+    def compilers_for(arch)
+      wanted = arch.family == "generic_x86" ? %w[i386 x86_64] : [arch.name]
+      return shapes.select { |s|
+        s.kind == :cross_cc && wanted.include?(s.target_arch)
+      }
+    end
+
+    def roots = shapes.select(&:world_root)
+
+    # The host world: reachable from a root, and from nothing else.
+    # Same derivation as PackageManager#host_world_names, over the
+    # version-less dependency lists.
+    def world_names
+      closure = ->(n) {
+        seen = []
+        queue = self[n].deps.map(&:first)
+        while (d = queue.shift)
+          next if seen.include?(d) || !key?(d)
+          seen << d
+          queue.concat(self[d].deps.map(&:first))
+        end
+        seen
+      }
+      world = roots.flat_map { |r| closure.call(r.name) + [r.name] }.uniq
+      outside = names - world
+      reachable = outside.flat_map { |n| closure.call(n) + [n] }.uniq
+      return world - reachable
+    end
+  end
+
+  # The invocation's environment: the shell's ARCH and BOARD, the
+  # stack HOST_VER_GCC names, and the host itself (OS and arch names).
+  # The flags are in the Request.
+  Inv = Data.define(:env_arch, :env_board, :default_stack, :host)
+
+  # What the invocation resolves to: the product's own value
+  # (scripts/pkgmgr/scope.rb), reused the way Coords and Ver are. It
+  # decides nothing but the board rule, which is stated there.
+  Scope = ::Scope
+
+  # A parsed command line: the product's own value (request.rb),
+  # reused the way Scope is, so that the planner and this answer the
+  # same question. targets: [[name, Ver | :all | nil]]. arch:
+  # Architecture | :all | nil. cc: Ver | :all | nil. contrib is
+  # main.rb's business and means nothing here.
+  Request = ::Request
+
+  Outcome = Data.define(:rc, :world, :out)
+
+  class Conflict < StandardError; end
+
+  NEVER_REMOVE = ["ruby"].freeze
+
+  module_function
+
+  # --- scope ----------------------------------------------------------------
+
+  # `-a` is a SCOPE for the modes that build (-s, the default install,
+  # --list-installable): the operation happens for that arch. It is a
+  # FILTER for -u, which stays in the shell's scope and narrows what it
+  # removes. Same flag, two meanings, and main.rb keeps them apart the
+  # same way.
+  def scope(inv, req, arch_is_scope:)
+    arch = inv.env_arch
+    if arch_is_scope && req.arch.is_a?(Architecture)
+      arch = req.arch
+    end
+    board = if arch_is_scope && req.board.is_a?(String)
+      req.board
+    elsif arch == inv.env_arch && inv.env_board
+      inv.env_board
+    else
+      arch.default_board
+    end
+    return Scope.new(arch: arch, board: board,
+                     stack: req.stack || inv.default_stack,
+                     env_arch: inv.env_arch, env_board: inv.env_board,
+                     host: inv.host)
+  end
+
+  # --- placement ------------------------------------------------------------
+
+  # Where an installation of `shape` at `ver` lives, under `scope`.
+  # This is the table in docs/package_manager.md.
+  def coords_of(shape, scope, arch: scope.arch, stack: scope.stack)
+    case shape.kind
+    when :noarch
+      Coords.new("noarch", nil, nil)
+    when :portable, :cross_cc
+      Coords.new(HOST_OS_ARCH, nil, nil)
+    when :distro, :stack_cc
+      Coords.new(HOST_OS_ARCH, HOST_DISTRO, nil)
+    when :compiler
+      Coords.new(HOST_OS_ARCH, HOST_DISTRO, HOST_CC)
+    when :stack
+      Coords.new(HOST_OS_ARCH, nil, Coords.stack_name(stack))
+    when :target
+      Coords.new("tilck-#{arch.name}", scope.board_of(arch),
+                 "gcc-#{arch.gcc_ver}")
+    else
+      raise "unknown kind #{shape.kind}"
+    end
+  end
+
+  # Every coordinates one install of `shape` writes: one, or several
+  # for a package that builds for more than one arch per call.
+  def install_coords(shape, scope)
+    return [coords_of(shape, scope)] if shape.install_archs.nil?
+    return shape.install_archs.map { |a|
+      coords_of(shape, scope, arch: ALL_ARCHS[a])
+    }
+  end
+
+  # --- support --------------------------------------------------------------
+
+  def arch_supported?(shape, scope)
+    return true if !shape.target?
+    return shape.arch_list.include?(scope.arch.name)
+  end
+
+  # The scope's board, for every kind of package that has an arch: a
+  # host tool with a board_list is a tool for building that board,
+  # and a noarch package has no board to be bound to.
+  def board_supported?(shape, scope)
+    return true if shape.board_list.nil? || shape.noarch?
+    return shape.board_list.include?(scope.board)
+  end
+
+
+  # Where a shape may run, by its own word...
+  def own_host_supported?(shape, scope)
+    return false if shape.host_os && !shape.host_os.include?(scope.host.os)
+    return false if shape.host_arch &&
+                    !shape.host_arch.include?(scope.host.arch.name)
+    return true
+  end
+
+  # ...and by the world it belongs to: what exists only to serve the
+  # roots runs where the roots run.
+  def host_supported?(registry, shape, scope)
+    return false if !own_host_supported?(shape, scope)
+    return true if !registry.world_names.include?(shape.name)
+    return registry.roots.all? { |r| own_host_supported?(r, scope) }
+  end
+
+  def supported?(shape, scope, registry = nil)
+    return false if registry && !host_supported?(registry, shape, scope)
+    return arch_supported?(shape, scope) && board_supported?(shape, scope)
+  end
+
+  # --- what is installed ----------------------------------------------------
+
+  def keys_of(world, name) = world.select { |k| k.name == name }
+
+  def installed?(world, shape, ver, scope)
+    return install_coords(shape, scope).all? { |c|
+      world.any? { |k| k.name == shape.name && k.ver == ver && k.coords == c }
+    }
+  end
+
+  # --- version binding ------------------------------------------------------
+
+  # A root asked for by version is a pin. A pin anywhere in the closure
+  # beats a default; two pins that disagree are an error, and nothing
+  # is installed.
+  # The stack compiler's default version is the stack in effect --
+  # `-H 8.8.8 -s host_x` builds host_x into 8.8.8 because host_x
+  # depends on host_gcc and host_gcc resolves to 8.8.8 -- which is
+  # how the real HostGccPackage#default_ver reads too.
+  def default_of(registry, name, scope)
+    s = registry[name]
+    return scope.stack if s.kind == :stack_cc
+    return s.default_ver
+  end
+
+  def bind_versions(registry, roots, scope)
+
+    bound = {}
+    pinned = {}
+    queue = []
+
+    for name, ver in roots do
+      raise Conflict, "#{name}: unknown" if !registry.key?(name)
+      if ver
+        raise Conflict, name if pinned[name] && bound[name] != ver
+        bound[name] = ver
+        pinned[name] = true
+      else
+        bound[name] ||= default_of(registry, name, scope)
+      end
+      queue << name
+    end
+
+    seen = Set.new
+
+    while !queue.empty?
+      name = queue.shift
+      next if seen.include?(name)
+      seen << name
+
+      for dep, pin in registry.deps_of(name, scope) do
+        raise Conflict, "#{dep}: unknown" if !registry.key?(dep)
+
+        if pin
+          raise Conflict, dep if pinned[dep] && bound[dep] != pin
+          bound[dep] = pin
+          pinned[dep] = true
+        else
+          bound[dep] ||= default_of(registry, dep, scope)
+        end
+
+        queue << dep
+      end
+    end
+
+    return [bound, pinned]
+  end
+
+  # --- the plan -------------------------------------------------------------
+
+  # What `-s roots` builds, in dependency order: the closure of the
+  # roots, cut at anything already installed at its bound version --
+  # an installed node's dependencies are not walked.
+  def plan(registry, world, roots, scope)
+
+    bound, pinned = bind_versions(registry, roots, scope)
+
+    stack = bound["host_gcc"] || scope.stack
+    scope = scope.with(stack: stack)
+
+    installed = registry.names.select { |n|
+      installed?(world, registry[n], bound[n], scope)
+    }.to_set
+
+    order = []
+    visiting = Set.new
+
+    visit = ->(n) {
+      next if order.include?(n) || installed.include?(n)
+      next if visiting.include?(n)
+      visiting << n
+      registry.deps_of(n, scope).each { |d, _| visit.call(d) }
+      order << n
+    }
+
+    roots.each { |n, _| visit.call(n) }
+
+    # What .install_origin records. A version the user asked for by
+    # name is pinned even when it equals the default; a dependency's
+    # pin is pinned only when it moved the version OFF the default --
+    # a pin equal to the default is still a default install, so that
+    # a later bump of the default still upgrades it.
+    named = roots.select { |_, v| v }.map(&:first).to_set
+
+    entries = order.map { |n|
+      moved = bound[n] != default_of(registry, n, scope)
+      origin = named.include?(n) || moved ? :pinned : :default
+      [n, bound[n], origin]
+    }
+
+    return [entries, scope, bound]
+  end
+
+  # --- transitions ----------------------------------------------------------
+
+  # `-s ALL`: every package that can be installed HERE, less the cross
+  # compilers and less the host world (Registry#world_names). Per
+  # scope, since what is installable depends on the arch and board.
+  # With --with-host-packages, the world's ROOTS come too, at their
+  # default version -- no version of ALL for them -- and bring what
+  # they need. `-s X:ALL`: every version X declares, or its default
+  # when it declares none.
+  def expand_all(registry, targets, scope, host_packages: false)
+    world = registry.world_names
+    return targets.flat_map { |name, ver|
+      names = if name != :all then [[name, ver]]
+              else
+                own = registry.shapes.reject(&:compiler?)
+                              .reject { |s| world.include?(s.name) }
+                              .select { |s| supported?(s, scope, registry) }
+                              .map { |s| [s.name, ver] }
+                roots = host_packages ? registry.roots : []
+                roots = roots.select { |s| supported?(s, scope, registry) }
+                own + roots.map { |s| [s.name, nil] }
+              end
+      names.flat_map { |n, v|
+        next [[n, v]] if v != :all
+        s = registry[n]
+        (s.nil? || s.versions.empty? ? [nil] : s.versions).map { |x| [n, x] }
+      }
+    }
+  end
+
+  # SPEC: a package named more than once -- twice by version, or by
+  # X:ALL -- is installed once per version, in rounds: the first
+  # round takes every package's first version, the next the second
+  # versions, and so on, each planned from the world the one before
+  # it leaves. One plan cannot hold two versions of a package: each
+  # pins its own dependencies (a QEMU its compiler), and two pins of
+  # one dependency are a conflict. The implementation once planned
+  # `-s host_qemu:6.2.0 host_qemu:7.2.0` as one plan, in one stack.
+  def rounds_of(targets)
+    rounds = []
+    for t in targets do
+      r = rounds.find { |x| x.none? { |n, _| n == t.first } }
+      r ? r << t : rounds << [t]
+    end
+    return rounds
+  end
+
+  def install_rounds(registry, world, req, scope)
+    rounds = rounds_of(expand_all(registry, req.targets, scope,
+                                  host_packages: req.host_packages))
+    last = nil
+    for r in rounds do
+      last = install(registry, world, req.with(targets: r), scope)
+      return last if last.rc != 0
+      world = last.world
+    end
+    return rounds.length == 1 ? last : Outcome.new(0, world, "installed")
+  end
+
+  # SPEC: a version names one the package declares -- exactly, or by
+  # a series that picks exactly one -- or the request is refused at
+  # the door. A package declaring nothing takes the version as
+  # written. `host_qemu:6` is 6.2.0; `host_qemu:9.9.9` is refused
+  # before a compiler is built for it.
+  def resolve_versions(registry, targets)
+    out = targets.map { |n, v|
+      s = registry[n]
+      next [n, v] if v.nil? || v == :all || s.nil? || s.versions.empty?
+      next [n, v] if s.versions.include?(v)
+      hits = s.versions.select { |x| x.to_s.start_with?("#{v}.") }
+      return [nil, "#{n}:#{v} is not a version #{n} can install"] \
+        if hits.length != 1
+      [n, hits.first]
+    }
+    return [out, nil]
+  end
+
+  # `claimed` names the roots the request speaks for: what -s was
+  # given, or the default set. Those are the user's -- :manual when
+  # installed, and re-marked :manual when already here as somebody's
+  # dependency. A root that is not claimed is an upgrade, and inherits
+  # the mark of the default install it replaces. Everything the plan
+  # brings in besides is :auto.
+  def install(registry, world, req, scope, claimed: nil)
+
+    roots, refused = resolve_versions(registry,
+                                      expand_all(registry, req.targets,
+                                                 scope, host_packages:
+                                                        req.host_packages))
+    return Outcome.new(1, world, refused) if refused
+    names = roots.map(&:first)
+    claimed ||= names                  # ALL expanded: every one of them
+
+    if (bad = names.find { |n| !registry.key?(n) })
+      return Outcome.new(1, world, "Package not found: #{bad}")
+    end
+
+    # SPEC: support is checked before anything is touched, for the
+    # arch AND the board -- of every package, a host tool for one
+    # board included. The implementation checked the board inside the
+    # install, after -f had already removed the old tree.
+    for n in names do
+      s = registry[n]
+      if !supported?(s, scope, registry)
+        return Outcome.new(1, world, "#{n} is not supported here")
+      end
+    end
+
+    # SPEC: a version conflict is found before -f removes anything.
+    begin
+      entries, scope, bound = plan(registry,
+                                   force_removed(registry, world, req, scope),
+                                   roots, scope)
+    rescue Conflict => e
+      return Outcome.new(1, world, "Version conflict: #{e.message}")
+    end
+
+    # Nothing in the plan may be a package this host cannot build:
+    # the implementation refuses the first such entry at the door, and
+    # a plan that would stop halfway is refused whole here.
+    if (off = entries.find { |n, _, _| !host_supported?(registry,
+                                                          registry[n], scope) })
+      return Outcome.new(1, world, "#{off.first} requires another host")
+    end
+
+    return Outcome.new(0, world, "dry run") if req.dry
+
+    # SPEC: a package asked for by name is the user's from now on, even
+    # when it was already here as somebody's dependency -- at the
+    # version the request means, which a pin beside it may have moved.
+    for name, _ in roots do
+      next if !claimed.include?(name)
+      v = bound[name]
+      here = keys_of(world, name).select { |k|
+        k.ver == v && k.mark == :auto &&
+          install_coords(registry[name], scope).include?(k.coords)
+      }
+      world = remarked(world, here, :manual) if !here.empty?
+    end
+
+    world = force_removed(registry, world, req, scope) if req.force
+
+    if entries.empty?
+      return Outcome.new(0, world, "already installed")
+    end
+
+    asked = roots.map(&:first).to_set
+    for name, ver, origin in entries do
+      mark = if claimed.include?(name) then :manual
+             elsif asked.include?(name) then inherited_mark(world, name)
+             else :auto
+             end
+      world = with_installed(registry, world, name, ver, origin, scope,
+                             mark: mark)
+    end
+
+    return Outcome.new(0, world, "installed")
+  end
+
+  # -f: the exact installations the requested roots would recreate,
+  # removed. Nothing else -- not the other versions, not the other
+  # boards, not the other stacks.
+  def force_removed(registry, world, req, scope)
+
+    return world if !req.force
+
+    out = world.dup
+
+    for name, ver in req.targets do
+      s = registry[name]
+      v = ver || s.default_ver
+      for c in install_coords(s, scope) do
+        out = out.reject { |k| k.name == name && k.ver == v && k.coords == c }
+             .to_set
+      end
+    end
+
+    return out
+  end
+
+  def with_installed(registry, world, name, ver, origin, scope,
+                     mark: :manual)
+    s = registry[name]
+    out = world.dup
+    for c in install_coords(s, scope) do
+      out = out.reject { |k| k.name == name && k.ver == ver && k.coords == c }
+      out << Key.new(name: name, ver: ver, coords: c, record: :ok,
+                     origin: origin, mark: mark)
+    end
+    return out.to_set
+  end
+
+  # The same key, marked. Every install of the name at the version and
+  # coordinates, since a key stands for one of them.
+  def remarked(world, keys, mark)
+    fresh = keys.map { |k|
+      Key.new(name: k.name, ver: k.ver, coords: k.coords, record: k.record,
+              origin: k.origin, mark: mark)
+    }
+    return (world - keys + fresh).to_set
+  end
+
+  # What `-u` names. Total: a subset of the world, always.
+  def select(registry, world, req, scope)
+
+    name, ver = req.targets.first
+    return select_all(registry, world, req, scope) if name == :all
+    return Set.new if NEVER_REMOVE.include?(name)   # by name, as for ALL
+
+    shape = registry[name]
+
+    # An orphan -- on disk, no package -- has nothing to say where it
+    # lives, so -a, -b and -c are read directly as coordinates: an
+    # arch's machine, a board's env, a stack. With none, every copy of
+    # it goes.
+    if shape.nil?
+      cc = req.cc == :all ? nil : req.cc
+      return keys_of(world, name).select { |k|
+        (cc.nil? || k.coords.stack == "gcc-#{cc}") &&
+        (req.arch.nil? || req.arch == :all ||
+         k.coords.machine == "tilck-#{req.arch.name}") &&
+        (req.board.nil? || req.board == :all || k.coords.env == req.board)
+      }.to_set
+    end
+
+    at = keys_of(world, name).select { |k|
+      uninstall_coords?(shape, k.coords, req, scope)
+    }
+
+    picked = if ver == :all
+      at
+    elsif ver
+      at.select { |k| k.ver == ver }
+    else
+      # SPEC: the fallback -- no version named, default not here --
+      # removes what is at THESE coordinates, decided by these
+      # coordinates. The implementation decides it by whether the
+      # default is installed anywhere.
+      d = shape.default_ver
+      at.any? { |k| k.ver == d } ? at.select { |k| k.ver == d } : at
+    end
+
+    return picked.to_set
+  end
+
+  # Is an installation at `c` one this request is about?
+  def uninstall_coords?(shape, c, req, scope)
+
+    cc = req.cc == :all ? nil : req.cc     # -c ALL: no constraint
+
+    if shape.noarch?
+      return req.arch.nil? && req.board.nil? && cc.nil?
+    end
+
+    if shape.host?
+      return false if !req.arch.nil?        # an arch means nothing here
+      return false if !req.board.nil?       # nor a board
+      return c == coords_of(shape, scope) if cc.nil?
+      return false if !shape.stack?         # nor a compiler, unless :stack
+      return c == coords_of(shape, scope, stack: cc)
+    end
+
+    # target
+    archs = case req.arch
+      when :all then ALL_ARCHS.values
+      when nil  then [scope.arch]
+      else [req.arch]
+    end
+
+    return archs.any? { |a|
+      want = coords_of(shape, scope, arch: a)
+      if req.arch == :all
+        # every board of every arch, and every compiler
+        c.machine == want.machine && (cc.nil? || c.stack == "gcc-#{cc}")
+      else
+        # the arch's board, the one -b names, or every one for -b ALL;
+        # the compiler -c names, else the coordinates' own
+        env_ok = req.board == :all || c.env == (req.board || want.env)
+        stack_ok = cc ? c.stack == "gcc-#{cc}" : c.stack == want.stack
+        c.machine == want.machine && env_ok && stack_ok
+      end
+    }
+  end
+
+  # `-u ALL`: SPEC. Everything installed for this scope -- the target
+  # arch's packages at its current coordinates, and every host and
+  # noarch package -- less the cross compilers unless -f, and less
+  # what a clean must never take. -a ALL widens to every arch and
+  # board; -c narrows to what one compiler built.
+  # SPEC: -u ALL spares the cross compilers unless -f, and the host
+  # world unless --with-host-packages; --clean spares neither.
+  def select_all(registry, world, req, scope)
+    world_names = registry.world_names
+    return world.select { |k|
+      s = registry[k.name]
+      next false if NEVER_REMOVE.include?(k.name)
+      next false if s&.compiler? && !req.force
+      next false if !req.host_packages && world_names.include?(k.name)
+      if req.cc && req.cc != :all
+        next false if k.coords.stack != "gcc-#{req.cc}"
+      end
+
+      if s.nil? || !s.target?
+        true
+      elsif req.arch == :all
+        true
+      else
+        a = req.arch || scope.arch
+        k.coords.machine == "tilck-#{a.name}" &&
+          (req.board == :all ||
+           k.coords.env == (req.board || scope.board_of(a)))
+      end
+    }.to_set
+  end
+
+  def uninstall(registry, world, req, scope)
+    name, _ = req.targets.first
+    if name != :all && !registry.key?(name) && keys_of(world, name).empty?
+      return Outcome.new(1, world, "Package not found: #{name}")
+    end
+    targets, refused = resolve_versions(registry, req.targets)
+    return Outcome.new(1, world, refused) if refused
+    req = req.with(targets: targets, contrib: false)
+    gone = select(registry, world, req, scope)
+    return Outcome.new(0, world, "dry run") if req.dry
+    return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
+  end
+
+  # SPEC: --mark-manual / --mark-auto mark exactly what -u would remove
+  # -- the same selection, the same modifiers -- and -d marks nothing.
+  def mark(registry, world, req, scope, mark)
+    name, _ = req.targets.first
+    if name != :all && !registry.key?(name) && keys_of(world, name).empty?
+      return Outcome.new(1, world, "Package not found: #{name}")
+    end
+    targets, refused = resolve_versions(registry, req.targets)
+    return Outcome.new(1, world, refused) if refused
+    req = req.with(targets: targets, contrib: false)
+    picked = select(registry, world, req, scope)
+    return Outcome.new(0, world, "dry run") if req.dry
+    return Outcome.new(0, remarked(world, picked, mark), "marked")
+  end
+
+  # What one install needs: each dependency at the version it was built
+  # against -- the pin, else the one version present, else the default;
+  # every version present when there are two, since the one meant is
+  # not knowable -- at the coordinates it is found at from the
+  # install's own context. deps_of includes the cross compiler a target
+  # is built by.
+  def needed_by(registry, world, key, scope)
+    sc = scope_at(registry, key, scope)
+    return [] if registry[key.name].nil?
+    registry.deps_of(key.name, sc).flat_map { |d, pin|
+      next [] if registry[d].nil?
+      present = keys_of(world, d).map(&:ver).uniq
+      vers = if pin then [pin]
+             elsif present.length > 1 then present
+             else [present.first || default_of(registry, d, sc)]
+             end
+      at = install_coords(registry[d], sc)
+      world.select { |x| x.name == d && vers.include?(x.ver) &&
+                         at.include?(x.coords) }
+    }
+  end
+
+  # SPEC: --autoremove removes every :auto install that nothing kept
+  # needs, kept being the :manual installs and, transitively, what they
+  # need. -d removes nothing.
+  def autoremove(registry, world, req, scope)
+    kept = world.select { |k| k.mark == :manual }.to_set
+    queue = kept.to_a
+    while (k = queue.shift)
+      for d in needed_by(registry, world, k, scope) do
+        queue << d if kept.add?(d)
+      end
+    end
+    gone = world.reject { |k| kept.include?(k) }
+    return Outcome.new(0, world, "nothing to remove") if gone.empty?
+    return Outcome.new(0, world, "dry run") if req.dry
+    return Outcome.new(0, (world - gone).to_set, "removed #{gone.size}")
+  end
+
+  # --clean keeps the cross compilers whatever -f says -- `-u ALL -f
+  # -a ALL -c ALL` is the line that takes them -- and the bootstrap
+  # Ruby, which NEVER_REMOVE keeps from everything.
+  def clean(registry, world, req, scope)
+    all = Request.new(mode: :uninstall, targets: [[:all, :all]],
+                      force: false, dry: req.dry, arch: :all, board: nil,
+                      cc: nil, stack: nil, contrib: false,
+                      host_packages: true)
+    return uninstall(registry, world, all, scope)
+  end
+
+  # Which installed packages want a newer default: one installed AS the
+  # default, at the coordinates the default would take, whose version
+  # is no longer the default. A pinned install is left alone -- and so
+  # is the stack compiler, every install of which is the stack it
+  # names: a bumped HOST_VER_GCC is a new stack, not an old one moving.
+  # A stack compiler never: each install is the stack it names. A
+  # cross compiler at a version it still offers never: its default is
+  # the invocation's GCC_TC_VER, and every offered version is in use
+  # at once; one at a version it no longer offers is behind.
+  def upgradable(registry, world, scope)
+    return registry.shapes.select { |s|
+      next false if !supported?(s, scope, registry)
+      next false if s.kind == :stack_cc
+      c = coords_of(s, scope)
+      mine = world.select { |k|
+        k.name == s.name && k.coords == c && k.origin == :default
+      }
+      if s.kind == :cross_cc
+        next false if s.versions.empty?
+        next mine.any? { |k| !s.versions.include?(k.ver) }
+      end
+      mine.any? { |k| k.ver != s.default_ver }
+    }.map(&:name)
+  end
+
+  def upgrade(registry, world, req, scope)
+    roots = upgradable(registry, world, scope).map { |n| [n, nil] }
+    return Outcome.new(0, world, "up to date") if roots.empty?
+    plain = Request.new(mode: :install, targets: roots, force: false,
+                        dry: req.dry, arch: nil, board: nil, cc: nil,
+                        stack: nil, contrib: false, host_packages: false)
+    # An upgrade claims nothing: the new version is the user's exactly
+    # as much as the old was.
+    return install(registry, world, plain, scope, claimed: [])
+  end
+
+  # The mark an upgrade inherits: :manual if any default install of
+  # the name is the user's, since that is what the new version
+  # replaces.
+  def inherited_mark(world, name)
+    manual = keys_of(world, name).any? { |k|
+      k.origin == :default && k.mark == :manual
+    }
+    return manual ? :manual : :auto
+  end
+
+  # SPEC: every install whose record does not read :ok is rebuilt
+  # where it is, at its version, as it was asked for, and its record
+  # then reads :ok. Exactly what --check-for-updates lists as
+  # NEEDS_REBUILD: a package whose version was bumped is --upgrade's.
+  # Nothing else moves, and -d moves nothing.
+  # The scope an install's own coordinates describe: its arch and its
+  # board for a target install, the invocation's otherwise.
+  def scope_at(registry, key, scope)
+    # The stack compiler's install belongs to the stack it defines:
+    # what it needs is looked for there, not in the stack in effect.
+    return scope.with(stack: key.ver) if registry[key.name]&.kind == :stack_cc
+    m = key.coords.machine
+    return scope if !m.start_with?("tilck-")
+    a = ALL_ARCHS[m.delete_prefix("tilck-")]
+    return Scope.new(**scope.to_h.merge(arch: a, board: key.coords.env))
+  end
+
+  # SPEC: ...and only where the package can build it. An install at a
+  # board the package does not build for is stale and stays as it is:
+  # the implementation used to remove it first and find out second.
+  # What a stale install was built against, as far as anyone can know
+  # without its record: the dependency's pin, else the one version of
+  # it present, else its default. Two present and no pin is unknowable,
+  # and nil says so.
+  def built_against(registry, world, key, scope)
+    registry.deps_of(key.name, scope).map { |d, pin|
+      next [d, pin] if pin
+      here = keys_of(world, d).map(&:ver).uniq
+      return nil if here.length > 1
+      [d, here.first || default_of(registry, d, scope)]
+    }
+  end
+
+  # SPEC: ...planned as the install itself was, with what it was built
+  # against asked for by name: a dependency the recipe has grown since
+  # the install was made is put in first, and nothing already there
+  # moves. An install whose dependencies cannot be known refuses the
+  # whole run, before anything moves.
+  def rebuild(registry, world, req, scope)
+    bumped = upgradable(registry, world, scope)
+    stale = world.select { |k|
+      s = registry[k.name]
+      !s.nil? && supported?(s, scope, registry) &&
+        !bumped.include?(k.name) && state_of(k) != :ok &&
+        supported?(s, scope_at(registry, k, scope), registry)
+    }
+    return Outcome.new(0, world, "nothing stale") if stale.empty?
+
+    against = stale.map { |k|
+      built_against(registry, world, k, scope_at(registry, k, scope))
+    }
+    if (i = against.index(nil))
+      return Outcome.new(1, world, "#{stale[i].name}: built against what?")
+    end
+    return Outcome.new(0, world, "dry run") if req.dry
+
+    stale.zip(against).each do |k, deps|
+      sc = scope_at(registry, k, scope)
+      begin
+        entries, sc = plan(registry, world, [[k.name, k.ver], *deps], sc)
+      rescue Conflict => e
+        return Outcome.new(1, world, "Version conflict: #{e.message}")
+      end
+      for name, ver, origin in entries do
+        next if name == k.name
+        world = with_installed(registry, world, name, ver, origin, sc,
+                               mark: :auto)
+      end
+      fresh = Key.new(name: k.name, ver: k.ver, coords: k.coords,
+                      record: :ok, origin: k.origin, mark: k.mark)
+      world = (world - [k] + [fresh]).to_set
+    end
+
+    return Outcome.new(0, world, "rebuilt")
+  end
+
+  # No mode at all: the Tilck stack of this target -- the meta-package
+  # whose dependencies are the defaults -- plus whatever wants
+  # upgrading. A target without a stack gets its upgrades alone.
+  def default_install(registry, world, req, scope)
+    names = registry.shapes.select { |s|
+      s.meta && supported?(s, scope, registry)
+    }
+                    .map(&:name)
+    # The default set is claimed -- being a default is being wanted --
+    # and the upgrades beside it are upgrades.
+    claimed = names.dup
+    names |= upgradable(registry, world, scope)
+    return Outcome.new(0, world, "nothing to do") if names.empty?
+    plain = Request.new(mode: :install, targets: names.map { |n| [n, nil] },
+                        force: false, dry: req.dry, arch: nil, board: nil,
+                        cc: nil, stack: nil, contrib: false,
+                        host_packages: false)
+    return install(registry, world, plain, scope, claimed: claimed)
+  end
+
+  # Nothing the model knows is configurable, so -C never changes the
+  # world; it either finds the package or not.
+  def configure(registry, world, req, scope)
+    name, _ = req.targets.first
+    return Outcome.new(1, world, "Package not found") if !registry.key?(name)
+    return Outcome.new(1, world, "not configurable")
+  end
+
+  # --- observations ---------------------------------------------------------
+
+  def state_of(key)
+    return key.record == :missing ? :unknown : key.record
+  end
+
+  def observe_list(registry, world, scope)
+    return world.map { |k| [k.name, k.ver, k.coords, state_of(k)] }.to_set
+  end
+
+  def observe_check_updates(registry, world, scope)
+    upgrades = upgradable(registry, world, scope).sort
+    stale = registry.shapes.select { |s|
+      supported?(s, scope, registry) &&
+        keys_of(world, s.name).any? { |k| state_of(k) != :ok }
+    }.map(&:name).sort - upgrades
+    gone = missing_dependencies(registry, world, scope).sort - upgrades - stale
+
+    rc = (upgrades.empty? && stale.empty? && gone.empty?) ? 0 : 2
+    out = []
+    out << "NEEDS_UPGRADE #{upgrades.join(' ')}" if !upgrades.empty?
+    out << "NEEDS_REBUILD #{stale.join(' ')}" if !stale.empty?
+    out << "NEEDS_INSTALL #{gone.join(' ')}" if !gone.empty?
+    return Outcome.new(rc, world, out.join("\n"))
+  end
+
+  # SPEC: a dependency an installed package was built against that has
+  # no install at the version and coordinates it would be found at is
+  # missing, and --check-for-updates says so: an installed package
+  # nothing can build with is not a tree that is up to date. Judged
+  # for the installs supported here, as the rest of the report is.
+  def missing_dependencies(registry, world, scope)
+    return world.flat_map { |k|
+      s = registry[k.name]
+      sc = scope_at(registry, k, scope)
+      next [] if s.nil? || !supported?(s, sc, registry)
+      registry.deps_of(k.name, sc).filter_map { |d, pin|
+        next nil if registry[d].nil?
+        present = keys_of(world, d).map(&:ver).uniq
+        vers = if pin then [pin]
+               elsif present.length > 1 then present
+               else [present.first || default_of(registry, d, sc)]
+               end
+        at = install_coords(registry[d], sc)
+        found = world.any? { |x| x.name == d && vers.include?(x.ver) &&
+                                 at.include?(x.coords) }
+        found ? nil : d
+      }
+    }.uniq
+  end
+
+  def observe_installable(registry, world, scope)
+    return registry.shapes.select { |s| supported?(s, scope, registry) }
+                   .map(&:name).to_set
+  end
+
+  def observe_layout(registry, world, scope)
+    target = ->(a) {
+      next nil if a.gcc_ver.nil?
+      Coords.new("tilck-#{a.name}", scope.board_of(a), "gcc-#{a.gcc_ver}")
+            .pkgs_dir.to_s
+    }
+    v = { "PKGS_TARGET" => target.call(scope.env_arch) }
+    for a in ALL_ARCHS.values do
+      p = target.call(a)
+      v["PKGS_TARGET_#{a.name}"] = p if p
+    end
+    return v
+  end
+
+  # --- one step -------------------------------------------------------------
+
+  SCOPED_BY_ARCH = %i[install default installable].freeze
+
+  def step(registry, world, req, inv)
+    if (why = board_refusal(req, inv) || host_packages_refusal(req))
+      return Outcome.new(1, world, why)
+    end
+    sc = scope(inv, req, arch_is_scope: SCOPED_BY_ARCH.include?(req.mode))
+
+    case req.mode
+    when :install
+      if req.arch == :all || req.board == :all
+        install_every(registry, world, req, sc)
+      else
+        install_rounds(registry, world, req, sc)
+      end
+    when :uninstall then uninstall(registry, world, req, sc)
+    when :upgrade   then upgrade(registry, world, req, sc)
+    when :rebuild   then rebuild(registry, world, req, sc)
+    when :mark_manual then mark(registry, world, req, sc, :manual)
+    when :mark_auto   then mark(registry, world, req, sc, :auto)
+    when :autoremove  then autoremove(registry, world, req, sc)
+    when :clean     then clean(registry, world, req, sc)
+    when :configure then configure(registry, world, req, sc)
+    when :default   then default_install(registry, world, req, sc)
+    when :check_updates then observe_check_updates(registry, world, sc)
+    when :list, :installable, :layout, :context
+      Outcome.new(0, world, "")
+    else raise "unknown mode #{req.mode}"
+    end
+  end
+
+  # SPEC: -b names one arch's board. With -a ALL it is refused, and
+  # so is a board the arch in effect does not have -- for every mode,
+  # at the door, before anything is read.
+  # SPEC: --with-host-packages widens ALL and nothing else.
+  def host_packages_refusal(req)
+    return nil if !req.host_packages
+    return nil if req.targets.any? { |n, _| n == :all }
+    return "--with-host-packages applies to ALL"
+  end
+
+  def board_refusal(req, inv)
+    return nil if !req.board.is_a?(String)
+    return "one arch's board" if req.arch == :all
+    a = req.arch.is_a?(Architecture) ? req.arch : inv.env_arch
+    return a.all_boards.include?(req.board) ? nil : "unknown board"
+  end
+
+  # `-s X -a ALL`: once per arch, threading the world through; `-b
+  # ALL`: once per board of each arch, the same way.
+  #
+  # SPEC: a root this arch cannot build is skipped, and the others are
+  # still installed. The implementation skips the whole arch as soon
+  # as one root is unsupported, while printing that it skipped the
+  # package.
+  def install_every(registry, world, req, sc)
+    archs = req.arch == :all ? ALL_ARCHS.values : [sc.arch]
+    for a in archs do
+      for b in (req.board == :all ? a.all_boards : [nil]) do
+
+        s2 = sc.with(arch: a, board: b)
+        here = expand_all(registry, req.targets, s2,
+                          host_packages: req.host_packages).select { |n, _|
+          s = registry[n]
+          s.nil? || supported?(s, s2, registry)
+
+        }
+        next if here.empty?
+        o = install_rounds(registry, world, req.with(targets: here), s2)
+        return o if o.rc != 0
+        world = o.world
+      end
+    end
+    return Outcome.new(0, world, "installed")
+  end
+
+  # --- argv -----------------------------------------------------------------
+
+  # The enumerated grammar, parsed independently of OptionParser so
+  # that main.rb's own reading of it is under test too.
+  #
+  #   -s X[:V] (repeatable)  -u X[:V]  -S ARCH  -U ARCH  -f  -d
+  #   -a ARCH|ALL  -b BOARD|ALL  -c VER  -H STACK  --upgrade  --clean
+  #   -C X[:V]
+  #   -l  --check-for-updates  --list-installable  --print-layout
+  #   (nothing)  -> the default install
+  def parse(argv)
+
+    mode = :default
+    targets = []
+    force = dry = host_packages = false
+    arch = board = cc = stack = nil
+    a = argv.dup
+
+    split = ->(s) {
+      n, v = s.split(":", 2)
+      [n == "ALL" ? :all : n, v.nil? ? nil : (v == "ALL" ? :all : Ver(v))]
+    }
+
+    # A mode that names packages takes every bare word that follows:
+    # `-s a b` is two targets, as main.rb's get_multiple_args reads it.
+    named = ->() {
+      targets << split.call(a.shift)
+      targets << split.call(a.shift) while a.first && !a.first.start_with?("-")
+    }
+
+    while !a.empty?
+      t = a.shift
+      case t
+      when "-s" then mode = :install;   named.call
+      when "-u" then mode = :uninstall; named.call
+      when "-S" then mode = :install;   targets << ["gcc-#{a.shift}-musl", nil]
+      when "-U" then mode = :uninstall; targets << ["gcc-#{a.shift}-musl", nil]
+      when "-C" then mode = :configure; named.call
+      when "-f" then force = true
+      when "-d" then dry = true
+      when "-a"
+        x = a.shift
+        arch = x == "ALL" ? :all : ALL_ARCHS[x]
+      when "-b"
+        x = a.shift
+        board = x == "ALL" ? :all : x
+      when "-c"
+        x = a.shift
+        cc = x == "ALL" ? :all : Ver(x)
+      when "-H" then stack = Coords.parse_stack_ver(a.shift)
+      when "--upgrade"           then mode = :upgrade
+      when "--rebuild"           then mode = :rebuild
+      when "--autoremove"        then mode = :autoremove
+      when "--mark-manual"       then mode = :mark_manual; named.call
+      when "--mark-auto"         then mode = :mark_auto;   named.call
+      when "--clean"             then mode = :clean
+      when "-l"                  then mode = :list
+      when "--check-for-updates" then mode = :check_updates
+      when "--list-installable"  then mode = :installable
+      when "--print-layout"      then mode = :layout
+      when "-j"                  then mode = :context
+      when "--with-host-packages" then host_packages = true
+      when "-q", "--ascii", "-n" then nil          # change nothing
+      when "-g"                  then a.shift      # -l grouping
+      else raise "model: unknown argv token #{t}"
+      end
+    end
+
+    return Request.new(mode: mode, targets: targets, force: force, dry: dry,
+                       arch: arch, board: board, cc: cc, stack: stack,
+                       contrib: false, host_packages: host_packages)
+
+  end
+
+  # --- worlds ---------------------------------------------------------------
+
+  def key(name, ver, coords, record: :ok, origin: :default, mark: :manual)
+    Key.new(name: name, ver: Ver(ver), coords: coords, record: record,
+            origin: origin, mark: mark)
+  end
+
+  def world(*keys) = keys.to_set
+end

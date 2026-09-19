@@ -1,0 +1,321 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# THE HALF OF AN INSTALL NO UNIT TEST REACHES.
+#
+# The ordinary harness stubs run_command, so every test that
+# "installs" a package answers "did it build?" with a boolean and
+# never runs a subprocess. Everything after that answer -- the
+# staging directory, what a half-finished build leaves behind, the
+# atomic move, resuming, composing a sysroot out of what is actually
+# on disk -- is real code that only real installs execute.
+#
+# These packages build for real. Their build steps are mkdir and
+# touch, so the whole file runs in about a second, but the machinery
+# around them is the machinery that runs when GCC builds: same
+# staging path, same move, same rollback, same failure handling.
+#
+# What this deliberately does NOT do is pretend to be a build. It
+# cannot catch a configure option upstream removed, or a meson that
+# refuses another meson's build directory, or an interpreter found on
+# PATH -- five of this session's failures, every one of which needed
+# the real QEMU. Fake packages exercise the ORCHESTRATION; only real
+# builds exercise the contract with the outside world.
+#
+
+require_relative 'test_helper'
+
+class TestOrchestration < Minitest::Test
+
+  include TestHelper
+
+  # A package that really builds: two commands, both real, producing
+  # the file its expected_files names.
+  class RealPackage < TestHelper::FakePackage
+
+    # FakePackage's install_impl_internal logs the name and returns
+    # true without building anything -- which is the whole point of it,
+    # and the reason it cannot exercise any of this. These run the
+    # steps for real, and still log, so ordering stays observable.
+    def install_impl_internal(install_dir)
+      TestHelper::FakePackage.install_log << name
+      return run_build_steps(install_dir)
+    end
+
+    def build_steps(ver = nil) = [
+      Mkdir(path: "$INSTALL/install/bin"),
+      Run(log: "touch.log", argv: ["touch", "$INSTALL/install/bin/#{name}"]),
+    ]
+
+    def expected_files(ver = nil) = [["install/bin/#{name}", false]]
+  end
+
+  # ...and one that fails partway, after making a mess.
+  class FailingPackage < TestHelper::FakePackage
+
+    def install_impl_internal(install_dir)
+      TestHelper::FakePackage.install_log << name
+      return run_build_steps(install_dir)
+    end
+
+    def build_steps(ver = nil) = [
+      Mkdir(path: "$INSTALL/install/bin"),
+      Run(log: "half.log",
+          argv: ["touch", "$INSTALL/install/bin/half-written"]),
+      Run(log: "boom.log", argv: ["false"]),
+    ]
+
+    def expected_files(ver = nil) = [["install/bin/#{name}", false]]
+  end
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  # --- ordering ------------------------------------------------------
+
+  # A diamond: top needs both sides, both sides need the base. The
+  # base must be built once, and before anything that uses it.
+  def test_a_diamond_is_built_bottom_up
+    with_fake_tc do
+      with_real_commands do
+        pkgmgr.register(RealPackage.new("base"))
+        pkgmgr.register(RealPackage.new("left", dep_list: [Dep("base", false)]))
+        pkgmgr.register(RealPackage.new("right", dep_list: [Dep("base", false)]))
+        pkgmgr.register(RealPackage.new("top",
+                                        dep_list: [Dep("left", false),
+                                                   Dep("right", false)]))
+
+        plan = pkgmgr.resolve_install_plan([["top", nil]])
+        for name, ver in plan do
+          assert pkgmgr.install(name, ver), "#{name} failed to install"
+        end
+
+        log = FakePackage.install_log
+        assert_equal 1, log.count("base"), "the base was built #{log.count("base")} times"
+        assert log.index("base") < log.index("left"), "left before its base"
+        assert log.index("base") < log.index("right"), "right before its base"
+        assert log.index("left") < log.index("top"), "top before left"
+        assert log.index("right") < log.index("top"), "top before right"
+      end
+    end
+  end
+
+  # --- the atomic move ------------------------------------------------
+
+  # What the build produced is what the install contains, and the
+  # staging tree is gone. Nothing is left half-moved.
+  # A package that installs itself whole -- its own install_impl,
+  # not the base's atomic move (freedoom, gnuefi) -- is recorded like
+  # any other: the executor announces the change, and the install it
+  # reads back gets its origin, its dependencies and its record.
+  # Without that, the world the executor read was the one before
+  # the build, the install was "not there", and --check-for-updates
+  # called it stale for ever.
+  def test_a_package_that_installs_itself_is_recorded
+    with_fake_tc do
+      with_stubbed_externals do
+        pkg = FakePackage.new("self")
+        pkg.define_singleton_method(:install_impl) { |ver|
+          FileUtils.mkdir_p(install_dir(ver))
+          true
+        }
+        pkgmgr.register(pkg)
+
+        rc, _ = run_cli("-s", "self", "-q")
+        assert_equal 0, rc
+
+        inst = pkgmgr.world.of("self").first
+        refute_nil inst
+        assert_equal :ok, bound(pkg).build_inputs_state_of(inst)
+        assert inst.default_install
+        assert inst.manual
+        assert_equal({}, InstallRecord.against(inst.path))
+        assert_equal [0, []],
+                     Planner.check_updates(pkgmgr, pkgmgr.world.judged(pkgmgr,
+                                                                      scope),
+                                           scope)
+      end
+    end
+  end
+
+  def test_a_successful_install_leaves_nothing_in_staging
+    with_fake_tc do
+      with_real_commands do
+        pkg = RealPackage.new("movey")
+        pkgmgr.register(pkg)
+
+        assert pkgmgr.install("movey")
+        pkgmgr.refresh
+
+        inst = pkg.get_install_list.find { |i| !i.path.nil? }
+        refute_nil inst, "nothing was installed"
+        assert (inst.path / "install" / "bin" / "movey").file?,
+               "the built file did not survive the move"
+
+        staging = TC / "staging" / "movey"
+        refute staging.directory?,
+               "the staging tree outlived a successful install"
+      end
+    end
+  end
+
+  # --- failure --------------------------------------------------------
+
+  # A build that dies partway has already written files. None of them
+  # may appear as an installation: a half-built tree that looks
+  # installed is worse than no tree at all, because the next thing to
+  # use it fails somewhere unrelated.
+  def test_a_failed_build_installs_nothing
+    with_fake_tc do
+      with_real_commands do
+        pkg = FailingPackage.new("boomy")
+        pkgmgr.register(pkg)
+
+        refute pkgmgr.install("boomy"), "a failing build reported success"
+        pkgmgr.refresh
+
+        installed = pkg.get_install_list.reject { |i| i.path.nil? }
+        assert_empty installed.map { |i| i.path.to_s },
+                     "a failed build left an installation behind"
+      end
+    end
+  end
+
+  # ...and the mess it made is kept, not deleted: that is what makes
+  # the next attempt a resume rather than a fresh download.
+  def test_a_failed_build_keeps_its_staging_tree
+    with_fake_tc do
+      with_real_commands do
+        pkgmgr.register(FailingPackage.new("boomy"))
+        refute pkgmgr.install("boomy")
+
+        half = TC / "staging" / "boomy" / "1.0.0" / "install" / "bin" /
+               "half-written"
+        assert half.file?,
+               "the half-finished build was thrown away, so a retry " \
+               "cannot resume"
+      end
+    end
+  end
+
+  # A second attempt picks the staging tree up rather than starting
+  # over. The tell is in the log, because the outcome is the same
+  # either way -- which is exactly why it needs a test.
+  def test_a_second_attempt_resumes_from_staging
+    with_fake_tc do
+      with_real_commands do
+        pkgmgr.register(FailingPackage.new("boomy"))
+        refute pkgmgr.install("boomy")
+
+        out = capture_stdout { pkgmgr.install("boomy") }
+        assert_match(/Resuming from staging/, out,
+                     "the second attempt started from scratch")
+      end
+    end
+  end
+
+  # --- the sysroot ----------------------------------------------------
+
+  # The sysroot is a view over what is installed, composed from the
+  # fragments each package publishes. Two packages, two fragments,
+  # one farm -- and it has to be built from what is on disk rather
+  # than from what the plan said would be.
+  def test_the_sysroot_is_composed_from_what_is_installed
+    with_fake_tc do
+      with_real_commands do
+        stack = Ver("13.3.0")
+
+        a = RealPackage.new("host_a", on_host: true, host_tier: :stack,
+                            arch_list: ALL_HOST_ARCHS.values)
+        b = RealPackage.new("host_b", on_host: true, host_tier: :stack,
+                            arch_list: ALL_HOST_ARCHS.values)
+
+        for p in [a, b] do
+          p.define_singleton_method(:sysroot_fragments) { |gcc_ver = nil|
+            inst = find_install(default_ver)
+            inst ? [[inst.path / "install" / "bin", "usr/bin"]] : []
+          }
+        end
+
+        pkgmgr.register(a)
+        pkgmgr.register(b)
+
+        with_host_stack(stack) do
+          assert pkgmgr.install("host_a")
+          assert pkgmgr.install("host_b")
+          pkgmgr.refresh
+          pkgmgr.compose_stack_sysroot(stack)
+        end
+
+        farm = pkgmgr.stack_coords(stack).sysroot / "usr" / "bin"
+        assert (farm / "host_a").exist?, "host_a is missing from the sysroot"
+        assert (farm / "host_b").exist?, "host_b is missing from the sysroot"
+      end
+    end
+  end
+
+  def capture_stdout(&block)
+    old = $stdout
+    $stdout = StringIO.new
+    block.call
+    $stdout.string
+  ensure
+    $stdout = old
+  end
+end
+
+# ---------------------------------------------------------------
+# What clean_build does with what a build left behind. Two shapes:
+# a build done out of tree, whose every artifact is under build/ and
+# install/, and one done in the source tree, which left a Makefile
+# there. The base class tells them apart by that Makefile; twenty
+# recipes used to override it with the first shape and then call up
+# into the second, and the distclean that could not run made every
+# resume re-extract the tarball.
+# ---------------------------------------------------------------
+
+class TestCleanBuild < Minitest::Test
+
+  include TestHelper
+
+  def pkg = FakePackage.new("cleaned")
+
+  def test_out_of_tree_leftovers_are_removed_and_the_source_is_kept
+    Dir.mktmpdir do |d|
+      dir = Pathname.new(d)
+      FileUtils.mkdir_p(dir / "build" / "deep")
+      FileUtils.mkdir_p(dir / "install" / "bin")
+      File.write(dir / "configure", "#!/bin/sh\n")
+      File.write(dir / "src.c", "int main(void){return 0;}\n")
+
+      assert pkg.clean_build(dir), "nothing to ask make: still a clean"
+      refute (dir / "build").exist?
+      refute (dir / "install").exist?
+      assert (dir / "configure").exist?
+      assert (dir / "src.c").exist?
+    end
+  end
+
+  def test_in_tree_build_is_asked_to_distclean
+    Dir.mktmpdir do |d|
+      dir = Pathname.new(d)
+      FileUtils.mkdir_p(dir / "install")
+      File.write(dir / "Makefile", "distclean:\n\ttouch distcleaned\n")
+
+      assert pkg.clean_build(dir)
+      refute (dir / "install").exist?
+      assert (dir / "distcleaned").exist?, "make distclean ran in the tree"
+    end
+  end
+
+  def test_a_makefile_without_distclean_reports_failure
+    # The caller's fallback -- delete and re-extract -- is the right
+    # answer for a tree nobody knows how to clean, and it must be told.
+    Dir.mktmpdir do |d|
+      dir = Pathname.new(d)
+      File.write(dir / "Makefile", "all:\n\t@true\n")
+      refute pkg.clean_build(dir)
+    end
+  end
+end

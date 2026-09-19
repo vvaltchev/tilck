@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# The layout, as seen from outside the package manager.
+#
+# CMake needs to know where installed packages live. It used to build
+# those paths itself, which meant the schema existed twice: once in
+# Coords and once, spelled out, in CMakeLists.txt. The two drifted the
+# moment the layout changed -- the CMake half still described
+# toolchain4 after everything else had moved on, and a build against
+# the new tree looked for directories nothing had created.
+#
+# So CMake asks instead. This prints KEY=value lines; Coords stays the
+# only thing that knows what a path looks like, and the next layout
+# change is one edit rather than a hunt for everyone who guessed.
+#
+# Emitted keys:
+#
+#   ARCH, BOARD, HOST_DISTRO, HOST_CC
+#       The coordinates the answers were computed from. CMake derives
+#       these too, so it can compare and stop rather than build half
+#       the tree against one architecture and half against another.
+#
+#   PKGS_HOST_PORTABLE, PKGS_HOST_DISTRO, PKGS_HOST_CC, PKGS_NOARCH
+#       The three host tiers and the noarch tree.
+#
+#   PKGS_TARGET
+#       Packages for the arch and board being built right now.
+#
+#   PKGS_TARGET_<arch>
+#       Packages for one specific arch, at its own default board. The
+#       x86 UEFI bootloader needs this: an x86_64 build has to link
+#       the ia32 loader against the i386 gnuefi.
+#
+#   QEMU_<version>
+#       The bin/ directory of each QEMU built in a host stack. The
+#       run_*qemu launchers read these for their -q option, which runs
+#       Tilck under one of our QEMUs instead of the system's; they ask
+#       rather than glob, for the same reason CMake does.
+#
+
+require_relative 'early_logic'
+require_relative 'arch'
+require_relative 'coords'
+require_relative 'package_manager'
+
+module Layout
+
+  module_function
+
+  # Which board an arch's packages are under is the package manager's
+  # rule (PackageManager#board_for), asked rather than copied. This
+  # file used to carry its own copy, "same rule as Package#target_board"
+  # -- and when that rule learned about scopes, the copy did not, so
+  # CMake's view of the tree and the package manager's could disagree.
+  def target_pkgs(arch, scope)
+    return nil if arch.gcc_ver.nil?
+    return Coords.target(arch, scope.board_of(arch), arch.gcc_ver).pkgs_dir
+  end
+
+  def vars(scope = pkgmgr.env_scope)
+
+    v = {
+      "ARCH"        => ARCH.name,
+      "BOARD"       => BOARD,
+      "HOST_DISTRO" => scope.host.distro,
+      "HOST_CC"     => scope.host.cc,
+      "TCROOT"      => TC,
+
+      "PKGS_HOST_PORTABLE" => Coords.new(scope.host.machine, nil,
+                                         nil).pkgs_dir,
+      "PKGS_HOST_DISTRO"   => Coords.new(scope.host.machine,
+                                         scope.host.distro, nil).pkgs_dir,
+      "PKGS_HOST_CC"       => Coords.new(scope.host.machine,
+                                         scope.host.distro,
+                                         scope.host.cc).pkgs_dir,
+      "PKGS_NOARCH"        => Coords.new("noarch", nil, nil).pkgs_dir,
+      "PKGS_TARGET"        => target_pkgs(scope.env_arch, scope),
+    }
+
+    # An arch with no compiler version configured has no package tree
+    # to name, so it is left out rather than emitted as a path with a
+    # hole in it. A consumer that needs one and does not find it can
+    # say so; a consumer handed "gcc-" cannot.
+    for arch in ALL_ARCHS.values
+      p = target_pkgs(arch, scope)
+      v["PKGS_TARGET_#{arch.name}"] = p if p
+    end
+
+    for inst in qemu_installs(scope) do
+      v["QEMU_#{inst.ver}"] = inst.path / "install" / "bin"
+    end
+
+    return v
+  end
+
+  # Every QEMU built in a host stack, oldest first; a broken one is
+  # not a QEMU anybody can run. None where the host world does not run
+  # (host_qemu is x86_64 Linux only, for now).
+  def qemu_installs(scope = pkgmgr.env_scope)
+    q = pkgmgr.get("host_qemu")
+    return [] if q.nil? || !q.at(scope).host_supported?
+    return pkgmgr.world.of(q.name).reject(&:broken).sort_by(&:ver)
+  end
+
+  def print_vars(scope = pkgmgr.env_scope)
+    vars(scope).each { |k, val| puts "#{k}=#{val}" }
+  end
+end

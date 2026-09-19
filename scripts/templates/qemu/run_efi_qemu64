@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+MAIN_DIR="@CMAKE_SOURCE_DIR@"
+QEMU_ARCH="x86_64"
+source "$MAIN_DIR/scripts/bash_includes/qemu_select"
+qemu_select "$@"
+set -- "${QEMU_ARGS[@]}"
 MY_OVMF_VARS="$BUILD_DIR/ovmf-vars.fd"
 OS="$(uname -s)"
 
@@ -34,7 +39,7 @@ if [ -z "$GDB_PORT" ]; then
    GDB_PORT=1234
 fi
 
-echo qemu-system-x86_64                                             \
+echo "$QEMU"                                             \
    @QEMU_COMMON_OPTS@                                               \
    @QEMU_RAM_OPT@                                                   \
    -gdb tcp::$GDB_PORT                                              \
@@ -43,7 +48,7 @@ echo qemu-system-x86_64                                             \
    -drive if=none,id=hd0,format=raw,file=$f                         \
    -device ide-hd,drive=hd0,bootindex=1 "$@"
 
-qemu-system-x86_64                                                  \
+"$QEMU"                                                             \
    @QEMU_COMMON_OPTS@                                               \
    @QEMU_RAM_OPT@                                                   \
    -gdb tcp::$GDB_PORT                                              \

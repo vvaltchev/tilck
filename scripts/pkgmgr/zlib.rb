@@ -29,38 +29,28 @@ class ZlibPackage < Package
     )
   end
 
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["install/lib/libz.a", false]
   ]
 
-  def clean_build(dir)
-    FileUtils.rm_rf(dir / "install")
-    super(dir)
-  end
-
-  def install_impl_internal(install_dir)
+  def build_steps(ver = default_ver)
 
     arch = default_arch().gcc_tc
-    ok = run_command("configure.log", [
-      "./configure",
-      "--prefix=#{install_dir}/install",
-      "--static"
-    ])
-    return false if !ok
 
-    ok = run_command("build.log", [
-      "make",
-      "-j#{BUILD_PAR}",
-      "AR=#{arch}-linux-ar",
-      "ARFLAGS=rcs",
-      "RANLIB=#{arch}-linux-ranlib",
-    ])
-    return false if !ok
+    return [
+      Run(log: "configure.log",
+          argv: ["./configure", "--prefix=$INSTALL/install", "--static"]),
 
-    ok = run_command("install.log", [ "make", "install" ])
-    return false if !ok
+      Run(log: "build.log", argv: [
+        "make",
+        "-j$PAR",
+        "AR=#{arch}-linux-ar",
+        "ARFLAGS=rcs",
+        "RANLIB=#{arch}-linux-ranlib",
+      ]),
 
-    return true
+      Run(log: "install.log", argv: ["make", "install"]),
+    ]
   end
 end
 

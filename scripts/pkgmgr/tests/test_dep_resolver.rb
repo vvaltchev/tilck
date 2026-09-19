@@ -191,3 +191,201 @@ class TestDepResolverResolve < Minitest::Test
     assert_empty DepResolver.resolve([], graph)
   end
 end
+
+#
+# dep_closure: nearest-first (breadth-first) transitive closure, used
+# for collecting the build flags a package's dependencies publish.
+# Deliberately a different order than resolve()'s topological sort.
+#
+class TestDepResolverClosure < Minitest::Test
+
+  def test_closure_excludes_self
+    graph = { "a" => ["b"], "b" => [] }
+    assert_equal ["b"], DepResolver.dep_closure("a", graph)
+  end
+
+  def test_closure_no_deps
+    graph = { "a" => [] }
+    assert_equal [], DepResolver.dep_closure("a", graph)
+  end
+
+  def test_closure_linear_chain
+    graph = { "a" => ["b"], "b" => ["c"], "c" => [] }
+    assert_equal ["b", "c"], DepResolver.dep_closure("a", graph)
+  end
+
+  def test_closure_is_nearest_first_not_reversed_toposort
+    # a depends on b and c; c depends on d. Breadth-first puts both
+    # direct deps (b, c) ahead of the transitive one (d). Reversing
+    # resolve()'s topological order would not: it can place d before b.
+    graph = { "a" => ["b", "c"], "b" => [], "c" => ["d"], "d" => [] }
+    assert_equal ["b", "c", "d"], DepResolver.dep_closure("a", graph)
+
+    topo = DepResolver.resolve(["a"], graph)
+    assert_equal ["b", "d", "c", "a"], topo
+    assert_equal ["c", "d", "b"], topo.reverse.reject { |n| n == "a" }
+  end
+
+  def test_closure_diamond_reports_shared_dep_once
+    graph = { "a" => ["b", "c"], "b" => ["d"], "c" => ["d"], "d" => [] }
+    got = DepResolver.dep_closure("a", graph)
+    assert_equal ["b", "c", "d"], got
+    assert_equal 1, got.count("d")
+  end
+
+  def test_closure_deep_tree_level_order
+    graph = {
+      "root" => ["l1a", "l1b"],
+      "l1a"  => ["l2a"],
+      "l1b"  => ["l2b"],
+      "l2a"  => [],
+      "l2b"  => [],
+    }
+    assert_equal ["l1a", "l1b", "l2a", "l2b"],
+                 DepResolver.dep_closure("root", graph)
+  end
+
+  def test_closure_unknown_package_raises
+    e = assert_raises(DepResolver::MissingDepError) {
+      DepResolver.dep_closure("nope", { "a" => [] })
+    }
+    assert_match(/nope/, e.message)
+  end
+
+  # validate_no_cycles rejects a cycle before anything installs. If
+  # dep_closure is ever handed one anyway, it says so, with the path:
+  # it used to swallow the second visit and answer as if the graph
+  # were fine, which is a wrong answer given quietly.
+  def test_closure_names_a_cycle
+    graph = { "a" => ["b"], "b" => ["c"], "c" => ["a"] }
+    e = assert_raises(DepResolver::CycleError) {
+      DepResolver.dep_closure("a", graph)
+    }
+    assert_match(/a -> b -> c -> a/, e.message)
+  end
+
+  def test_closure_names_a_self_loop
+    graph = { "a" => ["a", "b"], "b" => [] }
+    e = assert_raises(DepResolver::CycleError) {
+      DepResolver.dep_closure("a", graph)
+    }
+    assert_match(/a -> a/, e.message)
+  end
+
+  def test_closure_does_not_mutate_graph
+    graph = { "a" => ["b"], "b" => [] }
+    DepResolver.dep_closure("a", graph)
+    assert_equal({ "a" => ["b"], "b" => [] }, graph)
+  end
+end
+
+#
+# A walk over a dependency graph never hangs. A cycle it meets is
+# reported as a cycle, with the path; a walk that will not end for any
+# other reason -- a graph that grows under it, a broken loop -- stops
+# with NonTerminatingWalk. Both were silent before: `seen` swallowed
+# the second visit of a cycle and answered anyway, and nothing bounded
+# the loop at all, so a mutant that inverted the loop condition hung
+# the suite instead of failing it.
+#
+class TestWalksTerminate < Minitest::Test
+
+  include TestHelper
+
+  def test_dep_closure_names_a_cycle
+    graph = { "a" => ["b"], "b" => ["c"], "c" => ["b"] }
+    e = assert_raises(DepResolver::CycleError) {
+      DepResolver.dep_closure("a", graph)
+    }
+    assert_match(/a -> b -> c -> b/, e.message)
+  end
+
+  def test_resolve_names_a_cycle
+    graph = { "a" => ["b"], "b" => ["a"] }
+    e = assert_raises(DepResolver::CycleError) {
+      DepResolver.resolve(["a"], graph)
+    }
+    assert_match(/a -> b -> a/, e.message)
+  end
+
+  # A diamond is reached twice and is not a cycle.
+  def test_a_diamond_is_not_a_cycle
+    graph = { "a" => ["b", "c"], "b" => ["d"], "c" => ["d"], "d" => [] }
+    assert_equal %w[b c d], DepResolver.dep_closure("a", graph)
+    assert_equal %w[d b c a], DepResolver.resolve(["a"], graph)
+  end
+
+  # The bound is exact: a walk that uses every edge is within it. A
+  # bound one off would refuse this chain.
+  def test_a_walk_over_every_edge_is_within_the_bound
+    graph = { "a" => ["b"], "b" => ["c"], "c" => ["d"], "d" => [] }
+    assert_equal %w[b c d], DepResolver.dep_closure("a", graph)
+    assert_equal %w[d c b a], DepResolver.resolve(["a"], graph)
+    assert_equal %w[d c b a], DepResolver.resolve(["a", "b"], graph)
+  end
+
+  # A graph that invents a node for every node asked about is not
+  # finite, and the walk says so rather than following it forever.
+  def test_a_growing_graph_stops_the_walk
+    graph = Hash.new { |h, k| h[k] = ["#{k}x"] }
+    graph["a"]
+    assert_raises(DepResolver::NonTerminatingWalk) {
+      DepResolver.dep_closure("a", graph)
+    }
+  end
+
+  # The version walk: a loop that exists only at one version.
+  def test_a_version_specific_cycle_is_named
+    deps = ->(n, v) {
+      case [n, v.to_s]
+      when ["a", "2.0.0"] then [Dep("b", true)]
+      when ["b", "1.0.0"] then [Dep("a", true, ver: Ver("2.0.0"))]
+      else []
+      end
+    }
+    defaults = { "a" => Ver("1.0.0"), "b" => Ver("1.0.0") }
+
+    # At a's default there is no loop...
+    VersionSolver.resolve([["a", nil]], deps_of: deps,
+                          default_of: ->(n) { defaults[n] })
+
+    # ...and at 2.0.0 there is, and it is named.
+    e = assert_raises(VersionSolver::CycleError) {
+      VersionSolver.resolve([["a", Ver("2.0.0")]], deps_of: deps,
+                            default_of: ->(n) { defaults[n] })
+    }
+    assert_match(/a -> b -> a/, e.message)
+  end
+
+  # The one failure the visited set and the step budget cannot see: a
+  # dep_list_for that answers a new name on every call pays for each
+  # step and never revisits. It is a bug in our code, and the error
+  # says so rather than blaming the packages.
+  def test_an_endless_version_walk_stops
+    deps = ->(n, _v) { [Dep("#{n}x", true)] }
+    e = assert_raises(VersionSolver::NonTerminatingWalk) {
+      VersionSolver.resolve([["a", nil]], deps_of: deps,
+                            default_of: ->(_n) { Ver("1.0.0") })
+    }
+    assert_match(/INTERNAL ERROR.*bug in the package manager/, e.message)
+  end
+
+  # The cap is exact too: a chain of exactly MAX_NAMES names resolves,
+  # one more does not.
+  def test_the_name_cap_is_exact
+    chain = ->(len) {
+      ->(n, _v) { n.to_i + 1 < len ? [Dep((n.to_i + 1).to_s, true)] : [] }
+    }
+    one = ->(_n) { Ver("1.0.0") }
+    max = VersionSolver::MAX_NAMES
+
+    got = VersionSolver.resolve([["0", nil]], deps_of: chain.call(max),
+                                default_of: one)
+    assert_equal max, got.length
+
+    assert_raises(VersionSolver::NonTerminatingWalk) {
+      VersionSolver.resolve([["0", nil]], deps_of: chain.call(max + 1),
+                            default_of: one)
+    }
+  end
+end

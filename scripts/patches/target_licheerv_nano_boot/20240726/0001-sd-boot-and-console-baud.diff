@@ -1,0 +1,23 @@
+Boot from SD, and drive the console at 115200 with the real clock.
+
+The board's first-stage loader picks its boot source from a strap it
+reads at runtime; on this board that reports UART, which is not how
+Tilck is booted. Take the SD path instead.
+
+The console baud rate comes from PLAT_UART_CLK_IN_HZ and
+UART_DL_BAUDRATE, whose values do not match this board's actual UART
+clock, so the port comes up at the wrong rate and prints garbage.
+
+--- a/fsbl/plat/sg200x/bl2/bl2_main.c
++++ b/fsbl/plat/sg200x/bl2/bl2_main.c
+@@ -51,8 +51,8 @@
+ 	enum CHIP_CLK_MODE mode;
+ 	uint32_t v = p_rom_api_get_boot_src();
+ 
+-	if (v == BOOT_SRC_UART) {
+-		console_init(0, PLAT_UART_CLK_IN_HZ, UART_DL_BAUDRATE);
++	if (v == BOOT_SRC_SD) {
++		console_init(0, 25804800, 115200);
+ 	}
+ 
+ 	ATF_STATE = ATF_STATE_BL2_MAIN;

@@ -1,0 +1,307 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# THE MUTATION DRIVER: which files, which methods, and how a mutant is
+# run and judged.
+#
+# Scope is the logic core -- placement, identity, scoping, resolution,
+# staleness -- whole files where the file is that, and named methods
+# where a file mixes the core with everything else. A mutant outside
+# the scope is not a question this asks.
+#
+# A mutant runs in its own copy of the tree: the file is rewritten
+# there, the suite runs there against a fake toolchain, and the copy
+# is restored afterwards. A copy of the three directories the suite
+# reads is all a worker needs -- not a git worktree, which needs a
+# repository, and a stock CI image checks the tree out as a tarball
+# when git is not installed yet. Copies are cheap, isolate a crash,
+# and let several mutants run at once. The Ruby that runs the suite is
+# the one running this.
+#
+# Judgement: killed if the suite fails, survived if it passes, and a
+# timeout if it hangs. A survivor is a missing test; a timeout is a
+# walk that nothing bounds, which is a defect in the code and not in
+# the tests. The report names the line either way.
+#
+
+require 'set'
+require 'tmpdir'
+require 'fileutils'
+require 'timeout'
+require_relative 'operators'
+
+module Mutation
+
+  PKGMGR = File.expand_path("../..", __dir__)      # scripts/pkgmgr
+  MAIN_DIR = File.expand_path("../..", PKGMGR)      # the repository
+
+  # Whole files in scope.
+  FILES = %w[coords.rb stack_id.rb host.rb host_abi.rb stack_manifest.rb
+             record.rb table.rb source_pins.rb cache_hashes.rb lock.rb
+             system_libs.rb
+             install_selector.rb dep_resolver.rb
+             version_solver.rb build_inputs.rb layout.rb
+             tilck_stack.rb planner.rb plan.rb request.rb].freeze
+
+  # Files where only these methods are in scope.
+  METHODS = {
+    "package.rb" => %w[
+      coords target_board board_bsp board_supported? arch_supported?
+      host_supported? own_host_supported? supported? target? noarch?
+      scope_at build_inputs_state_of build_inputs_changed?
+      find_install installed? install_prefix install_dir pkg_dir_at
+      needs_upgrade? syscc_package_get_install_list
+      regular_target_package_get_install_list
+      noarch_package_get_install_list stack_coords_on_disk stack_gcc_ver
+      default_cc install_archs get_install_list read_install_list
+      stack_of_install future_install with_mark
+    ],
+    "package_manager.rb" => %w[
+      env_scope stack_coords uninstall
+      uninstall_selector uninstall_where force_remove
+      resolve_install_plan install resolved_versions_for
+      host_world_names compute_host_world_names host_world_roots
+      get_stale_packages get_stale_installs get_upgradable_packages
+      built_against deps_of_install with_resolved_versions replace
+      needs_of_install coords_of_install_for
+      install_graph held_by held_in_stack refresh
+      installs_changed!
+      build_dep_graph clean get_installed_compilers
+    ],
+    "main.rb" => %w[select_host_stack requested_arch request_of
+                    run_outcome run_act],
+  }.freeze
+
+  Mutant = Struct.new(:site, :file) do
+    def id = site.id
+  end
+
+  Verdict = Struct.new(:mutant, :status, :seconds, :tail)
+  # status: :killed | :survived | :timeout | :error
+
+  module_function
+
+  # --- sites ----------------------------------------------------------------
+
+  def all_mutants
+
+    out = []
+
+    for f in FILES do
+      path = File.join(PKGMGR, f)
+      src = File.binread(path)
+      skip = equivalent_lines(src)
+      sites(path, src).each { |s|
+        out << Mutant.new(s, path) if !skip.key?(s.line)
+      }
+    end
+
+    for f, names in METHODS do
+      path = File.join(PKGMGR, f)
+      src = File.binread(path)
+      skip = equivalent_lines(src)
+      within = method_ranges(src, names)
+      sites(path, src, within: within).each { |s|
+        out << Mutant.new(s, path) if !skip.key?(s.line)
+      }
+    end
+
+    return out
+  end
+
+  # Every `# mutation: equivalent` annotation must still sit on a
+  # line that has a site; otherwise it hides nothing and lies.
+  def check_annotations
+
+    bad = []
+
+    for f in FILES + METHODS.keys do
+      path = File.join(PKGMGR, f)
+      src = File.binread(path)
+      lines_with_sites = sites(path, src).map(&:line).to_set
+      equivalent_lines(src).each { |line, reason|
+        next if lines_with_sites.include?(line)
+        bad << "#{f}:#{line}: annotated equivalent (#{reason}) but no " \
+               "mutation site is on that line"
+      }
+    end
+
+    return bad
+  end
+
+  # --- workers --------------------------------------------------------------
+
+  class Worker
+
+    attr_reader :dir
+
+    # What the suite reads, relative to the repository root: the
+    # package manager, the patches its digests hash, and the version
+    # files. The subject is the WORKING tree, uncommitted edits
+    # included. Nothing else -- not the toolchain, which the tests
+    # never touch, and not the kernel.
+    SYNCED = %w[scripts/pkgmgr scripts/patches other].freeze
+
+    def initialize(index, ruby:)
+      @ruby = ruby
+      @dir = File.join(Dir.tmpdir, "pkgmgr-mutant-#{Process.pid}-#{index}")
+      FileUtils.rm_rf(@dir)
+      for sub in SYNCED do
+        src = File.join(MAIN_DIR, sub)
+        next if !File.directory?(src)
+        FileUtils.mkdir_p(File.dirname(File.join(@dir, sub)))
+        FileUtils.cp_r(src, File.join(@dir, sub))
+      end
+    end
+
+    def path_of(file) = File.join(@dir, file.delete_prefix(MAIN_DIR + "/"))
+
+    def run(mutant, timeout:)
+
+      target = path_of(mutant.file)
+      original = File.binread(target)
+      File.binwrite(target, Mutation.apply(original, mutant.site))
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      status, tail = run_suite(timeout)
+
+      dt = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+      return Verdict.new(mutant, status, dt, tail)
+    ensure
+      File.binwrite(target, original) if original
+    end
+
+    def run_suite(timeout)
+
+      runner = File.join(@dir, "scripts", "pkgmgr", "tests", "run_all.rb")
+      out = File.join(@dir, "mutant.log")
+      # MUTATION_RUN: the runner judges -- the sampled lane first, the
+      # source audits left out, the run over at its first failure
+      # (run_all.rb). Traced, so that a suite killed at the timeout
+      # names the test it was in, and watched, so that its stack is
+      # in the log before the kill: the two facts a timeout report is
+      # otherwise without.
+      pid = Process.spawn(
+        { "MUTATION_RUN" => "1", "PKGMGR_TRACE" => "1",
+          "PKGMGR_WATCHDOG" => (timeout * 0.8).to_i.to_s },
+        @ruby, runner, "--seed", "1",
+        chdir: @dir, out: out, err: out
+      )
+
+      begin
+        Timeout.timeout(timeout) { Process.wait(pid) }
+      rescue Timeout::Error
+        Process.kill("KILL", pid) rescue nil
+        Process.wait(pid) rescue nil
+        return [:timeout, tail(out, 45)]
+      end
+
+      return [$?.success? ? :survived : :killed, tail(out)]
+    end
+
+    def tail(log, lines = 12) = File.read(log).lines.last(lines).join
+
+    def remove
+      FileUtils.rm_rf(@dir)
+    end
+  end
+
+  # --- the run --------------------------------------------------------------
+
+  # The whole certification, as both pmmutate and `-t --mutation` run
+  # it. Returns true when every mutant in scope was killed.
+  #
+  # The instrument tests itself first: the UNMUTATED suite must pass
+  # in a worker's copy, or nothing can be judged -- a suite that fails on
+  # its own would "kill" every mutant. That run also sets the timeout:
+  # a mutant is given several times what the clean suite took, so the
+  # bound follows the machine rather than a number chosen elsewhere.
+  def certify(mutants, jobs:, ruby:, timeout: nil, out: $stdout)
+
+    out.puts "mutation: #{mutants.length} mutants, #{jobs} workers"
+    out.puts "mutation: the suite must pass unmutated first..."
+
+    probe = Worker.new("probe", ruby: ruby)
+    begin
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      status, tail = probe.run_suite(timeout || 1800)
+      clean = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+    ensure
+      probe.remove
+    end
+
+    if status != :survived
+      out.puts "mutation: the unmutated suite did not pass " \
+               "(#{status}); refusing to judge anything:"
+      out.puts tail
+      return false
+    end
+
+    timeout ||= [120, (clean * 5).ceil].max
+    out.puts format("mutation: clean suite %.0fs, timeout %ds per mutant",
+                    clean, timeout)
+
+    verdicts = []
+    lock = Mutex.new
+
+    run(mutants, jobs: jobs, ruby: ruby, timeout: timeout) { |v|
+      lock.synchronize {
+        verdicts << v
+        mark = { killed: "killed  ", survived: "SURVIVED",
+                 timeout: "TIMEOUT ", error: "error   " }[v.status]
+        out.printf("  [%4d/%4d] %s  %5.1fs  %s\n", verdicts.length,
+                   mutants.length, mark, v.seconds, v.mutant.site)
+        out.flush
+      }
+    }
+
+    by = verdicts.group_by(&:status).transform_values(&:length)
+    survivors = verdicts.select { |v| v.status == :survived }
+    hung = verdicts.select { |v| v.status == :timeout }
+
+    out.puts
+    out.puts "mutation: #{verdicts.length} mutants: #{by[:killed] || 0} " \
+             "killed, #{hung.length} timed out, #{survivors.length} survived"
+
+    if !survivors.empty?
+      out.puts
+      out.puts "SURVIVORS -- each is a test that does not exist:"
+      survivors.sort_by { |v| [v.mutant.file, v.mutant.site.line] }
+               .each { |v| out.puts "  #{v.mutant.site}" }
+    end
+
+    # A mutant that hangs is not caught; it is waited out. The suite
+    # would have hung too, and a hang is the one failure nothing
+    # downstream can report. Whether the walk it broke has no bound
+    # or merely a far one is what the tail says: the test the suite
+    # was in when it was killed is its last line.
+    if !hung.empty?
+      out.puts
+      out.puts "TIMEOUTS -- the suite was killed at the budget; the test " \
+               "it was in is the last line of each:"
+      hung.sort_by { |v| [v.mutant.file, v.mutant.site.line] }
+          .each { |v|
+            out.puts "  #{v.mutant.site}"
+            v.tail.lines.each { |l| out.puts "      #{l.rstrip}" }
+          }
+    end
+
+    return survivors.empty? && hung.empty?
+  end
+
+  # Run `mutants` over `jobs` workers; yields each verdict as it lands.
+  def run(mutants, jobs:, ruby:, timeout:, &on_verdict)
+
+    workers = (0...jobs).map { |i| Worker.new(i, ruby: ruby) }
+    queue = mutants.dup
+    threads = workers.map { |w|
+      Thread.new {
+        while (m = queue.shift)
+          on_verdict.call(w.run(m, timeout: timeout))
+        end
+      }
+    }
+    threads.each(&:join)
+  ensure
+    workers&.each(&:remove)
+  end
+end

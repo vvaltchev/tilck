@@ -52,19 +52,16 @@ class SophgoToolsPackage < Package
     )
   end
 
-  def default_arch = HOST_ARCH
-  def default_cc = "syscc"
-
   # The only thing we actually consume from the upstream tarball is the
   # prebuilt cross gcc tree; check for it as a sanity guard that the
   # extraction landed where we expect.
-  def expected_files = [
+  def expected_files(ver = nil) = [
     ["gcc", true],
   ]
 
   # Nothing to build: the tarball already contains x86_64 Linux ELF
   # binaries. The base install_impl flow will check expected_files.
-  def install_impl_internal(install_dir) = true
+  def nothing_to_build? = true
 end
 
 pkgmgr.register(SophgoToolsPackage.new())

@@ -42,7 +42,7 @@ jobs:
 
   interactive:
     runs-on: ubuntu-24.04
-    container: ghcr.io/vvaltchev/tilck-i386:latest
+    container: ghcr.io/vvaltchev/tilck-i386:v9
     env:
       CMAKE_ARGS: >-
         -DEXTRA_VIM=1
@@ -67,7 +67,7 @@ jobs:
 
   build-matrix:
     runs-on: ubuntu-24.04
-    container: ghcr.io/vvaltchev/tilck-i386:latest
+    container: ghcr.io/vvaltchev/tilck-i386:v9
     strategy:
       fail-fast: false
       matrix:
@@ -99,7 +99,7 @@ jobs:
 
   coverage:
     runs-on: ubuntu-24.04
-    container: ghcr.io/vvaltchev/tilck-i386:latest
+    container: ghcr.io/vvaltchev/tilck-i386:v9
     environment: Tilck
     env:
       DUMP_COV: 1

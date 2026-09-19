@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 # host_ncurses (the only dependency) lives in the :distro host tier, as
 # .../<distro>/ncurses/<ver>/install. It is a default toolchain package
 # (scripts/pkgmgr/ncurses.rb), so a normal toolchain has it.
-set(NCURSES_ROOT ${HOST_DIR_DISTRO}/ncurses/${VER_NCURSES}/install)
+set(NCURSES_ROOT ${HOST_DIR_DISTRO}/ncurses/${HOST_VER_NCURSES}/install)
 
 if (NOT EXISTS ${NCURSES_ROOT}/lib/libncursesw.a)
 

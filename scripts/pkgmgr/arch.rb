@@ -17,7 +17,11 @@ Architecture = Struct.new(
   :ld_output,           # Output format for linker scripts
   :efi,                 # UEFI architecture name
   :gcc_tc,              # Arch name for GCC toolchain
-  :boards,              # List of boards (only for embedded architectures)
+  # Every arch has at least one board, because the board is part of an
+  # installed package's path: a package built for one board must not
+  # be mistaken for the same package built for another. The x86 ones
+  # have exactly one, "pc", which is the ordinary PC platform.
+  :boards,
   :default_board,
 
   # Determined at runtime
@@ -29,6 +33,20 @@ Architecture = Struct.new(
 
   # To string conversion
   def to_s = name
+
+  # Every board Tilck builds for on this arch -- none for an arch that
+  # is a cross compiler only so far (aarch64), which has no default
+  # board either.
+  def all_boards = boards || []
+
+  # The package that cross compiles for this arch: gcc.rb registers
+  # one per arch under this name, and everything that needs "the
+  # compiler of an arch" -- the implicit dependency of every target
+  # package, -S and -U, the toolchain lookup -- asks here rather than
+  # spelling the name. A second libc or family for an arch changes
+  # this answer, not five call sites.
+  def cross_cc_pkg = "gcc-#{name}-musl"
+
 
   # Comparison operator
   def ==(other)
@@ -52,6 +70,8 @@ ALL_ARCHS = [
     ld_output: "elf_i386",
     efi: "ia32",
     gcc_tc: "i686",
+    boards: ["pc"],
+    default_board: "pc",
   ),
   Architecture.new(
     name: "x86_64",
@@ -60,6 +80,8 @@ ALL_ARCHS = [
     ld_output: "elf_x86_64",
     efi: "x86_64",
     gcc_tc: "x86_64",
+    boards: ["pc"],
+    default_board: "pc",
   ),
   Architecture.new(
     name: "riscv64",

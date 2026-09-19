@@ -78,15 +78,11 @@ class TestApplyPatches < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
-        # Create the patch directory but leave it empty
-        patch_dir = MAIN_DIR / "scripts" / "patches" / "foo" / "1.0.0"
-        FileUtils.mkdir_p(patch_dir)
-        begin
+        # The patch directory exists but is empty
+        with_fake_patches(pkg) do |_patch_dir|
           Dir.mktmpdir do |dir|
-            FileUtils.cd(dir) { assert pkg.apply_patches(Ver("1.0.0")) }
+            FileUtils.cd(dir) { assert bound(pkg).apply_patches(Ver("1.0.0")) }
           end
-        ensure
-          FileUtils.rm_rf(patch_dir)
         end
       end
     end
@@ -98,7 +94,8 @@ class TestInstallInfo < Minitest::Test
   def test_to_s
     info = InstallInfo.new(
       "test_pkg", Ver("13.3.0"), false, ALL_ARCHS["i386"],
-      Ver("1.0.0"), Pathname.new("/fake/path"), nil, false
+      Ver("1.0.0"), Pathname.new("/fake/path"), nil, false,
+      coords: Coords.new("tilck-i386", "pc", "gcc-13.3.0")
     )
     s = info.to_s
     assert_match(/test_pkg/, s)
@@ -110,7 +107,8 @@ class TestInstallInfo < Minitest::Test
     # Regular package — not a compiler
     info = InstallInfo.new(
       "foo", Ver("13.3.0"), false, ALL_ARCHS["i386"],
-      Ver("1.0.0"), Pathname.new("/fake"), nil, false
+      Ver("1.0.0"), Pathname.new("/fake"), nil, false,
+      coords: Coords.new("tilck-i386", "pc", "gcc-13.3.0")
     )
     refute info.compiler?
 
@@ -118,7 +116,8 @@ class TestInstallInfo < Minitest::Test
     info = InstallInfo.new(
       "gcc-i386-musl", "syscc", true, HOST_ARCH,
       Ver("13.3.0"), Pathname.new("/fake"), nil, false,
-      ALL_ARCHS["i386"], "musl"
+      ALL_ARCHS["i386"], "musl",
+      coords: Coords.new(HOST_OS_ARCH, nil, nil)
     )
     assert info.compiler?
   end

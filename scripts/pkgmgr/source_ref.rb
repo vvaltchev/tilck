@@ -47,12 +47,20 @@ class SourceRef
   #                                    cache tarball (defaults to ver.to_s).
   # @param fetch_via_git   [Boolean]   explicit override of the
   #                                    git-vs-HTTP auto-detection.
+  # @param extra_files     [Array]     more downloads this source
+  #   brings with it, each { url:, file: }: fetched into the cache
+  #   beside the tarball and left there, for a recipe to name as
+  #   "$CACHE/<file>". host_python installs a pinned wheel this way.
+  #   Fetching belongs here, with the source, and not in the recipe:
+  #   a recipe is what builds, and a download inside one is a reach
+  #   outside the toolchain that the fingerprint cannot see.
   def initialize(name:, url:,
                  tarname: nil,
                  remote_tarname: nil,
                  git_tag: nil,
                  dir_name: nil,
-                 fetch_via_git: nil)
+                 fetch_via_git: nil,
+                 extra_files: [])
     @name = name
     @url = url
     @tarname_proc = tarname
@@ -60,10 +68,19 @@ class SourceRef
     @git_tag_proc = git_tag
     @dir_name_proc = dir_name
     @fetch_via_git_explicit = fetch_via_git
+    @extra_files = extra_files.map { |e|
+      { url: e.fetch(:url), file: e.fetch(:file) }
+    }.freeze
   end
 
+  attr_reader :extra_files
+
+  # The cache filename: the upstream's own where the file is
+  # downloaded as it is, and <name>-<ver> with the packer's
+  # extension where we clone and pack it ourselves.
   def tarname(ver)
-    @tarname_proc ? @tarname_proc.call(ver) : "#{@name}-#{ver}.tgz"
+    return @tarname_proc.call(ver) if @tarname_proc
+    return "#{@name}-#{ver}#{Cache::Pack::EXT}"
   end
 
   def remote_tarname(ver)
@@ -90,22 +107,37 @@ class SourceRef
     return @url.include?(GITHUB) && !tarball
   end
 
-  # Fetch into the cache if not already there. Idempotent — skips
-  # the fetch when the cache entry exists.
+  # Every file this source puts in the cache for `ver`: the tarball
+  # and what comes with it. Each is a name in other/pkg_hashes.
+  def cache_files(ver) = [tarname(ver)] + @extra_files.map { |e| e[:file] }
+
+  # What other/pkg_hashes names for a cache file of this source, or
+  # nil where it names nothing yet.
+  def pin(name) = pkgmgr.pins[name]
+
+  # Fetch into the cache if not already there, and check what is
+  # there against its pin either way: a source is what
+  # other/pkg_hashes says it is, or it is refused (Cache).
   def download(ver)
-    if fetch_via_git?
+    ok = if fetch_via_git?
       Cache::download_git_repo(
-        @url, tarname(ver), git_tag(ver), dir_name(ver)
+        @url, tarname(ver), git_tag(ver), dir_name(ver),
+        pin: pin(tarname(ver))
       )
     else
-      Cache::download_file(@url, remote_tarname(ver), tarname(ver))
+      Cache::download_file(@url, remote_tarname(ver), tarname(ver),
+                           pin: pin(tarname(ver)))
     end
+    return false if !ok
+    return @extra_files.all? { |e|
+      Cache::download_file(e[:url], e[:file], pin: pin(e[:file]))
+    }
   end
 
   # Extract the cached tarball into the current working directory,
   # renaming the tarball's top-level dir to `dest_name`. The caller
   # is responsible for setting up the CWD before calling this.
   def extract(ver, dest_name)
-    Cache::extract_file(tarname(ver), dest_name)
+    Cache::extract_file(tarname(ver), dest_name, pin: pin(tarname(ver)))
   end
 end

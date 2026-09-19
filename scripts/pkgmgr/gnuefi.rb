@@ -20,30 +20,12 @@ GNUEFI_SOURCE = SourceRef.new(
   url:  GNUEFI_URL,
 )
 
-GNUEFI_PATCHES = {
-  'typedef wchar_t CHAR16' =>
-    'typedef unsigned short CHAR16',
-
-  'typedef uint8_t                 BOOLEAN;' =>
-    'typedef char       CHAR8;',
-}
-
 GNUEFI_COMMON_EXPECTED_FILES = [
   ["inc", true],
   ["gnuefi", true],
   ["lib", true],
   ["Makefile", false],
 ]
-
-def gnuefi_apply_patches
-  for efi_arch in ["ia32", "x86_64", "riscv64"]
-    file = "inc/#{efi_arch}/efibind.h"
-    next if !File.exist?(file)
-    s = File.read(file)
-    GNUEFI_PATCHES.each { |before, after| s = s.gsub(before, after) }
-    File.write(file, s)
-  end
-end
 
 #
 # Source-only (noarch) gnuefi: just the extracted source tree.
@@ -69,14 +51,14 @@ class GnuefiSourcePackage < Package
   end
 
   def pkg_dirname = "gnuefi"
-  def default_ver = pkgmgr.get_config_ver("gnuefi")
-  def expected_files = GNUEFI_COMMON_EXPECTED_FILES
+  def default_ver = pkgmgr.get_config_ver("gnuefi", host: false)
+  def expected_files(ver = nil) = GNUEFI_COMMON_EXPECTED_FILES
   def default_arch = nil
   def default_cc = nil
 
-  def install_impl_internal(ignored = nil)
-    return true
-  end
+  # Sources another package builds: extracting the tarball IS the
+  # install.
+  def nothing_to_build? = true
 end
 
 #
@@ -102,7 +84,7 @@ class GnuefiPackage < Package
 
   def pkg_dirname = "gnuefi"
 
-  def expected_files = GNUEFI_COMMON_EXPECTED_FILES
+  def expected_files(ver = nil) = GNUEFI_COMMON_EXPECTED_FILES
 
   #
   # The UEFI bootloader always needs x86_64 gnuefi, even when the
@@ -118,15 +100,20 @@ class GnuefiPackage < Package
     archs
   end
 
+  # Installed means every arch it builds for is there -- each at its
+  # own coordinates, board included. Matching on the arch alone
+  # accepted any board's copy for any other.
   def installed?(ver)
     list = get_install_list()
     archs_needed.all? do |arch|
-      list.any? { |x|
-        x.ver == ver && x.arch == arch &&
-        x.compiler == arch.gcc_ver && !x.broken
-      }
+      want = at(scope.with(arch: arch)).coords(ver)
+      list.any? { |x| x.ver == ver && x.coords == want && !x.broken }
     end
   end
+
+  # One call builds every arch in archs_needed, so all of them are
+  # recorded -- and only them.
+  def install_archs(ver = nil) = archs_needed
 
   def install_impl(ver)
 
@@ -140,42 +127,53 @@ class GnuefiPackage < Package
     ok = @source.download(ver)
     return false if !ok
 
+    # with_cc sets the compiler; the copy bound at that arch is WHICH
+    # arch this is, which is what the recipe reads. Both, or
+    # build_steps would answer for the invocation's arch while
+    # building another.
     for arch in archs_needed
-      pkgmgr.with_cc(arch.name) do |arch_dir|
-        chdir_package_base_dir(arch_dir) do
-          ok = @source.extract(ver, ver_dirname(ver))
-          return false if !ok
-          ok = chdir_install_dir(arch_dir, ver) do
-            d = mkpathname(getwd)
-            ok = install_impl_internal(d, arch)
-            ok = check_install_dir(d, true) if ok
-          end
-        end
-      end
+      ok = at(scope.with(arch: arch)).build_one_arch(ver)
       return false if !ok
     end
 
     return ok
   end
 
-  def install_impl_internal(install_dir, arch = nil)
+  # One arch's build, by the copy bound to it.
+  def build_one_arch(ver)
+    pkgmgr.with_cc(default_arch.name) do |arch_dir|
+      chdir_package_base_dir(arch_dir) do
+        return false if !@source.extract(ver, ver_dirname(ver))
+        return chdir_install_dir(arch_dir, ver) do
+          d = mkpathname(getwd)
 
-    arch ||= default_arch()
-    gnuefi_apply_patches()
+          # This package extracts the tarball once per arch and so
+          # replaces the base class's install_impl wholesale --
+          # which is where patches are normally applied. Apply them
+          # here, per extraction, or they are silently not applied
+          # at all.
+          next false if !apply_patches(ver)
 
-    efi = arch.efi
-    tc = arch.gcc_tc
+          ok = install_impl_internal(d)
+          ok = check_install_dir(d, ver, true) if ok
+          ok
+        end
+      end
+    end
+  end
 
-    ok = run_command("build_#{efi}.log", [
-      "make",
-      "ARCH=#{efi}",
-      "prefix=#{tc}-linux-",
-      "CROSS_COMPILE=",
-      "OS=Linux",
-      "-j#{BUILD_PAR}",
-    ])
-    return false if !ok
-    return true
+  def build_steps(ver = default_ver)
+    arch = default_arch
+    return [
+      Run(log: "build_#{arch.efi}.log", argv: [
+        "make",
+        "ARCH=#{arch.efi}",
+        "prefix=#{arch.gcc_tc}-linux-",
+        "CROSS_COMPILE=",
+        "OS=Linux",
+        "-j$PAR",
+      ]),
+    ]
   end
 end
 

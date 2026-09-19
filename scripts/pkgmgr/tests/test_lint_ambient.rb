@@ -1,0 +1,155 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# The package manager reads its inputs through their owners, and
+# nowhere else. See tests/lint/ambient.rb for what is checked and why.
+#
+# Three lists live here, on purpose, where a reviewer sees them:
+#
+#   ALLOW   the R1 readers that are supposed to exist, each with the
+#           reason. An entry must still name a real method, or the
+#           test fails -- an allowlist that outlives its subject is a
+#           hole nobody remembers opening.
+#
+#   SCOPE_SETTERS  the only methods that may write a scope variable.
+#
+#   R2_PINNED  the partial-key comparisons the tree still has. This
+#           list SHRINKS: the identity migration behind InstallSelector
+#           converts them, and the pin is what stops a new one from
+#           appearing while it does. When it is empty, the pin goes
+#           and R2 becomes a plain "none".
+#
+
+require_relative 'test_helper'
+require_relative 'lint/ambient'
+
+class TestLintAmbient < Minitest::Test
+
+  include SourceAudit
+
+  PKGMGR = Pathname(__dir__).parent
+
+  ALLOW = {
+    "early_logic.rb" =>
+      "defines ARCH, BOARD and DEFAULT_BOARD; board_bsp there is the " \
+      "global pair for the startup check, by design",
+    "main.rb#set_gcc_tc_ver" =>
+      "the CLI boundary: turns GCC_TC_VER and ARCH into gcc_ver",
+    "main.rb#early_checks" =>
+      "validates the invocation's BOARD against the BSP tree",
+
+    "scope.rb#self.env" =>
+      "builds the environment's Scope from ARCH and BOARD: the one " \
+      "place the constants become a value",
+    "host.rb#self.env" =>
+      "builds the environment's Host from HOST_OS_ARCH, HOST_DISTRO " \
+      "and HOST_CC: the one place those constants become a value",
+    "layout.rb#vars" =>
+      "REPORTS the invocation's ARCH/BOARD to CMake, which compares " \
+      "them against its own",
+  }.freeze
+
+  R2_PINNED = [].freeze
+
+  # Not identity: the listing GROUPS what it shows by the compiler that
+  # built it, and an installable candidate has no coordinates yet (its
+  # stack names a cross compiler that may not exist), so the group has
+  # to be read off the compiler field. Nothing is selected for action.
+  R2_ALLOW = {
+    "package_manager.rb#show_status_all" =>
+      "display grouping by compiler; candidates carry no coordinates",
+    "request.rb#every_arch?" =>
+      "a Request's -a, which is a scope or a filter, not an " \
+      "installation's arch",
+  }.freeze
+
+  # Parsed once for the class, not once per test: 80 files through
+  # the parser is a few hundred milliseconds, and eight tests re-doing
+  # it was most of the suite's runtime.
+  def violations
+    @@violations ||= AmbientLint.scan_dir(PKGMGR)
+  end
+
+  def of(rule) = violations.select { |v| v.rule == rule }
+
+  def report(list)
+    return list.map { |v| "  #{v}" }.join("\n")
+  end
+
+  # --- R1 ---------------------------------------------------------------
+
+  def test_r1_ambient_state_is_read_only_by_its_owners
+    left = AmbientLint.apply_allowlist(of(:R1), ALLOW)
+
+    assert_empty left,
+                 "these read ARCH/BOARD/HOST_VER_GCC directly. Ask " \
+                 "scope.arch / board_for / current_host_stack, " \
+                 "or add an ALLOW entry with a reason:\n#{report(left)}"
+  end
+
+  def test_the_allowlist_names_things_that_exist
+    for key, reason in ALLOW.merge(R2_ALLOW) do
+      file, meth = key.split("#", 2)
+      path = PKGMGR / file
+
+      assert path.file?, "ALLOW names #{file}, which is gone"
+      refute reason.to_s.strip.empty?, "ALLOW[#{key}] has no reason"
+      next if meth.nil?
+
+      assert_includes AmbientLint.methods_of(path), meth,
+                      "ALLOW names #{key}, which no longer exists"
+    end
+  end
+
+  # --- R2 ---------------------------------------------------------------
+
+  def test_r2_partial_key_comparisons_only_where_pinned
+    sites = of(:R2).map(&:where).uniq.sort - R2_ALLOW.keys
+    new_ones = sites - R2_PINNED
+
+    assert_empty new_ones,
+                 "a NEW comparison on part of a coordinate. Identity is " \
+                 "Coords; select installs through it:\n" +
+                 report(of(:R2).select { |v| new_ones.include?(v.where) })
+  end
+
+  def test_r2_pin_shrinks_but_never_lies
+    sites = of(:R2).map(&:where).uniq.sort
+    stale = (R2_PINNED + R2_ALLOW.keys) - sites
+
+    assert_empty stale,
+                 "these were converted; remove them from R2_PINNED: " \
+                 "#{stale.join(', ')}"
+  end
+
+  # --- the instrument itself --------------------------------------------
+
+  # A lint that cannot see a planted violation reports nothing, and
+  # "nothing" would then read as "clean".
+  def test_the_lint_sees_planted_violations
+    src = <<~RUBY
+      class Thing
+        def a(x)
+          return BOARD if x == ARCH
+        end
+        def b(list, cc)
+          list.select { |e| e.compiler == cc }
+        end
+      end
+    RUBY
+
+    found = AmbientLint.scan_source(src, file: "planted.rb")
+    rules = found.map(&:rule).sort
+
+    assert_equal [:R1, :R1, :R2], rules, found.map(&:to_s).join("\n")
+    assert_equal ["planted.rb#a", "planted.rb#a", "planted.rb#b"],
+                 found.map(&:where)
+
+  end
+
+  # A string is not a read, and a comment is not a read. A grep would
+  # flag both; "ARCH=x86" is what linux_headers passes to make.
+  def test_strings_and_comments_are_not_reads
+    src = "def m\n  # BOARD is not read here\n  [\"ARCH=x86\"]\nend\n"
+    assert_empty AmbientLint.scan_source(src)
+  end
+end

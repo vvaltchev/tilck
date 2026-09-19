@@ -1,0 +1,447 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# THE DOMAIN: every small world, every context, every command line.
+#
+# Not a sample. For each registry shape in the catalogue, the lane
+# enumerates every world of at most three installations that shape
+# can have, every invocation context, and every command line in the
+# grammar, and asks the planner and the model the same question. The
+# claim it establishes is bounded and exact: for these shapes and
+# these worlds and these lines, the two agree.
+#
+# Two installations was the bound while a case cost a tree on disk.
+# Every logic bug this package manager has had manifested with
+# exactly two of something -- two boards, two versions, two stacks,
+# two arches -- and a fixture with one of each cannot tell "the right
+# one" from "the only one". A case is a value now, and three costs
+# what two did before, so three it is: the two the bugs need, and one
+# beside them to be the wrong one nobody meant.
+#
+# Shapes are small on purpose: one feature each, so a failure names
+# the feature. A shape for a new package feature is added when the
+# feature is.
+#
+
+require 'set'
+require_relative '../test_helper'
+require_relative '../../tilck_stack'
+require_relative '../model/model'
+
+module Exhaustive
+
+  I386 = ALL_ARCHS["i386"]
+  RV   = ALL_ARCHS["riscv64"]
+
+  STACK_A = Ver("7.7.7")
+  STACK_B = Ver("8.8.8")
+
+  # A fake with a version list: the first is the default.
+  class Pkg < TestHelper::FakePackage
+
+    def initialize(name, versions: ["1.0.0"], **kw)
+      super(name, **kw)
+      @versions = versions.map { |v| Ver(v) }
+    end
+
+    def default_ver = @versions.first
+    def installable_versions = @versions
+  end
+
+  # The stack compiler, as the shapes need it: its default version is
+  # the stack in effect and it can be asked for A or B, which is what
+  # -H checks against and what a :stack package's dependency resolves
+  # through. Mirrors HostGccPackage in the three things that matter.
+  class FakeHostGcc < TestHelper::FakePackage
+
+    def initialize(dep_list: [])
+      super("host_gcc", on_host: true, host_tier: :distro,
+            arch_list: ALL_HOST_ARCHS.values, dep_list: dep_list)
+    end
+
+    def default_ver = scope.stack
+    def installable_versions = [STACK_A, STACK_B]
+    def stack_gcc_ver(ver = nil) = ver || scope.stack
+    # ...and the third: an install of it belongs to the stack it
+    # defines, which is where what it needs is looked for.
+    def stack_of_install(inst) = stack_gcc_ver(inst.ver)
+  end
+
+  module_function
+
+  def host(name, tier, **kw)
+    Pkg.new(name, on_host: true, host_tier: tier,
+            arch_list: ALL_HOST_ARCHS.values, **kw)
+  end
+
+  def stack_pkg(name, **kw)
+    deps = kw.delete(:dep_list) || []
+    host(name, :stack, dep_list: deps + [Dep("host_gcc", true)], **kw)
+  end
+
+  # --- the catalogue --------------------------------------------------------
+
+  # name => a block returning fresh packages. Fresh per case: the
+  # registry is reset between cases and a package must carry nothing
+  # over.
+  SHAPES = {
+    "target"       => -> { [Pkg.new("t")] },
+    "target_2v"    => -> { [Pkg.new("t", versions: %w[2.0.0 1.0.0])] },
+    "target_rv"    => -> { [Pkg.new("rv", arch_list: [RV])] },
+    "target_board" => -> { [Pkg.new("ub", arch_list: [RV],
+                                    board_list: ["qemu-virt"])] },
+    # A host tool for one board (the SOPHGO toolchain): offered at
+    # that board, whatever arch the tool itself runs on.
+    "host_board"   => -> { [host("host_hb", :portable,
+                                 board_list: ["licheerv-nano"])] },
+
+    "noarch"       => -> { [Pkg.new("n", arch_list: nil)] },
+    "portable"     => -> { [host("host_p", :portable)] },
+    "distro"       => -> { [host("host_d", :distro)] },
+    "compiler"     => -> { [host("host_c", :compiler)] },
+    "stack"        => -> { [stack_pkg("host_s"), FakeHostGcc.new] },
+    # The relation the real stack compiler has with its glibc: the
+    # compiler lives in the distro's env and needs a package that
+    # lives in the stack the compiler itself defines.
+    "stack_cc_dep" => -> { [host("host_libc", :stack),
+                            FakeHostGcc.new(dep_list: [Dep("host_libc",
+                                                           true)])] },
+    "stack_pin"    => -> { [stack_pkg("host_s",
+                                      dep_list: [Dep("host_x", true,
+                                                     ver: Ver("2.0.0"))]),
+                            stack_pkg("host_x", versions: %w[1.0.0 2.0.0]),
+                            FakeHostGcc.new] },
+    # A Tilck stack: the real meta-package over fake members, one
+    # default and one not, at one arch -- the other contexts are
+    # where it does not apply.
+    "meta"         => -> { [Pkg.new("dflt", default: true), Pkg.new("t"),
+                            TilckStackPackage.new(I386, "pc")] },
+    "cross_cc"     => -> { [Pkg.new("t"),
+                            Pkg.new("gcc-i386-musl", on_host: true,
+                                    is_compiler: true, host_tier: :portable,
+                                    arch_list: ALL_HOST_ARCHS.values,
+                                    target_arch: I386)] },
+    # The host world, in small: a root (host_q, as host_qemu is) and
+    # what only it needs (host_only); a target package beside them.
+    # ALL is the target and nothing of the world; with the flag, the
+    # root at its default and host_only through it.
+    "world"        => -> { [Pkg.new("t"),
+                            host("host_only", :portable),
+                            host("host_q", :portable, world_root: true,
+                                 dep_list: [Dep("host_only", true)])] },
+    # A cross compiler offering two GCCs, as the real ones do: an
+    # install of the one that is not the default is not behind.
+    "cross_cc_two" => -> { [Pkg.new("gcc-i386-musl", on_host: true,
+                                    is_compiler: true, host_tier: :portable,
+                                    arch_list: ALL_HOST_ARCHS.values,
+                                    target_arch: I386,
+                                    versions: ["1.0.0", "2.0.0"])] },
+    "chain"        => -> { [Pkg.new("a", dep_list: [Dep("b", false)]),
+                            Pkg.new("b", dep_list: [Dep("c", false)]),
+                            Pkg.new("c")] },
+    "diamond"      => -> { [Pkg.new("a", dep_list: [Dep("b", false),
+                                                    Dep("c", false)]),
+                            Pkg.new("b", dep_list: [Dep("d", false)]),
+                            Pkg.new("c", dep_list: [Dep("d", false)]),
+                            Pkg.new("d")] },
+    "conflict"     => -> { [host("host_a", :distro,
+                                 dep_list: [Dep("host_x", true,
+                                                ver: Ver("1.0.0"))]),
+                            host("host_b", :distro,
+                                 dep_list: [Dep("host_x", true,
+                                                ver: Ver("2.0.0"))]),
+                            host("host_x", :distro,
+                                 versions: %w[1.0.0 2.0.0])] },
+    "default"      => -> { [Pkg.new("dflt", default: true), Pkg.new("t")] },
+  }.freeze
+
+  # --- where an installation of a package could be ---------------------------
+
+  def tgt(arch, board)
+    Coords.new("tilck-#{arch.name}", board, "gcc-#{TestHelper::FAKE_GCC_VER}")
+  end
+
+  def stack(v) = Coords.new(HOST_OS_ARCH, nil, Coords.stack_name(v))
+
+  def coords_for(pkg)
+    if !pkg.on_host && pkg.arch_list.nil?
+      [pkg.coords]
+    elsif !pkg.on_host
+      out = []
+      out << tgt(I386, "pc") if pkg.arch_list.include?(I386)
+      if pkg.arch_list.include?(RV)
+        out << tgt(RV, "qemu-virt") << tgt(RV, "licheerv-nano")
+      end
+      out
+    elsif pkg.host_tier == :stack
+      [stack(STACK_A), stack(STACK_B)]
+    else
+      [pkg.at(Exhaustive.harness.scope).coords]
+    end
+  end
+
+  # One installation that could exist: what fake_install needs.
+  Candidate = Struct.new(:name, :ver, :coords, :record, :origin,
+                         :mark) do
+    def same_place?(o) = name == o.name && ver == o.ver && coords == o.coords
+    def to_s = "#{name}@#{ver} #{coords} #{record}/#{origin}/#{mark}"
+  end
+
+  # Each shape enumerates the axis it is about. A single-package shape
+  # is about coordinates -- every board, every stack, every record --
+  # and gets them all. A multi-package shape is about the dependency
+  # structure between its packages; giving it every coordinate of
+  # every package as well multiplies cases by twenty for questions the
+  # single-package shapes already ask, and made one shape (diamond)
+  # cost more than the other fourteen together.
+  NARROW = %w[stack_pin stack_cc_dep cross_cc cross_cc_two chain diamond
+              conflict default meta world].freeze
+
+  def candidates(pkgs, narrow: false)
+    out = []
+    for p in pkgs do
+      b = p.at(Exhaustive.harness.scope)
+      for v in b.installable_versions.empty? ? [b.default_ver]
+                                              : b.installable_versions do
+        origins = v == b.default_ver ? [:default] : [:default, :pinned]
+        coords = narrow ? coords_for(p).first(1) : coords_for(p)
+        records = narrow ? [:ok] : [:ok, :changed]
+        marks = [:manual, :auto]
+        for c in coords do
+          for r in records do
+            for o in origins do
+              for m in marks do
+                out << Candidate.new(p.name, v, c, r, o, m)
+              end
+            end
+          end
+        end
+      end
+    end
+    return out
+  end
+
+  # How many installations a world may hold.
+  BOUND = 3
+
+  # Every world of at most `max` installations: the empty one, and
+  # every set of up to `max` candidates no two of which are records
+  # of one place.
+  def worlds(cands, max: BOUND)
+    out = [[]]
+    for n in 1..max do
+      cands.combination(n).each { |w|
+        out << w if w.combination(2).none? { |a, b| a.same_place?(b) }
+      }
+    end
+    return out
+  end
+
+  # --- contexts -------------------------------------------------------------
+
+  Ctx = Struct.new(:arch, :board) do
+    def to_s = "#{arch.name}/#{board}"
+  end
+
+  CONTEXTS = [
+    Ctx.new(I386, "pc"),
+    Ctx.new(RV, "qemu-virt"),
+    Ctx.new(RV, "licheerv-nano"),
+  ].freeze
+
+  # The invocation's scope for a context: what Scope.env builds from
+  # the shell's ARCH and BOARD, built from the context instead, in the
+  # lane's stack. No constant is swapped: the scope IS the context.
+  def scope_for(ctx, stack: STACK_A)
+    return Scope.new(arch: ctx.arch, board: ctx.board, stack: stack,
+                     env_arch: ctx.arch, env_board: ctx.board,
+                     host: Host.env)
+  end
+
+  # --- a world in memory ----------------------------------------------------
+
+  # The scope at which `pkg` installs at `c`, from `scope`: coords_for
+  # run backwards. A target's machine and env name its arch and
+  # board; a :stack install's stack names its stack.
+  def scope_of_coords(pkg, c, scope)
+    if c.machine.start_with?("tilck-")
+      arch = ALL_ARCHS.fetch(c.machine.delete_prefix("tilck-"))
+      return scope.with(arch: arch, board: c.env)
+    end
+    return scope.with(stack: c.stack_ver) if pkg.on_host &&
+                                              pkg.host_tier == :stack
+    return scope
+  end
+
+  # One candidate as the installation it stands for, in memory: read
+  # the way the scan reads one fake_install made (the self-test holds
+  # the two to equality), its record as the candidate says.
+  def install_of(cand, pkg, scope)
+    sc = scope_of_coords(pkg, cand.coords, scope)
+    return pkg.at(sc).future_install(
+      cand.ver, default_install: cand.origin == :default,
+      manual: cand.mark == :manual
+    ).with_record(cand.record)
+  end
+
+  # A case's world, as the product's own value, with no tree behind
+  # it. `by_name` is the case's registry.
+  def world_of(cands, by_name, scope)
+    return World.of(cands.map { |x|
+      install_of(x, by_name.fetch(x.name), scope)
+    })
+  end
+
+  # --- the grammar ----------------------------------------------------------
+
+  QUERIES = ["--check-for-updates", "-l", "--list-installable",
+             "--print-layout"].freeze
+
+  def argv_lines(pkgs)
+
+    lines = []
+
+    for p in pkgs do
+      n = p.name
+      b = p.at(Exhaustive.harness.scope)
+      vers = b.installable_versions.empty? ? [b.default_ver]
+                                           : b.installable_versions
+      lines << "-s #{n}" << "-s #{n} -f" << "-u #{n}" << "-u #{n}:ALL" \
+            << "-u #{n} -a riscv64" << "-u #{n} -a ALL" << "-C #{n}" \
+            << "--mark-auto #{n}" << "--mark-manual #{n}" \
+            << "--mark-auto #{n} -a riscv64" << "--mark-auto #{n}:ALL"
+      vers.each { |v|
+        lines << "-s #{n}:#{v}" << "-s #{n}:#{v} -f" << "-u #{n}:#{v}" \
+              << "--mark-auto #{n}:#{v}"
+      }
+      # Every version at once, by ALL and by name: once per version.
+      lines << "-s #{n}:ALL" << "-C #{n}:ALL"
+      lines << "-s #{n}:#{vers[0]} #{n}:#{vers[1]}" if vers.length > 1
+      # The dependency asked for beside the root that pins it: the
+      # request means the pinned version, not the default.
+      b.dep_list.select(&:ver).each { |d| lines << "-s #{n} #{d.name}" }
+      # A version the package does not offer, and a series alone.
+      # Every package here declares its versions, so the first is
+      # refused at the door and the second names the one release of
+      # its series -- or is refused too, when the series has two.
+      if !b.installable_versions.empty?
+        lines << "-s #{n}:9.9.9" << "-u #{n}:9.9.9"
+        vers.map(&:series).uniq.each { |sr| lines << "-s #{n}:#{sr}" }
+      end
+      if !p.on_host && !p.arch_list.nil?
+        lines << "-s #{n} -a riscv64" << "-s #{n} -a ALL" \
+              << "-u #{n} -c #{TestHelper::FAKE_GCC_VER}"
+        # -b: a scope for -s (one board, every board, of one arch or
+        # of every arch), a filter for -u and the marks; a board the
+        # arch does not have, and a name beside -a ALL, are refused.
+        lines << "-s #{n} -b licheerv-nano" << "-s #{n} -b ALL" \
+              << "-s #{n} -a riscv64 -b ALL" << "-s #{n} -a ALL -b ALL" \
+              << "-s #{n} -b pc" << "-s #{n} -a ALL -b pc" \
+              << "-u #{n} -b ALL" << "-u #{n} -b licheerv-nano" \
+              << "-u #{n} -a riscv64 -b licheerv-nano" \
+              << "--mark-auto #{n} -b ALL"
+      end
+      if p.on_host && p.host_tier == :stack
+        lines << "-s #{n} -H #{STACK_B}" << "-u #{n} -c #{STACK_B}" \
+              << "-u #{n} -H #{STACK_B}" << "--mark-auto #{n} -c #{STACK_B}" \
+              << "-u #{n} -c ALL" << "--mark-auto #{n} -c ALL"
+      end
+    end
+
+    lines << "-s ALL" << "-u ALL" << "-u ALL -f" << "-u ALL -a ALL" \
+          << "-s ALL --with-host-packages" << "-u ALL --with-host-packages" \
+          << "-s ALL:ALL --with-host-packages" \
+          << "--mark-auto ALL --with-host-packages" \
+          << "-s t --with-host-packages" \
+          << "-u ALL -c #{TestHelper::FAKE_GCC_VER}" << "--upgrade" \
+          << "--rebuild" << "--autoremove" << "--mark-auto ALL" \
+          << "--mark-manual ALL" << "--mark-auto ALL -f" << "--clean" \
+          << "--clean -f" << "" << "-u ALL -b ALL" \
+          << "-u ALL -a riscv64 -b licheerv-nano" \
+          << "-a riscv64" << "-b licheerv-nano" \
+          << "-a riscv64 -b licheerv-nano"
+
+
+    lines = lines.uniq
+    lines += lines.map { |l| "#{l} -d".strip }
+    lines += QUERIES
+
+    return lines.map { |l| (l.split + ["-q"]) }
+  end
+
+  # --- cases ----------------------------------------------------------------
+
+  Case = Struct.new(:id, :shape, :world, :ctx, :argv) do
+    def to_s
+      "#{id}\n  world: #{world.empty? ? "(empty)" : world.join(", ")}\n" \
+      "  ctx:   #{ctx}\n  argv:  #{argv.join(' ')}"
+    end
+  end
+
+  # The per-shape tables, built once per process.
+  Tables = Struct.new(:worlds, :argvs)
+
+  # Built under the lane's own context -- the stack every case runs
+  # with -- because the candidates read it: the stack compiler's
+  # default version IS the stack in effect, and which of its versions
+  # counts as pinned follows. Built under whatever stack the process
+  # happened to be in, the tables held 233 worlds for `stack` in one
+  # run and 165 in another, by test order alone.
+  def tables_for(shape)
+    @tables ||= {}
+    @tables[shape] ||= Exhaustive.harness.with_host_stack(STACK_A) {
+      pkgs = SHAPES.fetch(shape).call
+      cands = candidates(pkgs, narrow: NARROW.include?(shape))
+      Tables.new(worlds(cands), argv_lines(pkgs))
+    }
+  end
+
+  def forget_tables!
+    @tables = nil
+    Exhaustive.forget_fixtures!   # the worlds it holds are the tables'
+  end
+
+  def count(shape)
+    t = tables_for(shape)
+    return t.worlds.length * CONTEXTS.length * t.argvs.length
+  end
+
+  # ids are "shape/world/ctx/argv" with the three indexes, so that a
+  # failure is replayable from its id alone.
+  def each_case(shapes = SHAPES.keys)
+
+    return to_enum(:each_case, shapes) if !block_given?
+
+    for shape in shapes do
+      t = tables_for(shape)
+      t.worlds.each_with_index { |w, wi|
+        CONTEXTS.each_with_index { |c, ci|
+          t.argvs.each_with_index { |a, ai|
+            yield Case.new("#{shape}/#{wi}/#{ci}/#{ai}", shape, w, c, a)
+          }
+        }
+      }
+    end
+  end
+
+  def case_by_id(id)
+    shape, wi, ci, ai = id.split("/")
+    t = tables_for(shape)
+    return Case.new(id, shape, t.worlds.fetch(wi.to_i),
+                    CONTEXTS.fetch(ci.to_i), t.argvs.fetch(ai.to_i))
+  end
+
+  # A fixed-seed sample of `n` ids across every shape, evenly.
+  def sample_ids(n, seed:)
+    rng = Random.new(seed)
+    per = (n.to_f / SHAPES.length).ceil
+    ids = []
+    for shape in SHAPES.keys do
+      t = tables_for(shape)
+      per.times {
+        ids << "#{shape}/#{rng.rand(t.worlds.length)}/" \
+               "#{rng.rand(CONTEXTS.length)}/#{rng.rand(t.argvs.length)}"
+      }
+    end
+    return ids.uniq.first(n)
+  end
+end
