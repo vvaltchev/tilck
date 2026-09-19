@@ -253,47 +253,7 @@ def get_first_different_line(screen_a, screen_b):
 
    return None
 
-def false_positive_handler_vim(t, exp_t):
-
-   # The vim test might fail because of localization. For example, the
-   # line before the last might begin with:
-   #
-   #     |"/usr/lib/vim/samples/numbers.txt" 100L, 292B
-   #
-   # OR
-   #
-   #     |"/usr/lib/vim/samples/numbers.txt" 100L, 292C
-   #
-   # The code below handles these subtle differences.
-   #
-   # FAQ
-   # --------
-   #
-   # Q: Why localization might be different? We're not running on Linux
-   #    but on Tilck, where we control everything.
-   #
-   # A: Well, yeah, but we also support different toolchains and versions of
-   #    libmusl. Also, different versions of vim might be used too. Instead of
-   #    creating an "expected" screen series for each test, for each build
-   #    configuration, just handle any eventual differences with code.
-
-   d = get_first_different_line(t, exp_t)
-   assert(d is not None)
-
-   dx, tot, row, exp_row = d
-
-   if tot > 2 and dx == tot-2:
-
-      # The line before the last one: now replace the 'B' with a 'C',
-      # like in the example above.
-      row2 = re.sub(r'(, [0-9]+)B', r'\1C', row)
-
-      if row2 == exp_row:
-         return True # Everything is fine.
-
-   return False
-
-def check_screenshot_base(test_name, n, false_positive_handler = None):
+def check_screenshot_base(test_name, n):
 
    fname = "{}-{}.gz".format(test_name, n)
    p = os.path.join(INTERACTIVE_EXP, fname)
@@ -321,18 +281,10 @@ def check_screenshot_base(test_name, n, false_positive_handler = None):
    if t == exp_t:
       return # Expectations match: the problem was non-stable screenshot.
 
-   # Ok, that's likely a failure, but it might be a special type of false
-   # positive, where there's a difference and it's still acceptable.
-
-   if false_positive_handler:
-
-      if false_positive_handler(t, exp_t):
-         return # The false positive handler told us that's fine.
-
    raise IntTestScreenshotNoMatchFailure(t, exp_t)
 
 # NOTE: utility function used by the interactive tests
-def do_interactive_actions(test_name, inputs, false_positive_handler = None):
+def do_interactive_actions(test_name, inputs):
 
    counter = 0
 
@@ -343,7 +295,7 @@ def do_interactive_actions(test_name, inputs, false_positive_handler = None):
 
    def check_screenshot():
       nonlocal counter
-      check_screenshot_base(test_name, counter, false_positive_handler)
+      check_screenshot_base(test_name, counter)
       counter += 1
 
    action_func = save_screenshot if GEN_TEST_DATA else check_screenshot
