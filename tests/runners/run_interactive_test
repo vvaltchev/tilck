@@ -22,6 +22,7 @@ RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
 INTERACTIVE_TESTS = "@CMAKE_SOURCE_DIR@/tests/interactive"
 INTERACTIVE_EXP = "@CMAKE_SOURCE_DIR@/tests/interactive/expected"
 TILCK_IMAGE = "@IMG_FILE@"
+QEMU_BIN = "qemu-system-i386"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 PNM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pnm2text"
 FONT_FILE = "@CMAKE_SOURCE_DIR@/modules/fb/font8x16.psf"
@@ -724,7 +725,7 @@ def dump_coverage_data(pts_file):
 def run():
 
    args = [
-      'qemu-system-i386',
+      QEMU_BIN,
       '-m', str(VM_MEMORY_SIZE_IN_MB),
       '-display', 'none',
       '-monitor', 'stdio',
@@ -1058,7 +1059,7 @@ def main():
       g_timeout = 60 * len(g_matching_list)
 
    dump_list_matching_tests_and_timeout()
-   detect_kvm()
+   detect_kvm(QEMU_BIN)
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()
