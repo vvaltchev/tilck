@@ -1,4 +1,4 @@
-# version: v9
+# version: v10
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
