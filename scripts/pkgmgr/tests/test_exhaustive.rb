@@ -73,4 +73,92 @@ class TestExhaustive < Minitest::Test
     assert_equal Exhaustive::BOUND,
                  Exhaustive.tables_for("target_2v").worlds.map(&:length).max
   end
+
+  # --- the full lane's plumbing: parts in processes, talking in files ---
+
+  # The lane reads a part's progress while the part goes on writing it,
+  # so a reader that opened the file just before an update reads the
+  # whole report it opened. Rewritten in place, the file could be read
+  # between the truncation and the write: the lane read nothing, and
+  # died on it on CI.
+  def test_a_progress_report_is_replaced_never_rewritten
+    Dir.mktmpdir do |dir|
+      f = File.join(dir, "shape.0.progress")
+      Exhaustive.write_progress(f, 500, 0, 1.5)
+      File.open(f) { |held|
+        Exhaustive.write_progress(f, 1000, 1, 3.0)
+        assert_equal "500 0 1.5", held.read
+      }
+      assert_equal Exhaustive::Progress.new(1000, 1, 3.0),
+                   Exhaustive.read_progress(f)
+      assert_equal ["shape.0.progress"], Dir.children(dir)
+    end
+  end
+
+  # No report yet is nil; anything but a whole one is refused, never
+  # read as zero.
+  def test_a_progress_report_is_read_whole_or_refused
+    Dir.mktmpdir do |dir|
+      f = File.join(dir, "shape.0.progress")
+      assert_nil Exhaustive.read_progress(f)
+      for bad in ["", "500 0", "500 x 1.5", "500 0 1.5 7"] do
+        File.write(f, bad)
+        assert_raises(RuntimeError, ArgumentError, bad.inspect) {
+          Exhaustive.read_progress(f)
+        }
+      end
+    end
+  end
+
+  # The full lane over the smallest shapes, one per entry of `parts`:
+  # each shape's work is stood in for by its entry (called with
+  # run_shape's arguments), the self-test and the fake toolchain left
+  # out. What is judged is how the parts' processes and the lane talk.
+  # Returns [the shapes, run_all's answer, its output].
+  def lane_with_parts(*parts)
+    shapes = Exhaustive::SHAPES.keys.min_by(parts.length) { |s|
+      Exhaustive.count(s)
+    }
+    work = shapes.zip(parts).to_h
+    run = ->(sh, **kw) { work.fetch(sh).call(sh, **kw) }
+    ok = nil
+    out, = capture_io {
+      Exhaustive.stub(:self_test, []) {
+        Exhaustive.stub(:in_lane, ->(&blk) { blk.call }) {
+          Exhaustive.stub(:run_shape, run) {
+            ok = Exhaustive.run_all(shapes: shapes, jobs: shapes.length)
+          }
+        }
+      }
+    }
+    return [shapes, ok, out]
+  end
+
+  def test_the_lane_sums_what_its_parts_publish
+    shapes, ok, out = lane_with_parts(->(sh, progress:, **) {
+      progress.call(500, 1, 0.5)
+      [Exhaustive::Summary.new(sh, 7, 0, 0.5), []]
+    })
+    assert ok, out
+    assert_match(/^  #{shapes[0]}\s+7 cases\s+0 failed\s+0\.5s$/, out)
+  end
+
+  # A part that dies -- raising, or killed before it can say anything
+  # -- has published nothing: the lane names it and fails, instead of
+  # dying itself on a result that is not there.
+  def test_a_part_that_dies_fails_the_lane_by_name
+    shapes, ok, out = lane_with_parts(
+      ->(*, **) { raise "a bug in a part" },
+      ->(*, **) {
+        Process.kill(:KILL, Process.pid)
+        sleep
+      }
+    )
+    died = ->(i, why) {
+      /^  #{shapes[i]}\s+part 1\/1 died \(#{Regexp.escape(why)}\)/
+    }
+    refute ok
+    assert_match died.(0, "exit status 1"), out
+    assert_match died.(1, "killed by signal #{Signal.list["KILL"]}"), out
+  end
 end

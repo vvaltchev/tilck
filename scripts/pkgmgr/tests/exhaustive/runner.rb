@@ -337,6 +337,81 @@ module Exhaustive
     return [Summary.new(shape, total, failed.length, now.call), failed]
   end
 
+  # --- what a part tells the lane -------------------------------------------
+
+  # A part's process and the lane share files in one directory, and the
+  # lane reads them while the parts are still writing: the progress
+  # reports, every PROGRESS_SECONDS, wherever a part has got to. So no
+  # file is ever rewritten in place -- the lane could open it between
+  # the truncation and the write, read nothing, and die on it, as it
+  # did on CI -- but written beside its name and renamed over it. A
+  # rename within one directory is atomic: the name holds the old
+  # content or the new, whole, at every instant, and a reader that
+  # opened the old file goes on reading the old file.
+  def publish(path, bytes)
+    tmp = "#{path}.tmp"
+    File.binwrite(tmp, bytes)
+    File.rename(tmp, path)
+  end
+
+  def result_path(dir, shape, part) = File.join(dir, "#{shape}.#{part}")
+
+  def progress_path(dir, shape, part)
+    return "#{result_path(dir, shape, part)}.progress"
+  end
+
+  Progress = Struct.new(:done, :failed, :seconds)
+
+  def write_progress(path, done, failed, seconds)
+    publish(path, "#{done} #{failed} #{seconds}")
+  end
+
+  # A part's last report, nil before its first. Once there, the name
+  # stays until the lane is over: publish replaces it, nothing removes
+  # it. Anything but a whole report is refused, loudly -- it can only
+  # be a bug here, and a count read as zero is one nothing would show.
+  def read_progress(path)
+    return nil if !File.file?(path)
+    fields = File.read(path).split
+    if fields.length != 3
+      raise "#{path}: not a progress report: #{fields.join(' ').inspect}"
+    end
+    return Progress.new(Integer(fields[0]), Integer(fields[1]),
+                        Float(fields[2]))
+  end
+
+  # One part, in the process forked for it: its progress while it
+  # runs, its Summary and failures once done, both published. The
+  # process ends with exit! whatever happens, never by unwinding into
+  # the at_exit hooks it inherited (the test runner's): a part that
+  # raises says so on stderr and exits 1, and the lane, which checks
+  # how every part ended, reports it.
+  def run_part(dir, shape, part, limit)
+    rc = 1
+    begin
+      $stdout.reopen(File::NULL)
+      f = progress_path(dir, shape, part)
+      out = in_lane {
+        run_shape(shape, part: part, parts: parts_of(shape), limit: limit,
+                  progress: ->(*a) { write_progress(f, *a) })
+      }
+      publish(result_path(dir, shape, part), Marshal.dump(out))
+      rc = 0
+    rescue Exception => e
+      $stderr.puts("exhaustive: #{shape} part #{part + 1}/" \
+                   "#{parts_of(shape)} raised #{e.class}: #{e.message}",
+                   Array(e.backtrace).first(8))
+    ensure
+      exit!(rc)
+    end
+  end
+
+  # How a part's process ended, when not well.
+  def death_of(status)
+    return "killed by signal #{status.termsig}" if status.signaled?
+    return "exit status #{status.exitstatus}"
+  end
+
   PROGRESS_SECONDS = 30
 
   # The full lane: every part of every shape in a process of its own,
@@ -344,7 +419,8 @@ module Exhaustive
   # shape once its parts are all in, every failure printed by the
   # parent -- and, while they run, a progress line per shape every
   # half minute. The seconds a shape reports are the CPU seconds of
-  # all its parts.
+  # all its parts. A part whose process did not end well fails the
+  # lane, by name: its cases were not judged.
   def run_all(shapes: SHAPES.keys, limit: nil, jobs: nil)
 
     problems = self_test
@@ -363,11 +439,16 @@ module Exhaustive
     $stdout.sync = true       # progress reaches a log as it happens
     queue = units
     running = {}
+    died = {}                 # [shape, part] => how its process ended
     all_ok = true
 
+    # A shape's result, from the parts that published one; a part that
+    # died has none to read, and is named instead.
     print_summary = ->(shape) {
-      parts = (0...parts_of(shape)).map { |part|
-        Marshal.load(File.binread(File.join(dir, "#{shape}.#{part}")))
+      n = parts_of(shape)
+      parts = (0...n).filter_map { |part|
+        next if died.key?([shape, part])
+        Marshal.load(File.binread(result_path(dir, shape, part)))
       }
       total = parts.sum { |s, _| s.total }
       failed = parts.sum { |s, _| s.failed }
@@ -375,6 +456,11 @@ module Exhaustive
       all_ok = false if failed > 0
       printf("  %-14s %7d cases  %4d failed  %6.1fs\n",
              shape, total, failed, seconds)
+      (0...n).each { |part|
+        next if !died.key?([shape, part])
+        printf("  %-14s part %d/%d died (%s): its cases were not judged\n",
+               shape, part + 1, n, died[[shape, part]])
+      }
       parts.each { |_, bad| bad.each { |r| puts; puts r.to_s } }
     }
 
@@ -383,13 +469,12 @@ module Exhaustive
     # PROGRESS_SECONDS.
     print_progress = -> {
       running.values.map(&:first).uniq.sort.each { |shape|
-        done = bad = sec = 0
-        Dir.glob(File.join(dir, "#{shape}.*.progress")).each { |f|
-          d, b, s = File.read(f).split.map(&:to_f)
-          done += d; bad += b; sec += s
+        got = (0...parts_of(shape)).filter_map { |part|
+          read_progress(progress_path(dir, shape, part))
         }
         printf("  %-14s %7d/%-7d      %4d failed  %6.1fs ...\n",
-               shape, done, count(shape), bad, sec)
+               shape, got.sum(&:done), count(shape), got.sum(&:failed),
+               got.sum(&:seconds))
       }
     }
 
@@ -398,29 +483,27 @@ module Exhaustive
     while !queue.empty? || !running.empty?
       while running.length < jobs && !queue.empty?
         shape, part = queue.shift
-        pid = Process.fork {
-          $stdout.reopen(File::NULL)
-          f = File.join(dir, "#{shape}.#{part}.progress")
-          out = in_lane {
-            run_shape(shape, part: part, parts: parts_of(shape),
-                      limit: limit, progress: ->(*a) {
-              File.write(f, a.join(" "))
-            })
-          }
-          File.binwrite(File.join(dir, "#{shape}.#{part}"),
-                        Marshal.dump(out))
-          exit!(0)
-        }
+        pid = Process.fork { run_part(dir, shape, part, limit) }
         running[pid] = [shape, part]
       end
 
-      pid = Process.wait(-1, Process::WNOHANG)
-      if pid
-        shape, _ = running.delete(pid)
+      # The parts' own processes, each by its pid and with how it
+      # ended: a wait for any child would take one the lane never
+      # started, and a part that died has published nothing to read.
+      ended = running.keys.filter_map { |pid|
+        _, status = Process.wait2(pid, Process::WNOHANG)
+        [pid, status] if status
+      }
+      ended.each { |pid, status|
+        shape, part = running.delete(pid)
+        if !status.success?
+          died[[shape, part]] = death_of(status)
+          all_ok = false
+        end
         pending[shape] -= 1
         print_summary.call(shape) if pending[shape] == 0
-        next
-      end
+      }
+      next if !ended.empty?
 
       sleep 1
       if Process.clock_gettime(Process::CLOCK_MONOTONIC) - last >=
