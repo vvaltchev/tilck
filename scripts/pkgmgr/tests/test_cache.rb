@@ -50,15 +50,25 @@ class TestCacheDownloadFile < Minitest::Test
     end
   end
 
+  # The server answers, and counts: a server never started still holds
+  # its listening socket, so a download attempted against it would hang
+  # on a reply that never comes instead of failing.
   def test_download_skips_if_cached
+    requests = 0
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      requests += 1
+      { status: 200, body: @body, content_type: "application/gzip" }
+    }
+    @server.start
+
     with_fake_tc do |tc|
       # Pre-create the file in cache, as the pin names it
       File.write(tc / "cache" / "pkg-1.0.tar.gz", @body)
 
-      # Server not even started — should not attempt download
       ok = Cache.download_file(@server.url, "pkg-1.0.tar.gz",
                                pin: pin_of(@body))
       assert ok
+      assert_equal 0, requests, "a cached file is not downloaded again"
       # ...and the cache now records what it checked.
       assert_equal pin_of(@body).to_s, Cache::Hashes.of("pkg-1.0.tar.gz")
     end
