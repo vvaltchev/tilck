@@ -22,9 +22,17 @@ class TestHTTPServer
 
   attr_reader :port
 
+  # The port is taken at once, so that url() can be known before the
+  # routes are; it is listened on only from start(). A server not
+  # started REFUSES a connection, at once -- what a test that leaves it
+  # unstarted means. Listening from here instead accepted a connection
+  # that nothing would ever answer: a download attempted by mistake
+  # (a mutant's) waited out Net::HTTP's read timeout, three attempts,
+  # and the run was killed rather than failed.
   def initialize
-    @server = TCPServer.new("127.0.0.1", 0)
-    @port = @server.addr[1]
+    @server = Socket.new(:INET, :STREAM)
+    @server.bind(Addrinfo.tcp("127.0.0.1", 0))
+    @port = @server.local_address.ip_port
     @routes = {}
     @thread = nil
     @running = false
@@ -38,6 +46,7 @@ class TestHTTPServer
   end
 
   def start
+    @server.listen(Socket::SOMAXCONN)
     @running = true
     @thread = Thread.new { serve_loop }
   end
@@ -56,7 +65,7 @@ class TestHTTPServer
 
   def serve_loop
     while @running
-      client = @server.accept rescue break
+      client = @server.accept.first rescue break
       Thread.new(client) { |c| handle_client(c) }
     end
   end

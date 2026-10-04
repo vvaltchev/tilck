@@ -229,13 +229,21 @@ class TestResumeDownload < Minitest::Test
 
   # --- Skips download if final file already exists ---
 
+  # The server answers, and counts: a cached file is not asked for.
   def test_skip_if_already_cached
+    requests = 0
+    @server.route("/file.tar.gz") { |req|
+      requests += 1
+      { status: 200, body: BODY, content_type: "application/gzip" }
+    }
+    @server.start
+
     with_fake_tc do |tc|
       File.write(tc / "cache" / "file.tar.gz", BODY)
 
-      # Server not started — should not attempt download
       ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
+      assert_equal 0, requests, "a cached file is not downloaded again"
     end
   end
 

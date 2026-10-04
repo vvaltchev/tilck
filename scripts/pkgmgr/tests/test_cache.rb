@@ -156,13 +156,23 @@ class TestCacheDownloadFile < Minitest::Test
     end
   end
 
+  # A download pinned by a commit is refused before the server is
+  # asked anything; the server answers, and counts.
   def test_a_downloaded_file_takes_only_a_sha256_pin
+    requests = 0
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      requests += 1
+      { status: 200, body: @body, content_type: "application/gzip" }
+    }
+    @server.start
+
     with_fake_tc do |tc|
       out = capture_output {
         refute Cache.download_file(@server.url, "pkg-1.0.tar.gz",
                                    pin: SourcePins.commit("c" * 40))
       }
       assert_match(/its pin must be a sha256/, out)
+      assert_equal 0, requests, "refused before the download"
     end
   end
 
