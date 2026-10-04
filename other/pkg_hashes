@@ -19,6 +19,7 @@ cpython-3.11.16+20260901-x86_64-unknown-linux-gnu-install_only.tar.gz: sha256:fa
 dbus-1.16.2.tar.xz: sha256:0ba2a1a4b16afe7bceb2c07e9ce99a8c2c3508e5dec290dbb643384bd6beb7e2
 distlib-0.3.9-py2.py3-none-any.whl: sha256:47f8c22fd27c27e25a65601af709b38e4f0a45ea4fc2e710f65755fa8caaaf87
 dtc-1.7.0.tar.gz: sha256:44844eb5373f8780ca1b7b4f64c073b349da1746aaad76c531f65a9dd2483232
+elfhack-19cc3ea.tgz: git:19cc3ea12a60754c7dde9c1e90fa056f442cb87a
 expat-2.8.3.tar.xz: sha256:f6256df90c906773d344da084402b7d3e4f22ed41b1a59c989098a83d3ea0c85
 fbdoom-0.12.1.tgz: git:17280163bc95e5d954d2efaa0633489b763b4cd1
 fontconfig-2.18.3.tar.xz: sha256:4f7b554a38cdf78c033f666c8871f3749e14a094f65a07f630c91ed0b43d35e3

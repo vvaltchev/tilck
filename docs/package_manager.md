@@ -636,7 +636,7 @@ current `ARCH` and `BOARD`, so the **default package set** comes in as what
 it is -- dependencies, held by the stack:
 
   * **Always**: cross-compilers (x86 gets both i386 + x86_64), acpica,
-    gnuefi_src, host_mtools, host_ncurses, zlib, busybox
+    gnuefi_src, host_mtools, host_elfhack, host_ncurses, zlib, busybox
   * **x86 only**: gnuefi
   * **riscv64 only**: dtc, uboot (qemu-virt) or licheerv_nano_boot (licheerv-nano)
 
