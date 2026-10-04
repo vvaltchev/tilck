@@ -58,7 +58,7 @@ macro(__build_and_link_module_patch_logic)
    if (APPLE)
       set(_ws_extra_deps ${BUILD_APPS}/machohack)
    else()
-      set(_ws_extra_deps ${BUILD_APPS}/elfhack32 ${BUILD_APPS}/elfhack64)
+      set(_ws_extra_deps ${ELFHACK32} ${ELFHACK64})
    endif()
 
    add_custom_command(

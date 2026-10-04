@@ -1082,8 +1082,14 @@ set(ZLIB_DIR                  ${TCROOT_ARCH_DIR}/zlib/${VER_ZLIB})
 set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnuefi/${VER_GNUEFI})
 set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
 set(LCOV_DIR                  ${NOARCH_DIR}/lcov/${HOST_VER_LCOV})
+set(ELFHACK_DIR               ${HOST_DIR_DISTRO}/elfhack/${HOST_VER_ELFHACK})
 
 set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
+
+# elfhack (the host_elfhack package): one binary per ELF class, whatever
+# the host's bitness.
+set(ELFHACK32                 ${ELFHACK_DIR}/install/bin/elfhack32)
+set(ELFHACK64                 ${ELFHACK_DIR}/install/bin/elfhack64)
 
 # BEGIN [ARCH-dependent paths]
 
@@ -1268,11 +1274,8 @@ endif()
 # Set kernel's stack size in number of pages.
 set(KERNEL_STACK_PAGES          4)
 
-if (${ARCH_BITS} EQUAL 32)
-   set(ELFHACK ${BUILD_APPS}/elfhack32)
-else()
-   set(ELFHACK ${BUILD_APPS}/elfhack64)
-endif()
+# The elfhack for the target's ELF class (ELFHACK32/64: set above)
+set(ELFHACK ${ELFHACK${ARCH_BITS}})
 
 set(FATHACK ${BUILD_APPS}/fathack)
 
@@ -1487,7 +1490,7 @@ set(TILCK_EXPORTED_VARS
    ALL_MODULES_LIST ENABLED_MODULES_LIST
 
    # Tools
-   DD FATHACK ELFHACK
+   DD FATHACK ELFHACK ELFHACK32 ELFHACK64
 
    # Misc
    COVERAGE_HTML_DIR TCROOT_REL BTC_SCRIPT_REL
@@ -1576,7 +1579,7 @@ endif()
 ExternalProject_Add(kernel
    SOURCE_DIR ${CMAKE_SOURCE_DIR}/kernel
    BINARY_DIR ${CMAKE_BINARY_DIR}/kernel
-   DEPENDS elfhack${ARCH_BITS} gen_config
+   DEPENDS gen_config
    INSTALL_COMMAND ""
    BUILD_ALWAYS 1
    BUILD_BYPRODUCTS ${KERNEL_FILE} ${KERNEL_UNSTRIPPED}
@@ -1598,7 +1601,7 @@ ExternalProject_Add_Step(kernel tools_dep
    DEPENDEES configure
    DEPENDERS build
    DEPENDS
-      $<TARGET_FILE:elfhack${ARCH_BITS}>
+      ${ELFHACK}
       $<TARGET_FILE:gen_config>
    COMMAND ${CMAKE_COMMAND} -E true
    ALWAYS 1
@@ -1698,7 +1701,6 @@ if (BOOTLOADER_LEGACY)
    ExternalProject_Add(boot_legacy
       SOURCE_DIR ${CMAKE_SOURCE_DIR}/boot/legacy
       BINARY_DIR ${CMAKE_BINARY_DIR}/boot/legacy
-      DEPENDS elfhack32
       BUILD_ALWAYS 1
       BUILD_BYPRODUCTS ${BOOTLOADER_BIN_FILE}
       INSTALL_COMMAND ""
@@ -1719,7 +1721,7 @@ if (BOOTLOADER_LEGACY)
    ExternalProject_Add_Step(boot_legacy elfhack_dep
       DEPENDEES configure
       DEPENDERS build
-      DEPENDS $<TARGET_FILE:elfhack32>
+      DEPENDS ${ELFHACK32}
       COMMAND ${CMAKE_COMMAND} -E true
       ALWAYS 1
    )
@@ -1929,10 +1931,11 @@ add_custom_target(
 
 if (EXISTS ${GTEST_INSTALL_DIR})
 
+   # machohack is built here; elfhack comes from the toolchain.
+   set(_gtests_tool_deps "")
+
    if (APPLE)
       set(_gtests_tool_deps machohack)
-   else()
-      set(_gtests_tool_deps elfhack32 elfhack64)
    endif()
 
    ExternalProject_Add(gtests

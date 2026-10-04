@@ -9,9 +9,6 @@ include(${PROJ_ROOT}/other/cmake/utils.cmake)
 include(${PROJ_ROOT}/other/cmake/errors.cmake)
 include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 
-
-set(ELFHACK32 ${BUILD_APPS}/elfhack32)
-
 # Common directories, both for early_boot and for elf_stage3_unstripped
 include_directories(
    ${BUILD_DIR}

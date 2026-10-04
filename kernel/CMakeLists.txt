@@ -31,8 +31,6 @@ include_directories(${BUILD_DIR})
 include(${PROJ_ROOT}/other/cmake/wrapped_syms.cmake)
 include(${PROJ_ROOT}/other/cmake/build_modules.cmake)
 
-set(ELFHACK ${BUILD_APPS}/elfhack${ARCH_BITS})
-
 include(${PROJ_ROOT}/other/cmake/kernel_options.cmake)
 
 # KRN_TINY_KERNEL validation checks

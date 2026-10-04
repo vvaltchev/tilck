@@ -21,21 +21,3 @@ add_executable(gen_config "gen_config.cpp")
 if (APPLE)
    add_executable(machohack "machohack.c")
 endif()
-
-add_executable(elfhack32 "elfhack.c")
-set_target_properties(
-
-   elfhack32
-
-   PROPERTIES
-      COMPILE_DEFINITIONS "USE_ELF32"
-)
-
-add_executable(elfhack64 "elfhack.c")
-set_target_properties(
-
-   elfhack64
-
-   PROPERTIES
-      COMPILE_DEFINITIONS "USE_ELF64"
-)

@@ -3,7 +3,7 @@
 AR="@CMAKE_AR@"
 RANLIB="@CMAKE_RANLIB@"
 OBJCOPY="@CMAKE_OBJCOPY@"
-ELFHACK_PREFIX="@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack"
+ELFHACK_PREFIX="@ELFHACK_DIR@/install/bin/elfhack"
 ARCH_BITS="@ARCH_BITS@"
 HOST_ARCH_BITS="@HOST_ARCH_BITS@"
 ROOT="@CMAKE_SOURCE_DIR@"
@@ -64,7 +64,7 @@ for obj in *; do
    unset obj_syms_map
    declare -A obj_syms_map
 
-   list=$($ELFHACK $obj --list-text-syms)
+   list=$($ELFHACK $obj --list-section-syms .text)
 
    for x in $list; do
       obj_syms_map[$x]=1
@@ -76,7 +76,7 @@ for obj in *; do
          continue;
       fi
 
-      addr=$($ELFHACK $obj --get-text-sym $sym)
+      addr=$($ELFHACK $obj --get-section-sym-value .text $sym)
       sobj=${obj::-4}
 
       if [[ $has_printf == 1 ]]; then
