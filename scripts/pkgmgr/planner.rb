@@ -185,8 +185,12 @@ module Planner
       registry.get(n)&.at(scope, world: world)&.installed?(v)
     }.keys.to_set
 
+    # A meta-package is made of its dependencies: walked through even
+    # when installed, so that a member added to it since is planned.
+    walked = installed.select { |n| registry.get(n).metapackage? }
+
     order = DepResolver.resolve(requested.map(&:first),
-                                graph(registry, scope), installed)
+                                graph(registry, scope), installed, walked)
 
     named = requested.select { |_, v| v }.map(&:first).to_set
     asked = requested.map(&:first).to_set

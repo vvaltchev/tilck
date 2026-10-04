@@ -139,6 +139,35 @@ class TestDepResolverResolve < Minitest::Test
     assert_empty result
   end
 
+  # A meta-package (a Tilck stack) is made of its dependencies: walked
+  # through even when installed, so that a member added since is
+  # collected -- with what it needs -- while an installed member is
+  # still where the walk stops, and the stack itself is not built.
+  def test_an_installed_meta_package_is_walked_through
+    graph = { "stack" => ["m1", "m2"], "m1" => ["y"], "m2" => ["x"],
+              "x" => [], "y" => [] }
+    result = DepResolver.resolve(["stack"], graph, ["stack", "m1"],
+                                 ["stack"])
+    assert_equal ["x", "m2"], result
+  end
+
+  # Only what is named walked: any other installed package still cuts.
+  def test_an_installed_package_not_walked_through_cuts
+    graph = { "stack" => ["a"], "a" => ["b"], "b" => [] }
+    result = DepResolver.resolve(["stack"], graph, ["stack", "a"],
+                                 ["stack"])
+    assert_empty result
+  end
+
+  # Walked through once, however often it is reached: the walk stays
+  # within its bound (edges + roots) when the stack is asked twice.
+  def test_a_meta_package_is_walked_through_once
+    graph = { "stack" => ["m"], "m" => [] }
+    result = DepResolver.resolve(["stack", "stack"], graph, ["stack"],
+                                 ["stack"])
+    assert_equal ["m"], result
+  end
+
   def test_multiple_roots
     graph = { "a" => ["c"], "b" => ["c"], "c" => [] }
     result = DepResolver.resolve(["a", "b"], graph)

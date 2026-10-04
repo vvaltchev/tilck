@@ -360,6 +360,11 @@ module Model
   # What `-s roots` builds, in dependency order: the closure of the
   # roots, cut at anything already installed at its bound version --
   # an installed node's dependencies are not walked.
+  #
+  # SPEC: except a meta-package's. A Tilck stack is made of its members:
+  # installed, it builds nothing, but a member added to it since -- a
+  # new default package -- is still planned, by the plain run as by
+  # `-s` of the stack.
   def plan(registry, world, roots, scope)
 
     bound, pinned = bind_versions(registry, roots, scope)
@@ -375,11 +380,11 @@ module Model
     visiting = Set.new
 
     visit = ->(n) {
-      next if order.include?(n) || installed.include?(n)
-      next if visiting.include?(n)
+      next if order.include?(n) || visiting.include?(n)
+      next if installed.include?(n) && !registry[n].meta
       visiting << n
       registry.deps_of(n, scope).each { |d, _| visit.call(d) }
-      order << n
+      order << n if !installed.include?(n)
     }
 
     roots.each { |n, _| visit.call(n) }

@@ -424,6 +424,32 @@ class TestModel < Minitest::Test
                  go(r, w, "--upgrade", inv).world
   end
 
+  # A Tilck stack is made of its members, so a default package added
+  # after the stack was installed is installed by the next plain run --
+  # as the stack's dependency, :auto -- and the stack itself is not
+  # rebuilt. The implementation stopped its walk at the installed
+  # stack: the plain run said every default package was installed
+  # while --check-for-updates reported the member NEEDS_INSTALL. Found
+  # adding host_elfhack to the default set.
+  def test_a_member_added_to_an_installed_stack_is_installed
+    r = reg(Model::Shape.make("dflt", :target, default: true,
+                              arch_list: %w[i386]),
+            Model::Shape.make("tilck-i386-pc", :target, versions: %w[1],
+                              arch_list: %w[i386], board_list: %w[pc],
+                              meta: true))
+    w = Model.world(k("tilck-i386-pc", "1", tgt(I386)))
+
+    assert_equal "NEEDS_INSTALL dflt",
+                 go(r, w, "--check-for-updates", inv).out
+
+    o = go(r, w, "", inv)
+    assert_equal 0, o.rc
+    assert_equal Model.world(k("tilck-i386-pc", "1", tgt(I386)),
+                             k("dflt", "1.0.0", tgt(I386), mark: :auto)),
+                 o.world
+    assert_equal 0, go(r, o.world, "--check-for-updates", inv).rc
+  end
+
   # --mark-* selects what -u selects: -a narrows to an arch, ALL
   # leaves the compilers alone unless -f, ruby is never touched, and
   # -d changes nothing.

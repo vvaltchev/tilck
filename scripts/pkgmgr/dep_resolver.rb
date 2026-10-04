@@ -153,13 +153,17 @@ module DepResolver
   # 3. Topological sort the remaining subgraph (Kahn's algorithm,
   #    with alphabetical tie-breaking for deterministic output).
   #
+  # `walked`: installed packages whose dependencies are walked all the
+  # same -- the meta-packages, made of their dependencies (step 1).
+  #
   # Returns an Array of package names, dependencies first.
   #
   # Raises MissingDepError if a requested name or any transitive dep
   # is not in the graph.
-  def resolve(requested, graph, installed = [])
+  def resolve(requested, graph, installed = [], walked = [])
 
     installed = installed.to_a.to_set
+    walked = walked.to_a.to_set
 
     # --- 1. Transitive closure via BFS ---
     #
@@ -167,7 +171,13 @@ module DepResolver
     # installed, we trust that its own deps are satisfied (same
     # assumption APT makes). Only uninstalled packages and their
     # transitive deps are collected.
+    #
+    # Except at a package in `walked`: a meta-package (a Tilck stack)
+    # is made of its dependencies, so installed it is not built again,
+    # but a member added to it since -- a new default package -- is
+    # still collected. Each is walked through once.
     needed = Set.new
+    passed = Set.new
     queue = requested.map { |r| [r, [r]] }
     limit = walk_limit(graph, requested.length)
     steps = 0
@@ -182,13 +192,16 @@ module DepResolver
       end
       check_cycle(name, path)
       next if needed.include?(name)  # mutation: equivalent -- a Set adds once
-      next if installed.include?(name)
+
+      if installed.include?(name)
+        next if !walked.include?(name) || !passed.add?(name)
+      end
 
       if !graph.key?(name)
         raise MissingDepError, "Unknown package: #{name}"
       end
 
-      needed.add(name)
+      needed.add(name) if !installed.include?(name)
       graph[name].each { |dep|
         dep_path = path + [dep]
         check_cycle(dep, dep_path)          # before "already needed" hides it

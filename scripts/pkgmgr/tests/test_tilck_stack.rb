@@ -80,6 +80,39 @@ class TestTilckStack < Minitest::Test
     end
   end
 
+  # A default package added after the stack was installed (as
+  # host_elfhack was) is the stack's new member: --check-for-updates
+  # reports it, and the next no-mode run installs it, as a dependency,
+  # without building the stack again. The no-mode run used to stop its
+  # walk at the installed stack and say every default was installed.
+  def test_a_new_default_package_is_installed_by_the_no_mode_run
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("dflt", default: true))
+        stack = register_tilck_stack!
+        assert_equal 0, run_cli("-s", stack.name, "-q").first
+        before = stack.get_install_list.find { |i| !i.path.nil? }
+
+        added = FakePackage.new("added", default: true)
+        pkgmgr.register(added)
+
+        rc, out = run_cli("-q", "--check-for-updates")
+        assert_equal 2, rc
+        assert_match(/NEEDS_INSTALL added/, out)
+
+        assert_equal 0, run_cli("-q").first
+        inst = added.get_install_list.first
+        refute_nil inst
+        refute inst.manual
+        assert_equal before.path.join(".install").read,
+                     stack.get_install_list.find { |i| !i.path.nil? }
+                          .path.join(".install").read
+
+        assert_equal 0, run_cli("-q", "--check-for-updates").first
+      end
+    end
+  end
+
   def test_a_stack_is_refused_at_another_board
     with_fake_tc do
       with_stubbed_externals do
