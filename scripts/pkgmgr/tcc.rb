@@ -33,14 +33,14 @@ require_relative 'cache'
 require_relative 'package_manager'
 
 #
-# TCC lives on repo.or.cz, not github — the SourceRef heuristic
-# defaults to HTTP download for non-github URLs, so we explicitly
-# opt into git clone via fetch_via_git: true.
+# TCC's home is repo.or.cz, but that site refuses connections from
+# the UK, and a CI runner can land there: we clone the TinyCC/tinycc
+# mirror on github instead. Its pin is a commit, so other/pkg_hashes
+# checks the clone the same whichever host served it.
 #
 TCC_SOURCE = SourceRef.new(
   name: 'tcc',
-  url:  "git://repo.or.cz/tinycc.git",
-  fetch_via_git: true,
+  url:  GITHUB + '/TinyCC/tinycc',
 )
 
 class TccPackage < Package

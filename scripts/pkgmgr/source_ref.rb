@@ -98,8 +98,8 @@ class SourceRef
   # Whether to fetch via `git clone` (true) vs HTTP download (false).
   # Auto-detect heuristic: github.com URLs pointing at a repo root
   # — i.e. NOT at a release asset (/releases/download/) and NOT at a
-  # tag archive (/archive/). Non-github git servers (git.musl-libc.org,
-  # repo.or.cz) must pass fetch_via_git: true explicitly.
+  # tag archive (/archive/). Non-github git servers (git.musl-libc.org)
+  # must pass fetch_via_git: true explicitly.
   def fetch_via_git?
     return @fetch_via_git_explicit if !@fetch_via_git_explicit.nil?
     tarball = @url.include?("/releases/download/") ||
