@@ -151,16 +151,6 @@ popd () {
     command popd "$@" > /dev/null
 }
 
-function show_work_on_component_msg {
-   echo
-   echo "*** $1 ***"
-   echo
-}
-
-function show_skip_component_msg {
-   echo "NOTE: Skipping $1"
-}
-
 # $1 = program name
 # $2 = min version string
 function show_too_old_and_exit {
@@ -423,30 +413,3 @@ function extract_cachefile_tar_gz {
 function extract_cachefile_tar_bz {
    extract_cachefile_tar_generic "$1" "$2" "$3"
 }
-
-function extract_cachefile_tar_xz {
-   extract_cachefile_tar_generic "$1" "$2" "$3"
-}
-
-function dump_cross_compiler_env {
-
-   echo "[DEBUG] CC=$CC" >> $1
-   echo "[DEBUG] CXX=$CXX" >> $1
-   echo "[DEBUG] SYS_CC=$SYS_CC" >> $1
-   echo "[DEBUG] SYS_CXX=$SYS_CXX" >> $1
-   echo "[DEBUG] CC_POST_FLAGS=$CC_POST_FLAGS" >> $1
-   echo "[DEBUG] CROSS_COMPILE=$CROSS_COMPILE" >> $1
-   echo "[DEBUG] CFLAGS=$CFLAGS" >> $1
-   echo "[DEBUG] LDFLAGS=$LDFLAGS" >> $1
-   echo "[DEBUG] CPPFLAGS=$CPPFLAGS" >> $1
-
-   for a in i386 i686 x86_64 riscv64 aarch64; do
-      if which ${a}-linux-gcc &> null; then
-         echo "[DEBUG] ${a}-linux-gcc: $(which ${a}-linux-gcc)" >> $1
-      else
-         echo "[DEBUG] ${a}-linux-gcc: " >> $1
-      fi
-   done
-   echo "[DEBUG] PATH: $PATH" >> $1
-}
-
