@@ -51,11 +51,6 @@ class UbootPackage < Package
     Run(log: "build.log", argv: make_argv),
   ]
 
-  # mkimage links OpenSSL. Declared, so the check before the first
-  # build says so when it is missing -- and so the recipe may name
-  # where the host keeps it.
-  def system_deps(ver = nil) = [SystemDeps::OPENSSL]
-
   def configurable? = true
 
   def config_impl
@@ -88,24 +83,15 @@ class UbootPackage < Package
 
   private
 
-  # In tokens, because it is part of the recipe. On macOS Homebrew's
-  # openssl@3 is keg-only -- on no default path -- and $openssl is
-  # where the host says it is, resolved when the step runs. The
-  # recipe used to run `brew --prefix` right here, which made it a
-  # function of the machine rather than of the coordinates, on every
-  # staleness check.
-  def make_argv
-    argv = ["make", "V=1", "-j$PAR"]
-
-    if OS == "Darwin"
-      argv += [
-        "HOSTCFLAGS=-I$openssl/include",
-        "HOSTLDFLAGS=-L$openssl/lib",
-      ]
-    end
-
-    return argv
-  end
+  # The recipe's make line, in tokens, and the one -C rebuilds with.
+  #
+  # The host tools are built without OpenSSL (CONFIG_TOOLS_LIBCRYPTO
+  # off in u-boot.config): libcrypto is only for signing images, which
+  # Tilck's FIT does not do, and OpenSSL 4 removed the ENGINE API that
+  # u-boot's signing code calls -- no u-boot release builds against it
+  # (2026.10 does not). Arch ships OpenSSL 4 already, and Fedora 45
+  # no longer has the openssl-devel-engine package it needed.
+  def make_argv = ["make", "V=1", "-j$PAR"]
 
 end
 

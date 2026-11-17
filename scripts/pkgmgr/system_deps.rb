@@ -374,16 +374,6 @@ module SystemDeps
                                             "autoreconf)",
                        pkgs: "libtool")
 
-  # u-boot's host tools (mkimage) link OpenSSL. The bootstrap installs
-  # the -dev package on every distro it knows, and pacman and FreeBSD
-  # ship it in the base system, so on those it is on the default path
-  # and nothing has to be named. Homebrew's openssl@3 is keg-only:
-  # a build there must say -I$openssl/include, and the token is how.
-  OPENSSL = SysDep.new(
-    key: :openssl, what: "OpenSSL headers and libraries",
-    pkgs: { apt: "libssl-dev", dnf: "openssl-devel", brew: "openssl@3" },
-    token: "openssl")
-
   #
   # Everything that touches the world outside this process, in one
   # object, so that the decision logic above and the reporting below
