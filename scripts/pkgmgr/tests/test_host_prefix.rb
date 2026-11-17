@@ -38,7 +38,7 @@ class TestSourceExtraFiles < Minitest::Test
 
   def with_recorded_downloads
     got = []
-    record = ->(url, remote, local = nil, pin: nil) {
+    record = ->(url, remote, local = nil, mirrors: [], pin: nil) {
       got << [url, remote, local]
       true
     }

@@ -11,6 +11,9 @@ BUSYBOX_SOURCE = SourceRef.new(
   name: 'busybox',
   url:  "https://busybox.net/downloads",
   tarname: ->(ver) { "busybox-#{ver}.tar.bz2" },
+  # busybox.net comes and goes: one CI job fetched from it while
+  # another, two minutes later, timed out.
+  mirrors: [BUILDROOT_SOURCES + '/busybox'],
 )
 
 class BusyBoxPackage < Package

@@ -20,6 +20,7 @@
   * [Pinned sources](#pinned-sources)
   * [One package manager at a time](#one-package-manager-at-a-time)
   * [Resumable downloads](#resumable-downloads)
+  * [Retried downloads and mirrors](#retried-downloads-and-mirrors)
   * [Retried clones](#retried-clones)
   * [Package reconfiguration](#package-reconfiguration)
   * [Test infrastructure](#test-infrastructure)
@@ -955,11 +956,28 @@ leave. It is written to run on FreeBSD and macOS as well.
 
 ## Resumable downloads
 
-HTTP downloads are resumable. If a download is interrupted, the partial file is
-preserved in `cache/partial/` and the next attempt resumes from where it left off
-using the HTTP `Range` header. If the server doesn't support resume (returns 200
-instead of 206), the partial file is deleted and the download restarts. If the
-range is invalid (416), the partial is also deleted.
+HTTP downloads are resumable. If a download is interrupted or cut off, the
+partial file is preserved in `cache/partial/` and the next attempt (a retry, or
+the next run) resumes from where it left off using the HTTP `Range` header. If
+the server doesn't support resume (returns 200 instead of 206), the partial
+file is deleted and the download restarts. If the range is invalid (416), the
+partial is also deleted.
+
+## Retried downloads and mirrors
+
+A failed HTTP download is attempted again, like a clone: three times, two and
+then eight seconds apart. An interrupt (Ctrl-C) is never retried.
+
+A source can also name mirrors: other places that publish the same release
+files (`mirrors:` on its `SourceRef`). Each attempt asks the upstream URL first
+and then every mirror in order, so a host that has gone away costs one timeout,
+not the build. A mirror is trusted for nothing: what it serves has to match the
+file's pin in `other/pkg_hashes`, exactly as the upstream's does.
+
+busybox and u-boot fall back to Buildroot's source mirror,
+`sources.buildroot.net`, which keeps every release file a Buildroot release has
+fetched, checked against Buildroot's own hashes. busybox.net comes and goes,
+and ftp.denx.de stopped answering in November 2026.
 
 ## Retried clones
 

@@ -223,7 +223,7 @@ class TestSourceRefPins < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         Cache.define_singleton_method(:download_file) {
-          |url, remote, local = nil, pin:|
+          |url, remote, local = nil, mirrors: [], pin:|
           seen << [:dl, local || remote, pin]
           true
         }
@@ -241,6 +241,40 @@ class TestSourceRefPins < Minitest::Test
                   [:x, 'py-1.0.tgz', pin_of("t")]], seen
   ensure
     pkgmgr.pins = held
+  end
+end
+
+class TestSourceRefMirrors < Minitest::Test
+  include TestHelper
+
+  # The source hands its mirrors to the download, which is where they
+  # are asked: a source that kept them would protect nothing.
+  def test_a_source_downloads_from_its_mirrors_too
+    src = SourceRef.new(name: "x", url: "https://example.org/x",
+                        tarname: ->(ver) { "x-#{ver}.tar.gz" },
+                        mirrors: ["https://mirror.example.org/x"])
+    got = nil
+    saved = Cache.method(:download_file)
+    Cache.define_singleton_method(:download_file) { |*args, **kw|
+      got = [args, kw]
+      true
+    }
+
+    assert src.download("1.0")
+    assert_equal ["https://example.org/x", "x-1.0.tar.gz", "x-1.0.tar.gz"],
+                 got[0]
+    assert_equal ["https://mirror.example.org/x"], got[1][:mirrors]
+  ensure
+    Cache.define_singleton_method(:download_file, saved)
+  end
+
+  # A clone asks its one remote and would never consult a mirror: a
+  # git source given one is refused where it is written.
+  def test_a_cloned_source_takes_no_mirrors
+    assert_raises(RuntimeError) {
+      SourceRef.new(name: "x", url: GITHUB + "/example/x",
+                    mirrors: ["https://mirror.example.org/x"])
+    }
   end
 end
 

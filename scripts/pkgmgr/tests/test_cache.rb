@@ -14,10 +14,12 @@ class TestCacheDownloadFile < Minitest::Test
   def setup
     @server = TestHTTPServer.new
     @body = "fake tarball content for testing"
+    @waits = stub_net_waits
   end
 
   def teardown
     @server.stop
+    unstub_net_waits
   end
 
   def test_download_success
@@ -259,10 +261,12 @@ class TestCacheDownloadEdgeCases < Minitest::Test
 
   def setup
     @server = TestHTTPServer.new
+    @waits = stub_net_waits
   end
 
   def teardown
     @server.stop
+    unstub_net_waits
   end
 
   def test_content_length_mismatch_fails
@@ -430,6 +434,151 @@ class TestCacheDownloadEdgeCases < Minitest::Test
   end
 end
 
+# A download is asked of every place that publishes the file, more
+# than once: an upstream host that does not answer is the commonest
+# way for a toolchain build to fail, and it fails all of a build.
+class TestCacheDownloadMirrorsAndRetries < Minitest::Test
+  include TestHelper
+
+  def setup
+    @server = TestHTTPServer.new
+    @mirror = TestHTTPServer.new
+    @body = "the same release file, wherever it is published"
+    @waits = stub_net_waits
+  end
+
+  def teardown
+    @server.stop
+    @mirror.stop
+    unstub_net_waits
+  end
+
+  # A route that serves the file and counts the requests.
+  def serving(server, asked)
+    server.route("/pkg-1.0.tar.gz") { |req|
+      asked << server
+      { status: 200, body: @body, content_type: "application/gzip" }
+    }
+    server.start
+  end
+
+  # A route that fails every request, and counts them.
+  def failing(server, asked)
+    server.route("/pkg-1.0.tar.gz") { |req|
+      asked << server
+      { status: 500, body: "Internal Server Error" }
+    }
+    server.start
+  end
+
+  # The url is not started, so it refuses the connection: a host that
+  # does not answer. The mirror is asked in the same attempt.
+  def test_a_file_its_url_does_not_serve_comes_from_a_mirror
+    asked = []
+    serving(@mirror, asked)
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                               mirrors: [@mirror.url], pin: pin_of(@body))
+      assert ok
+      assert_equal @body, File.read(tc / "cache" / "pkg-1.0.tar.gz")
+      assert_equal [@mirror], asked
+      assert_empty @waits
+    end
+  end
+
+  def test_the_url_is_asked_before_its_mirrors
+    asked = []
+    serving(@server, asked)
+    serving(@mirror, asked)
+
+    with_fake_tc do |tc|
+      assert Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                 mirrors: [@mirror.url], pin: pin_of(@body))
+      assert_equal [@server], asked
+    end
+  end
+
+  # A mirror is trusted for nothing: what it serves is the file the
+  # pin names, or it is set aside like any other.
+  def test_what_a_mirror_serves_is_held_to_the_pin
+    asked = []
+    serving(@mirror, asked)
+
+    with_fake_tc do |tc|
+      capture_output {
+        refute Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   mirrors: [@mirror.url],
+                                   pin: pin_of("another file"))
+      }
+      refute (tc / "cache" / "pkg-1.0.tar.gz").exist?
+    end
+  end
+
+  def test_a_failed_download_is_attempted_again
+    requests = 0
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      requests += 1
+      if requests == 1
+        { status: 503, body: "Busy" }
+      else
+        { status: 200, body: @body, content_type: "application/gzip" }
+      end
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      assert Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                 pin: pin_of(@body))
+      assert_equal 2, requests
+      assert_equal [Cache::Impl::NET_RETRY_DELAYS.first], @waits
+    end
+  end
+
+  # Each attempt asks the url and then every mirror, in order; the
+  # backoff comes between attempts, never between the places asked.
+  def test_each_attempt_asks_every_place_in_order
+    asked = []
+    failing(@server, asked)
+    failing(@mirror, asked)
+
+    with_fake_tc do |tc|
+      capture_output {
+        refute Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   mirrors: [@mirror.url],
+                                   pin: pin_of(@body))
+      }
+      attempts = Cache::Impl::NET_RETRY_DELAYS.length + 1
+      assert_equal [@server, @mirror] * attempts, asked
+      assert_equal Cache::Impl::NET_RETRY_DELAYS, @waits
+      refute (tc / "cache" / "pkg-1.0.tar.gz").exist?
+    end
+  end
+
+  # An interrupt is the user's answer, not the network's: nothing is
+  # asked after it, neither a mirror nor another attempt.
+  def test_an_interrupted_download_is_not_asked_again
+    calls = []
+    saved = Cache::Impl.method(:download_url)
+    Cache::Impl.define_singleton_method(:download_url) { |url, path|
+      calls << url
+      nil
+    }
+
+    with_fake_tc do |tc|
+      capture_output {
+        refute Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   mirrors: [@mirror.url],
+                                   pin: pin_of(@body))
+      }
+      assert_equal [@server.url("/pkg-1.0.tar.gz")], calls
+      assert_empty @waits
+    end
+  ensure
+    Cache::Impl.define_singleton_method(:download_url, saved)
+  end
+end
+
 class TestCacheExtractFile < Minitest::Test
   include TestHelper
 
@@ -534,10 +683,12 @@ class TestCacheDownloadAndExtractIntegration < Minitest::Test
 
   def setup
     @server = TestHTTPServer.new
+    @waits = stub_net_waits
   end
 
   def teardown
     @server.stop
+    unstub_net_waits
   end
 
   # Create a real tarball in memory and serve it via HTTP.

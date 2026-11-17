@@ -176,6 +176,9 @@ module Cache
     #
     # On interrupt or error the partial file is preserved for resume.
     # On success the partial file is moved to the final location.
+    #
+    # True when the file came, false when this attempt failed and
+    # another may not, nil on an interrupt: nothing more is asked.
     def download_url(url, final_path)
 
       partial_dir = File.join(File.dirname(final_path), "partial")
@@ -204,8 +207,8 @@ module Cache
 
     rescue => e
       error "Download error: #{e.message}"
-      # Partial file is preserved for resume on next run.
-      return nil
+      # Partial file is preserved: the next attempt resumes it.
+      return false
     end
 
     # Thin wrappers around the git command. Tests replace these to
@@ -264,6 +267,28 @@ module Cache
       with_net_retries("Cloning #{url}") do |attempt|
         rm_rf(destdir) if attempt > 1
         run_git("clone", *opts, url, destdir)
+      end
+    end
+
+    # One file, from the first of `urls` that serves it, attempted
+    # more than once.
+    #
+    # Every URL is a place the same file is published, and none is
+    # trusted for it: the caller holds what came to its pin. Each
+    # attempt asks them in order, so a host that is gone costs one
+    # timeout per attempt, and the next is asked at once. Upstream
+    # hosts do go: ftp.denx.de stopped answering in November 2026,
+    # and busybox.net comes and goes. A transfer cut short leaves
+    # its partial file, which the next request resumes, from
+    # whichever URL. An interrupt ends it: nothing more is asked.
+    def download_any(urls, final_path)
+
+      with_net_retries("Downloading #{File.basename(final_path)}") do
+        urls.any? { |url|
+          ok = download_url(url, final_path)
+          return nil if ok.nil?
+          ok
+        }
       end
     end
 
@@ -499,7 +524,11 @@ module Cache
   # pin's, an unpinned one is left in place, unrecorded, with the
   # line to add printed. One already in the cache is looked at the
   # same way, and fetched again when it is not what it should be.
-  def download_file(url, remote_file, local_file = nil, pin:)
+  #
+  # `mirrors` are more places that publish the same file, asked in
+  # order when `url` does not serve it: what any of them serves is
+  # held to the same pin, so a mirror is trusted for nothing.
+  def download_file(url, remote_file, local_file = nil, mirrors: [], pin:)
 
     local_file ||= remote_file
     local_path = TC_CACHE / local_file
@@ -520,12 +549,14 @@ module Cache
       return false
     end
 
+    urls = [url, *mirrors].map { |u| "#{u}/#{remote_file}" }
+
     holding(local_file, what: "the download of #{local_file}") do
-      return fetch_file(url, remote_file, local_file, local_path, pin)
+      return fetch_file(urls, remote_file, local_file, local_path, pin)
     end
   end
 
-  def fetch_file(url, remote_file, local_file, local_path, pin)
+  def fetch_file(urls, remote_file, local_file, local_path, pin)
 
     if file? local_path
       l = vouch(local_file, pin, kind: :sha256)
@@ -541,7 +572,7 @@ module Cache
     end
 
     # Download here the file.
-    success = Impl.download_url("#{url}/#{remote_file}", local_path)
+    success = Impl.download_any(urls, local_path)
 
     if !success
       error "Download failed" if success == false

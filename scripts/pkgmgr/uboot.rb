@@ -16,6 +16,9 @@ UBOOT_SOURCE = SourceRef.new(
   name: 'uboot',
   url:  'https://ftp.denx.de/pub/u-boot',
   tarname: ->(ver) { "u-boot-#{ver}.tar.bz2" },
+  # ftp.denx.de stopped answering in November 2026, and no riscv64
+  # CI image could be built without another place to ask.
+  mirrors: [BUILDROOT_SOURCES + '/uboot'],
 )
 
 class UbootPackage < Package

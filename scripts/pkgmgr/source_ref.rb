@@ -3,6 +3,12 @@
 require_relative 'early_logic'
 require_relative 'cache'
 
+# Buildroot's backup site: every release file a Buildroot release has
+# fetched, under the package's Buildroot name, as its upstream
+# published it -- Buildroot holds each to the digest in its .hash
+# file. A mirror for upstream hosts that come and go.
+BUILDROOT_SOURCES = "https://sources.buildroot.net"
+
 # SourceRef describes an upstream source artifact that a Package can
 # consume: a URL, how to derive cache/remote filenames and git tags
 # from a version, and whether to fetch via `git clone` vs HTTP.
@@ -47,6 +53,10 @@ class SourceRef
   #                                    cache tarball (defaults to ver.to_s).
   # @param fetch_via_git   [Boolean]   explicit override of the
   #                                    git-vs-HTTP auto-detection.
+  # @param mirrors         [Array]     more base URLs that publish the
+  #   same files as `url`, asked in order when it does not serve one.
+  #   A mirror is trusted for nothing: what it serves is held to the
+  #   same pin. Downloaded sources only: a clone has no mirrors.
   # @param extra_files     [Array]     more downloads this source
   #   brings with it, each { url:, file: }: fetched into the cache
   #   beside the tarball and left there, for a recipe to name as
@@ -60,6 +70,7 @@ class SourceRef
                  git_tag: nil,
                  dir_name: nil,
                  fetch_via_git: nil,
+                 mirrors: [],
                  extra_files: [])
     @name = name
     @url = url
@@ -68,9 +79,14 @@ class SourceRef
     @git_tag_proc = git_tag
     @dir_name_proc = dir_name
     @fetch_via_git_explicit = fetch_via_git
+    @mirrors = mirrors.freeze
     @extra_files = extra_files.map { |e|
       { url: e.fetch(:url), file: e.fetch(:file) }
     }.freeze
+
+    # A mirror stands in for a host that serves files; a clone asks
+    # its one remote, which would never consult one.
+    assert { @mirrors.empty? || !fetch_via_git? }
   end
 
   attr_reader :extra_files
@@ -126,7 +142,7 @@ class SourceRef
       )
     else
       Cache::download_file(@url, remote_tarname(ver), tarname(ver),
-                           pin: pin(tarname(ver)))
+                           mirrors: @mirrors, pin: pin(tarname(ver)))
     end
     return false if !ok
     return @extra_files.all? { |e|

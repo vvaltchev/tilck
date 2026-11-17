@@ -200,6 +200,24 @@ module TestHelper
     SourcePins.parse_pin("sha256:" + Digest::SHA256.hexdigest(body))
   end
 
+  # Cache's network backoff, replaced until unstub_net_waits by a
+  # record of the waits it asked for, which is returned: a download
+  # suite that really waited would sleep through the backoff of every
+  # failure it exercises. A test that cares how often a download was
+  # attempted asserts the record.
+  def stub_net_waits
+    waits = []
+    @saved_net_wait = Cache::Impl.method(:wait_before_retry)
+    Cache::Impl.define_singleton_method(:wait_before_retry) { |s|
+      waits << s
+    }
+    return waits
+  end
+
+  def unstub_net_waits
+    Cache::Impl.define_singleton_method(:wait_before_retry, @saved_net_wait)
+  end
+
   # What the block printed to stdout, where every message goes.
   def capture_output
     out, = capture_io { yield }
@@ -522,7 +540,7 @@ module TestHelper
     }
 
     Cache.define_singleton_method(:download_file) {
-      |url, remote, local = nil, pin: nil|
+      |url, remote, local = nil, mirrors: [], pin: nil|
       FileUtils.touch(TC_CACHE / (local || remote))
       true
     }
@@ -570,7 +588,7 @@ module TestHelper
 
     # Stub Cache::download_file — pretend the file exists in cache
     Cache.define_singleton_method(:download_file) {
-      |url, remote, local = nil, pin: nil|
+      |url, remote, local = nil, mirrors: [], pin: nil|
       local ||= remote
       FileUtils.touch(TC_CACHE / local)
       true

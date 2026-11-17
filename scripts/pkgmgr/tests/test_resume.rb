@@ -14,10 +14,12 @@ class TestResumeDownload < Minitest::Test
 
   def setup
     @server = TestHTTPServer.new
+    @waits = stub_net_waits
   end
 
   def teardown
     @server.stop
+    unstub_net_waits
   end
 
   # Helper: set up a server route that supports Range requests.
@@ -161,6 +163,7 @@ class TestResumeDownload < Minitest::Test
 
   def test_drop_then_resume
     call_count = 0
+    offsets = []
 
     @server.route("/file.tar.gz") { |req|
       call_count += 1
@@ -170,6 +173,8 @@ class TestResumeDownload < Minitest::Test
       if range && range =~ /\Abytes=(\d+)-/
         offset = $1.to_i
       end
+
+      offsets << offset
 
       if call_count == 1 && offset == 0
         # First request: send only 500 bytes then drop
@@ -207,23 +212,17 @@ class TestResumeDownload < Minitest::Test
     @server.start
 
     with_fake_tc do |tc|
-      # First attempt — will get a partial download (500 bytes)
-      # then content-length mismatch → failure
-      ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
-      refute ok
-
-      # Partial file should exist with 500 bytes
-      partial = tc / "cache" / "partial" / "file.tar.gz"
-      assert partial.file?
-      assert_equal 500, File.size(partial)
-
-      # Second attempt — should resume from byte 500
+      # The first request gets 500 bytes and is cut off. The partial
+      # file stays, and the retry asks for the rest of it: the one
+      # call ends with the whole file.
       ok = Cache.download_file(@server.url, "file.tar.gz", pin: pin_of(BODY))
       assert ok
+      assert_equal [0, 500], offsets
+      assert_equal [Cache::Impl::NET_RETRY_DELAYS.first], @waits
 
       # Complete file
       assert_equal BODY, File.read(tc / "cache" / "file.tar.gz")
-      refute partial.exist?
+      refute (tc / "cache" / "partial" / "file.tar.gz").exist?
     end
   end
 
