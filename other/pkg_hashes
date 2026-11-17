@@ -119,7 +119,7 @@ sophgo_host_tools-1.6.tar.gz: sha256:f1eeea9bf97284933a5e5cf2ee3201e510a924f76be
 tcc-98765e5ebc04ea4641.tgz: git:98765e5ebc04ea464195fa80ea5e4bbdc70a29cc
 tfblib-dbcefc6.tgz: git:dbcefc6a351517dee782cc822488a09c734db89c
 treecmd-1.8.0.tgz: git:683188c60ce7b4bf4cb5237e8c053958fcfcc90b
-u-boot-2024.04.tar.bz2: sha256:18a853fe39fad7ad03a90cc2d4275aeaed6da69735defac3492b80508843dd4a
+uboot-2024.04.tgz: git:25049ad560826f7dc1c4740883b0016014a59789
 vim-v8.2.5056.tgz: git:1d97db3d987c05af88c30ad20f537bcf3024f9c1
 x86_64-musl-1.2.5-gcc-12.4.0-aarch64.tar.bz2: sha256:4ceeb64fba8541493a37f1c2af5e6ad4c8077b927fac20c114b89328afdb8bd6
 x86_64-musl-1.2.5-gcc-12.4.0-x86_64.tar.bz2: sha256:56ebdb8455d9b1bbca9f3c11212111eb487e8e1f0816986608ceee1aefc88adb

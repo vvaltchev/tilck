@@ -9,16 +9,18 @@ require_relative 'package_manager'
 
 #
 # U-Boot — bootloader used by the riscv64 qemu-virt board build of Tilck.
-# This Ruby port covers only the qemu-virt board (the default for riscv64);
-# the licheerv-nano board uses a vendor build system that's still bash-only.
+# The licheerv-nano board boots from its vendor BSP instead, which has a
+# u-boot of its own (licheerv_nano_boot).
+#
+# Cloned from the mirror U-Boot keeps on github (doc/build/source.rst),
+# where its releases are the v<year>.<month> tags, and pinned by commit.
+# The release tarballs on ftp.denx.de were the source until that host
+# stopped answering, in November 2026.
 #
 UBOOT_SOURCE = SourceRef.new(
   name: 'uboot',
-  url:  'https://ftp.denx.de/pub/u-boot',
-  tarname: ->(ver) { "u-boot-#{ver}.tar.bz2" },
-  # ftp.denx.de stopped answering in November 2026, and no riscv64
-  # CI image could be built without another place to ask.
-  mirrors: [BUILDROOT_SOURCES + '/uboot'],
+  url:  GITHUB + '/u-boot/u-boot',
+  git_tag: ->(ver) { "v#{ver}" },
 )
 
 class UbootPackage < Package

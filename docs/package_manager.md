@@ -974,10 +974,11 @@ and then every mirror in order, so a host that has gone away costs one timeout,
 not the build. A mirror is trusted for nothing: what it serves has to match the
 file's pin in `other/pkg_hashes`, exactly as the upstream's does.
 
-busybox and u-boot fall back to Buildroot's source mirror,
-`sources.buildroot.net`, which keeps every release file a Buildroot release has
-fetched, checked against Buildroot's own hashes. busybox.net comes and goes,
-and ftp.denx.de stopped answering in November 2026.
+busybox falls back to Buildroot's source mirror, `sources.buildroot.net`, which
+keeps every release file a Buildroot release has fetched, checked against
+Buildroot's own hashes: busybox.net comes and goes. u-boot needs no mirror: it
+is cloned from the GitHub mirror the U-Boot project keeps, since ftp.denx.de,
+where its release tarballs were, stopped answering in November 2026.
 
 ## Retried clones
 
