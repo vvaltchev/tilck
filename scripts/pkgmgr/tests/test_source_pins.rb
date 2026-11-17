@@ -181,6 +181,24 @@ class TestCacheHashes < Minitest::Test
     end
   end
 
+  # A record whose file went behind our back is dropped when asked;
+  # one whose file is there is kept, to tell damage from a new file.
+  def test_the_record_of_a_file_that_is_gone_is_forgotten_when_asked
+    with_fake_tc do |tc|
+      FileUtils.touch(tc / "cache" / "a.tgz")
+      FileUtils.touch(tc / "cache" / "b.tgz")
+      Cache::Hashes.record("a.tgz", SHA)
+      Cache::Hashes.record("b.tgz", SHA)
+      File.delete(tc / "cache" / "b.tgz")
+      assert_equal SHA.to_s, Cache::Hashes.of("b.tgz")
+
+      Cache::Hashes.forget_if_gone("b.tgz")
+      Cache::Hashes.forget_if_gone("a.tgz")
+      assert_nil Cache::Hashes.of("b.tgz")
+      assert_equal SHA.to_s, Cache::Hashes.of("a.tgz")
+    end
+  end
+
   def test_a_damaged_table_is_dropped_with_a_warning_not_refused
     with_fake_tc do |tc|
       File.write(tc / "cache" / ".hashes", "a.tgz: x\nno separator\n")

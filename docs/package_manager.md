@@ -895,9 +895,11 @@ Beside the pins the cache keeps its own record, `cache/.hashes`: what the
 bytes under each name were when the package manager placed them, checked
 and found right. A file whose digest is not the recorded one has been
 damaged since -- a disk, a copy, a partial protocol that is not ours --
-and is set aside and fetched again. The bootstrap Ruby, fetched by bash
-before there is a package manager, is held to the same table and the
-same record (`scripts/bash_includes/script_utils`).
+and is set aside and fetched again. A file that is gone -- deleted by
+hand -- is not damaged: its record goes with it, and the file is fetched
+again by the usual rules and recorded afresh. The bootstrap Ruby, fetched
+by bash before there is a package manager, is held to the same table and
+the same record (`scripts/bash_includes/script_utils`).
 
 Nothing reaches a build from the network. What an upstream keeps as git
 submodules, and its build would fetch at build time from a `.git` the

@@ -115,6 +115,33 @@ class TestCacheDownloadFile < Minitest::Test
     end
   end
 
+  # Deleted by hand, and the pin moved on meanwhile -- the upstream
+  # re-rolled the file: the next download is the file the pin names
+  # now, and the record of the one that is gone does not call it
+  # damaged. It is recorded in that one's place.
+  def test_a_file_deleted_by_hand_is_fetched_by_its_pin_and_recorded_afresh
+    body = @body
+    @server.route("/pkg-1.0.tar.gz") { |req|
+      { status: 200, body: body, content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      assert Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                 pin: pin_of(@body))
+      FileUtils.rm(tc / "cache" / "pkg-1.0.tar.gz")
+      body = "re-rolled"
+
+      out = capture_output {
+        assert Cache.download_file(@server.url, "pkg-1.0.tar.gz",
+                                   pin: pin_of(body))
+      }
+      refute_match(/damaged/, out)
+      assert_equal body, File.read(tc / "cache" / "pkg-1.0.tar.gz")
+      assert_equal pin_of(body).to_s, Cache::Hashes.of("pkg-1.0.tar.gz")
+    end
+  end
+
   def test_a_download_that_is_not_what_the_pin_names_is_refused
     @server.route("/pkg-1.0.tar.gz") { |req|
       { status: 200, body: "tampered", content_type: "application/gzip" }

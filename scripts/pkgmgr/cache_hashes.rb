@@ -48,6 +48,17 @@ module Cache
       update { |t| t.delete(name) }
     end
 
+    # A record is of a file that is there. One whose file is gone --
+    # deleted by hand, or by anything but us -- is dropped now, not at
+    # the next write: what is placed under the name next is a new file,
+    # fetched by the usual rules, held to its pin and recorded afresh.
+    # Judged by the bytes of the file that went, it would read as
+    # damaged, and a packed clone always would: tar keeps the clone's
+    # times, so a pack is never the same bytes twice.
+    def forget_if_gone(name)
+      forget(name) if !(TC_CACHE / name).file?
+    end
+
     # Read, changed, written back, as one process's step: two
     # recording at once would otherwise keep only one's entry.
     def update

@@ -211,18 +211,26 @@ function set_aside_cachefile {
 
    local name="$1"
 
-   local record="$TC/cache/.hashes"
-
    mkdir -p "$TC/cache/rejected"
    mv "$TC/cache/$name" "$TC/cache/rejected/$name"
 
    # ...and out of the record: what is fetched next takes its name.
+   forget_cachefile "$name"
+
+   echo "WARNING: $name set aside as rejected/$name"
+}
+
+# A name out of the cache's record (cache/.hashes), so that what is
+# placed under it next is recorded afresh.
+function forget_cachefile {
+
+   local name="$1"
+   local record="$TC/cache/.hashes"
+
    if [ -f "$record" ]; then
       awk -v n="$name" -F': ' '$1 != n' "$record" > "$record.tmp"
       mv "$record.tmp" "$record"
    fi
-
-   echo "WARNING: $name set aside as rejected/$name"
 }
 
 # A file in the cache is what other/pkg_hashes pins it to, and what
@@ -321,6 +329,11 @@ function download_file_in_cache {
    lock_cachefile "$local_file"
 
    if ! [ -f $TC/cache/$local_file ]; then
+
+      # A record is of a file that is there. One whose file is gone --
+      # deleted by hand -- would call the file fetched in its place
+      # damaged: the rule of Cache::Hashes.forget_if_gone.
+      forget_cachefile "$local_file"
 
       pushd $TC/cache
       mkdir -p tmp

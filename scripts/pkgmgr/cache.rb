@@ -558,6 +558,8 @@ module Cache
 
   def fetch_file(urls, remote_file, local_file, local_path, pin)
 
+    Hashes.forget_if_gone(local_file)
+
     if file? local_path
       l = vouch(local_file, pin, kind: :sha256)
       if l.state == :ok || l.state == :unpinned
@@ -716,6 +718,8 @@ module Cache
 
     filepath_in_cache = TC_CACHE / tarname
     tmp = nil
+
+    Hashes.forget_if_gone(tarname)
 
     if filepath_in_cache.file?
       l = vouch(tarname, pin, kind: :git)

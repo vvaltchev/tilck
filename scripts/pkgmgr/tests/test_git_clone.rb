@@ -535,6 +535,42 @@ class TestDownloadGitRepo < Minitest::Test
     end
   end
 
+  # A pack that left the cache some other way than ours -- deleted by
+  # hand, to clone afresh -- left its record behind until the next
+  # write, and the next clone was held to it. A pack is never the same
+  # bytes twice (tar keeps the clone's times; here each clone writes a
+  # stamp), so the new one, at the pinned commit, read as damaged.
+  def test_a_pack_deleted_by_hand_is_cloned_again_and_recorded_afresh
+    clones = 0
+    mock = MockGit.new
+    mock.clone_handler = ->(args, dest) {
+      clones += 1
+      FileUtils.mkdir_p(dest)
+      File.write(File.join(dest, "README"), "content")
+      File.write(File.join(dest, "stamp"), "clone #{clones}")
+      true
+    }
+    with_fake_tc do |tc|
+      with_mock_git(mock) do
+        pack = tc / "cache" / "repo-1.0.tgz"
+        assert Cache.download_git_repo("https://fake/repo", "repo-1.0.tgz",
+                                       "v1.0", "v1.0", pin: mock.pin)
+        first = Cache::Hashes.of("repo-1.0.tgz")
+        FileUtils.rm(pack)
+
+        out = capture_output {
+          assert Cache.download_git_repo("https://fake/repo", "repo-1.0.tgz",
+                                         "v1.0", "v1.0", pin: mock.pin)
+        }
+        refute_match(/damaged/, out)
+        assert_equal 2, clones
+        refute_equal first, Cache::Hashes.of("repo-1.0.tgz")
+        assert_equal SourcePins.digest_of(pack).to_s,
+                     Cache::Hashes.of("repo-1.0.tgz")
+      end
+    end
+  end
+
   def test_a_clone_at_another_commit_than_pinned_is_not_kept
     with_fake_tc do |tc|
       with_mock_git do |mock|
