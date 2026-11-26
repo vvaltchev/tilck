@@ -1,7 +1,7 @@
 # Moving Tilck from 3-space to 4-space indentation: plan
 
-Status: proposal, 2026-11-26. Nothing has been converted yet. The numbers
-below were measured on master at 79199d4.
+Status: agreed, 2026-11-26. Nothing has been converted yet. The numbers
+below were measured on master at 79199d4. The decisions are in section 4.
 
 ## 1. Scope
 
@@ -16,7 +16,7 @@ below were measured on master at 79199d4.
 | assembly (`.S`)     | 27     | 3.1k    | 3           | convert                    |
 | linker scripts      | 4      | 0.4k    | 3           | convert                    |
 | small configs/templates | ~8 | ~0.6k   | 3           | convert (`.vscode/*.json`, `.nvim.lua`, `run_config.in`, `.its`) |
-| docs code samples   | ~10    | -       | 3           | update with the rule text  |
+| docs                | 16     | -       | 3           | every mention of the indentation, and every code sample |
 
 Left alone:
 
@@ -31,8 +31,20 @@ Left alone:
   breaks those screens.
 - **Board configs**: `other/busybox.config`, `other/bsp/*/u-boot.config`.
 - **Already 4 spaces**: `scripts/dev/configurator/*.py`.
-- **Historical documents**: `docs/plans/*` (except this one) and
-  `docs/annotated-commit-history.txt`.
+
+Every document that mentions the indentation is fixed, `docs/plans/`
+included. Four places say "3": `CLAUDE.md` (the rule, and "+3" for Style
+2), `docs/contributing.md`, the README's FAQ and
+`docs/plans/coverage-viewer-plan.md` ("3-space indent").
+`docs/annotated-commit-history.txt` does not mention it.
+
+The code samples in 3-space style are converted with them, in 15 files:
+`CLAUDE.md`, `docs/contributing.md`, `docs/atomics.md`, `docs/scheduler.md`,
+`docs/debugging.md`, `docs/package_manager.md`, `docs/ancient_commits.md`,
+six plans (`interactive-tests-qmp.md`, `realtime-roadmap.md`,
+`research/abi-glibc.md`, `toolchain5.md`, `unit-tests-in-run-all-tests.md`,
+`pkgmgr-correctness-proof.md`), and style_check's
+`docs/preferences-notes.md` and `docs/rule-classification.md`.
 
 ## 2. What was measured
 
@@ -106,8 +118,9 @@ So the converter needs its own tests and its own verifier.
 it already rewrites 5-20% of lines at width 3. The file's own header says
 it is only a rough guide.
 
-**Python conventions**, inferred from the code since there is no lint
-config:
+**Python conventions**, measured over all the Python in the tree, the
+code Claude wrote included (the corpus for the checker is narrower; see
+Phase 0):
 
 - one level is 3 spaces;
 - a hanging continuation is +1 level (1,874 cases), sometimes +2 (272),
@@ -117,6 +130,12 @@ config:
 - 61 of the 103 files carry `# pylint: disable=bad-indentation` only
   because pylint expects 4 spaces.
 
+**No rule checks the indentation width.** `indent_3sp` only rejects
+tabs, and `switch_case_indent` only checks the `case` step. With the
+default set to 4, a 3-space file would still pass almost everything, so
+the switch needs a rule that checks each line's indent against its
+nesting depth.
+
 **Other rules affected by the width.** CLAUDE.md's "blank line after a
 header longer than the body's first line" rule can flip when the body moves
 one column further than its header. No style_check rule implements it, so
@@ -124,13 +143,27 @@ the converter has to report the flips.
 
 ## 3. The plan
 
-### Phase 0: tooling (no source changes)
+The switch comes first: once the tools and the rules say 4, every file not
+yet converted fails, and the commits that follow fix them, a few whole
+files at a time.
+
+### Phase 0: tools and the switch
 
 1. **style_check survives unknown cursor kinds.** Skip a cursor whose kind
    the bindings cannot name, instead of crashing the run, and add a test.
    Without this, agents on a host like this one get partial results.
 
-2. **`scripts/dev/claude/reindent`**, a deterministic converter with
+2. **style_check checks the indentation width.**
+   - `indent_3sp` is renamed `indent_spaces`.
+   - A new rule, `indent_depth`, checks every line that starts a statement,
+     a declaration, a `case` or a closing brace against its nesting depth
+     times the width. It is what makes an unconverted file fail, and it
+     catches conversion mistakes like the prototype's `};` off by one. It
+     applies to C and C++.
+   - The default width becomes 4; the 94 fixtures are converted and the
+     expected columns in `tests/test_rules.py` updated.
+
+3. **`scripts/dev/claude/reindent`**, a deterministic converter with
    sub-commands per language. It starts from the prototype, with the bugs
    above fixed. Rules:
    - **C/C++:**
@@ -156,126 +189,124 @@ the converter has to report the flips.
    - **CMake:** levels are scaled, alignment shifts, and multi-line quoted
      arguments are left untouched.
 
-   `reindent verify` checks, per file:
-   - only leading whitespace and backslash spacing changed;
-   - every indent-level line is exactly ×4/3;
-   - every aligned line's first character still sits under the same
-     character of the line it aligned to;
+   `reindent verify <file>` is the gate for every conversion commit
+   (section 4). It compares the file with its version before the commit:
+   - the non-whitespace characters are identical, except for the two
+     allowed additions below;
+   - the token stream is identical, so no space removed between two tokens
+     merged them;
    - for Python, `ast.dump` is unchanged, with docstrings normalized by
      `inspect.cleandoc`;
-   - it lists every header/body blank-line verdict that flipped.
+   - the only non-whitespace additions are a line-continuation backslash
+     before a newline, and a string literal split into two adjacent
+     literals (`"..." "..."`).
 
-   `reindent report` lists, per file, the lines over 80 columns and the
-   cases it could not decide. That list is the agents' work list.
+   `reindent check <file>` is the width check for the languages without a
+   checker (shell, CMake, asm, linker scripts). It also lists the lines over
+   80 columns, and every header/body blank-line verdict that a reindent
+   flipped.
 
    Golden tests for each language, covering every bug class above.
 
-3. **Baselines:**
-   - `style_check check --all --gradient` per file, at width 3, to compare
-     prettiness before and after;
-   - a full build of every configuration, for binary identity.
+4. **A Python style checker**, `scripts/dev/claude/py_style_check`.
+   - Its rules come only from your own Python: the lines `git blame` gives
+     to you before `CLAUDE.md` was introduced (2026-04-04), about 4,090
+     lines in 30 files. That is `tests/runners/` (`run_all_tests`,
+     `single_test_run`, `run_interactive_test`, `lib/utils.py`,
+     `lib/exceptions.py`, `lib/lang_aux.py`, `lib/stdio.py`, `lib/env.py`),
+     `tests/interactive/*.py`, `other/gdb_scripts/*`,
+     `other/tilck_unstripped-gdb.py`, and `scripts/dev/` (`generate_pci_ids`,
+     `count_lines_of_code`, `cmp_build_dirs`, `cmp_funcs_size`).
+   - Not in the corpus: anything written after that date (style_check,
+     `qmp.py`, most of `detect_kvm.py` and `qemu.py`, `run_unit_test`,
+     `merge_compile_commands.py`, `scripts/dev/configurator/`), 16 lines by
+     two other contributors, and the vim test data.
+   - The inferred rules are written down first, in this directory, for your
+     review, before the checker is built. Then the checker checks all the
+     Python in the tree.
 
-### Phase 1: the mechanical commit (scripted, no agents)
+5. **The switch.**
+   - style_check's default of 4 (above) and the Python checker's.
+   - The editor configs:
+     - `.nvim.lua`: `vim.g.indent_width = 4` (the width neovim indents
+       with, as expanded soft tabs), its comment "Tilck uses 3-space
+       indentation", and its own Lua body, which is 3-space indented too;
+     - `.clang-format`: `IndentWidth`, `ContinuationIndentWidth` and
+       `ConstructorInitializerIndentWidth` set to 4;
+     - `.vscode/settings.json`: `"editor.tabSize": 4`, and the four
+       `.vscode/*.json` files themselves.
+   - The rules and docs:
+     - CLAUDE.md: the rule ("3 spaces" becomes 4) and its examples;
+     - `docs/contributing.md`: "4 spaces", and the link to discussion #88
+       removed, since that discussion no longer applies;
+     - README.md: the question "Why using 3 spaces as indentation?" and its
+       link removed;
+     - style_check's `README.md`, `preferences.yaml` and
+       `docs/preferences-notes.md`: "+3" becomes "+4";
+     - the plans listed in section 1;
+     - Python's style written down in `docs/contributing.md`.
+   - Every code sample in these documents is converted, with its alignment
+     kept as the documents describe it.
 
-- Run `reindent` over every in-scope file, then `reindent verify`.
-- Rebuild every configuration (`./scripts/adv/gen_other_builds`). The
-  binaries must be byte-identical: leading whitespace changes no token and
-  no line number. That is the proof that this commit changes nothing but
-  layout.
-- Run the gtests.
-- Run `style_check --all --indent 4`. Expect only `cols_80` and the items
-  `reindent report` lists.
-- The same commit switches style_check's default to 4, renames
-  `indent_3sp` to `indent_spaces`, converts its fixtures and updates the
-  expected columns in `test_rules.py`. The code and the checker change
-  together, so there is never a window where they disagree.
-- The editor settings flip in the same commit, for the same reason: from
-  that commit on, what an editor inserts matches the code around it.
-  - `.nvim.lua`: `vim.g.indent_width = 4` (the width neovim indents with,
-    as expanded soft tabs), its comment "Tilck uses 3-space indentation",
-    and its own Lua body, which is 3-space indented too;
-  - `.clang-format`: `IndentWidth`, `ContinuationIndentWidth` and
-    `ConstructorInitializerIndentWidth` set to 4;
-  - `.vscode/settings.json`: `"editor.tabSize": 4`, and the four
-    `.vscode/*.json` files themselves.
+### Phase 1: conversion, a few whole files per commit
 
-Running the script centrally, not one file per agent, keeps this step
-deterministic. It takes seconds, and binary identity can only be checked
-over the whole tree.
+- **Commits:** whole files only, grouped up to about 1000 changed lines; a
+  file larger than that gets its own commit. Never part of a file.
+- **Each commit, per file:**
+  1. `reindent` converts it;
+  2. its long lines and other style failures are fixed, with whitespace
+     only (section 4);
+  3. `style_check check` (C/C++), `py_style_check` (Python) or
+     `reindent check` (the rest) passes;
+  4. `reindent verify` passes against the file before the commit.
+- **Agents:** Sonnet agents, each on its own set of files in its own
+  worktree, making its own commits. The sets are disjoint, so their commits
+  go onto exp-work in any order without conflicts. Eight agents, under the
+  default guideline of ten.
+- **Each agent:** reads the coding-style section of CLAUDE.md and
+  `docs/contributing.md`, and fixes long lines with CLAUDE.md's `cols_80`
+  ladder, restricted to whitespace: compact forms (`,` for `, `, no spaces
+  around `+`/`-` in pointer arithmetic), less alignment padding, `{` on its
+  own line, rewrapping in Style 1/Style 2 with paren symmetry, reflowing
+  comments, a continuation backslash, a split string literal.
+- **What whitespace cannot fix** goes in
+  `docs/plans/indent-4-spaces-followups.md`, file and line, with why:
+  - a line still over 80 columns;
+  - layout that whitespace alone leaves ugly and a rename would fix.
 
-### Phase 2: the agent pass (Sonnet, in parallel)
+### Phase 2: the end of the series
 
-**Work list:**
-- ~434 C/H and 33 C++ long lines;
-- ~130 more in Python, shell, CMake and asm;
-- the review items and blank-line flips that `reindent` lists.
+- Over the whole tree, `style_check check --all`, `py_style_check` and
+  `reindent check` pass, except for the follow-up list.
+- `.git-blame-ignore-revs` lists every conversion commit. GitHub's blame
+  honors it, and `git blame` does with `blame.ignoreRevsFile`.
+- You merge exp-work into master with a merge commit.
 
-**Split:**
-- up to 8 batches of disjoint files, by directory, balanced by line count
-  (the kernel in 2-3 batches);
-- one Sonnet agent per batch, all in one worktree since the files never
-  overlap;
-- no builds inside agents.
+### Later: the follow-ups
 
-**Each agent:**
-1. Read the coding-style section of CLAUDE.md and `docs/contributing.md`.
-2. For each file, run `style_check check --indent 4` (C) or
-   `reindent report` (other languages).
-3. Fix with CLAUDE.md's `cols_80` ladder:
-   - padding and the compact forms first;
-   - then comment reflow;
-   - then wrapping in Style 1/Style 2 with paren symmetry;
-   - only then extracting a local.
-4. Repeat until there are no violations and no new gradient diagnostics.
-5. Run `reindent verify --tokens <file>`. The token stream must equal the
-   mechanical commit's, with comments compared word by word, so a reflow
-   passes. Any intended token change, such as an extracted local, goes in
-   the agent's report for review.
+The cases in `docs/plans/indent-4-spaces-followups.md` are fixed one by
+one, with the freedom whitespace does not give (a rename, a local, a
+shorter comment), and so with testing.
 
-**Review:** one adversarial review agent reads the whole diff against the
-mechanical commit, rule by rule.
+## 4. Decisions
 
-### Phase 3: integration and verification
-
-- **Builds:** the full matrix (`./scripts/adv/gen_other_builds`), plus the
-  riscv64 and x86_64 configurations.
-- **Tests:** the gtests, and the system tests on i386 and riscv64
-  (`run_all_tests -c`).
-- **Style:**
-  - `style_check --all`: zero hard violations, and no file's gradient
-    worse than its baseline;
-  - `reindent verify` over the whole tree.
-- **CI:** dispatch `ci-i386`, `ci-riscv64`, `ci-x86_64` and `ci-tc-*` on
-  exp-work, then fast-forward master.
-
-### Phase 4: rules and docs (same series)
-
-- **CLAUDE.md:** the rule ("3 spaces" becomes 4) and its examples.
-- **`docs/contributing.md`:** the rule. README.md links to the discussion
-  "Why using 3 spaces as indentation?" (#88), which needs your wording.
-- **style_check docs:** `README.md`, `preferences.yaml` and
-  `docs/preferences-notes.md`: "+3" becomes "+4", and the examples are
-  converted.
-- **Python's style written down:** a section in `docs/contributing.md`.
-  Optionally a `pycodestyle`/pylint config, so that Python gets a checker.
-- **`.git-blame-ignore-revs`:** the mechanical commit and the fix commits.
-  GitHub's blame honors it, and `git blame` does with
-  `blame.ignoreRevsFile`.
-
-## 4. Commit series
-
-1. style_check: survive unknown cursor kinds.
-2. `reindent` and its tests.
-3. The mechanical pass for C, C++, asm and ld, plus style_check's default
-   of 4, its fixtures and its tests, and the editor configs (`.nvim.lua`,
-   `.clang-format`, `.vscode/`).
-4. Agent fixes for C/C++, one commit per area.
-5. Python: the mechanical pass and fixes. Then shell and CMake the same way.
-6. Docs.
-7. `.git-blame-ignore-revs`.
-
-Every commit builds and passes the tests. Commit 3 still has lines over 80
-columns, which commit 4 removes.
+1. Ruby stays at 2 spaces.
+2. Every document that mentions the indentation is fixed, plans included.
+3. `docs/contributing.md` and the other docs keep their text, with 4 for 3,
+   and their examples realigned. The README question and the
+   `docs/contributing.md` link to discussion #88 are removed; you will
+   note in the discussion that the style has changed.
+4. Python gets a checker, with rules inferred from your code only.
+5. Commits of whole files, about 1000 changed lines at most unless one file
+   is larger, all on exp-work, merged at the end with a merge commit.
+6. The switch happens first; unconverted files then fail until their
+   commit fixes them.
+7. Conversion commits change whitespace only, and need no testing. The
+   only non-whitespace changes allowed are a continuation backslash and a
+   string literal split into adjacent literals. No renames.
+8. What whitespace cannot fix, or leaves ugly, is recorded for later,
+   case by case, with testing.
+9. style_check's `indent_3sp` is renamed `indent_spaces`.
 
 ## 5. Risks
 
@@ -284,19 +315,5 @@ columns, which commit 4 removes.
   same, deterministic tool on its tip.
 - **Line numbers move** where lines are wrapped, so `ASSERT` messages
   change their `__LINE__`. Harmless.
-- **C++ has no style_check coverage.** It relies on `reindent verify` and
-  the long-line report.
-- **An agent changing code instead of layout** is caught by the token
-  check and by the review.
-
-## 6. Decisions for you
-
-1. Ruby and YAML stay as they are?
-2. Historical `docs/plans/*` left untouched?
-3. The README link and the wording in `docs/contributing.md`.
-4. Should Python get a checker (pycodestyle/pylint with a repo config)?
-5. One series for every language, or one per language (C first)?
-6. Agent count: the default guideline is under 10, and 8 fix agents plus
-   one reviewer fits it.
-7. Keep the mechanical commit separate (bisectable, provably layout-only)
-   or squash it with the fixes?
+- **An agent changing code instead of layout** is caught by
+  `reindent verify` on every commit.
