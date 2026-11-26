@@ -11,6 +11,7 @@ import clang.cindex
 from clang.cindex import CursorKind
 
 from .rules.base import Diagnostic
+from .libclang import kind_of
 
 
 # Verdict thresholds (per-function normalized score: total / stmt_count).
@@ -169,7 +170,7 @@ def extract_functions(tu, file_path: Path) -> List[FunctionRegion]:
 
    for cursor in tu.cursor.walk_preorder():
 
-      if cursor.kind != CursorKind.FUNCTION_DECL:
+      if kind_of(cursor) != CursorKind.FUNCTION_DECL:
          continue
 
       try:

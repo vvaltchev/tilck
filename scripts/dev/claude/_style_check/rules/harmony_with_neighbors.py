@@ -21,6 +21,7 @@ from .base import (
    COST_SIGNIFICANT,
 )
 from .. import tokens as _tokens_mod
+from ..libclang import kind_of
 
 # Redesigned around per-function IQR-based outlier detection.
 #
@@ -164,7 +165,7 @@ def _collect_decl_lines(tu, file_path):
 
    for cursor in tu.cursor.walk_preorder():
 
-      if cursor.kind != CursorKind.DECL_STMT:
+      if kind_of(cursor) != CursorKind.DECL_STMT:
          continue
 
       if not _is_main_file(cursor.location, main):
@@ -196,7 +197,7 @@ def _collect_signature_lines(tu, file_path):
 
    for cursor in tu.cursor.walk_preorder():
 
-      if cursor.kind != CursorKind.FUNCTION_DECL:
+      if kind_of(cursor) != CursorKind.FUNCTION_DECL:
          continue
 
       if not _is_main_file(cursor.location, main):
@@ -218,7 +219,7 @@ def _collect_signature_lines(tu, file_path):
 
          for ch in cursor.get_children():
 
-            if ch.kind == CursorKind.COMPOUND_STMT:
+            if kind_of(ch) == CursorKind.COMPOUND_STMT:
                sig_end = ch.extent.start.line - 1
                break
 
@@ -261,7 +262,7 @@ def _collect_continuation_lines(tu, file_path):
 
    for cursor in tu.cursor.walk_preorder():
 
-      if cursor.kind not in STMT_KINDS:
+      if kind_of(cursor) not in STMT_KINDS:
          continue
 
       if not _is_main_file(cursor.location, main):
@@ -296,7 +297,7 @@ def _collect_function_bodies(tu, file_path):
 
    for cursor in tu.cursor.walk_preorder():
 
-      if cursor.kind != CursorKind.FUNCTION_DECL:
+      if kind_of(cursor) != CursorKind.FUNCTION_DECL:
          continue
 
       if not _is_main_file(cursor.location, main):
@@ -312,7 +313,7 @@ def _collect_function_bodies(tu, file_path):
 
       for ch in cursor.get_children():
 
-         if ch.kind == CursorKind.COMPOUND_STMT:
+         if kind_of(ch) == CursorKind.COMPOUND_STMT:
             bodies.append(
                (ch.extent.start.line, ch.extent.end.line)
             )

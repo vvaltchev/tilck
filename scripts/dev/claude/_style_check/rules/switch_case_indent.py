@@ -16,6 +16,7 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
 )
+from ..libclang import kind_of
 
 
 class SwitchCaseIndent(Rule):
@@ -41,7 +42,7 @@ class SwitchCaseIndent(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind != CursorKind.SWITCH_STMT:
+         if kind_of(cursor) != CursorKind.SWITCH_STMT:
             continue
 
          loc = cursor.location
@@ -63,8 +64,8 @@ class SwitchCaseIndent(Rule):
          # Walk the switch's body for CASE_STMT and DEFAULT_STMT children
          for child in cursor.walk_preorder():
 
-            if child.kind not in (CursorKind.CASE_STMT,
-                                  CursorKind.DEFAULT_STMT):
+            if kind_of(child) not in (CursorKind.CASE_STMT,
+                                      CursorKind.DEFAULT_STMT):
                continue
 
             child_loc = child.location
@@ -140,7 +141,7 @@ def _direct_case_of(case_cursor, switch_cursor) -> bool:
 
    for child in switch_cursor.get_children():
 
-      if child.kind == CursorKind.COMPOUND_STMT:
+      if kind_of(child) == CursorKind.COMPOUND_STMT:
          outer_body = child
          break
 
@@ -152,7 +153,7 @@ def _direct_case_of(case_cursor, switch_cursor) -> bool:
 
    for grand in outer_body.walk_preorder():
 
-      if grand.kind != CursorKind.SWITCH_STMT:
+      if kind_of(grand) != CursorKind.SWITCH_STMT:
          continue
 
       if grand == switch_cursor:

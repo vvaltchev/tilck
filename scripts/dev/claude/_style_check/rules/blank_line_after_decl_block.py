@@ -17,6 +17,7 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
 )
+from ..libclang import kind_of
 
 
 class BlankLineAfterDeclBlock(Rule):
@@ -66,9 +67,9 @@ class BlankLineAfterDeclBlock(Rule):
          # before the rule check so a `continue` inside the rule
          # body doesn't skip the recursion.
          for ch in cur.get_children():
-            stack.append((ch, cur.kind))
+            stack.append((ch, kind_of(cur)))
 
-         if cur.kind != CursorKind.COMPOUND_STMT:
+         if kind_of(cur) != CursorKind.COMPOUND_STMT:
             continue
 
          # Apply ONLY to function bodies. Control-flow bodies
@@ -113,7 +114,7 @@ class BlankLineAfterDeclBlock(Rule):
 
          for ch in children:
 
-            if ch.kind == CursorKind.DECL_STMT:
+            if kind_of(ch) == CursorKind.DECL_STMT:
                leading_decl_count += 1
             else:
                break

@@ -16,6 +16,7 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
 )
+from ..libclang import kind_of
 
 
 class NoPackedEnumValues(Rule):
@@ -41,7 +42,7 @@ class NoPackedEnumValues(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind != CursorKind.ENUM_DECL:
+         if kind_of(cursor) != CursorKind.ENUM_DECL:
             continue
 
          loc = cursor.location
@@ -59,7 +60,7 @@ class NoPackedEnumValues(Rule):
 
          children = [
             c for c in cursor.get_children()
-            if c.kind == CursorKind.ENUM_CONSTANT_DECL
+            if kind_of(c) == CursorKind.ENUM_CONSTANT_DECL
          ]
 
          if len(children) < 2:

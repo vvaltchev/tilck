@@ -3,6 +3,7 @@
 # pylint: disable=missing-class-docstring, missing-function-docstring
 # pylint: disable=consider-using-f-string
 
+import re
 import unittest
 
 from pathlib import Path
@@ -1359,3 +1360,32 @@ class TestStyleConfig(unittest.TestCase):
 
 if __name__ == '__main__':
    unittest.main()
+
+
+class TestKindAccess(unittest.TestCase):
+   """Every read of a cursor's (or a type's) kind goes through
+   libclang.kind_of(): a direct `.kind` raises ValueError on a kind
+   the Python bindings do not know."""
+
+   # Not cursors: extents, comment ranges, scanned lines, problems.
+   ALLOWED = {'ext', 'cr', 'ln', 'known'}
+
+   def test_no_direct_kind_reads(self):
+
+      offenders = []
+      pkg = HERE.parent
+      files = list((pkg / 'rules').glob('*.py'))
+      files += [pkg / 'aggregator.py', pkg / 'extents.py', pkg / 'parser.py']
+
+      for f in files:
+
+         for n, line in enumerate(f.read_text().split('\n'), 1):
+
+            for m in re.finditer(r'(\w+)\.kind\b', line):
+
+               if m.group(1) not in self.ALLOWED:
+                  offenders.append('{}:{}: {}'.format(
+                     f.name, n, line.strip()
+                  ))
+
+      self.assertEqual(offenders, [])

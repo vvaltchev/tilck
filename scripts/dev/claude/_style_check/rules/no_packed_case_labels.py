@@ -16,6 +16,7 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
 )
+from ..libclang import kind_of
 
 
 class NoPackedCaseLabels(Rule):
@@ -45,7 +46,7 @@ class NoPackedCaseLabels(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind != CursorKind.CASE_STMT:
+         if kind_of(cursor) != CursorKind.CASE_STMT:
             continue
 
          loc = cursor.location

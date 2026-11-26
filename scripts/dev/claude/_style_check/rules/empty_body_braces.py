@@ -17,6 +17,7 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
 )
+from ..libclang import kind_of
 
 
 class EmptyBodyBraces(Rule):
@@ -43,8 +44,8 @@ class EmptyBodyBraces(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind not in (CursorKind.WHILE_STMT,
-                                CursorKind.FOR_STMT):
+         if kind_of(cursor) not in (CursorKind.WHILE_STMT,
+                                    CursorKind.FOR_STMT):
             continue
 
          loc = cursor.location
@@ -67,7 +68,7 @@ class EmptyBodyBraces(Rule):
 
          body = children[-1]
 
-         if body.kind != CursorKind.NULL_STMT:
+         if kind_of(body) != CursorKind.NULL_STMT:
             continue   # body is not a bare `;`
 
          key = (loc.line, loc.column)
@@ -80,7 +81,7 @@ class EmptyBodyBraces(Rule):
          line_text = ctx.lines[loc.line - 1] \
             if loc.line - 1 < len(ctx.lines) else ''
 
-         kw = 'while' if cursor.kind == CursorKind.WHILE_STMT else 'for'
+         kw = 'while' if kind_of(cursor) == CursorKind.WHILE_STMT else 'for'
 
          # Guard against macro-expanded loops: if the raw source at
          # the cursor location doesn't start with `while` / `for`,

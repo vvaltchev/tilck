@@ -20,6 +20,7 @@ from .base import (
    SCORE_STRONG_PREF,
 )
 from .. import tokens as _tokens_mod
+from ..libclang import kind_of
 
 # Text-based pattern for C++ reference `&` attached to type instead
 # of variable name.  Matches `Type& var` but not `&var` (address-of)
@@ -38,7 +39,7 @@ def _is_pointer_typed(cursor) -> bool:
    except clang.cindex.LibclangError:
       return False
 
-   if t.kind != TypeKind.POINTER:
+   if kind_of(t) != TypeKind.POINTER:
       return False
 
    # Skip function pointers
@@ -47,7 +48,7 @@ def _is_pointer_typed(cursor) -> bool:
    except clang.cindex.LibclangError:
       return False
 
-   if pointee.kind in (TypeKind.FUNCTIONPROTO, TypeKind.FUNCTIONNOPROTO):
+   if kind_of(pointee) in (TypeKind.FUNCTIONPROTO, TypeKind.FUNCTIONNOPROTO):
       return False
 
    return True
@@ -76,7 +77,7 @@ class PointerAsteriskAttached(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind not in (
+         if kind_of(cursor) not in (
             CursorKind.VAR_DECL,
             CursorKind.PARM_DECL,
             CursorKind.FIELD_DECL,

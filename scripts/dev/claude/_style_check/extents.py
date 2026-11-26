@@ -8,6 +8,7 @@ from typing import List, Optional
 
 import clang.cindex
 from clang.cindex import CursorKind
+from .libclang import kind_of
 
 
 @dataclass
@@ -65,7 +66,7 @@ def walk_main_file(tu, file_path: Path) -> List[Extent]:
 
    for cursor in tu.cursor.walk_preorder():
 
-      if cursor.kind not in RELEVANT_KINDS:
+      if kind_of(cursor) not in RELEVANT_KINDS:
          continue
 
       loc = cursor.location
@@ -86,14 +87,14 @@ def walk_main_file(tu, file_path: Path) -> List[Extent]:
 
       is_def = False
 
-      if cursor.kind.is_declaration():
+      if kind_of(cursor).is_declaration():
          try:
             is_def = cursor.is_definition()
          except Exception:  # pylint: disable=broad-except
             is_def = False
 
       out.append(Extent(
-         kind=cursor.kind.name,
+         kind=kind_of(cursor).name,
          start_line=ext.start.line,
          start_col=ext.start.column,
          end_line=ext.end.line,

@@ -17,6 +17,7 @@ from .base import (
    SCORE_STRONG_PREF,
 )
 from .. import tokens as _tokens_mod
+from ..libclang import kind_of
 
 
 class FunctionDefNoStyle2(Rule):
@@ -45,7 +46,7 @@ class FunctionDefNoStyle2(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind != CursorKind.FUNCTION_DECL:
+         if kind_of(cursor) != CursorKind.FUNCTION_DECL:
             continue
 
          try:

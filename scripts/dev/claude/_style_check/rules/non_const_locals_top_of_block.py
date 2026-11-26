@@ -22,6 +22,7 @@ from .base import (
    SCORE_MEDIUM_PREF,
    SCORE_SOFT,
 )
+from ..libclang import kind_of
 
 # Statement-shaped macros that the corpus treats as "diagnostic
 # preludes" -- they appear at function top alongside decls and do
@@ -77,7 +78,7 @@ class NonConstLocalsTopOfBlock(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind != CursorKind.COMPOUND_STMT:
+         if kind_of(cursor) != CursorKind.COMPOUND_STMT:
             continue
 
          loc = cursor.location
@@ -123,7 +124,7 @@ class NonConstLocalsTopOfBlock(Rule):
 
          for child in cursor.get_children():
 
-            if child.kind == CursorKind.DECL_STMT:
+            if kind_of(child) == CursorKind.DECL_STMT:
 
                if not (saw_real_non_decl or saw_prelude):
                   continue   # still in the leading decl block
@@ -139,7 +140,7 @@ class NonConstLocalsTopOfBlock(Rule):
 
                for sub in child.get_children():
 
-                  if sub.kind != CursorKind.VAR_DECL:
+                  if kind_of(sub) != CursorKind.VAR_DECL:
                      continue
 
                   if _is_effectively_const(sub):

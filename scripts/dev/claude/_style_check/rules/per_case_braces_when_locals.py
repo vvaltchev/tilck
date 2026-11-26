@@ -15,6 +15,7 @@ from .base import (
    CheckContext,
    SCORE_HARD_RULE,
 )
+from ..libclang import kind_of
 
 
 class PerCaseBracesWhenLocals(Rule):
@@ -41,8 +42,8 @@ class PerCaseBracesWhenLocals(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind not in (CursorKind.CASE_STMT,
-                                CursorKind.DEFAULT_STMT):
+         if kind_of(cursor) not in (CursorKind.CASE_STMT,
+                                    CursorKind.DEFAULT_STMT):
             continue
 
          loc = cursor.location
@@ -69,14 +70,14 @@ class PerCaseBracesWhenLocals(Rule):
 
          # If the body is already a COMPOUND_STMT (braced), no
          # violation.
-         if body.kind == CursorKind.COMPOUND_STMT:
+         if kind_of(body) == CursorKind.COMPOUND_STMT:
             continue
 
          # Fall-through case: the body is another case/default
          # label. The "real" body belongs to the deepest case in
          # the chain; this label has no decls of its own to scope.
-         if body.kind in (CursorKind.CASE_STMT,
-                          CursorKind.DEFAULT_STMT):
+         if kind_of(body) in (CursorKind.CASE_STMT,
+                              CursorKind.DEFAULT_STMT):
             continue
 
          # Walk the body subtree to see whether there's a DECL_STMT
@@ -134,7 +135,7 @@ def _scan_for_decl_outside_compounds(node) -> bool:
    macro expands to `({ DECL; DECL; result; })`: those decls live
    in the macro's own compound, not in the case body."""
 
-   if node.kind == CursorKind.DECL_STMT:
+   if kind_of(node) == CursorKind.DECL_STMT:
       return True
 
    stack = list(node.get_children())
@@ -143,10 +144,10 @@ def _scan_for_decl_outside_compounds(node) -> bool:
 
       cur = stack.pop()
 
-      if cur.kind == CursorKind.DECL_STMT:
+      if kind_of(cur) == CursorKind.DECL_STMT:
          return True
 
-      if cur.kind == CursorKind.COMPOUND_STMT:
+      if kind_of(cur) == CursorKind.COMPOUND_STMT:
          continue   # the decls inside are inside a scope -- skip
 
       for child in cur.get_children():

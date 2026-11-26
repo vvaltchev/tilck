@@ -17,6 +17,7 @@ from .base import (
    SCORE_HARD_RULE,
 )
 from .. import tokens as _tokens_mod
+from ..libclang import kind_of
 
 
 class MultilineCallStyle(Rule):
@@ -45,7 +46,7 @@ class MultilineCallStyle(Rule):
 
       for cursor in ctx.tu.cursor.walk_preorder():
 
-         if cursor.kind != CursorKind.CALL_EXPR:
+         if kind_of(cursor) != CursorKind.CALL_EXPR:
             continue
 
          loc = cursor.location
