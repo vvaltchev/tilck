@@ -1077,7 +1077,7 @@ set(NOARCH_DIR                ${PKGMGR_PKGS_NOARCH})
 set(TCROOT_ARCH_DIR           ${PKGMGR_PKGS_TARGET})
 
 set(BUSYBOX_DIR               ${TCROOT_ARCH_DIR}/busybox/${VER_BUSYBOX})
-set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
+set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses/${VER_NCURSES})
 set(ZLIB_DIR                  ${TCROOT_ARCH_DIR}/zlib/${VER_ZLIB})
 set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnuefi/${VER_GNUEFI})
 set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
