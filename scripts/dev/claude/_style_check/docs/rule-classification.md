@@ -259,9 +259,14 @@ disabled:
 enabled_only:
   - sizeof_parens
   - hex_literal_lowercase
+
+# Do not parse: only the rules that read the text run. For files no
+# build compiles as they are (the last setting on the path wins).
+# Under `--parse-only` the file is shown as `[SKIP]`.
+parse: false
 ```
 
-All three keys are optional and may be combined. With both
+All four keys are optional and may be combined. With both
 `enabled_only` and `disabled` set, `enabled_only` is applied
 first (narrow to the whitelist) and `disabled` removes anything
 unwanted from that whitelist.
@@ -276,6 +281,12 @@ Vendored / system header directories carry `ignore: true`:
 
 The files in these directories preserve upstream style; nothing
 is diffed against the Tilck conventions.
+
+The CMake templates of the generated headers carry `parse: false`:
+nothing compiles them as they are (`#cmakedefine`), but their text
+follows the style like any other header.
+
+  - `config/.style.yml`
 
 ### Cascading example
 

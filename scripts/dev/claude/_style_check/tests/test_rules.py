@@ -8,11 +8,11 @@ import unittest
 
 from pathlib import Path
 
-from .. import parser as _parser_mod
 from .. import extents
 from .. import tokens as _tokens_mod
 from ..rules import RULES_BY_ID
 from ..rules.base import CheckContext
+from . import fixture_build
 
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / 'fixtures'
@@ -36,11 +36,11 @@ def _ctx_for(file_path, parser_obj, need_tu=False, need_comments=False,
 
    if need_tu and parser_obj is not None:
 
-      tu = parser_obj.parse(file_path)
+      fp = parser_obj.parse_file(str(file_path))
 
-      if tu is not None:
-         ctx.tu = tu
-         ctx.extents = extents.walk_main_file(tu, file_path)
+      if fp.parses:
+         ctx.tu = fp.parses[0].tu
+         ctx.extents = extents.walk_main_file(ctx.tu, file_path)
 
    if need_comments:
       ctx.comments = _tokens_mod.scan_comments(source_text)
@@ -64,8 +64,7 @@ class TestRulesOnFixtures(unittest.TestCase):
 
    def setUp(self):
 
-      build_dir = _parser_mod.resolve_build_dir('build/compile_db')
-      self.parser = _parser_mod.Parser(build_dir)
+      self.parser = fixture_build.parser()
 
    def test_bad_m1_cols_80(self):
 
@@ -740,8 +739,7 @@ class TestRulesNoFalsePositives(unittest.TestCase):
 
    def setUp(self):
 
-      build_dir = _parser_mod.resolve_build_dir('build/compile_db')
-      self.parser = _parser_mod.Parser(build_dir)
+      self.parser = fixture_build.parser()
 
    def _assert_no_diags(self, rule_id, fixture_name):
 
@@ -1120,8 +1118,7 @@ class TestAggregator(unittest.TestCase):
       from .. import aggregator as _agg
       self._agg = _agg
 
-      build_dir = _parser_mod.resolve_build_dir('build/compile_db')
-      self.parser = _parser_mod.Parser(build_dir)
+      self.parser = fixture_build.parser()
 
    def test_function_region_verdict_clean(self):
 
@@ -1195,7 +1192,7 @@ class TestAggregator(unittest.TestCase):
                      rule='r', severity='warning', message='m')
       summary = self._agg.build_file_summary(
          file_path=Path('/fake.c'),
-         tu=None,
+         tus=[],
          lines=['int x = 0;'],
          diagnostics=[d],
       )

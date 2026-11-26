@@ -1,0 +1,4 @@
+# CMake templates (#cmakedefine) of the headers the build generates in
+# <build>/tilck_gen_headers/. Nothing compiles them as they are, so
+# they cannot be parsed; the rules that read their text still apply.
+parse: false

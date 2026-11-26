@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
-
+#include <stddef.h>
 extern void kfree(void *, int);
 extern void free(void *);
 

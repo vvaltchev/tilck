@@ -58,8 +58,69 @@ python3 -m pip install --break-system-packages clang
 pkg install py311-clang
 ```
 
-Run `./scripts/cmake_run && make` in the repo first to populate
-`build/compile_db/compile_commands.json`.
+Any version of the bindings works with any libclang: a cursor kind
+the bindings are too old to name is invisible to the rules, and
+`--parse-only` reports it. Newer bindings (PyPI `clang` >= 19) know
+more kinds.
+
+style_check parses with the compile commands of real builds (see
+[Parsing](#parsing)): build Tilck first, `./scripts/cmake_run && make`.
+
+## Parsing
+
+A file is parsed only with the compile commands of the configurations
+that compile it -- as the main file, or through an `#include` -- never
+with flags borrowed from another file. A configuration is a build tree
+with a `compile_db/compile_commands.json` (merged by every build). By
+default every build tree of the checkout is one: `build/` and each
+`build-*/`; `--build-dir DIR` (repeatable) names them instead. A file
+meant for riscv64 is parsed with riscv64's commands; a branch only a
+build option enables is parsed with the commands of a build that
+enables it.
+
+Each parse reproduces the compiler's environment and is checked
+against the compiler itself:
+
+- libclang gets the compiler's target (`-dumpmachine`), its system
+  include directories and nothing else (`-nostdinc` plus its own
+  `-E -v` list), its default `-std`, and the command's flags, minus
+  those libclang rejects (it is asked which: GCC-only options such as
+  `-maccumulate-outgoing-args`). It also gets `-DCLANGD`, Tilck's
+  macro for "a clang-based tool is reading this", as clangd does.
+- The compiler runs the same command with `-E -fdirectives-only -dI`.
+  Its output tells which files the compilation reads and which `#if`
+  branch it takes in each (`conditionals.py`); the answers are cached
+  in `<build>/style_check/views.json` until a command or a file
+  changes.
+- A parse must have **zero libclang errors**, and must take **exactly
+  the branches the compiler takes**. Branches that ask which compiler
+  reads the code (`__clang__`, `__GNUC__`, `__has_builtin` ...) or
+  test `CLANGD` may differ, libclang being clang; there a difference
+  that hides code the compiler builds is a warning.
+- A file's parses are chosen so that, together, they take every
+  branch some compilation takes (usually one parse; a header used by
+  the kernel and by userspace may need two). A rule that reads the
+  syntax tree runs on each, and what they report alike is kept once.
+
+Nothing falls back to a guess. A file no configuration compiles, a
+compiler that fails, a libclang error or a divergence is a `parse`
+diagnostic of severity error, and `check` then exits 1. A
+`.style.yml` with `parse: false` marks files that cannot be parsed by
+design (the CMake templates in `config/`): only the text rules run on
+them.
+
+To prove the parsing works across the whole tree:
+
+```bash
+./scripts/dev/claude/style_check check --parse-only --all      # -v lists
+                                                                # dead code
+```
+
+It checks no style. It parses every file as the rules would, prints
+any problem, and ends with a summary: the configurations used, the
+parses made, and the `#if` branches that no configuration compiles
+(dead code, or code behind a build option none of the build trees
+enables: build one that does, and it gets parsed).
 
 ## Usage
 
@@ -119,17 +180,20 @@ has its own `--help` (e.g. `style_check check --help`).
 }
 ```
 
-Exit code is always `0` (report-only) unless an internal error
-occurred (then `1`).
+Exit code is `0` whatever the style findings, and `1` when a file
+could not be parsed (see [Parsing](#parsing)) or an internal error
+occurred.
 
 ## Architecture
 
 Three layers:
 
-1. **Structural (libclang).** `clang.cindex` +
-   `compile_commands.json` to identify *what* each region of source is
-   (function definition, block, if-statement). Used by rules that
-   need to find specific constructs.
+1. **Structural (libclang).** `clang.cindex`, fed the exact compile
+   commands of the builds (see [Parsing](#parsing)), to identify *what*
+   each region of source is (function definition, block,
+   if-statement). Used by rules that need to find specific
+   constructs. Every read of a cursor's kind goes through
+   `libclang.kind_of()`; a test forbids reading `.kind` directly.
 2. **Token / spelling.** The un-preprocessed source text the user
    actually wrote. `STATIC void foo` and `static void foo` are
    visually identical and checked identically.
@@ -146,10 +210,19 @@ The preferred entry point is the `test` sub-command (above). For
 direct invocation:
 
 ```bash
-PYTHONPATH=scripts/dev/claude python3 -m unittest _style_check.tests.test_rules
+PYTHONPATH=scripts/dev/claude python3 -m unittest \
+   _style_check.tests.test_rules _style_check.tests.test_parsing
 ```
 
-Two test classes:
+The fixtures are kernel-style code that no build compiles. The tests
+compile them, on paper, with the commands of the checkout's build
+(`tests/fixture_build.py`): a temporary configuration listing every
+fixture with the exact command of a kernel C file (a gtests C++ file
+for the `.cpp` ones). So the tests need a build too, and the fixtures
+take the path real sources take; `test_parsing.py` checks that every
+fixture parses with no problem.
+
+The rule test classes:
 
 - `TestRulesOnFixtures` -- one test method per rule. Each runs the
   rule against `tests/fixtures/bad_<rule_id>.c` and asserts the

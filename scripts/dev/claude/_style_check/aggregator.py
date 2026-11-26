@@ -152,13 +152,10 @@ class FileSummary:
       return out
 
 
-def extract_functions(tu, file_path: Path) -> List[FunctionRegion]:
-   """Walk the TU and return all function DEFINITIONS in the main
-   file with their line ranges. Returns empty list if no TU
-   available (rule may have run without libclang)."""
-
-   if tu is None:
-      return []
+def extract_functions(tus, file_path: Path) -> List[FunctionRegion]:
+   """Walk the file's parses (see parser.py: one per set of #if
+   branches) and return every function DEFINITION in the file with its
+   line range, once. Returns an empty list when there is no parse."""
 
    try:
       main_resolved = str(file_path.resolve())
@@ -168,7 +165,7 @@ def extract_functions(tu, file_path: Path) -> List[FunctionRegion]:
    out = []
    seen = set()
 
-   for cursor in tu.cursor.walk_preorder():
+   for cursor in _walk_all(tus):
 
       if kind_of(cursor) != CursorKind.FUNCTION_DECL:
          continue
@@ -215,6 +212,13 @@ def extract_functions(tu, file_path: Path) -> List[FunctionRegion]:
 
    out.sort(key=lambda f: f.start_line)
    return out
+
+
+def _walk_all(tus):
+
+   for tu in tus or ():
+      if tu is not None:
+         yield from tu.cursor.walk_preorder()
 
 
 def _count_statements(lines: List[str], start: int, end: int) -> int:
@@ -303,12 +307,12 @@ def _compute_prettiness(lines, start, end, diagnostics):
 
 
 def build_file_summary(file_path: Path,
-                       tu,
+                       tus,
                        lines: List[str],
                        diagnostics: List[Diagnostic]) -> FileSummary:
 
    summary = FileSummary(file_path=file_path)
-   funcs = extract_functions(tu, file_path)
+   funcs = extract_functions(tus, file_path)
 
    # Compute statement counts up-front.
    for f in funcs:

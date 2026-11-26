@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 extern int some_pred(int);
-extern void short_call(int);
+extern int short_call(int);
 
 void short_calls(int n)
 {

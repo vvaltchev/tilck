@@ -32,6 +32,13 @@ class StyleConfig:
    # (last `enabled_only` setting on the path wins).
    enabled_only: Optional[Set[str]] = None
 
+   # If False, the file is not parsed: only the rules that read its
+   # text run. For files that are not compiled as they are, like the
+   # CMake templates of generated headers. Deeper configs override
+   # shallower ones. The file still counts in --parse-only, as one
+   # not parsed by configuration.
+   parse: bool = True
+
    # Provenance: list of (config_path, why) for debug / introspection.
    sources: List[Tuple[Path, str]] = field(default_factory=list)
 
@@ -248,6 +255,12 @@ def resolve_config(file_path: Path,
 
          if ig:
             changed.append('ignore=true')
+
+      pa = raw.get('parse')
+
+      if isinstance(pa, bool):
+         cfg.parse = pa
+         changed.append('parse={}'.format(str(pa).lower()))
 
       dis = raw.get('disabled')
 

@@ -2,10 +2,10 @@
 
 extern int compute(int, int, int, int);
 
-/*
- * Region with consistently-sized lines (70-75 col average). A
- * 72-col line here does not create disharmony.
- */
+extern int extra_long_var_a, extra_long_var_b, extra_long_var_c;
+extern int extra_long_var_d, extra_long_var_e, extra_long_var_f;
+extern int extra_long_var_g;
+/* Consistently-sized lines (70-75 cols): a 72-col one is no outlier. */
 void consistent_block(void)
 {
    int x_a = compute(111111, 222222, 333333, 444444) + extra_long_var_a;

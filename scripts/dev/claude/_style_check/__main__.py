@@ -8,11 +8,13 @@ import os
 import sys
 import signal
 import argparse
+import dataclasses
 import subprocess
 
 from pathlib import Path
 
 from . import parser as _parser_mod
+from . import configs as _configs
 from . import reporter
 from . import extents
 from . import tokens as _tokens_mod
@@ -20,7 +22,8 @@ from . import aggregator as _agg
 from . import config as _config
 from .rules import ALL_RULES, RULES_BY_ID
 from .rules.base import (
-   CheckContext, detect_multi_include, detect_c_dot_h
+   CheckContext, Diagnostic, detect_multi_include, detect_c_dot_h,
+   SCORE_HARD_RULE, SCORE_SOFT,
 )
 
 
@@ -109,10 +112,10 @@ def collect_files(args, repo_root: Path) -> list:
 
 
 def build_context(file_path: Path,
-                  parser_obj,
-                  need_tu: bool,
                   need_comments: bool,
                   indent: int = 3) -> CheckContext:
+   """The file's text-level context. Its parses, if a rule needs them,
+   come from the Parser: see tu_contexts()."""
 
    source_bytes = file_path.read_bytes()
 
@@ -138,18 +141,81 @@ def build_context(file_path: Path,
       is_multi_include=detect_multi_include(lines),
    )
 
-   if need_tu and parser_obj is not None:
-
-      tu = parser_obj.parse(file_path)
-
-      if tu is not None:
-         ctx.tu = tu
-         ctx.extents = extents.walk_main_file(tu, file_path)
-
    if need_comments:
       ctx.comments = _tokens_mod.scan_comments(source_text)
 
    return ctx
+
+
+def tu_contexts(ctx: CheckContext, fparses) -> list:
+   """One context per parse of the file. A file can need several
+   parses to cover all of its #if branches (see parser.py); a rule
+   that reads the syntax tree runs once on each."""
+
+   if fparses is None or not fparses.parses:
+      return [ctx]
+
+   return [
+      dataclasses.replace(
+         ctx,
+         tu=p.tu,
+         extents=extents.walk_main_file(p.tu, ctx.file_path),
+      )
+      for p in fparses.parses
+   ]
+
+
+def parse_diagnostics(file_path: Path, fparses) -> list:
+   """The parse's problems as diagnostics of the pseudo-rule `parse`:
+   an error one fails the file, like a hard rule."""
+
+   if fparses is None:
+      return []
+
+   out = []
+
+   for p in fparses.problems:
+
+      line = max(1, p.line)
+      error = p.severity == _parser_mod.ERROR
+
+      out.append(Diagnostic(
+         file=str(file_path),
+         line=line,
+         col=1,
+         end_line=line,
+         end_col=1,
+         rule='parse',
+         severity='error' if error else 'warning',
+         message='[{}] {}{}'.format(
+            p.kind, p.message,
+            ' ({})'.format('; '.join(p.where)) if p.where else ''
+         ),
+         score=SCORE_HARD_RULE if error else SCORE_SOFT,
+      ))
+
+   return out
+
+
+def make_parser(args, repo_root):
+   """The Parser over the configurations named by --build-dir, or, by
+   default, over every build tree of the checkout."""
+
+   dirs = args.build_dir
+
+   if not dirs and repo_root is not None:
+      dirs = [str(d) for d in _configs.discover(repo_root)]
+
+   if not dirs:
+      raise _configs.ConfigError(
+         'no build tree with a compile DB: build Tilck first '
+         '(./scripts/cmake_run && make), or pass --build-dir'
+      )
+
+   cfgs = [_configs.resolve_config(d, repo_root) for d in dirs]
+   return _parser_mod.Parser(
+      cfgs, _parser_mod.project_predicate(repo_root, cfgs)
+   )
 
 
 def filter_rules(rules_list, args) -> list:
@@ -275,7 +341,6 @@ def _display_path(p: Path, repo_root) -> str:
 def cmd_check(args) -> int:
 
    repo_root = _parser_mod.find_repo_root()
-   build_dir = _parser_mod.resolve_build_dir(args.build_dir)
 
    files = collect_files(args, repo_root)
 
@@ -288,14 +353,23 @@ def cmd_check(args) -> int:
       )
       return 1
 
-   rules = filter_rules(ALL_RULES, args)
+   rules = [] if args.parse_only else filter_rules(ALL_RULES, args)
 
-   if not rules:
+   if not rules and not args.parse_only:
       sys.stderr.write("error: no rules selected\n")
       return 1
 
-   need_tu_any = any(r.needs_tu for r in rules)
-   parser_obj = _parser_mod.Parser(build_dir) if need_tu_any else None
+   parser_obj = None
+
+   if args.parse_only or any(r.needs_tu for r in rules):
+
+      try:
+         parser_obj = make_parser(args, repo_root)
+      except _configs.ConfigError as e:
+         sys.stderr.write('error: {}\n'.format(e))
+         return 1
+
+   stats = _ParseStats()
 
    fmt = 'jsonl' if args.json else args.format
 
@@ -341,10 +415,26 @@ def cmd_check(args) -> int:
       applicable = [r for r in rules if r.applies_to_file(f)]
       applicable = _config.apply_to_rules(applicable, file_cfg)
 
-      if not applicable:
+      if not file_cfg.parse:
+         applicable = [r for r in applicable if not r.needs_tu]
+         stats.unparsed.append(f)
+
+         if args.parse_only:
+
+            if show_progress and not args.quiet:
+               sys.stdout.write('Checking {} '.format(
+                  _display_path(f, repo_root)
+               ))
+               _emit_status(_display_path(f, repo_root), 'SKIP',
+                            args.color, sys.stdout)
+
+            continue
+
+      if not applicable and not args.parse_only:
          continue
 
-      need_tu = any(r.needs_tu for r in applicable)
+      need_tu = file_cfg.parse and \
+         (args.parse_only or any(r.needs_tu for r in applicable))
       need_cm = any(r.needs_comments for r in applicable)
 
       if show_progress and not args.quiet:
@@ -353,17 +443,24 @@ def cmd_check(args) -> int:
          ))
          sys.stdout.flush()
 
-      ctx = build_context(f, parser_obj, need_tu, need_cm, args.indent)
+      fparses = None
+
+      if need_tu and parser_obj is not None:
+         fparses = parser_obj.parse_file(str(f), args.parse_only)
+         stats.add(fparses)
+
+      ctx = build_context(f, need_cm, args.indent)
+      tu_ctxs = tu_contexts(ctx, fparses)
 
       if args.diff:
          file_lines_map[str(f)] = ctx.source_text.splitlines(True)
 
-      file_diags = []
+      file_diags = parse_diagnostics(f, fparses)
 
       for r in applicable:
 
          try:
-            diags = r.check(ctx)
+            diags = _run_rule(r, ctx, tu_ctxs)
          except Exception as e:
             sys.stderr.write(
                "error: rule '{}' raised on {}: {}\n".format(r.id, f, e)
@@ -389,7 +486,7 @@ def cmd_check(args) -> int:
       # gradient) so prettiness is computed; then split for display.
       file_summary = _agg.build_file_summary(
          file_path=f,
-         tu=ctx.tu,
+         tus=[p.tu for p in fparses.parses] if fparses else [],
          lines=ctx.lines,
          diagnostics=file_diags,
       )
@@ -545,7 +642,102 @@ def cmd_check(args) -> int:
          all_diags, file_lines_map, repo_root=repo_root,
       )
 
-   return 0
+   if args.parse_only and fmt == 'text':
+      stats.emit(parser_obj, sys.stdout, args.verbose)
+
+   # Style findings leave the exit status alone; a file that could not
+   # be parsed means the check itself did not happen.
+   return 1 if stats.failed else 0
+
+
+def _run_rule(rule, ctx, tu_ctxs) -> list:
+   """Run a rule on the file. One that reads the syntax tree runs on
+   each parse, and what several parses report alike is kept once."""
+
+   if not rule.needs_tu:
+      return rule.check(ctx)
+
+   out = []
+   seen = set()
+
+   for c in tu_ctxs:
+      for d in rule.check(c):
+
+         key = (d.rule, d.line, d.col, d.end_line, d.end_col, d.message)
+
+         if key not in seen:
+            seen.add(key)
+            out.append(d)
+
+   return out
+
+
+class _ParseStats:
+   """What --parse-only reports at the end of a run."""
+
+   def __init__(self):
+
+      self.files = 0
+      self.failed = 0
+      self.parses = 0
+      self.intended = 0
+      self.dropped = set()
+      self.asm_only = []         # (path, region)
+      self.dead = []             # (path, region)
+      self.unparsed = []         # .style.yml says `parse: false`
+
+   def add(self, fp):
+
+      self.files += 1
+      self.failed += fp.failed
+      self.parses += len(fp.parses)
+      self.intended += len(fp.intended)
+      self.dropped |= fp.dropped
+      self.asm_only += [(fp.path, r) for r in fp.asm_only]
+      self.dead += [(fp.path, r) for r in fp.dead]
+
+   def emit(self, parser_obj, out, verbose):
+
+      cfgs = ', '.join(c.name for c in parser_obj.configs)
+      dead_code = [(p, r) for p, r in self.dead if r.code]
+
+      out.write('\n')
+      out.write('configurations: {}\n'.format(cfgs))
+      out.write('parsed {} file(s) with {} parse(s): {} failed\n'.format(
+         self.files, self.parses, self.failed
+      ))
+      out.write(
+         'branches where libclang differs from the compiler, as '
+         'expected (compiler-specific or on CLANGD): {}\n'.format(
+            self.intended
+         )
+      )
+
+      if self.dropped:
+         out.write('compiler flags libclang does not know (dropped): '
+                   '{}\n'.format(' '.join(sorted(self.dropped))))
+
+      out.write(
+         'not parsed, as their .style.yml says (parse: false): '
+         '{} file(s)\n'.format(len(self.unparsed))
+      )
+      out.write(
+         'branches only assembly files compile: {}\n'.format(
+            len(self.asm_only)
+         )
+      )
+      out.write(
+         'branches no configuration compiles: {} ({} with code){}\n'
+         .format(len(self.dead), len(dead_code),
+                 '' if verbose else ' -- list them with -v')
+      )
+
+      if verbose:
+         for p, r in self.dead:
+            out.write('   {}:{}: {}{}\n'.format(
+               _parser_mod._short(p), r.id,  # pylint: disable=protected-access
+               ' '.join(r.conditions), '' if r.code else ' (no code)'
+            ))
 
 
 def _severity_tag(r) -> str:
@@ -644,8 +836,12 @@ def cmd_explain(args) -> int:
 # `scripts/dev/claude/`. We anchor coverage HTML output here.
 _PACKAGE_PARENT = Path(__file__).resolve().parent.parent
 
-# Public test module the `test` sub-command runs.
-_TEST_MODULE = '_style_check.tests.test_rules'
+# Test modules the `test` sub-command runs: the rules, and the parsing
+# they stand on.
+_TEST_MODULES = (
+   '_style_check.tests.test_rules',
+   '_style_check.tests.test_parsing',
+)
 
 # Coverage HTML output goes to `scripts/dev/claude/htmlcov/`.
 _HTMLCOV_DIR = _PACKAGE_PARENT / 'htmlcov'
@@ -661,7 +857,7 @@ def _run_tests_plain(verbose: bool, failfast: bool) -> int:
    if failfast:
       cmd.append('-f')
 
-   cmd.append(_TEST_MODULE)
+   cmd.extend(_TEST_MODULES)
 
    env = os.environ.copy()
    env['PYTHONPATH'] = str(_PACKAGE_PARENT)
@@ -703,7 +899,7 @@ def _run_tests_with_coverage(verbose: bool, failfast: bool) -> int:
    if failfast:
       run_cmd.append('-f')
 
-   run_cmd.append(_TEST_MODULE)
+   run_cmd.extend(_TEST_MODULES)
 
    rc = subprocess.run(run_cmd, cwd=str(_PACKAGE_PARENT), env=env,
                        check=False).returncode
@@ -869,8 +1065,32 @@ def build_argparser():
 
    check_p.add_argument(
       '--build-dir',
-      default='build/compile_db',
-      help='Path to the merged compile_commands.json directory'
+      action='append',
+      default=[],
+      metavar='DIR',
+      help=('A build tree (or its compile_db/ directory) whose compile '
+            'commands style_check parses with; repeatable. Default: '
+            'every build tree of the checkout, build/ and build-*/. '
+            'A file is parsed only with the commands of the trees '
+            'that compile it (see --parse-only).')
+   )
+
+   check_p.add_argument(
+      '--parse-only',
+      action='store_true',
+      help=('Check no style: parse each file as the rules would and '
+            'report what goes wrong in the parsing -- a file no '
+            'configuration compiles, a libclang error, an #if branch '
+            'libclang takes differently from the compiler. With '
+            '--all, the proof that the whole tree parses. Exits 1 on '
+            'any failure.')
+   )
+
+   check_p.add_argument(
+      '-v', '--verbose',
+      action='store_true',
+      help=('With --parse-only, also list the #if branches that no '
+            'configuration compiles.')
    )
 
    check_p.add_argument(
