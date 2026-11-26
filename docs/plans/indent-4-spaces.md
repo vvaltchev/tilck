@@ -189,6 +189,15 @@ the converter has to report the flips.
   `indent_3sp` to `indent_spaces`, converts its fixtures and updates the
   expected columns in `test_rules.py`. The code and the checker change
   together, so there is never a window where they disagree.
+- The editor settings flip in the same commit, for the same reason: from
+  that commit on, what an editor inserts matches the code around it.
+  - `.nvim.lua`: `vim.g.indent_width = 4` (the width neovim indents with,
+    as expanded soft tabs), its comment "Tilck uses 3-space indentation",
+    and its own Lua body, which is 3-space indented too;
+  - `.clang-format`: `IndentWidth`, `ContinuationIndentWidth` and
+    `ConstructorInitializerIndentWidth` set to 4;
+  - `.vscode/settings.json`: `"editor.tabSize": 4`, and the four
+    `.vscode/*.json` files themselves.
 
 Running the script centrally, not one file per agent, keeps this step
 deterministic. It takes seconds, and binary identity can only be checked
@@ -239,7 +248,7 @@ mechanical commit, rule by rule.
 - **CI:** dispatch `ci-i386`, `ci-riscv64`, `ci-x86_64` and `ci-tc-*` on
   exp-work, then fast-forward master.
 
-### Phase 4: rules, docs and editors (same series)
+### Phase 4: rules and docs (same series)
 
 - **CLAUDE.md:** the rule ("3 spaces" becomes 4) and its examples.
 - **`docs/contributing.md`:** the rule. README.md links to the discussion
@@ -247,11 +256,6 @@ mechanical commit, rule by rule.
 - **style_check docs:** `README.md`, `preferences.yaml` and
   `docs/preferences-notes.md`: "+3" becomes "+4", and the examples are
   converted.
-- **Editor configs:**
-  - `.clang-format`: `IndentWidth`, `ContinuationIndentWidth` and
-    `ConstructorInitializerIndentWidth` set to 4;
-  - `.nvim.lua`: `indent_width = 4`;
-  - `.vscode/settings.json`: `"editor.tabSize": 4`.
 - **Python's style written down:** a section in `docs/contributing.md`.
   Optionally a `pycodestyle`/pylint config, so that Python gets a checker.
 - **`.git-blame-ignore-revs`:** the mechanical commit and the fix commits.
@@ -263,10 +267,11 @@ mechanical commit, rule by rule.
 1. style_check: survive unknown cursor kinds.
 2. `reindent` and its tests.
 3. The mechanical pass for C, C++, asm and ld, plus style_check's default
-   of 4, its fixtures and its tests.
+   of 4, its fixtures and its tests, and the editor configs (`.nvim.lua`,
+   `.clang-format`, `.vscode/`).
 4. Agent fixes for C/C++, one commit per area.
 5. Python: the mechanical pass and fixes. Then shell and CMake the same way.
-6. Docs and editor configs.
+6. Docs.
 7. `.git-blame-ignore-revs`.
 
 Every commit builds and passes the tests. Commit 3 still has lines over 80
