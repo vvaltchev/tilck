@@ -45,12 +45,12 @@ void debug_kmalloc_start_leak_detector(bool save_metadata)
 
    if (save_metadata) {
 
-      for (int i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
+      for (int i = 0; i < used_heaps; i++) {
 
-         if (!heaps[i].metadata_size)
+         if (!heaps[i]->metadata_size)
             continue;
 
-         void *buf = kmalloc(heaps[i].metadata_size);
+         void *buf = kmalloc(heaps[i]->metadata_size);
 
          if (!buf)
             panic("leak detector: unable to alloc buffer for metadata copy");
@@ -58,14 +58,14 @@ void debug_kmalloc_start_leak_detector(bool save_metadata)
          metadata_copies[i] = buf;
       }
 
-      for (int i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
+      for (int i = 0; i < used_heaps; i++) {
 
-         if (!heaps[i].metadata_size)
+         if (!heaps[i]->metadata_size)
             continue;
 
          memcpy(metadata_copies[i],
-                heaps[i].metadata_nodes,
-                heaps[i].metadata_size);
+                heaps[i]->metadata_nodes,
+                heaps[i]->metadata_size);
       }
    }
 
@@ -107,14 +107,15 @@ void debug_kmalloc_stop_leak_detector(bool show_leaks)
       if (!md_copy)
          continue;
 
-      struct block_node *md = heaps[i].metadata_nodes;
-      size_t len = heaps[i].metadata_size;
+      struct block_node *md = heaps[i]->metadata_nodes;
+      size_t len = heaps[i]->metadata_size;
 
-      for (int j = 0; j < len; j++) {
+      for (size_t j = 0; j < len; j++) {
          if (md[j].raw == md_copy[j].raw)
             continue;
 
-         printk("Heap[%d] metadata node #%u DIFFERS [va: %p]\n", i, j, &md[j]);
+         printk("Heap[%d] metadata node #%zu DIFFERS [va: %p]\n",
+                i, j, &md[j]);
          printk("saved: { split: %d, full: %d }\n",
                 md_copy[j].split, md_copy[j].full);
          printk("curr:  { split: %d, full: %d }\n", md[j].split, md[j].full);
@@ -125,7 +126,7 @@ end:
 
    for (int i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
       if (metadata_copies[i]) {
-         kfree2(metadata_copies[i], heaps[i].metadata_size);
+         kfree2(metadata_copies[i], heaps[i]->metadata_size);
          metadata_copies[i] = NULL;
       }
    }
