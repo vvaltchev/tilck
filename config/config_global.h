@@ -21,6 +21,8 @@
 #define VER_PATCH_STR          "@tilck_VERSION_PATCH@"
 
 #define ARCH_GCC_TC            "@ARCH_GCC_TC@"
+#define GCC_TC_VER_MAJOR       @GCC_TC_VER_MAJOR@
+#define GCC_TC_VER_MINOR       @GCC_TC_VER_MINOR@
 #define PROJ_BUILD_DIR         "@CMAKE_BINARY_DIR@"
 #define BUILDTYPE_STR          "@CMAKE_BUILD_TYPE@"
 

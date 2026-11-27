@@ -323,6 +323,12 @@ if ("${GCC_TC_VER}" VERSION_LESS "${MIN_GCC_TC_VER}")
 
 endif()
 
+# GCC_TC_VER's major and minor numbers, for the C code (config_global.h)
+string(REPLACE "." ";" _gcc_tc_ver_parts "${GCC_TC_VER}")
+list(GET _gcc_tc_ver_parts 0 GCC_TC_VER_MAJOR)
+list(GET _gcc_tc_ver_parts 1 GCC_TC_VER_MINOR)
+unset(_gcc_tc_ver_parts)
+
 # END [Setup of toolchain-related variables]
 
 if (USE_SYSCC)

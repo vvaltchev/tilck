@@ -182,15 +182,29 @@ typedef u32 gcov_unsigned_t;
  *    releases/gcc-14.2.0 -> 9
  */
 
-#if __GNUC__ >= 14
+/*
+ * The version of the GCC whose gcov ABI this file implements, as
+ * major * 100 + minor: the GCC instrumenting the kernel, which is the one
+ * compiling this file. Clang instruments for its own runtime (llvm_gcda_*),
+ * not implemented here, so when clang reads this file (a KERNEL_SYSCC build,
+ * or a clang-based tool like clangd) the version is moot: take the one of the
+ * toolchain's GCC, the compiler of every other build of this tree.
+ */
+#if defined(__GNUC__) && !defined(__clang__)
+   #define GCOV_GCC_VER    (__GNUC__ * 100 + __GNUC_MINOR__)
+#else
+   #define GCOV_GCC_VER    (GCC_TC_VER_MAJOR * 100 + GCC_TC_VER_MINOR)
+#endif
+
+#if GCOV_GCC_VER >= 1400
    #define GCOV_COUNTERS 9
-#elif __GNUC__ >= 10
+#elif GCOV_GCC_VER >= 1000
    #define GCOV_COUNTERS 8
-#elif __GNUC__ >= 7
+#elif GCOV_GCC_VER >= 700
    #define GCOV_COUNTERS 9
-#elif __GNUC__ >= 5
+#elif GCOV_GCC_VER >= 500
    #define GCOV_COUNTERS 10
-#elif __GNUC__ == 4 && __GNUC_MINOR__ >= 9
+#elif GCOV_GCC_VER >= 409
    #define GCOV_COUNTERS 9
 #else
    #define GCOV_COUNTERS 8
@@ -235,7 +249,7 @@ struct gcov_info
   struct gcov_info *next;       /* link to next, used by libgcov */
   gcov_unsigned_t stamp;        /* uniquifying time stamp */
 
-#if (__GNUC__ >= 12)
+#if GCOV_GCC_VER >= 1200
    /* Introduced with commit 72e0c742bd01f8e7e6 */
    gcov_unsigned_t checksum;        /* unique object checksum */
 #endif
@@ -314,7 +328,7 @@ static u32 compute_gcda_file_size(const struct gcov_info *info)
    // file header
    size += 3 * sizeof(u32);
 
-#if (__GNUC__ >= 12)
+#if GCOV_GCC_VER >= 1200
    size += 1 * sizeof(u32);  /* checksum */
 #endif
 
@@ -409,7 +423,7 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
    *ptr++ = gi->version;
    *ptr++ = gi->stamp;
 
-#if (__GNUC__ >= 12)
+#if GCOV_GCC_VER >= 1200
    *ptr++ = 0; /* checksum of the compilation unit */
 #endif
 
@@ -419,7 +433,7 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
 
       *ptr++ = GCOV_TAG_FUNCTION;
 
-#if (__GNUC__ >= 12)
+#if GCOV_GCC_VER >= 1200
       *ptr++ = GCOV_TAG_FUNCTION_LENGTH * 4; /* bytes */
 #else
       *ptr++ = GCOV_TAG_FUNCTION_LENGTH * 1; /* words */
@@ -438,7 +452,7 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
 
          *ptr++ = GCOV_TAG_FOR_COUNTER(j);
 
-#if (__GNUC__ >= 12)
+#if GCOV_GCC_VER >= 1200
          *ptr++ = GCOV_TAG_COUNTER_LENGTH(counters->num) * 4; /* bytes */
 #else
          *ptr++ = GCOV_TAG_COUNTER_LENGTH(counters->num) * 1; /* words */
