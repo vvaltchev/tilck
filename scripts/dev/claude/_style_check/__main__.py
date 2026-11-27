@@ -417,7 +417,7 @@ def cmd_check(args) -> int:
 
       if not file_cfg.parse:
          applicable = [r for r in applicable if not r.needs_tu]
-         stats.unparsed.append(f)
+         stats.unparsed.append((f, file_cfg.no_parse_reason))
 
          if args.parse_only:
 
@@ -684,7 +684,7 @@ class _ParseStats:
       self.dropped = set()
       self.asm_only = []         # (path, region)
       self.dead = []             # (path, region)
-      self.unparsed = []         # .style.yml says `parse: false`
+      self.unparsed = []         # (path, why): not parsed by design
 
    def add(self, fp):
 
@@ -717,10 +717,16 @@ class _ParseStats:
          out.write('compiler flags libclang does not know (dropped): '
                    '{}\n'.format(' '.join(sorted(self.dropped))))
 
-      out.write(
-         'not parsed, as their .style.yml says (parse: false): '
-         '{} file(s)\n'.format(len(self.unparsed))
-      )
+      reasons = {}
+
+      for _, why in self.unparsed:
+         reasons[why] = reasons.get(why, 0) + 1
+
+      out.write('not parsed by design: {} file(s){}\n'.format(
+         len(self.unparsed),
+         ''.join('\n   {} -- {}'.format(n, why)
+                 for why, n in sorted(reasons.items()))
+      ))
       out.write(
          'branches only assembly files compile: {}\n'.format(
             len(self.asm_only)

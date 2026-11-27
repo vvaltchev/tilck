@@ -107,7 +107,11 @@ compiler that fails, a libclang error or a divergence is a `parse`
 diagnostic of severity error, and `check` then exits 1. A
 `.style.yml` with `parse: false` marks files that cannot be parsed by
 design (the CMake templates in `config/`): only the text rules run on
-them.
+them. So does a `/* style_check: hosts Darwin */` marker in a file's
+first lines, on any host but those named (as Python's
+`platform.system()` names them): the file is built only there
+(`scripts/build_apps/machohack.c`, a Mach-O tool), so no build tree of
+another host compiles it.
 
 To prove the parsing works across the whole tree:
 

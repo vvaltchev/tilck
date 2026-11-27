@@ -1289,6 +1289,27 @@ class TestStyleConfig(unittest.TestCase):
       self.assertEqual(d['key'], 'hello')
       self.assertEqual(d['list'], ['foo', 'bar'])
 
+   def test_hosts_marker(self):
+      """`/* style_check: hosts X */`: not parsed on a host other than X,
+      parsed as usual on X."""
+
+      import platform
+      import tempfile
+
+      with tempfile.TemporaryDirectory() as td:
+
+         f = Path(td) / 'tool.c'
+
+         f.write_text('/* SPDX */\n/* style_check: hosts NoSuchOS */\n')
+         cfg = self._config.resolve_config(f, Path(td))
+         self.assertFalse(cfg.parse)
+         self.assertIn('NoSuchOS', cfg.no_parse_reason)
+
+         f.write_text('/* style_check: hosts NoSuchOS, {} */\n'.format(
+            platform.system()
+         ))
+         self.assertTrue(self._config.resolve_config(f, Path(td)).parse)
+
    def test_resolve_walks_up_and_merges(self):
 
       import tempfile

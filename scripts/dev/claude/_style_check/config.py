@@ -5,6 +5,7 @@
 
 import os
 import re as _re
+import platform
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -38,6 +39,9 @@ class StyleConfig:
    # shallower ones. The file still counts in --parse-only, as one
    # not parsed by configuration.
    parse: bool = True
+
+   # Why the file is not parsed, when `parse` is False.
+   no_parse_reason: str = ''
 
    # Provenance: list of (config_path, why) for debug / introspection.
    sources: List[Tuple[Path, str]] = field(default_factory=list)
@@ -194,7 +198,32 @@ _INLINE_DISABLE_RE = _re.compile(
    r'/\*\s*style_check:\s*disable\s+([\w,\s]+)\s*\*/'
 )
 
+# /* style_check: hosts Darwin */ -- the file is built only on these
+# hosts (as platform.system() names them): on any other, no build tree
+# can compile it, so it is not parsed. Its text rules still run.
+_INLINE_HOSTS_RE = _re.compile(
+   r'/\*\s*style_check:\s*hosts\s+([\w,\s]+)\s*\*/'
+)
+
 _INLINE_SCAN_LINES = 15
+
+
+def _scan_inline_hosts(file_path: Path) -> Optional[Set[str]]:
+   """The hosts an inline `hosts` marker restricts the file to, or None
+   when it has none."""
+
+   try:
+      with open(file_path, encoding='utf-8', errors='replace') as fh:
+         for n, line in enumerate(fh):
+            if n >= _INLINE_SCAN_LINES:
+               break
+            m = _INLINE_HOSTS_RE.search(line)
+            if m:
+               return {t.strip() for t in m.group(1).split(',') if t.strip()}
+   except (OSError, IOError):
+      pass
+
+   return None
 
 
 def _scan_inline_disables(file_path: Path) -> Set[str]:
@@ -239,6 +268,14 @@ def resolve_config(file_path: Path,
    if inline:
       cfg.disabled |= inline
 
+   hosts = _scan_inline_hosts(file_path)
+
+   if hosts is not None and platform.system() not in hosts:
+      cfg.parse = False
+      cfg.no_parse_reason = 'built only on {} hosts, this is {}'.format(
+         ', '.join(sorted(hosts)), platform.system()
+      )
+
    for cfg_path in _find_configs_along_path(file_path, repo_root):
 
       raw = load_config_file(cfg_path)
@@ -260,6 +297,8 @@ def resolve_config(file_path: Path,
 
       if isinstance(pa, bool):
          cfg.parse = pa
+         cfg.no_parse_reason = '' if pa else \
+            'its .style.yml says parse: false'
          changed.append('parse={}'.format(str(pa).lower()))
 
       dis = raw.get('disabled')

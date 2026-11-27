@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+/* style_check: hosts Darwin */
 
 /*
  * machohack: Mach-O symbol manipulation tool for unit test mocking.
