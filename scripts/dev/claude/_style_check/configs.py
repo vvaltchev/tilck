@@ -59,7 +59,7 @@ LANG_BY_SUFFIX = {
    '.S': 'assembler-with-cpp',
 }
 
-VIEW_CACHE_VERSION = 1
+VIEW_CACHE_VERSION = 2
 
 
 class ConfigError(Exception):
@@ -410,7 +410,10 @@ class View:
    error: Optional[str] = None         # the compiler failed
 
 
-_MARKER_RE = re.compile(r'^# (\d+) "((?:[^"\\]|\\.)*)"')
+# A line marker: `# <line> "<file>" <flags>`. After an indented
+# directive gcc indents the marker as well, so leading blanks are
+# allowed; the rest of the line must be the marker and nothing else.
+_MARKER_RE = re.compile(r'^\s*# (\d+) "((?:[^"\\]|\\.)*)"(?: \d+)*\s*$')
 
 
 def _unescape(name: str) -> str:

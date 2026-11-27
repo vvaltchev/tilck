@@ -84,10 +84,12 @@ class TestCompilerView(unittest.TestCase):
          '# 4 "/src/a.c" 2',
          '',
          'int y;',
+         '   # 9 "/src/a.c"',       # indented, after an indented #if
+         'int z;',
       ])
       ev = _configs.evidence(out, '/')
 
-      self.assertEqual(ev[os.path.realpath('/src/a.c')], {1, 3, 5})
+      self.assertEqual(ev[os.path.realpath('/src/a.c')], {1, 3, 5, 9})
       self.assertEqual(ev[os.path.realpath('/src/h.h')], {1})
 
    def test_strip_io(self):
