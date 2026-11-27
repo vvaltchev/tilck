@@ -322,6 +322,11 @@ void kmain_early_checks(void)
 
 #if SLOW_DEBUG_REF_COUNT
 
+/* ANSI colors: both the console and the serial line render them. */
+#define RC_UP_COLOR        "\033[32m"       /* green */
+#define RC_DOWN_COLOR      "\033[31m"       /* red */
+#define RC_COLOR_RESET     "\033[0m"
+
 /*
  * Set here the address of the ref_count to track.
  */
@@ -333,7 +338,7 @@ int __retain_obj(atomic_int_t *ref_count)
    int ret = atomic_fetch_add(ref_count, 1) + 1;
 
    if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
-      printk(COLOR_GREEN "refcount at %p: %d -> %d" RESET_ATTRS "\n",
+      printk(RC_UP_COLOR "refcount at %p: %d -> %d" RC_COLOR_RESET "\n",
              ref_count, ret-1, ret);
    }
 
@@ -345,11 +350,12 @@ int __release_obj(atomic_int_t *ref_count)
 {
    int ret;
    int old = atomic_fetch_sub(ref_count, 1);
+
    ASSERT(old > 0);
    ret = old - 1;
 
    if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
-      printk(COLOR_RED "refcount at %p: %d -> %d" RESET_ATTRS "\n",
+      printk(RC_DOWN_COLOR "refcount at %p: %d -> %d" RC_COLOR_RESET "\n",
              ref_count, old, ret);
    }
 
