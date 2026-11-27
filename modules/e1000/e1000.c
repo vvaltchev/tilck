@@ -34,13 +34,13 @@
 #define TX_RING_PAGES   DIV_ROUND_UP(TX_RING_BYTES, PAGE_SIZE)
 
 #define TX_DATA_BYTES   (TX_BUF_SIZE * TX_RING_CAP)
-#define TX_DATA_PAGES   DIV_ROUND_UP(TX_DATA_BYTES, PAGE_SIZE);
+#define TX_DATA_PAGES   DIV_ROUND_UP(TX_DATA_BYTES, PAGE_SIZE)
 
 #define RX_RING_BYTES   (sizeof(struct rx_desc) * RX_RING_CAP)
 #define RX_RING_PAGES   DIV_ROUND_UP(RX_RING_BYTES, PAGE_SIZE)
 
 #define RX_DATA_BYTES   (RX_BUF_SIZE * RX_RING_CAP)
-#define RX_DATA_PAGES   DIV_ROUND_UP(RX_DATA_BYTES, PAGE_SIZE);
+#define RX_DATA_PAGES   DIV_ROUND_UP(RX_DATA_BYTES, PAGE_SIZE)
 
 /*
  * Device versions
@@ -263,7 +263,7 @@ struct {
 static u32 read_reg(u32 off)
 {
    if (is_mmio)
-      return mmio_read32(io_addr + (off >> 2));
+      return mmio_read32(TO_PTR(io_addr + off));
 
    outl(io_addr + 0x00, off);
    return inl(io_addr + 0x4);
@@ -272,14 +272,14 @@ static u32 read_reg(u32 off)
 static void write_reg(u32 off, u32 val)
 {
    if (is_mmio)
-      mmio_write32(val, io_addr + (off >> 2));
+      mmio_write32(val, TO_PTR(io_addr + off));
    else {
       outl(io_addr + 0x0, off);
       outl(io_addr + 0x4, val);
    }
 }
 
-static void
+static u32
 unused_tx_queue_slots(void)
 {
    const u32 head = read_reg(REG_TDH);
@@ -294,11 +294,10 @@ unused_tx_queue_slots(void)
  */
 static int e1000_send(char *src, u32 len)
 {
-   const u32 num_desc;
+   const u32 num_desc = DIV_ROUND_UP(len, TX_BUF_SIZE);
 
    trace_printk(10, "e1000: Sending frame len=%d\n", len);
 
-   num_desc = DIV_ROUND_UP(len, TX_BUF_SIZE);
    if (num_desc > unused_tx_queue_slots())
       return -ENOMEM;
 
@@ -365,7 +364,6 @@ process_link_status_change(void *ctx)
 static enum irq_action
 irq_handler_func(void *ctx)
 {
-   const u32 icr;
    enum irq_action ret = IRQ_NOT_HANDLED;
 
    /*
@@ -374,7 +372,7 @@ irq_handler_func(void *ctx)
     * device and, if so, the reason why it was
     * generated.
     */
-   icr = read_reg(REG_ICR);
+   const u32 icr = read_reg(REG_ICR);
 
    trace_printk(9, "e1000: Interrupt!\n");
 
@@ -783,14 +781,14 @@ init_e1000(void)
    struct pci_device *dev;
    u8 interrupt_line;
 
-   dev = find_compatible_device(&device_version);
+   dev = find_compatible_pci_device(&device_version);
    if (!dev) {
       printk("e1000: INFO: No compatible device found\n");
       return; /* No matching device found */
    }
 
    printk("e1000: INFO: Found device (vendor_id=%x, device_id=%x)\n",
-          dev->vendor_id, dev->device_id);
+          dev->nfo.vendor_id, dev->nfo.device_id);
 
    rc = read_pci_interrupt_line(dev->loc);
    if (rc < 0) {
