@@ -1,8 +1,9 @@
 # Tilck's Python style, as inferred from its author's code
 
-Status: draft for review, 2026-11-28. It records what Vladislav's own Python
-says about his style. style_check checks it (`style_check check` on any
-Python file, see section 5); section 6 lists the open questions.
+Status: reviewed with the author, 2026-11-28. It records what Vladislav's
+own Python says about his style, and his answers where the code alone could
+not say (section 6). style_check checks it (`style_check check` on any
+Python file, see section 5).
 
 ## 1. Where it comes from
 
@@ -60,6 +61,38 @@ carry over unchanged:
 This is the strongest pattern, and Python's form of contributing.md's "empty
 line after `if (...) {`" rule.
 
+**Behind all of it, vertical space is weight** (the author's words, from
+the review):
+
+- **The more structure a neighbour has inside, the more space may separate
+  it from the next thing**: one level above the blank lines inside it. This
+  holds at every level: between the groups of a function, between methods,
+  between classes (3.2).
+- **A blank line needs a reason too.** Two related one-line statements that
+  read well together stay together:
+
+  ```python
+  new_x = compute_x(x, t)
+  new_y = compute_y(y, t)
+  ```
+
+  176 of the 176 pairs of parallel one-line statements in the corpus have
+  no blank line between them.
+- **A light block cannot carry extra air.** A block of a few short, sparse
+  lines looks worse with a blank line after its header or before the next
+  branch, even when it has groups inside (count_lines_of_code:124, where
+  even the blank line at 127 is optional).
+- **Spacing tells which path is the common one.** Symmetric spacing says
+  "two equally likely alternatives", which is rare (regs_printer.py:64-77,
+  below).
+- **The emphasis is the writer's call**: a blank line may set the key
+  statement of a function apart (get_cmds.py:29, `task =
+  tasks.get_task(tid)`), and a group of prints may read as the title of
+  what follows (cmp_funcs_size:83).
+
+No script can weigh these: style_check's blank-line rules are soft
+warnings, which Claude judges in context, reading the code.
+
 **A body separated into groups by blank lines starts with a blank line after
 its header. A body that is one group starts right away.**
 
@@ -88,8 +121,30 @@ Where the rule bends:
 
 - **A branch is spaced or compact as a whole**: the blank line after its
   header comes with a blank line before the next `elif` / `else` /
-  `except` (69/73 pairs). And a short branch next to a grouped one is often
-  spaced too, to match its peer (11/17):
+  `except` (69/73 pairs), when the branches weigh about the same. The
+  other 4 are not slips: the common path is light, and the rare one is
+  dense and spaced (regs_printer.py, where the `else` handles one specific
+  function):
+
+  ```python
+        if resume_eip_str.find("asm_save_regs_and_schedule") == -1:
+
+           # Actual value of the stack segment
+           ss = r["ss"] & 0xffff
+
+           res += [
+              ("ss          ", fixhex16(ss)),
+           ]
+        else:
+
+           # asm_save_regs_and_schedule() does NOT save SS on the stack.
+           # What we see there instead is its 1st argument, caller's ...
+           calc_eip = gdb.parse_and_eval("(void *){}".format(r["ss"]))
+           res.append(("[true_eip]  ", calc_eip))
+  ```
+
+  And a short branch next to a grouped one is often spaced too, to match
+  its peer (11/17):
 
   ```python
      if p.returncode == Fail.success.value:
@@ -107,7 +162,8 @@ Where the rule bends:
   ```
 
 - **`try` is spaced more readily** (10 of 32 flat `try` bodies), mostly to
-  match a spaced `except`.
+  match a spaced `except`. A grouped `try` body may also skip the blank
+  line: `try:` is too short to hide anything (detect_kvm.py at 77b85697).
 - **A short header followed by a long first line** sometimes skips the blank
   line even with a grouped body. These are 5 of the 11 grouped bodies
   without one (`if val != exp:`, `if e.screen_text:`, `if h:`).
@@ -128,10 +184,25 @@ Where the rule bends:
 - **One blank line between methods.** A class's body is grouped when it has
   several methods, so `class X:` is followed by a blank line.
 - **A blank line after an `if` that ends in `return`, `continue`, `break` or
-  `raise`**, when more statements follow: 93/93. This is the C rule.
+  `raise`**, when more statements follow: 93/93. This is the C rule. Soft
+  like every blank-line rule, but with a higher penalty.
 - **A `global` block is a declaration block**, followed by a blank line when
   the body is grouped (18/26). The 8 others are 3-line functions.
-- **Two blank lines in a row inside a function** occur 4 times: slips.
+- **Two blank lines (or three) are a section break, one level above the
+  single ones.** All 20 runs in the corpus have a neighbour with groups
+  inside:
+  - inside a function, they close a run of groups: the argument parsing
+    before the main logic (list_cmds.py:35), the checks before the final
+    `sleep` and `continue` (single_test_run:340);
+  - in a class, they set a big method with groups inside apart from a
+    small one (mobj_printer.py:92, before a one-line `to_string()`);
+  - at module level, they separate classes (2 or 3, whichever looks
+    better: mi_printer.py:40) or `main()` from the helpers
+    (generate_pci_ids:209).
+
+  With no groups around, two blank lines are a slip. They are never
+  required: 9 definitions with a double blank line inside are followed by
+  a single one.
 - **Comments**: a comment line sits on the code it introduces. A blank line
   after a comment marks a section heading ("# Dumping gcda file").
   Paragraphs inside a long comment are separated by a bare `#` line.
@@ -192,14 +263,11 @@ Where the rule bends:
 
 ### 3.4 Spaces on a line
 
-- **Keyword arguments**:
-  - in definitions, spaces around `=` (15/15): `delay = 0.2`,
-    `false_positive_handler = None`;
-  - in calls with one argument per line, spaced (42/48): `action =
-    "store_true"`. The 6 exceptions are three `subprocess.Popen` calls,
-    written `stdin=subprocess.PIPE`;
-  - in one-line calls, evenly split (8/16): `threading.Thread(target = run)`
-    but `int(x, base=16)`.
+- **Keyword arguments and defaults follow PEP 8**, by the author's
+  decision: `key=value` in calls, `param=default` in definitions, and
+  `param: T = default` once annotated. The corpus had spaces around `=`
+  (definitions 15/15, calls with one argument per line 42/48, one-line
+  calls 8/16), and was converted (2158c285).
 - **Subscripts and calls are never padded inside**: `x[0]`, `f(a)` (310/310
   subscripts).
 - **Comprehensions are padded** (9/13): `[ int(x, 16) for x in raw_arr ]`,
@@ -211,9 +279,15 @@ Where the rule bends:
 - **Dict colons come in three forms**: `k: v` (15), `k : v` (13), and values
   aligned in a column (32). Within one literal the form is meant to be one;
   the `TIMEOUTS` dict mixes them, a slip.
-- **Annotation colons**: `x : int` (24) and `x: int` (21). The runners'
-  newer code prefers `x : int`. The 2018 script and one line
-  (`g_params:TestParamsType`) have the others.
+- **Annotations are `name: T`**, by the author's decision. The corpus had
+  `x : int` (24, run_all_tests) and `x: int` (21, the other files), and was
+  converted. A column of annotated assignments keeps its types aligned,
+  padding after the colons:
+
+  ```python
+  tests_by_type: Dict[str, List[Tuple[str,int]]] = { k: [] for k in TEST_TYPES }
+  tests_to_run:  Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
+  ```
 - **Comments**: `# text` (310/312). An inline comment is one space after the
   code (42/52), or aligned with its neighbours.
 - **`assert(...)` with parentheses** (6/6), as in C.
@@ -232,11 +306,12 @@ Where the rule bends:
 
 ## 4. Slips, not rules
 
-The checker reports these, and does not learn from them: the 2-space
-blocks (run_all_tests:353, mi_printer.py:62), the 4 double blank lines
-inside functions, the mixed colons in `TIMEOUTS` (run_all_tests:50), and
-the hanging bracket closed at the wrong column (regs_printer.py:32-33). The
-CamelCase of `count_lines_of_code` is older than the style.
+The checker reports these, and does not learn from them; the author
+confirmed each: the 2-space blocks (run_all_tests:353, mi_printer.py:62),
+the mixed colons in `TIMEOUTS` (run_all_tests:50), the hanging bracket
+closed at the wrong column (regs_printer.py:31-33), and the missing blank
+line after `def children(self):` (mobj_printer.py:19, minor). The CamelCase
+of `count_lines_of_code` is older than the style.
 
 ## 5. The checker's rules
 
@@ -255,7 +330,10 @@ with C.
 - `py_aligned_bracket`: a bracket followed by its first element aligns the
   following elements under it, and closes after the last one;
 - `py_blank_after_jump`: a blank line after an `if` ending in
-  `return`/`continue`/`break`/`raise` when code follows.
+  `return`/`continue`/`break`/`raise` when code follows;
+- `py_call_kw_spacing`: `key=value` in calls;
+- `py_def_default_spacing`: `param=default`, `param: T = default`;
+- `py_annotation_spacing`: `name: T`, a column of them kept aligned.
 
 **Strong (-3):**
 
@@ -269,13 +347,11 @@ with C.
     than the body's first line (contributing.md's rule for C).
 - `py_branch_symmetry`: a spaced branch is followed by a blank line before
   the next `elif` / `else` / `except`, and a compact one is not.
-- `py_def_default_spacing`: spaces around `=` in parameter defaults.
 
 **Medium (-1.5) and soft (-0.5):**
 
 - `py_blank_between_defs`: one blank line before a `def` or `class`
-  (comments above it belong to it); two allowed at module level, pending
-  question 2.
+  (comments above it belong to it); two allowed at module level.
 - `py_no_double_blank` inside functions and classes.
 - `py_backslash_align`.
 - `py_dict_colon_uniform`: one colon form per literal, or the values in a
@@ -290,15 +366,25 @@ with C.
   calibration it reports nothing in the corpus, as its C twin reports 1
   line in the kernel's 24k.
 
-**Not built yet**, waiting on question 1 or on more evidence:
-`py_multiline_call_kw_spacing`, `py_comprehension_padding`,
-`py_multiline_condition` and `py_staircase`. Quotes and annotation colons
-stay out until question 3 is answered.
+**Decided in the review, not in the code yet:**
+
+- every blank-line rule becomes soft, its findings judged in context
+  (3.1); `py_blank_after_jump` keeps a higher penalty than the others;
+- `py_no_double_blank` and the count of `py_blank_between_defs` become one
+  rule: two or more blank lines need a neighbour with groups inside (3.2);
+- `py_blank_after_header` stops asking a blank line of a small, light
+  block;
+- `py_branch_symmetry` becomes a low-weight hint.
+
+**Not built yet**, waiting on more evidence: `py_comprehension_padding`,
+`py_multiline_condition` and `py_staircase`. Quotes stay out.
 
 ### Over the corpus
 
-17 findings in 4,492 lines. 11 are the slips of section 4. The 6 others are
-the judgment cases of question 5.
+17 findings in 4,492 lines, before the review. 6 are the slips of section
+4. The author found the other 11 correct: 5 double blank lines and a triple
+one (3.2), and 5 blank lines after headers or before branches that a script
+cannot weigh (section 6, answers 4 and 5).
 
 Over the rest of the tree's Python (written after CLAUDE.md), the rules
 find what the conversion will fix: the configurator is 4-space indented
@@ -307,25 +393,27 @@ multi-line headers, 4 lines over 80 columns); style_check's own code has
 about 150, mostly blank-line and bracket alignment. The vim test data is
 excluded (`tests/interactive/vim_text_files/.style.yml`).
 
-## 6. Questions
+## 6. Questions, answered
 
-1. **Keyword arguments in one-line calls**: `f(x, key = val)` and
-   `f(x, key=val)` are evenly split. Does one of them win, or does it
-   depend (on the call's length, on how many keywords it has)?
-2. **Two blank lines between top-level definitions**: 10 times out of 156.
-   Is a double blank line a section break you want, or a slip?
-3. **Annotation colons**: `x : int` or `x: int`, or no preference?
-4. **The blank line after a short header** whose body is grouped
-   (`if val != exp:` followed by a long line): is skipping it the C
-   "the body is longer than the header" exception, or a slip? The checker
-   takes it as the exception today.
-5. **Six findings in your code that are style or slip, your call:**
+1. **Keyword arguments**: `key=value`, PEP 8's (3.4).
+2. **Two blank lines between top-level definitions**: a section break, as
+   two blank lines are at every level when a neighbour has groups inside
+   (3.2).
+3. **Annotation colons**: `name: T` everywhere (3.4).
+4. **A short header over a grouped body, with no blank line**
+   (utils.py:84, `if val != exp:` over a long line): correct, the C rule's
+   exception.
+5. **The findings the author judged** (3.1):
    - mobj_printer.py:19, `def children(self):` with a 2-group body and no
-     blank line after the header;
-   - cmp_funcs_size:83 and :93, `if before_funcs > after_funcs:` with a
-     grouped body (`print()` lines, then a `for`) and no blank line;
-   - count_lines_of_code:124, `if len(rsline) > LINE_MAX_COLS:`, the same;
-   - detect_kvm.py:59 at 77b85697 (since rewritten), a compact `try:`
-     before a spaced `except:`;
-   - regs_printer.py:72, a spaced `if` branch with no blank line before
-     its `else:`.
+     blank line: a slip, minor;
+   - cmp_funcs_size:83 and :93: correct, the three prints are the title of
+     the loop that follows;
+   - count_lines_of_code:124: correct, the block is too small for a blank
+     line;
+   - detect_kvm.py:46 at 77b85697: correct, `try:` is too short to need
+     one;
+   - regs_printer.py:72: correct, the light common path flows into the
+     `else` of the rare one.
+6. **An assignment and the `if` that tests it**: no rule. The blank line
+   between them is optional, and may set the key statement apart
+   (get_cmds.py:29).
