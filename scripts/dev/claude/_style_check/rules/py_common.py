@@ -8,6 +8,8 @@ The style they check is the one inferred from the author's own Python, in
 docs/plans/python-style.md.
 """
 
+import ast
+
 from typing import List, Optional
 
 from .base import Rule, Diagnostic, CheckContext
@@ -50,3 +52,18 @@ class PyRule(Rule):
          snippet=text.rstrip(),
          suggestion=suggestion,
       )
+
+
+def bodies(node):
+   """The statement lists of a node: its body, else and finally blocks,
+   and the bodies of its except handlers."""
+
+   for field in ('body', 'orelse', 'finalbody'):
+
+      body = getattr(node, field, None)
+
+      if isinstance(body, list) and body and isinstance(body[0], ast.stmt):
+         yield body
+
+   for h in getattr(node, 'handlers', []) or []:
+      yield h.body

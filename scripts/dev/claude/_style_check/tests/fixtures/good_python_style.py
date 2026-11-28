@@ -19,7 +19,7 @@ DEFAULT_ARCH = 'i386'
 
 class TestResult:
 
-   def __init__(self, name, passed = False):
+   def __init__(self, name, passed=False):
       self.name = name
       self.passed = passed
 
@@ -27,7 +27,7 @@ class TestResult:
       return '{}: {}'.format(self.name, 'PASSED' if self.passed else 'FAILED')
 
 
-def find_tests(path: str, suffix = '.sh') -> List[str]:
+def find_tests(path: str, suffix: str = '.sh') -> List[str]:
 
    res = []
 
@@ -48,9 +48,9 @@ def run_one(cmd, timeout):
    try:
 
       p = subprocess.run(cmd,
-                         stdout = subprocess.PIPE,
-                         stderr = subprocess.STDOUT,
-                         timeout = timeout)
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT,
+                         timeout=timeout)
 
    except subprocess.TimeoutExpired:
       return TestResult(cmd[0])
@@ -91,7 +91,7 @@ def main():
       for t in tests
    ]
 
-   sys.exit(report(results, verbose = False))
+   sys.exit(report(results, verbose=False))
 
 
 if __name__ == '__main__':

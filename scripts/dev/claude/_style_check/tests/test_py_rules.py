@@ -45,6 +45,13 @@ def _ctx(text: str, indent: int = 3, name: str = 'snippet.py'):
    return ctx
 
 
+def _fixed(rule_id: str, text: str):
+   """The line each finding of `rule_id` in `text` would be fixed into."""
+
+   ctx = _ctx(text)
+   return [d.fixes[0].new_lines[0] for d in RULES_BY_ID[rule_id].check(ctx)]
+
+
 def _lines(rule_id: str, text: str, indent: int = 3):
    """The lines `rule_id` reports in `text` (dedented)."""
 
@@ -444,9 +451,81 @@ class TestDefDefaultSpacing(unittest.TestCase):
    def test_defaults(self):
 
       self.assertEqual(_lines('py_def_default_spacing', '''\
-         def f(a, b=1, c = 2, *, d: int=3, e: int = 4):
-            return g(a, key=b)
-      '''), [1, 1])
+         def f(a, b=1, c = 2, *, d: int=3, e: int = 4, g: Dict[str, int]=None):
+            return h(a, key = b)
+      '''), [1, 1, 1])
+
+   def test_fix(self):
+
+      fixed = _fixed('py_def_default_spacing',
+                     'def f(a, c = 2, d: int=3):\n   pass\n')
+
+      self.assertEqual(fixed, ['def f(a, c=2, d: int = 3):'] * 2)
+
+
+class TestCallKwSpacing(unittest.TestCase):
+
+   def test_calls(self):
+
+      self.assertEqual(_lines('py_call_kw_spacing', '''\
+         f(a, key=b)
+         f(a, key = b, other =c)
+         f(help=('a long '
+                 'text'))
+         f(help = ('a long '
+                   'text'))
+         class A(Base, metaclass = Meta):
+            pass
+         f(**opts)
+      '''), [2, 2, 5, 7])
+
+   def test_fix(self):
+
+      fixed = _fixed('py_call_kw_spacing', 'f(a, key = b, other =c)\n')
+      self.assertEqual(fixed, ['f(a, key=b, other=c)'] * 2)
+
+   def test_broken_line_is_left_alone(self):
+
+      self.assertEqual(_lines('py_call_kw_spacing', '''\
+         f(key =
+              1)
+      '''), [])
+
+
+class TestAnnotationSpacing(unittest.TestCase):
+
+   def test_parameters_and_variables(self):
+
+      self.assertEqual(_lines('py_annotation_spacing', '''\
+         def f(a: int, b : str, c:float, d: bool = True) -> None:
+            x: int = 1
+            y : int = 2
+            z:int = 3
+            w : List[int] = [
+               1,
+            ]
+      '''), [1, 1, 3, 4, 5])
+
+   def test_aligned_column(self):
+
+      fixed = _fixed('py_annotation_spacing', textwrap.dedent('''\
+         tests_by_type : Dict[str, List[int]] = {}
+         tests_to_run  : Dict[str, int]       = {}
+         test_runners  : Dict[str, str]       = {}
+      '''))
+
+      self.assertEqual(fixed, [
+         'tests_by_type: Dict[str, List[int]] = {}',
+         'tests_to_run:  Dict[str, int]       = {}',
+         'test_runners:  Dict[str, str]       = {}',
+      ])
+
+   def test_aligned_column_kept(self):
+
+      self.assertEqual(_lines('py_annotation_spacing', '''\
+         tests_by_type: Dict[str, List[int]] = {}
+         tests_to_run:  Dict[str, int]       = {}
+      '''), [])
 
 
 class TestDictColonUniform(unittest.TestCase):

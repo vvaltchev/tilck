@@ -82,6 +82,7 @@ from . import py_indent
 from . import py_bracket_layout
 from . import py_blank_lines
 from . import py_alignment
+from . import py_spacing
 from . import py_harmony
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
@@ -173,10 +174,12 @@ ALL_RULES = [
    py_blank_lines.SYMMETRY,
    py_blank_lines.BETWEEN_DEFS,
    py_blank_lines.DOUBLE_BLANK,
-   py_blank_lines.DEFAULT_SPACING,
    py_alignment.DICT_COLON,
    py_alignment.BACKSLASH,
    py_alignment.ASSERT,
+   py_spacing.CALL_KW,
+   py_spacing.DEF_DEFAULT,
+   py_spacing.ANNOTATION,
    py_harmony.RULE,
 ]
 

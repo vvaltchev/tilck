@@ -66,6 +66,14 @@ class PyContext:
    # first: their text is the string's, blank or not
    string_lines: Set[int] = field(default_factory=set)
 
+   # line -> indentation and first line of the logical line it belongs to
+   logical_indent: Dict[int, int] = field(default_factory=dict)
+   logical_start: Dict[int, int] = field(default_factory=dict)
+
+   # (line, col) where a code token starts or ends -> its index in `tokens`
+   token_starts: Dict[tuple, int] = field(default_factory=dict)
+   token_ends: Dict[tuple, int] = field(default_factory=dict)
+
    # where Python's parser stopped, when `error` is set (0: unknown)
    error_line: int = 0
 
@@ -78,9 +86,15 @@ class PyContext:
 
       return not self.lines[n - 1].strip()
 
-   # line -> indentation and first line of the logical line it belongs to
-   logical_indent: Dict[int, int] = field(default_factory=dict)
-   logical_start: Dict[int, int] = field(default_factory=dict)
+   def next_code(self, i: int) -> int:
+      """The index of the code token after tokens[i] (line breaks and
+      comments inside brackets skipped), or -1."""
+
+      for j in range(i + 1, len(self.tokens)):
+         if self.tokens[j].type not in _NOT_CODE:
+            return j
+
+      return -1
 
 
 def build(source_text: str) -> PyContext:
@@ -98,6 +112,7 @@ def build(source_text: str) -> PyContext:
                        error_line=e.args[1][0])
 
    ctx = PyContext(tokens, tree, None, lines)
+   _index_tokens(ctx)
    _find_logical_lines(ctx)
    _find_string_lines(ctx)
    _find_brackets(ctx)
@@ -107,6 +122,20 @@ def build(source_text: str) -> PyContext:
 
 def _indent_of(line: str) -> int:
    return len(line) - len(line.lstrip(' '))
+
+
+# Tokens that carry no code: a rule stepping from one token to the next
+# skips them.
+_NOT_CODE = (tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, tokenize.INDENT,
+             tokenize.DEDENT, tokenize.ENCODING, tokenize.ENDMARKER)
+
+
+def _index_tokens(ctx: PyContext):
+
+   for i, t in enumerate(ctx.tokens):
+      if t.type not in _NOT_CODE:
+         ctx.token_starts[t.start] = i
+         ctx.token_ends[t.end] = i
 
 
 def _find_string_lines(ctx: PyContext):
@@ -259,7 +288,7 @@ def _find_blocks(ctx: PyContext):
 
       return stmt.lineno
 
-   def add(keyword, body, chain = None, index = 0):
+   def add(keyword, body, chain=None, index=0):
 
       if not body:
          return

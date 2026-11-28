@@ -20,7 +20,7 @@ from .base import (
    SCORE_STRONG_PREF,
    SCORE_MEDIUM_PREF,
 )
-from .py_common import PyRule
+from .py_common import PyRule, bodies
 from .. import pyctx
 
 COMPOUND = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.With,
@@ -44,7 +44,7 @@ class PyBlankAfterJump(PyRule):
       out = []
 
       for node in ast.walk(py.tree):
-         for body in _bodies(node):
+         for body in bodies(node):
             for a, b in zip(body, body[1:]):
 
                if not (isinstance(a, ast.If) and not a.orelse and
@@ -172,7 +172,7 @@ def _sibling_defs(py):
    out = {}
 
    for node in ast.walk(py.tree):
-      for body in _bodies(node):
+      for body in bodies(node):
 
          defs = [d for d in body
                  if isinstance(d, (ast.FunctionDef, ast.AsyncFunctionDef))]
@@ -251,7 +251,7 @@ class PyBlankBetweenDefs(PyRule):
       out = []
 
       for node in ast.walk(py.tree):
-         for body in _bodies(node):
+         for body in bodies(node):
             for prev, d in zip(body, body[1:]):
 
                if not isinstance(d, (ast.FunctionDef, ast.AsyncFunctionDef,
@@ -337,76 +337,6 @@ class PyNoDoubleBlank(PyRule):
       return uniq
 
 
-class PyDefDefaultSpacing(PyRule):
-
-   id = 'py_def_default_spacing'
-   description = (
-      'Parameter defaults in a definition have spaces around `=` '
-      '(`delay = 0.2`)'
-   )
-   layers = LAYER_STRUCTURAL
-   severity = SEVERITY_WARNING
-   default_score = SCORE_STRONG_PREF
-
-   def check_py(self, ctx: CheckContext, py) -> List[Diagnostic]:
-
-      out = []
-
-      for node in ast.walk(py.tree):
-
-         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
-                                  ast.Lambda)):
-
-            continue
-
-         if isinstance(node, ast.Lambda):
-            continue
-
-         args = node.args
-         pos = args.posonlyargs + args.args
-         defaults = list(zip(pos[len(pos) - len(args.defaults):],
-                             args.defaults))
-         defaults += [(a, d) for a, d in zip(args.kwonlyargs,
-                                             args.kw_defaults) if d]
-
-         for a, d in defaults:
-
-            line = ctx.lines[d.lineno - 1]
-
-            if d.lineno != (a.end_lineno or a.lineno):
-               continue
-
-            start = (a.annotation.end_col_offset if a.annotation
-                     else a.col_offset + len(a.arg))
-            between = line[start:d.col_offset]
-
-            if between.strip() != '=':
-               continue
-
-            if between.startswith(' ') and between.endswith(' '):
-               continue
-
-            out.append(self.diag(
-               ctx, d.lineno, start + 1,
-               'spaces around `=` in the default of `{}`'.format(a.arg)
-            ))
-
-      return out
-
-
-def _bodies(node):
-
-   for field in ('body', 'orelse', 'finalbody'):
-
-      body = getattr(node, field, None)
-
-      if isinstance(body, list) and body and isinstance(body[0], ast.stmt):
-         yield body
-
-   for h in getattr(node, 'handlers', []) or []:
-      yield h.body
-
-
 def _starts_def(text: str) -> bool:
    """A line opening a definition, or a comment or decorator above one:
    a blank run before it is py_blank_between_defs' to judge."""
@@ -425,4 +355,3 @@ HEADER = PyBlankAfterHeader()
 SYMMETRY = PyBranchSymmetry()
 BETWEEN_DEFS = PyBlankBetweenDefs()
 DOUBLE_BLANK = PyNoDoubleBlank()
-DEFAULT_SPACING = PyDefDefaultSpacing()
