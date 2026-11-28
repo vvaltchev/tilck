@@ -173,7 +173,7 @@ ALL_RULES = [
    py_blank_lines.HEADER,
    py_blank_lines.SYMMETRY,
    py_blank_lines.BETWEEN_DEFS,
-   py_blank_lines.DOUBLE_BLANK,
+   py_blank_lines.BLANK_RUNS,
    py_alignment.DICT_COLON,
    py_alignment.BACKSLASH,
    py_alignment.ASSERT,

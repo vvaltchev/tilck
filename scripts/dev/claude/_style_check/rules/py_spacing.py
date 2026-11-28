@@ -279,7 +279,6 @@ def _group_sites(py, group):
 def _annassign_message(node: ast.AnnAssign) -> str:
    return 'write `{}: T`'.format(ast.unparse(node.target))
 
-
 CALL_KW = PyCallKwSpacing()
 DEF_DEFAULT = PyDefDefaultSpacing()
 ANNOTATION = PyAnnotationSpacing()

@@ -55,14 +55,25 @@ to both languages.
 
 - **Tokens** -- `py_indent` (one `--indent` level per block, spaces
   only), `py_hanging_bracket` and `py_aligned_bracket` (the two
-  multi-line bracket styles of C's calls), `py_backslash_align`.
+  multi-line bracket styles of C's calls), `py_backslash_align`, and
+  PEP 8's spacing: `py_call_kw_spacing` (`key=value`),
+  `py_def_default_spacing`, `py_annotation_spacing` (`name: T`), each
+  with its fix for `--diff`.
 - **Structural (ast)** -- vertical space: `py_blank_after_header`,
   `py_branch_symmetry`, `py_blank_after_jump`, `py_blank_between_defs`,
-  `py_no_double_blank`; spacing and forms: `py_def_default_spacing`,
-  `py_dict_colon_uniform`, `py_assert_parens`.
+  `py_blank_line_runs`; forms: `py_dict_colon_uniform`,
+  `py_assert_parens`.
 - **Raw text** -- `py_spdx_header`.
 - **Gradient** -- `py_harmony`, the model of `harmony_with_neighbors`
   (shared, in `harmony.py`) over Python's functions.
+
+**The vertical-space rules are soft, and their findings are judged, not
+applied.** Vertical space is weight (`python-style.md` 3.1): the more
+structure a block has inside, the more space may separate it, a light
+block cannot carry extra air, and the spacing tells the common path from
+the rare one. A script cannot weigh that, so these rules report warnings
+whose suggestion says to judge them in context, they carry no fix, and a
+finding the code's context justifies stays as it is.
 
 Their tests are snippets in `tests/test_py_rules.py`, plus a whole file
 in the style, `tests/fixtures/good_python_style.py`, on which no rule

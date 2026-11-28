@@ -270,9 +270,36 @@ class TestBlankAfterHeader(unittest.TestCase):
       self.assertEqual(_lines('py_blank_after_header', '''\
          def function_with_a_long_name(argument):
             x = 1
+            y = 2
+            z = 3
 
-            return x
+            w = 4
+            return x + y + z + w
       '''), [1])
+
+   def test_small_body_either_way(self):
+
+      self.assertEqual(_lines('py_blank_after_header', '''\
+         if len(rsline) > LINE_MAX_COLS:
+            if not f in longLines:
+               longLines[f] = []
+
+            longLines[f].append(i)
+         if len(rsline) > LINE_MAX_COLS:
+
+            if not f in longLines:
+               longLines[f] = []
+
+            longLines[f].append(i)
+      '''), [])
+
+   def test_findings_are_judged(self):
+
+      ctx = _ctx('def f():\n\n   x = 1\n   return x\n')
+      d = RULES_BY_ID['py_blank_after_header'].check(ctx)[0]
+
+      self.assertEqual(d.severity, 'warning')
+      self.assertIn('judge it in context', d.suggestion)
 
    def test_short_header_does_not_hide_the_body(self):
 
@@ -385,7 +412,7 @@ class TestBranchSymmetry(unittest.TestCase):
 
 class TestBlankBetweenDefs(unittest.TestCase):
 
-   def test_counts(self):
+   def test_none(self):
 
       self.assertEqual(_lines('py_blank_between_defs', '''\
          class A:
@@ -399,21 +426,14 @@ class TestBlankBetweenDefs(unittest.TestCase):
             # h's own comment
             def h(self):
                pass
-
-         def top():
-            pass
+      '''), [5])
 
 
-         def main():
-            pass
-      '''), [5, 10])
+class TestBlankLineRuns(unittest.TestCase):
 
+   def test_no_groups_around(self):
 
-class TestNoDoubleBlank(unittest.TestCase):
-
-   def test_inside_a_function(self):
-
-      self.assertEqual(_lines('py_no_double_blank', '''\
+      self.assertEqual(_lines('py_blank_line_runs', '''\
          def f():
 
             a = 1
@@ -422,27 +442,70 @@ class TestNoDoubleBlank(unittest.TestCase):
             return a
       '''), [4])
 
+   def test_closing_a_run_of_groups(self):
+
+      self.assertEqual(_lines('py_blank_line_runs', '''\
+         if not text:
+
+            if a:
+               b()
+
+            c = 1
+            d = 2
+
+
+            time.sleep(0.1)
+            continue
+      '''), [])
+
+   def test_methods_and_classes(self):
+
+      self.assertEqual(_lines('py_blank_line_runs', '''\
+         class A:
+
+            def children(self):
+
+               x = 1
+
+               return x
+
+
+            def to_string(self):
+               return "a"
+
+
+
+         class B:
+            pass
+      '''), [])
+
+   def test_four_is_too_many(self):
+
+      self.assertEqual(_lines('py_blank_line_runs', '''\
+         class A:
+
+            def f(self):
+
+               x = 1
+
+               return x
+
+
+
+
+         class B:
+            pass
+      '''), [8])
+
    def test_inside_a_string(self):
 
-      self.assertEqual(_lines('py_no_double_blank', '''\
+      self.assertEqual(_lines('py_blank_line_runs', '''\
          def f():
             text = """first
 
 
             second"""
             return text
-      '''), [])
-
-   def test_before_a_nested_def(self):
-
-      self.assertEqual(_lines('py_no_double_blank', '''\
-         class A:
-
-            x = 1
-
-
-            def f(self):
-               pass
       '''), [])
 
 

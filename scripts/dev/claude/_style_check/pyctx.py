@@ -123,7 +123,6 @@ def build(source_text: str) -> PyContext:
 def _indent_of(line: str) -> int:
    return len(line) - len(line.lstrip(' '))
 
-
 # Tokens that carry no code: a rule stepping from one token to the next
 # skips them.
 _NOT_CODE = (tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, tokenize.INDENT,

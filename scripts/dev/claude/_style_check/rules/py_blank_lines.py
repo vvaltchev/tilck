@@ -6,6 +6,14 @@
 Vertical space in Python, as in the author's C: blank lines delimit groups
 of statements, and a block whose body is made of groups is separated from
 its header by a blank line too. See docs/plans/python-style.md, 3.1-3.2.
+
+Vertical space is weight: the more structure a neighbour has inside, the
+more space may separate it; a blank line needs a reason; a light block
+cannot carry extra air; the spacing tells the common path from the rare
+one; and the emphasis is the writer's call. A script cannot weigh that, so
+every rule here is soft: a finding is a question about the code, to be
+judged in context by reading it (by Claude, or a person), never applied
+blindly. Each finding says so in its suggestion.
 """
 
 import ast
@@ -19,9 +27,21 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_STRONG_PREF,
    SCORE_MEDIUM_PREF,
+   SCORE_NUDGE,
 )
 from .py_common import PyRule, bodies
 from .. import pyctx
+
+JUDGE = ('soft: judge it in context -- the weight and density of the '
+         'blocks around, the common path, the emphasis '
+         '(docs/plans/python-style.md 3.1)')
+
+# A body of this many code lines or fewer is too light to need a blank
+# line after its header, groups or not (count_lines_of_code:124).
+SMALL_BODY_LINES = 4
+
+# Two or three blank lines are a section break; more are never seen.
+MAX_BLANK_RUN = 3
 
 COMPOUND = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.With,
             ast.AsyncWith, ast.Try, ast.FunctionDef, ast.AsyncFunctionDef,
@@ -30,14 +50,28 @@ COMPOUND = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.With,
 JUMPS = (ast.Return, ast.Continue, ast.Break, ast.Raise)
 
 
-class PyBlankAfterJump(PyRule):
+class _BlankRule(PyRule):
+   """A soft rule about blank lines: its findings are judged, not
+   applied (the module's docstring)."""
+
+   layers = LAYER_STRUCTURAL
+   severity = SEVERITY_WARNING
+   default_score = SCORE_MEDIUM_PREF
+
+   def diag(self, ctx, line, col, message, suggestion=None, end_line=None):
+      return super().diag(ctx, line, col, message, suggestion or JUDGE,
+                          end_line)
+
+
+class PyBlankAfterJump(_BlankRule):
 
    id = 'py_blank_after_jump'
    description = (
       'An `if` ending in return/continue/break/raise is followed by a blank '
-      'line when more statements follow'
+      'line when more statements follow (93/93 in the author\'s code: the '
+      'heaviest of the soft blank-line rules)'
    )
-   layers = LAYER_STRUCTURAL
+   default_score = SCORE_STRONG_PREF
 
    def check_py(self, ctx: CheckContext, py) -> List[Diagnostic]:
 
@@ -68,17 +102,17 @@ class PyBlankAfterJump(PyRule):
       return out
 
 
-class PyBlankAfterHeader(PyRule):
+class PyBlankAfterHeader(_BlankRule):
 
    id = 'py_blank_after_header'
    description = (
       'A block whose body is made of groups (blank lines between its '
       'statements) starts after a blank line; a body of one group starts '
-      'right after its header'
+      'right after its header. A header spanning lines is always followed '
+      'by one; a small body (4 code lines or fewer) may go either way. '
+      'Judged in context: a group of prints may be the title of what '
+      'follows, and needs no blank line above it'
    )
-   layers = LAYER_STRUCTURAL
-   severity = SEVERITY_WARNING
-   default_score = SCORE_STRONG_PREF
 
    def check_py(self, ctx: CheckContext, py) -> List[Diagnostic]:
 
@@ -141,8 +175,12 @@ class PyBlankAfterHeader(PyRule):
             ))
             continue
 
-         # Grouped but not spaced: a header shorter than the body's first
-         # line does not hide it (contributing.md's rule for C).
+         # Grouped but not spaced: a small body is too light to need the
+         # blank line, and a header shorter than the body's first line
+         # does not hide it (contributing.md's rule for C).
+         if _code_lines(py, blk) <= SMALL_BODY_LINES:
+            continue
+
          first = pyctx.stmt_first_line(blk.body[0])
          hdr_len = len(lines[blk.header_line - 1].rstrip())
          first_len = len(lines[first - 1].rstrip())
@@ -157,6 +195,17 @@ class PyBlankAfterHeader(PyRule):
          ))
 
       return out
+
+
+def _code_lines(py, blk) -> int:
+   """The lines of a body holding code: not blank, not only a comment."""
+
+   first = pyctx.stmt_first_line(blk.body[0])
+   last = blk.body[-1].end_lineno
+
+   return sum(1 for n in range(first, last + 1)
+              if not py.is_blank(n) and
+              not py.lines[n - 1].lstrip().startswith('#'))
 
 
 def _sibling_defs(py):
@@ -189,16 +238,17 @@ def _sibling_defs(py):
    return out
 
 
-class PyBranchSymmetry(PyRule):
+class PyBranchSymmetry(_BlankRule):
 
    id = 'py_branch_symmetry'
    description = (
-      'A branch spaced from its header (blank line after it) is also '
-      'spaced from the next elif/else/except, and a compact one is not'
+      'A hint: a branch spaced from its header (blank line after it) is '
+      'often spaced from the next elif/else/except too, and a compact one '
+      'is not. Symmetric spacing says "equally likely alternatives", which '
+      'is rare: a light common path flowing into the else of a dense, rare '
+      'one is the style (regs_printer.py:64-77)'
    )
-   layers = LAYER_STRUCTURAL
-   severity = SEVERITY_WARNING
-   default_score = SCORE_STRONG_PREF
+   default_score = SCORE_NUDGE
 
    def check_py(self, ctx: CheckContext, py) -> List[Diagnostic]:
 
@@ -235,16 +285,14 @@ class PyBranchSymmetry(PyRule):
       return out
 
 
-class PyBlankBetweenDefs(PyRule):
+class PyBlankBetweenDefs(_BlankRule):
 
    id = 'py_blank_between_defs'
    description = (
-      'One blank line before a function or class definition (comments '
-      'directly above it belong to it)'
+      'A function or class definition is set apart from the statement '
+      'before it by a blank line (comments directly above it belong to it). '
+      'How many is py_blank_line_runs\' to judge'
    )
-   layers = LAYER_STRUCTURAL
-   severity = SEVERITY_WARNING
-   default_score = SCORE_MEDIUM_PREF
 
    def check_py(self, ctx: CheckContext, py) -> List[Diagnostic]:
 
@@ -266,92 +314,114 @@ class PyBlankBetweenDefs(PyRule):
 
                   k -= 1
 
-               blanks = 0
-
-               while k > prev.end_lineno and py.is_blank(k):
-                  blanks += 1
-                  k -= 1
-
-               if blanks == 1:
-                  continue
-
-               # Two blank lines: a section break, sometimes used before
-               # main() or a big function (to be confirmed).
-               if blanks == 2 and isinstance(node, ast.Module):
+               if k > prev.end_lineno and py.is_blank(k):
                   continue
 
                out.append(self.diag(
                   ctx, pyctx.stmt_first_line(d), 1,
-                  '{} blank line(s) before `{}`, expected 1'.format(
-                     blanks, d.name
-                  )
+                  'no blank line before `{}`'.format(d.name)
                ))
 
       return out
 
 
-class PyNoDoubleBlank(PyRule):
+class PyBlankLineRuns(_BlankRule):
 
-   id = 'py_no_double_blank'
-   description = 'No two blank lines in a row inside a function or a class'
-   layers = LAYER_STRUCTURAL
-   severity = SEVERITY_WARNING
-   default_score = SCORE_MEDIUM_PREF
+   id = 'py_blank_line_runs'
+   description = (
+      'Two or three blank lines in a row are a section break, one level '
+      'above the single blank lines: one of the sections they separate has '
+      'blank lines of its own (a run of groups inside a function, a big '
+      'method, a class, the helpers before main()). With no groups around, '
+      'or four or more in a row, they are a slip'
+   )
 
    def check_py(self, ctx: CheckContext, py) -> List[Diagnostic]:
 
       out = []
+      total = len(py.lines)
+      n = 1
 
-      for node in ast.walk(py.tree):
+      while n <= total:
 
-         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
-                                  ast.ClassDef)):
+         if not py.is_blank(n):
+            n += 1
+            continue
+
+         start = n
+
+         while py.is_blank(n):
+            n += 1
+
+         run = n - start
+
+         # Blank lines at the top or the end of the file separate nothing.
+         if run < 2 or start == 1 or n > total:
+            continue
+
+         if run > MAX_BLANK_RUN:
+            out.append(self.diag(
+               ctx, start, 1,
+               '{} blank lines in a row: a section break takes 2 or 3'
+               .format(run)
+            ))
+            continue
+
+         level = _indent(py, n)
+
+         if (_has_groups(py, start - 1, -1, run, level) or
+             _has_groups(py, n, 1, run, level)):
 
             continue
 
-         run = 0
+         out.append(self.diag(
+            ctx, start, 1,
+            '{} blank lines in a row, with no groups around them: neither '
+            'side has blank lines of its own'.format(run)
+         ))
 
-         for n in range(node.lineno, node.end_lineno + 1):
-
-            if py.is_blank(n):
-               run += 1
-               continue
-
-            if run >= 2 and not _starts_def(ctx.lines[n - 1]):
-               out.append(self.diag(
-                  ctx, n - run, 1,
-                  '{} blank lines in a row inside `{}`'.format(run, node.name)
-               ))
-
-            run = 0
-
-      # A nested def is visited twice (itself and its parent): keep one.
-      seen = set()
-      uniq = []
-
-      for d in out:
-         if d.line not in seen:
-            seen.add(d.line)
-            uniq.append(d)
-
-      return uniq
+      return out
 
 
-def _starts_def(text: str) -> bool:
-   """A line opening a definition, or a comment or decorator above one:
-   a blank run before it is py_blank_between_defs' to judge."""
+def _indent(py, n: int) -> int:
+   """The indentation of the statement line n belongs to (a comment line:
+   its own)."""
 
-   t = text.lstrip()
-   return t.startswith(('def ', 'class ', 'async def ', '@', '#'))
+   text = py.lines[n - 1]
+   return py.logical_indent.get(n, len(text) - len(text.lstrip(' ')))
+
+
+def _has_groups(py, n: int, step: int, run: int, level: int) -> bool:
+   """Whether the section starting at line n and walking by `step` has
+   blank lines of its own. The section ends at a run of `run` blank lines
+   or more, or at a line indented less than `level` (it left the block)."""
+
+   blanks = 0
+   groups = False
+
+   while 1 <= n <= len(py.lines):
+
+      if py.is_blank(n):
+         blanks += 1
+         n += step
+         continue
+
+      if blanks >= run or _indent(py, n) < level:
+         break
+
+      groups = groups or blanks > 0
+      blanks = 0
+      n += step
+
+   return groups
 
 
 def _jump_word(stmt) -> str:
    return {ast.Return: 'return', ast.Continue: 'continue',
            ast.Break: 'break', ast.Raise: 'raise'}[type(stmt)]
 
-
 JUMP = PyBlankAfterJump()
 HEADER = PyBlankAfterHeader()
 SYMMETRY = PyBranchSymmetry()
 BETWEEN_DEFS = PyBlankBetweenDefs()
-DOUBLE_BLANK = PyNoDoubleBlank()
+BLANK_RUNS = PyBlankLineRuns()

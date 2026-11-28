@@ -307,11 +307,12 @@ Where the rule bends:
 ## 4. Slips, not rules
 
 The checker reports these, and does not learn from them; the author
-confirmed each: the 2-space blocks (run_all_tests:353, mi_printer.py:62),
-the mixed colons in `TIMEOUTS` (run_all_tests:50), the hanging bracket
-closed at the wrong column (regs_printer.py:31-33), and the missing blank
-line after `def children(self):` (mobj_printer.py:19, minor). The CamelCase
-of `count_lines_of_code` is older than the style.
+confirmed each, and they are fixed (ae7acacb): the 2-space blocks
+(run_all_tests:353, mi_printer.py:62), the mixed colons in `TIMEOUTS`
+(run_all_tests:50), the hanging bracket closed at the wrong column
+(regs_printer.py:31-33), and the missing blank line after `def
+children(self):` (mobj_printer.py:19, minor). The CamelCase of
+`count_lines_of_code` is older than the style.
 
 ## 5. The checker's rules
 
@@ -329,30 +330,34 @@ with C.
   that line's indentation;
 - `py_aligned_bracket`: a bracket followed by its first element aligns the
   following elements under it, and closes after the last one;
-- `py_blank_after_jump`: a blank line after an `if` ending in
-  `return`/`continue`/`break`/`raise` when code follows;
 - `py_call_kw_spacing`: `key=value` in calls;
 - `py_def_default_spacing`: `param=default`, `param: T = default`;
 - `py_annotation_spacing`: `name: T`, a column of them kept aligned.
 
-**Strong (-3):**
+**Vertical space: soft warnings, judged in context (3.1).** Each finding
+says so in its suggestion, and none has a fix:
 
-- `py_blank_after_header`: a header spanning lines is followed by a blank
-  line. Otherwise a grouped body starts after a blank line and a flat one
-  does not, except that:
+- `py_blank_after_jump` (-3, the heaviest): a blank line after an `if`
+  ending in `return`/`continue`/`break`/`raise` when code follows;
+- `py_blank_after_header` (-1.5): a header spanning lines is followed by a
+  blank line. Otherwise a grouped body starts after a blank line and a
+  flat one does not, except that:
   - a flat body may be spaced when it is heavy (a single compound
     statement, a statement spanning lines, a leading comment), when a peer
     branch is spaced, in a `try` chain, or like an adjacent method;
-  - a grouped body may skip the blank line when the header is shorter
-    than the body's first line (contributing.md's rule for C).
-- `py_branch_symmetry`: a spaced branch is followed by a blank line before
-  the next `elif` / `else` / `except`, and a compact one is not.
+  - a grouped body may skip the blank line when it is small (4 code lines
+    or fewer: 36 of the corpus's 40 are spaced, and the other 4 are
+    correct too), or when the header is shorter than the body's first line
+    (contributing.md's rule for C);
+- `py_blank_line_runs` (-1.5): two or three blank lines need a section
+  with groups inside on one side, at any level; four or more never;
+- `py_blank_between_defs` (-1.5): a blank line before a `def` or `class`
+  (comments above it belong to it);
+- `py_branch_symmetry` (-0.2, a hint): a spaced branch followed by no
+  blank line before the next `elif` / `else` / `except`, or the reverse.
 
 **Medium (-1.5) and soft (-0.5):**
 
-- `py_blank_between_defs`: one blank line before a `def` or `class`
-  (comments above it belong to it); two allowed at module level.
-- `py_no_double_blank` inside functions and classes.
 - `py_backslash_align`.
 - `py_dict_colon_uniform`: one colon form per literal, or the values in a
   column.
@@ -366,25 +371,19 @@ with C.
   calibration it reports nothing in the corpus, as its C twin reports 1
   line in the kernel's 24k.
 
-**Decided in the review, not in the code yet:**
-
-- every blank-line rule becomes soft, its findings judged in context
-  (3.1); `py_blank_after_jump` keeps a higher penalty than the others;
-- `py_no_double_blank` and the count of `py_blank_between_defs` become one
-  rule: two or more blank lines need a neighbour with groups inside (3.2);
-- `py_blank_after_header` stops asking a blank line of a small, light
-  block;
-- `py_branch_symmetry` becomes a low-weight hint.
-
 **Not built yet**, waiting on more evidence: `py_comprehension_padding`,
 `py_multiline_condition` and `py_staircase`. Quotes stay out.
 
 ### Over the corpus
 
 17 findings in 4,492 lines, before the review. 6 are the slips of section
-4. The author found the other 11 correct: 5 double blank lines and a triple
-one (3.2), and 5 blank lines after headers or before branches that a script
-cannot weigh (section 6, answers 4 and 5).
+4, fixed since (ae7acacb). The author found the other 11 correct: 5 double
+blank lines and a triple one (3.2), and 5 blank lines after headers or
+before branches that a script cannot weigh (section 6, answers 4 and 5).
+
+With the rules as the review left them, the author's code has no hard
+finding, and 3 soft ones, all judged correct: cmp_funcs_size:83 and :93
+(the title prints) and regs_printer.py:72 (the light common path).
 
 Over the rest of the tree's Python (written after CLAUDE.md), the rules
 find what the conversion will fix: the configurator is 4-space indented
