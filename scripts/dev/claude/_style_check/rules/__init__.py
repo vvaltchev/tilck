@@ -76,6 +76,13 @@ from . import prefer_nullptr
 from . import using_namespace_in_header
 from . import void_arglist_cpp
 from . import qualified_name_density
+# Python rules (docs/plans/python-style.md)
+from . import py_spdx_header
+from . import py_indent
+from . import py_bracket_layout
+from . import py_blank_lines
+from . import py_alignment
+from . import py_harmony
 
 # `non_const_locals_top_of_block` was prototyped but NOT registered:
 # CLAUDE.md claims this is a hard rule ("declare at top of enclosing
@@ -157,6 +164,20 @@ ALL_RULES = [
    using_namespace_in_header.RULE,
    void_arglist_cpp.RULE,
    qualified_name_density.RULE,
+   py_spdx_header.RULE,
+   py_indent.RULE,
+   py_bracket_layout.HANGING,
+   py_bracket_layout.ALIGNED,
+   py_blank_lines.JUMP,
+   py_blank_lines.HEADER,
+   py_blank_lines.SYMMETRY,
+   py_blank_lines.BETWEEN_DEFS,
+   py_blank_lines.DOUBLE_BLANK,
+   py_blank_lines.DEFAULT_SPACING,
+   py_alignment.DICT_COLON,
+   py_alignment.BACKSLASH,
+   py_alignment.ASSERT,
+   py_harmony.RULE,
 ]
 
 RULES_BY_ID = { r.id: r for r in ALL_RULES }

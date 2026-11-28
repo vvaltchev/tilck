@@ -10,6 +10,7 @@ from .base import (
    CheckContext,
    LAYER_RAW_TEXT,
 )
+from ..languages import C, PYTHON
 
 MAX_COLS = 80
 
@@ -17,6 +18,7 @@ MAX_COLS = 80
 class Cols80(Rule):
 
    id = 'cols_80'
+   languages = frozenset({C, PYTHON})
    description = (
       "Lines must not exceed 80 columns (strict, no exceptions per "
       "docs/contributing.md NOTE[1])"

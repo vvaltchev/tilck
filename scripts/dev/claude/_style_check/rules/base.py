@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
+from ..languages import language_of, C as LANG_C
+
 # Severity levels
 SEVERITY_ERROR = 'error'
 SEVERITY_WARNING = 'warning'
@@ -135,6 +137,12 @@ class CheckContext:
    # exempt from `pragma_once` and similar single-include rules.
    is_multi_include: bool = False
 
+   # 'c' (C and C++) or 'python' (see languages.py)
+   language: str = LANG_C
+
+   # Python files: tokens, syntax tree, brackets, blocks (pyctx.PyContext)
+   py: Optional[object] = None
+
    # libclang artefacts -- may be None if parse failed or rule didn't need them
    tu: Optional[object] = None
    extents: list = field(default_factory=list)
@@ -191,16 +199,29 @@ class Rule:
    needs_tu: bool = False
    needs_comments: bool = False
 
-   # File-type filter: set of file extensions this rule applies to.
-   # None means: all C/C++ source files (.c, .h, .cpp, .hpp).
+   # The languages the rule checks (languages.C, languages.PYTHON).
+   languages = frozenset({LANG_C})
+
+   # File-type filter for C: set of file extensions this rule applies
+   # to. None means: all C/C++ source files (.c, .h, .cpp, .hpp).
    # Use {'.c'} or {'.c', '.h'} for C-only rules.
    applies_to: Optional[set] = None  # e.g. {'.c'} or {'.h'}
 
    ALL_EXTENSIONS = {'.c', '.h', '.cpp', '.hpp'}
 
    def applies_to_file(self, path: Path) -> bool:
+
+      lang = language_of(path)
+
+      if lang not in self.languages:
+         return False
+
+      if lang != LANG_C:
+         return True
+
       if self.applies_to is None:
          return path.suffix in self.ALL_EXTENSIONS
+
       return path.suffix in self.applies_to
 
    def check(self, ctx: CheckContext) -> List[Diagnostic]:

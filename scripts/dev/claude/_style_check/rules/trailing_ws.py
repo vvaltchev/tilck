@@ -14,11 +14,13 @@ from .base import (
    SEVERITY_WARNING,
    SCORE_SOFT,
 )
+from ..languages import C, PYTHON
 
 
 class TrailingWs(Rule):
 
    id = 'trailing_ws'
+   languages = frozenset({C, PYTHON})
    description = 'No trailing whitespace at end of line'
    layers = LAYER_RAW_TEXT
 

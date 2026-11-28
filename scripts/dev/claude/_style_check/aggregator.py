@@ -3,6 +3,8 @@
 # pylint: disable=missing-class-docstring, missing-function-docstring
 # pylint: disable=broad-except, consider-using-f-string
 
+import ast
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -214,6 +216,22 @@ def extract_functions(tus, file_path: Path) -> List[FunctionRegion]:
    return out
 
 
+def extract_py_functions(py) -> List[FunctionRegion]:
+   """Every function (and method) of a Python file, from its syntax
+   tree. A file Python cannot parse has none."""
+
+   if py is None or py.tree is None:
+      return []
+
+   out = [
+      FunctionRegion(name=n.name, start_line=n.lineno, end_line=n.end_lineno)
+      for n in ast.walk(py.tree)
+      if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+   ]
+   out.sort(key=lambda f: f.start_line)
+   return out
+
+
 def _walk_all(tus):
 
    for tu in tus or ():
@@ -309,10 +327,15 @@ def _compute_prettiness(lines, start, end, diagnostics):
 def build_file_summary(file_path: Path,
                        tus,
                        lines: List[str],
-                       diagnostics: List[Diagnostic]) -> FileSummary:
+                       diagnostics: List[Diagnostic],
+                       py=None) -> FileSummary:
 
    summary = FileSummary(file_path=file_path)
-   funcs = extract_functions(tus, file_path)
+
+   if py is not None:
+      funcs = extract_py_functions(py)
+   else:
+      funcs = extract_functions(tus, file_path)
 
    # Compute statement counts up-front.
    for f in funcs:

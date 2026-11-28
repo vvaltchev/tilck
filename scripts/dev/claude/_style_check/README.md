@@ -1,11 +1,12 @@
-# style_check -- Tilck C coding-style checker
+# style_check -- Tilck coding-style checker (C and Python)
 
-A libclang-based linter that reports formatting violations against the
-user's C coding style as machine-readable JSONL. Built for Claude to
-consume so it can apply the style correctly without having to memorize
-every nuance.
+A linter that reports formatting violations against the user's C and
+Python coding style, as text or machine-readable JSONL: C through
+libclang, Python through the standard library's `tokenize` and `ast`.
+Built for Claude to consume so it can apply the style correctly without
+having to memorize every nuance.
 
-## Rules (all C-only)
+## Rules
 
 The authoritative list lives in code and is printed by `list-rules`:
 
@@ -43,6 +44,29 @@ below):
   `no_packed_enum_values`).
 - **Comments** -- `comment_block_multiline_format`
   (state-machine scanner + raw text).
+
+### Python
+
+A file is Python when its name ends in `.py` or its first line is a
+python shebang (`languages.py`). The Python rules (`rules/py_*.py`) come
+from the user's own Python only, as `docs/plans/python-style.md` infers
+it, and each cites its section there. `cols_80` and `trailing_ws` apply
+to both languages.
+
+- **Tokens** -- `py_indent` (one `--indent` level per block, spaces
+  only), `py_hanging_bracket` and `py_aligned_bracket` (the two
+  multi-line bracket styles of C's calls), `py_backslash_align`.
+- **Structural (ast)** -- vertical space: `py_blank_after_header`,
+  `py_branch_symmetry`, `py_blank_after_jump`, `py_blank_between_defs`,
+  `py_no_double_blank`; spacing and forms: `py_def_default_spacing`,
+  `py_dict_colon_uniform`, `py_assert_parens`.
+- **Raw text** -- `py_spdx_header`.
+- **Gradient** -- `py_harmony`, the model of `harmony_with_neighbors`
+  (shared, in `harmony.py`) over Python's functions.
+
+Their tests are snippets in `tests/test_py_rules.py`, plus a whole file
+in the style, `tests/fixtures/good_python_style.py`, on which no rule
+may report anything.
 
 ## Installation
 
@@ -152,7 +176,8 @@ has its own `--help` (e.g. `style_check check --help`).
 
 # Check a code base that uses a different indentation width (1-8).
 # Default is 3 (Tilck style). Affects the width-sensitive rules:
-# tab expansion (indent_3sp) and the case-label step (switch_case_indent).
+# tab expansion (indent_3sp), the case-label step (switch_case_indent),
+# and Python's block and bracket indentation (py_indent, py_*_bracket).
 ./scripts/dev/claude/style_check check --indent 4 ../other-project/src/foo.c
 
 # List all rules / explain one
@@ -205,6 +230,12 @@ Three layers:
    counts, and a small state-machine comment scanner (libclang's AST
    doesn't include comments).
 
+Python has the same three layers without a build: `pyctx.py` runs
+`tokenize` and `ast` over the text, and gives the rules its tokens, its
+tree, its multi-line brackets, its blocks (with the branches of each
+if/elif/else and try/except chain) and its logical lines. A file Python
+cannot parse is a `parse` problem, as for C, never skipped.
+
 The tool **never** inspects macro definitions and **never** cares what
 a macro expands to.
 
@@ -215,7 +246,8 @@ direct invocation:
 
 ```bash
 PYTHONPATH=scripts/dev/claude python3 -m unittest \
-   _style_check.tests.test_rules _style_check.tests.test_parsing
+   _style_check.tests.test_rules _style_check.tests.test_parsing \
+   _style_check.tests.test_py_rules
 ```
 
 The fixtures are kernel-style code that no build compiles. The tests

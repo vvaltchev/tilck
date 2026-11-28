@@ -15,6 +15,8 @@ from pathlib import Path
 
 from . import parser as _parser_mod
 from . import configs as _configs
+from . import pyctx as _pyctx
+from .languages import language_of, C as LANG_C, PYTHON as LANG_PYTHON
 from . import reporter
 from . import extents
 from . import tokens as _tokens_mod
@@ -62,19 +64,17 @@ def collect_files(args, repo_root: Path) -> list:
          if not line:
             continue
 
-         if line.endswith(('.c', '.h', '.cpp', '.hpp')):
+         p = root / line
 
-            p = root / line
-
-            if p.exists():
-               files.append(p)
+         if p.exists() and language_of(p):
+            files.append(p)
 
    if args.all:
 
       try:
 
          out = subprocess.check_output(
-            ['git', 'ls-files', '*.c', '*.h', '*.cpp', '*.hpp'],
+            ['git', 'ls-files'],
             cwd=str(root),
             stderr=subprocess.DEVNULL,
             text=True
@@ -106,6 +106,9 @@ def collect_files(args, repo_root: Path) -> list:
          if str(p.resolve()).startswith(own_fixtures):
             continue
 
+         if not language_of(p):
+            continue
+
          files.append(p)
 
    return files
@@ -126,6 +129,7 @@ def build_context(file_path: Path,
 
    lines = source_text.split('\n')
 
+   lang = language_of(file_path) or LANG_C
    is_header = file_path.suffix == '.h'
    is_cpp = file_path.suffix in ('.cpp', '.hpp', '.cc')
 
@@ -139,7 +143,11 @@ def build_context(file_path: Path,
       indent=indent,
       is_c_dot_h=detect_c_dot_h(file_path),
       is_multi_include=detect_multi_include(lines),
+      language=lang,
    )
+
+   if lang == LANG_PYTHON:
+      ctx.py = _pyctx.build(source_text)
 
    if need_comments:
       ctx.comments = _tokens_mod.scan_comments(source_text)
@@ -195,6 +203,19 @@ def parse_diagnostics(file_path: Path, fparses) -> list:
       ))
 
    return out
+
+
+def python_parse(ctx: CheckContext):
+   """A Python file's parse, as a FileParses: Python's own parser needs
+   no build, so a file it rejects is the only possible problem."""
+
+   fp = _parser_mod.FileParses(str(ctx.file_path))
+
+   if ctx.py.error:
+      fp.add('syntax_error', _parser_mod.ERROR, ctx.py.error_line,
+             'Python cannot parse it: {}'.format(ctx.py.error))
+
+   return fp
 
 
 def make_parser(args, repo_root):
@@ -344,12 +365,11 @@ def cmd_check(args) -> int:
 
    files = collect_files(args, repo_root)
 
-   files = [f for f in files
-            if f.suffix in ('.c', '.h', '.cpp', '.hpp')]
+   files = [f for f in files if language_of(f)]
 
    if not files:
       sys.stderr.write(
-         "error: no .c/.h/.cpp/.hpp files to check\n"
+         "error: no C, C++ or Python files to check\n"
       )
       return 1
 
@@ -361,7 +381,9 @@ def cmd_check(args) -> int:
 
    parser_obj = None
 
-   if args.parse_only or any(r.needs_tu for r in rules):
+   has_c = any(language_of(f) == LANG_C for f in files)
+
+   if has_c and (args.parse_only or any(r.needs_tu for r in rules)):
 
       try:
          parser_obj = make_parser(args, repo_root)
@@ -433,7 +455,8 @@ def cmd_check(args) -> int:
       if not applicable and not args.parse_only:
          continue
 
-      need_tu = file_cfg.parse and \
+      lang = language_of(f)
+      need_tu = lang == LANG_C and file_cfg.parse and \
          (args.parse_only or any(r.needs_tu for r in applicable))
       need_cm = any(r.needs_comments for r in applicable)
 
@@ -451,6 +474,10 @@ def cmd_check(args) -> int:
 
       ctx = build_context(f, need_cm, args.indent)
       tu_ctxs = tu_contexts(ctx, fparses)
+
+      if lang == LANG_PYTHON:
+         fparses = python_parse(ctx)
+         stats.add_python(fparses)
 
       if args.diff:
          file_lines_map[str(f)] = ctx.source_text.splitlines(True)
@@ -487,6 +514,7 @@ def cmd_check(args) -> int:
       file_summary = _agg.build_file_summary(
          file_path=f,
          tus=[p.tu for p in fparses.parses] if fparses else [],
+         py=ctx.py,
          lines=ctx.lines,
          diagnostics=file_diags,
       )
@@ -680,6 +708,8 @@ class _ParseStats:
       self.files = 0
       self.failed = 0
       self.parses = 0
+      self.py_files = 0
+      self.py_failed = 0
       self.intended = 0
       self.dropped = set()
       self.asm_only = []         # (path, region)
@@ -696,15 +726,28 @@ class _ParseStats:
       self.asm_only += [(fp.path, r) for r in fp.asm_only]
       self.dead += [(fp.path, r) for r in fp.dead]
 
+   def add_python(self, fp):
+
+      self.py_files += 1
+      self.py_failed += fp.failed
+      self.failed += fp.failed
+
    def emit(self, parser_obj, out, verbose):
 
-      cfgs = ', '.join(c.name for c in parser_obj.configs)
       dead_code = [(p, r) for p, r in self.dead if r.code]
+
+      if parser_obj is not None:
+         cfgs = ', '.join(c.name for c in parser_obj.configs)
+      else:
+         cfgs = 'none (no C or C++ file to parse)'
 
       out.write('\n')
       out.write('configurations: {}\n'.format(cfgs))
-      out.write('parsed {} file(s) with {} parse(s): {} failed\n'.format(
-         self.files, self.parses, self.failed
+      out.write('parsed {} C/C++ file(s) with {} parse(s): {} failed\n'.format(
+         self.files, self.parses, self.failed - self.py_failed
+      ))
+      out.write('parsed {} Python file(s): {} failed\n'.format(
+         self.py_files, self.py_failed
       ))
       out.write(
          'branches where libclang differs from the compiler, as '
@@ -847,6 +890,7 @@ _PACKAGE_PARENT = Path(__file__).resolve().parent.parent
 _TEST_MODULES = (
    '_style_check.tests.test_rules',
    '_style_check.tests.test_parsing',
+   '_style_check.tests.test_py_rules',
 )
 
 # Coverage HTML output goes to `scripts/dev/claude/htmlcov/`.
@@ -944,10 +988,13 @@ def cmd_test(args) -> int:
 
 
 _DESCRIPTION = (
-   'Tilck C coding-style checker (libclang + raw text).\n\n'
+   'Tilck coding-style checker for C (libclang + raw text) and\n'
+   'Python (tokenize + ast).\n\n'
    'Reports formatting violations as machine-readable JSONL or\n'
    'human-readable text. Rules are derived from CLAUDE.md +\n'
-   'docs/contributing.md + the empirical kernel/userspace corpus.\n\n'
+   'docs/contributing.md + the empirical kernel/userspace corpus,\n'
+   'and the Python ones from the author\'s own Python\n'
+   '(docs/plans/python-style.md).\n\n'
    'Sub-commands:\n'
    '  check       Check files for style violations\n'
    '  list-rules  List every registered rule, one per line\n'
@@ -963,8 +1010,8 @@ _EPILOG = (
    '  style_check check --json kernel/poll.c\n\n'
    '  # Files changed since master\n'
    '  style_check check --since master\n\n'
-   '  # Sweep every .c/.h file tracked by git (defects in the source,\n'
-   '  # not in the tool)\n'
+   '  # Sweep every C and Python file tracked by git (defects in the\n'
+   '  # source, not in the tool)\n'
    '  style_check check --all\n\n'
    '  # Run a single rule across selected files\n'
    '  style_check check --rule sizeof_parens kernel/*.c\n\n'
@@ -1003,7 +1050,7 @@ def build_argparser():
    check_p.add_argument(
       '--all',
       action='store_true',
-      help=('Also check every .c / .h file tracked by git in the '
+      help=('Also check every C and Python file tracked by git in the '
             'current repository (corpus sweep -- failures are '
             'defects in the source code, not the tool)')
    )

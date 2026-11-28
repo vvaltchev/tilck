@@ -1,0 +1,5 @@
+# Sample files for the vim interactive tests: build_fatpart copies them to
+# /usr/lib/vim/samples/, vim opens them, and the screenshots are compared
+# with the ones in ../expected/. Test data, not code of the project: a
+# change to them breaks the tests.
+ignore: true
