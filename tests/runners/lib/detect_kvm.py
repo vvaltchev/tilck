@@ -101,8 +101,8 @@ def qemu_accelerators(qemu_bin):
 
    out = subprocess.check_output(
       [qemu_bin, '-accel', 'help'],
-      stderr = subprocess.STDOUT,
-      timeout = QEMU_PROBE_TIMEOUT,
+      stderr=subprocess.STDOUT,
+      timeout=QEMU_PROBE_TIMEOUT,
    ).decode('utf-8', 'replace')
 
    names = [l.strip() for l in out.splitlines()]
@@ -139,10 +139,10 @@ def qemu_kvm_unusable_reason(qemu_bin):
    try:
       p = subprocess.run(
          cmd,
-         input = b'quit\n',
-         stdout = subprocess.DEVNULL,
-         stderr = subprocess.PIPE,
-         timeout = QEMU_PROBE_TIMEOUT,
+         input=b'quit\n',
+         stdout=subprocess.DEVNULL,
+         stderr=subprocess.PIPE,
+         timeout=QEMU_PROBE_TIMEOUT,
       )
    except (OSError, subprocess.SubprocessError) as e:
       return "'{}' failed: {}".format(" ".join(cmd), e)
@@ -160,7 +160,7 @@ def qemu_kvm_unusable_reason(qemu_bin):
 def qemu_version(qemu_bin):
 
    out = subprocess.check_output(
-      [qemu_bin, '--version'], timeout = QEMU_PROBE_TIMEOUT
+      [qemu_bin, '--version'], timeout=QEMU_PROBE_TIMEOUT
    ).decode('utf-8', 'replace')
 
    m = re.search(r'QEMU.*version +((?:[0-9]+[.])+[0-9]+)', out)

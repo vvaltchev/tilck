@@ -47,7 +47,7 @@ def container_of(elem_ptr, gdb_type_obj, mem_name):
    container_addr = gdb.Value(int(elem_ptr) - int(off))
    return container_addr.cast(gdb_type_obj.pointer())
 
-def select_field_in_list(arr, f, asString = False):
+def select_field_in_list(arr, f, asString=False):
 
    if asString:
       return [ str(x[f]) for x in arr ]
@@ -62,7 +62,7 @@ def to_gdb_list(arr):
    tmp = ", ".join([ str(x) for x in arr ])
    return gdb.parse_and_eval("{{{}}}".format(tmp))
 
-def to_gdb_list_with_field_select(arr, field, sep = ", "):
+def to_gdb_list_with_field_select(arr, field, sep=", "):
    return to_gdb_list(select_field_in_list(arr, field, True))
 
 def fixhex16(n):

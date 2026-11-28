@@ -79,7 +79,7 @@ def main():
          diffs[f] = [0, after[f]]
 
    darr = list(diffs.items())
-   darr.sort(key = lambda p: p[1][1] - p[1][0])
+   darr.sort(key=lambda p: p[1][1] - p[1][0])
 
    print("Differences for common files (size after vs before)")
    print("-" * 100)

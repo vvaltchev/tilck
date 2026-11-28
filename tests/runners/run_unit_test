@@ -71,26 +71,26 @@ def main():
 
    parser.add_argument(
       'test_type',
-      choices = ['unit'],
-      help = 'type of the test'
+      choices=['unit'],
+      help='type of the test'
    )
 
    parser.add_argument(
       'test_name',
-      type = str,
-      help = 'unit test name, space-separated names, or "runall"'
+      type=str,
+      help='unit test name, space-separated names, or "runall"'
    )
 
    parser.add_argument(
       'timeout',
-      type = arg_type_timeout,
-      help = 'max test run time before timeout (seconds)'
+      type=arg_type_timeout,
+      help='max test run time before timeout (seconds)'
    )
 
    parser.add_argument(
       'qemu_kvm_version',
-      nargs = "?",
-      help = argparse.SUPPRESS
+      nargs="?",
+      help=argparse.SUPPRESS
    )
 
    try:
@@ -120,9 +120,9 @@ def main():
 
       p = subprocess.run(
          cmd,
-         timeout = args.timeout,
-         stdout = subprocess.PIPE,
-         stderr = subprocess.STDOUT,
+         timeout=args.timeout,
+         stdout=subprocess.PIPE,
+         stderr=subprocess.STDOUT,
       )
 
    except FileNotFoundError:

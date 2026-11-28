@@ -59,7 +59,7 @@ class QmpClient:
    def __init__(self, timeout):
 
       self.timeout = timeout
-      self.tmp_dir = tempfile.mkdtemp(prefix = "tilck-qmp-")
+      self.tmp_dir = tempfile.mkdtemp(prefix="tilck-qmp-")
       self.path = os.path.join(self.tmp_dir, "qmp.sock")
       self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
       self.conn = None
@@ -82,7 +82,7 @@ class QmpClient:
       """
       return "unix:" + self.path
 
-   def accept(self, alive = lambda: True):
+   def accept(self, alive=lambda: True):
       """
       Wait for QEMU to connect, read its greeting and negotiate the
       capabilities. Returns the greeting's version dict. `alive` is
@@ -198,4 +198,4 @@ class QmpClient:
             s.close()
 
       self.conn = None
-      shutil.rmtree(self.tmp_dir, ignore_errors = True)
+      shutil.rmtree(self.tmp_dir, ignore_errors=True)

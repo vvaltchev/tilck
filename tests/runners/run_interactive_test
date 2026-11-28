@@ -124,7 +124,7 @@ def vm_send_keys(key_lists):
 
       for keys in burst:
          vm_cmd("send-key",
-                keys = [{"type": "qcode", "data": k} for k in keys],
+                keys=[{"type": "qcode", "data": k} for k in keys],
                 **{"hold-time": KEY_HOLD_TIME_MS})
 
       events = 2 * sum(len(keys) for keys in burst)
@@ -185,7 +185,7 @@ def vm_take_screenshot():
    global g_next_screenshot
 
    ppm_name = "s{:03}.ppm".format(g_next_screenshot)
-   vm_cmd("screendump", filename = os.path.join(TMP_DIR, ppm_name))
+   vm_cmd("screendump", filename=os.path.join(TMP_DIR, ppm_name))
    g_next_screenshot += 1
    return ppm_name
 
@@ -386,7 +386,7 @@ def dump_log_file(title, path):
 
    msg_print("--- Dump {}: {} ---".format(title, path))
 
-   with open(path, 'r', errors = 'replace') as fh:
+   with open(path, 'r', errors='replace') as fh:
       raw_print(fh.read())
 
    msg_print("--- END {} ---".format(title))
@@ -540,7 +540,7 @@ def dump_coverage_data(pts_file):
    output = b''
    read_timeout = 3 if IN_ANY_CI else 0.5
 
-   with serial.Serial(pts_file, timeout = read_timeout) as ser:
+   with serial.Serial(pts_file, timeout=read_timeout) as ser:
 
       # Enter the shell
       ser.write("\n".encode("latin-1"))
@@ -863,37 +863,37 @@ def parse_args():
 
    parser = argparse.ArgumentParser()
 
-   g = parser.add_mutually_exclusive_group(required = True)
+   g = parser.add_mutually_exclusive_group(required=True)
 
    g.add_argument(
       "-l", "--list",
-      action = "store_true",
-      help = "list all the tests"
+      action="store_true",
+      help="list all the tests"
    )
 
    g.add_argument(
       "-a", "--run_all",
-      action = "store_true",
-      help = "run all the tests"
+      action="store_true",
+      help="run all the tests"
    )
 
    g.add_argument(
       "test_name",
-      nargs = "?",
-      help = "name of the test to run"
+      nargs="?",
+      help="name of the test to run"
    )
 
    parser.add_argument(
       "tot_timeout",
-      nargs = "?",
-      type = int,
-      help = "total run timeout"
+      nargs="?",
+      type=int,
+      help="total run timeout"
    )
 
    parser.add_argument(
       "qemu_kvm_version",
-      nargs = "?",
-      help = argparse.SUPPRESS
+      nargs="?",
+      help=argparse.SUPPRESS
    )
 
    input_args = sys.argv[1:]
@@ -982,7 +982,7 @@ def main():
       g_qemu_died = False
 
       # Create our runner thread
-      thread = threading.Thread(target = run)
+      thread = threading.Thread(target=run)
       thread.start()
 
       try:

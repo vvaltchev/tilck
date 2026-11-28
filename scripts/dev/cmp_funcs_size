@@ -61,7 +61,7 @@ def main():
          diffs[f] = [0, after[f]]
 
    darr = list(diffs.items())
-   darr.sort(key = lambda p: p[1][1] - p[1][0])
+   darr.sort(key=lambda p: p[1][1] - p[1][0])
 
    before_funcs = 0
    after_funcs = 0

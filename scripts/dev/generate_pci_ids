@@ -82,12 +82,12 @@ def str_or_NULL(val):
 class device_class_ctx:
 
    def __init__(self,
-                class_id = 0,
-                subclass_id = 0,
-                progif_id = 0,
-                class_name = "",
-                subclass_name = "",
-                progif_name = ""):
+                class_id=0,
+                subclass_id=0,
+                progif_id=0,
+                class_name="",
+                subclass_name="",
+                progif_name=""):
 
       self.class_id = class_id
       self.subclass_id = subclass_id

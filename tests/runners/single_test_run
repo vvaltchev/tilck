@@ -51,7 +51,7 @@ TILCK_SHELL_STR = 'root@tilck'
 # Global variables
 
 # Controlled by command line
-g_params:TestParamsType = None
+g_params: TestParamsType = None
 
 # Internal state
 g_output = ""
@@ -391,26 +391,26 @@ def main():
 
    parser.add_argument(
       'test_type',
-      choices = ['selftest', 'shellcmd'],
-      help = 'type of the test'
+      choices=['selftest', 'shellcmd'],
+      help='type of the test'
    )
 
    parser.add_argument(
       'test_name',
-      type = str,
-      help = 'name of the test to run'
+      type=str,
+      help='name of the test to run'
    )
 
    parser.add_argument(
       'timeout',
-      type = arg_type_timeout,
-      help = 'max test run time before timeout (seconds)'
+      type=arg_type_timeout,
+      help='max test run time before timeout (seconds)'
    )
 
    parser.add_argument(
       'qemu_kvm_version',
-      nargs = "?",
-      help = argparse.SUPPRESS
+      nargs="?",
+      help=argparse.SUPPRESS
    )
 
    try:
@@ -431,7 +431,7 @@ def main():
 
       detect_kvm(QEMU_BIN)
 
-   thread = threading.Thread(target = run_the_vm)
+   thread = threading.Thread(target=run_the_vm)
    thread.start()
 
    try:

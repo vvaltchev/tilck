@@ -87,10 +87,10 @@ tt_indexes = {
 
 # Global variables
 
-tests_by_type : Dict[str, List[Tuple[str,int]]] = { k: [] for k in TEST_TYPES }
-tests_to_run  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
-tests_passed  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
-test_runners  : Dict[str, str]                  = { k: "" for k in TEST_TYPES }
+tests_by_type: Dict[str, List[Tuple[str,int]]] = { k: [] for k in TEST_TYPES }
+tests_to_run:  Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
+tests_passed:  Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
+test_runners:  Dict[str, str]                  = { k: "" for k in TEST_TYPES }
 
 # Set by coverage_preflight() when host-side unit-test coverage must be
 # captured right after the unit tests run; see the host-vs-cross gcov
@@ -205,7 +205,7 @@ def load_list_of_unit_tests():
       result.append([name, timeout])
 
    test_runners["unit"] = "@CMAKE_BINARY_DIR@/st/run_unit_test"
-   return sorted(result, key = lambda x: (x[1], x[0]))
+   return sorted(result, key=lambda x: (x[1], x[0]))
 
 def load_list_of_interactive_tests():
 
@@ -269,7 +269,7 @@ def load_list_of_shell_cmd_tests():
                result.append([name, TIMEOUTS[t]])
 
    test_runners["shellcmd"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
-   return sorted(result, key = lambda x: x[1])
+   return sorted(result, key=lambda x: x[1])
 
 class kernel_selftest_struct(ctypes.Structure):
    _fields_ = [
@@ -320,13 +320,13 @@ def load_list_of_kernel_self_tests():
       result.append([test_name, tt])
 
    test_runners["selftest"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
-   return sorted(result, key = lambda x: x[1])
+   return sorted(result, key=lambda x: x[1])
 
 
-def internal_single_test_runner_thread(test_type : str,
-                                       test : str,
-                                       timeout : int,
-                                       show_output : bool):
+def internal_single_test_runner_thread(test_type: str,
+                                       test: str,
+                                       timeout: int,
+                                       show_output: bool):
 
    raw_print(
       "[ RUNNING ] {}: '{}' [timeout: {}]".format(test_type, test, timeout)
@@ -344,9 +344,9 @@ def internal_single_test_runner_thread(test_type : str,
 
    p = subprocess.Popen(
       cmdline,
-      stdin = subprocess.DEVNULL,
-      stdout = subprocess.PIPE,
-      stderr = subprocess.STDOUT,
+      stdin=subprocess.DEVNULL,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
    )
 
    if show_output:
@@ -386,12 +386,12 @@ def internal_single_test_runner_thread(test_type : str,
 
    return p.returncode
 
-def internal_run_test(test_type : str,
-                      test : str,
-                      timeout : int,
-                      show_output : bool = False):
+def internal_run_test(test_type: str,
+                      test: str,
+                      timeout: int,
+                      show_output: bool = False):
 
-   with ft.ThreadPoolExecutor(max_workers = 1) as executor:
+   with ft.ThreadPoolExecutor(max_workers=1) as executor:
 
       future = executor.submit(
          internal_single_test_runner_thread,
@@ -403,13 +403,13 @@ def internal_run_test(test_type : str,
 
       return future.result()
 
-def does_test_match_criteria(x : Tuple[str,int],
-                             reg : str,
-                             max_timeout : int,
-                             allow_manual : bool):
+def does_test_match_criteria(x: Tuple[str,int],
+                             reg: str,
+                             max_timeout: int,
+                             allow_manual: bool):
 
-   name : str = x[0]
-   timeout : int = x[1]
+   name: str = x[0]
+   timeout: int = x[1]
    is_runall = name in ['runall', 'runall_manual']
    is_manual = timeout == MANUAL_TEST_TIMEOUT
    timeout_check = timeout <= max_timeout
@@ -418,7 +418,7 @@ def does_test_match_criteria(x : Tuple[str,int],
 
    return is_runall or (matches_filter and manual_check)
 
-def list_tests(reg : str, max_timeout : int, test_type : str):
+def list_tests(reg: str, max_timeout: int, test_type: str):
 
    # Size the name column to the longest name that will be shown (min 30)
    # so the table stays aligned even with the long fully-qualified
@@ -434,7 +434,7 @@ def list_tests(reg : str, max_timeout : int, test_type : str):
          if does_test_match_criteria(x, reg, max_timeout, True):
             name_w = max(name_w, len(x[0]) + 1)
 
-   col_names : List[Tuple[str, int]] = [
+   col_names: List[Tuple[str, int]] = [
       ('test name', name_w),
       ('test type', 12),
       ('timeout', 10),
@@ -493,9 +493,9 @@ def list_tests(reg : str, max_timeout : int, test_type : str):
 def get_sum(per_test_counter):
    return sum(per_test_counter[k] for k in per_test_counter)
 
-def run_test(test_type : str,
-             x : Tuple[str,int],  # test, timeout
-             show_output : bool):
+def run_test(test_type: str,
+             x: Tuple[str,int],  # test, timeout
+             show_output: bool):
 
    if get_sum(tests_to_run) == 0:
       raw_print("")
@@ -527,13 +527,13 @@ def run_test(test_type : str,
          tests_passed[test_type] += 1
 
 
-def coverage_run_tool(tool : str, *tool_args : str):
+def coverage_run_tool(tool: str, *tool_args: str):
 
    if not os.path.isfile(tool):
       raw_print("[coverage] ERROR: tool not found: {}".format(tool))
       return False
 
-   p = subprocess.run([tool, *tool_args], stdin = subprocess.DEVNULL)
+   p = subprocess.run([tool, *tool_args], stdin=subprocess.DEVNULL)
    return p.returncode == 0
 
 def coverage_preflight():
@@ -591,12 +591,12 @@ def generate_coverage_html():
 
    raw_print("[coverage] HTML report: {}/index.html".format(COVERAGE_HTML_DIR))
 
-def run_all_tests(max_timeout : int,
-                  show_output : bool,
-                  reg : str,
-                  fail_on_zero : bool,
-                  test_type : str,
-                  allow_manual : bool):
+def run_all_tests(max_timeout: int,
+                  show_output: bool,
+                  reg: str,
+                  fail_on_zero: bool,
+                  test_type: str,
+                  allow_manual: bool):
 
    for tt in TEST_TYPES:
 
@@ -658,26 +658,26 @@ def parse_args():
 
    g.add_argument(
       "-l", "--list-tests",
-      action = "store_true",
-      help = "List all tests matching the criteria (dry-run)"
+      action="store_true",
+      help="List all tests matching the criteria (dry-run)"
    )
 
    g.add_argument(
       "-L", "--list-all-tests",
-      action = "store_true",
-      help = "List all tests, no matter their timeout (same as -l -t any)"
+      action="store_true",
+      help="List all tests, no matter their timeout (same as -l -t any)"
    )
 
    g.add_argument(
       "-j", "--list-timeouts",
-      action = "store_true",
-      help = "List the predefined timeout values with labels usable with -t"
+      action="store_true",
+      help="List the predefined timeout values with labels usable with -t"
    )
 
    parser.add_argument(
       "-c", "--compact-run",
-      action = "store_true",
-      help = "Run all the tests of each type in a single VM boot. "
+      action="store_true",
+      help="Run all the tests of each type in a single VM boot. "
              "Combine with -f to limit the single boot to the "
              "filter-matched tests (capped at "
              "{} matches per type).".format(COMPACT_FILTER_MAX),
@@ -685,49 +685,49 @@ def parse_args():
 
    parser.add_argument(
       "-o", "--show-output",
-      action = "store_true",
-      help = "Show test's output even in case of success"
+      action="store_true",
+      help="Show test's output even in case of success"
    )
 
    parser.add_argument(
       "--coverage",
-      action = "store_true",
-      help = "Collect a single merged coverage.info from every test type "
+      action="store_true",
+      help="Collect a single merged coverage.info from every test type "
              "that runs (needs a gcov build: cmake_run --gcov)."
    )
 
    parser.add_argument(
       "--html",
-      action = "store_true",
-      help = "With --coverage, also generate the HTML coverage report."
+      action="store_true",
+      help="With --coverage, also generate the HTML coverage report."
    )
 
    parser.add_argument(
       "-a", "--allow-manual",
-      action = "store_true",
-      help = "Allow manual tests to be run by this script. "
+      action="store_true",
+      help="Allow manual tests to be run by this script. "
              "Warning: some manual tests make the kernel to panic and that "
              "will be interpreted as a failure by this test runner."
    )
    parser.add_argument(
       "-f", "--filter",
-      type = str,
-      default = ".*",
-      help = "Run only tests matching the given regex filter"
+      type=str,
+      default=".*",
+      help="Run only tests matching the given regex filter"
    )
 
    parser.add_argument(
       "-t", "--max-timeout",
-      type = arg_type_timeout,
-      default = TIMEOUTS['med'],
-      help = "Run only tests having timeout <= MAX_TIMEOUT "
+      type=arg_type_timeout,
+      default=TIMEOUTS['med'],
+      help="Run only tests having timeout <= MAX_TIMEOUT "
              "(default: {})".format(TIMEOUTS['med'])
    )
 
    parser.add_argument(
       "-T", "--test_type",
-      type = arg_type_test,
-      help = "Run only tests of the given type. Minimal prefixes are "
+      type=arg_type_test,
+      help="Run only tests of the given type. Minimal prefixes are "
              "accepted (e.g. 'se' is interpreted as selftest)."
    )
 

@@ -23,7 +23,7 @@ def get_all_tasks():
       walk(tasks_list, right)
 
    walk(tasks, root.value())
-   tasks = sorted(tasks, key = lambda t: int(t['tid']))
+   tasks = sorted(tasks, key=lambda t: int(t['tid']))
    return tasks
 
 def get_children_list(proc):
