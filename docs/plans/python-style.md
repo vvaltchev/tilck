@@ -25,7 +25,8 @@ configurator included, and the vim test data
 (`tests/interactive/vim_text_files/`).
 
 The counts below come from a tokenize/ast pass over the corpus. "N/M" means
-N of the M cases measured.
+N of the M cases measured. Line numbers (`file:line`) are those of the
+tree today, where the files have since moved on.
 
 ## 2. What the C style already says
 
@@ -35,7 +36,7 @@ carry over unchanged:
 
 - **80 columns, strictly.** No line of the corpus exceeds it.
 - **The indentation width is the project's**: 3 spaces today, 4 after the
-  switch. One block (run_all_tests:280) is indented by 2: a slip.
+  switch. One block (run_all_tests:353) is indented by 2: a slip.
 - **snake_case**, except in the 2018 `count_lines_of_code`.
 - **Pretty over consistent.** Every rule can yield to a prettier result,
   except the 80-column limit. That is why most rules below are weights,
@@ -232,8 +233,8 @@ Where the rule bends:
 ## 4. Slips, not rules
 
 The checker reports these, and does not learn from them: the 2-space
-blocks (run_all_tests:280, mi_printer.py:62), the 4 double blank lines
-inside functions, the mixed colons in `TIMEOUTS` (run_all_tests:40), and
+blocks (run_all_tests:353, mi_printer.py:62), the 4 double blank lines
+inside functions, the mixed colons in `TIMEOUTS` (run_all_tests:50), and
 the hanging bracket closed at the wrong column (regs_printer.py:32-33). The
 CamelCase of `count_lines_of_code` is older than the style.
 
@@ -323,7 +324,8 @@ excluded (`tests/interactive/vim_text_files/.style.yml`).
      blank line after the header;
    - cmp_funcs_size:83 and :93, `if before_funcs > after_funcs:` with a
      grouped body (`print()` lines, then a `for`) and no blank line;
-   - count_lines_of_code:120, `if len(rsline) > LINE_MAX_COLS:`, the same;
-   - detect_kvm.py:59, a compact `try:` before a spaced `except:`;
+   - count_lines_of_code:124, `if len(rsline) > LINE_MAX_COLS:`, the same;
+   - detect_kvm.py:59 at 77b85697 (since rewritten), a compact `try:`
+     before a spaced `except:`;
    - regs_printer.py:72, a spaced `if` branch with no blank line before
      its `else:`.
