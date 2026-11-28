@@ -17,6 +17,7 @@ class printer_mwobj_elem:
       return "mwobj_elem"
 
    def children(self):
+
       e = self.val
       wobj = e["wobj"]
 

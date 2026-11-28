@@ -48,7 +48,7 @@ MANUAL_TEST_TIMEOUT = 10000
 
 # Must match with `enum se_kind` in self_tests.h
 TIMEOUTS = {
-   'manual' : MANUAL_TEST_TIMEOUT,
+   'manual': MANUAL_TEST_TIMEOUT,
    'short': 12,
    'med': 36,
    'medlong': 72,
@@ -350,7 +350,7 @@ def internal_single_test_runner_thread(test_type: str,
    )
 
    if show_output:
-     raw_print("")
+      raw_print("")
 
    bin_output = b''
 

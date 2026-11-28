@@ -29,8 +29,8 @@ class printer_regs:
          eip_str = fixhex32(r["eip"])
       else:
          eip_str = gdb.parse_and_eval(
-         "(void *){}".format(eip)
-      )
+            "(void *){}".format(eip)
+         )
 
       cs = r["cs"] & 0xffff
       ds = r["ds"] & 0xffff

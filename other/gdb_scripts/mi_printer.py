@@ -59,7 +59,7 @@ class printer_mappings_info:
       )
 
       for i, e in enumerate(mappings):
-        res.append(("[{}]".format(i), e.dereference()))
+         res.append(("[{}]".format(i), e.dereference()))
 
       return res
 
