@@ -6,7 +6,7 @@
 import re
 
 from pathlib import Path
-from typing import List, Set
+from typing import List
 
 import clang.cindex
 from clang.cindex import CursorKind
@@ -17,43 +17,21 @@ from .base import (
    CheckContext,
    SEVERITY_WARNING,
    SCORE_SOFT,
-   COST_MILD,
-   COST_SIGNIFICANT,
 )
+from .. import harmony
 from .. import tokens as _tokens_mod
 from ..libclang import kind_of
 
-# Redesigned around per-function IQR-based outlier detection.
-#
-# Codebase analysis (477 files, 3304 functions, 40k code lines):
-#
-#   - 20% of consecutive-line transitions have delta > 30 naturally
-#   - Golden files show the same profile (max deltas 60-73)
-#   - Category mixing (printf~53, func_call~43, return~24) is the
-#     primary driver of variation -- structural, not accidental
-#   - 50% of functions are "varied" (CV > 0.45)
-#
-# The old approach (compare line to neighbor-window median) flags
-# the natural rhythm of C code. The new approach:
-#
-#   1. Segment by function body
-#   2. Compute IQR fence per function (robust to outliers)
-#   3. Flag lines beyond the fence ONLY if they survive all
-#      pattern filters (printf, string-heavy, alternating,
-#      initializer, multi-arg, length partners)
+# The statistics (IQR fence, alternation, partners, cost) are the shared
+# model in harmony.py. What is C's own lives here: which lines are
+# "normal" (not declarations, signatures, continuations, braces, labels,
+# preprocessor lines), where function bodies are, and which outliers C
+# excuses (printf-style calls, string-heavy lines, initializer rows and
+# calls with many arguments).
 
-# ── Thresholds ───────────────────────────────────────────────────
+# ── Thresholds (the rest are the model's, in harmony.py) ─────────
 
-MIN_TARGET_LEN = 68
-MIN_DELTA_FROM_MEDIAN = 30
-IQR_MULTIPLIER = 3.0
-MIN_IQR = 8
-MIN_NORMAL_LINES = 6
-PARTNER_RANGE = 12
-MAX_PARTNERS = 0
 MAX_COMMAS = 4
-ALTERNATING_MIN_DELTA = 12
-ALTERNATING_MIN_RUN = 2
 
 
 # ── Category detection ───────────────────────────────────────────
@@ -355,94 +333,6 @@ def _text_find_function_bodies(lines):
    return bodies
 
 
-# ── Pattern detection ────────────────────────────────────────────
-
-def _detect_alternating(normal_entries):
-   """Detect alternating long-short-long-short patterns in a
-   sequence of (line_no, length) pairs. Returns line numbers
-   that are part of such patterns."""
-
-   if len(normal_entries) < 4:
-      return set()
-
-   n = len(normal_entries)
-   deltas = [
-      normal_entries[i + 1][1] - normal_entries[i][1]
-      for i in range(n - 1)
-   ]
-
-   # alt[i] = True when deltas[i] and deltas[i+1] have opposite
-   # sign and both are large enough to matter
-   alt = []
-
-   for i in range(len(deltas) - 1):
-      alt.append(
-         deltas[i] * deltas[i + 1] < 0
-         and abs(deltas[i]) >= ALTERNATING_MIN_DELTA
-         and abs(deltas[i + 1]) >= ALTERNATING_MIN_DELTA
-      )
-
-   patterned = set()
-   i = 0
-
-   while i < len(alt):
-
-      if not alt[i]:
-         i += 1
-         continue
-
-      j = i
-
-      while j < len(alt) and alt[j]:
-         j += 1
-
-      if j - i >= ALTERNATING_MIN_RUN:
-
-         for k in range(i, min(j + 2, n)):
-            patterned.add(normal_entries[k][0])
-
-      i = j
-
-   return patterned
-
-
-def _count_partners(target_len, target_idx, normal_entries):
-
-   count = 0
-
-   for i, (_, length) in enumerate(normal_entries):
-
-      if i == target_idx:
-         continue
-
-      if abs(length - target_len) <= PARTNER_RANGE:
-         count += 1
-
-   return count
-
-
-# ── Statistics ───────────────────────────────────────────────────
-
-def _iqr_fence(lengths):
-
-   n = len(lengths)
-
-   if n < 4:
-      return 999.0
-
-   s = sorted(lengths)
-   q1 = s[n // 4]
-   q3 = s[3 * n // 4]
-   iqr = max(q3 - q1, MIN_IQR)
-   return q3 + IQR_MULTIPLIER * iqr
-
-
-def _median(lengths):
-
-   s = sorted(lengths)
-   return float(s[len(s) // 2])
-
-
 # ── Rule ─────────────────────────────────────────────────────────
 
 class HarmonyWithNeighbors(Rule):
@@ -494,6 +384,16 @@ class HarmonyWithNeighbors(Rule):
       if not func_bodies:
          func_bodies = _text_find_function_bodies(ctx.lines)
 
+      def exempt(line_no):
+
+         raw = ctx.lines[line_no - 1]
+         masked_line = masked_lines[line_no - 1]
+
+         return (_is_printf_line(raw) or
+                 _is_string_heavy(raw) or
+                 masked_line.rstrip().endswith(',') or
+                 masked_line.count(',') > MAX_COMMAS)
+
       out = []
 
       for body_start, body_end in func_bodies:
@@ -521,80 +421,22 @@ class HarmonyWithNeighbors(Rule):
             if idx < len(kinds) and kinds[idx] == 'normal':
                normal.append((line_no, raw_lengths[idx]))
 
-         if len(normal) < MIN_NORMAL_LINES:
-            continue
+         for o in harmony.outliers(visual_lens, normal, exempt):
 
-         if len(visual_lens) < MIN_NORMAL_LINES:
-            continue
-
-         fence = _iqr_fence(visual_lens)
-         med = _median(visual_lens)
-         alternating = _detect_alternating(normal)
-
-         for entry_idx, (line_no, length) in enumerate(normal):
-
-            if length < MIN_TARGET_LEN:
-               continue
-
-            if length <= fence:
-               continue
-
-            delta = length - med
-
-            if delta < MIN_DELTA_FROM_MEDIAN:
-               continue
-
-            idx = line_no - 1
-            raw = ctx.lines[idx] if idx < len(ctx.lines) else ''
-
-            if _is_printf_line(raw):
-               continue
-
-            if _is_string_heavy(raw):
-               continue
-
-            if line_no in alternating:
-               continue
-
-            m_stripped = masked_lines[idx].rstrip()
-
-            if m_stripped.endswith(','):
-               continue
-
-            if masked_lines[idx].count(',') > MAX_COMMAS:
-               continue
-
-            partners = sum(
-               1 for vl in visual_lens
-               if abs(vl - length) <= PARTNER_RANGE
-            ) - 1
-
-            if partners > MAX_PARTNERS:
-               continue
-
-            # Continuous cost: scales from COST_MILD at the fence
-            # to COST_SIGNIFICANT at 2x overshoot.
-            overshoot = (length - fence) / max(fence - med, 1)
-            cost = min(
-               COST_SIGNIFICANT,
-               COST_MILD + (COST_SIGNIFICANT - COST_MILD) * overshoot,
-            )
+            raw = ctx.lines[o.line - 1]
 
             out.append(Diagnostic(
                file=str(ctx.file_path),
-               line=line_no,
+               line=o.line,
                col=1,
-               end_line=line_no,
-               end_col=length + 1,
+               end_line=o.line,
+               end_col=o.length + 1,
                rule=self.id,
                severity=self.severity,
-               message=(
-                  'line is {} cols; function median {:.0f} '
-                  '(+{} delta); IQR fence {:.0f}'
-               ).format(length, med, int(delta), fence),
+               message=o.message(),
                snippet=raw.rstrip(),
                is_gradient=True,
-               prettiness_cost=cost,
+               prettiness_cost=o.cost,
             ))
 
       return out
