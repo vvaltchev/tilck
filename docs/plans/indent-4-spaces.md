@@ -208,7 +208,9 @@ files at a time.
 
    Golden tests for each language, covering every bug class above.
 
-4. **A Python style checker**, `scripts/dev/claude/py_style_check`.
+4. **A Python style checker**: style_check's Python front-end (built in
+   style_check rather than as a separate `py_style_check`, so the two
+   languages share its reporter, its scoring and its harmony model).
    - Its rules come only from your own Python: the lines `git blame` gives
      to you before `CLAUDE.md` was introduced (2026-04-04), about 4,090
      lines in 30 files. That is `tests/runners/` (`run_all_tests`,
@@ -222,11 +224,11 @@ files at a time.
      `merge_compile_commands.py`, `scripts/dev/configurator/`), 16 lines by
      two other contributors, and the vim test data.
    - The inferred rules are written down first, in this directory, for your
-     review, before the checker is built. Then the checker checks all the
-     Python in the tree.
+     review (`python-style.md`). Then the checker checks all the Python in
+     the tree.
 
 5. **The switch.**
-   - style_check's default of 4 (above) and the Python checker's.
+   - style_check's default of 4 (above), for both languages.
    - The editor configs:
      - `.nvim.lua`: `vim.g.indent_width = 4` (the width neovim indents
        with, as expanded soft tabs), its comment "Tilck uses 3-space
@@ -256,8 +258,8 @@ files at a time.
   1. `reindent` converts it;
   2. its long lines and other style failures are fixed, with whitespace
      only (section 4);
-  3. `style_check check` (C/C++), `py_style_check` (Python) or
-     `reindent check` (the rest) passes;
+  3. `style_check check` (C/C++ and Python) or `reindent check` (the
+     rest) passes;
   4. `reindent verify` passes against the file before the commit.
 - **Agents:** Sonnet agents, each on its own set of files in its own
   worktree, making its own commits. The sets are disjoint, so their commits
@@ -276,8 +278,8 @@ files at a time.
 
 ### Phase 2: the end of the series
 
-- Over the whole tree, `style_check check --all`, `py_style_check` and
-  `reindent check` pass, except for the follow-up list.
+- Over the whole tree, `style_check check --all` and `reindent check`
+  pass, except for the follow-up list.
 - `.git-blame-ignore-revs` lists every conversion commit. GitHub's blame
   honors it, and `git blame` does with `blame.ignoreRevsFile`.
 - You merge exp-work into master with a merge commit.
